@@ -1,3 +1,7 @@
+class Attr(object):
+    pass
+
+
 class Edge(object):
     pass
 
