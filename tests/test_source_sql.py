@@ -6,6 +6,8 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
+from hiku.store import Store
+
 
 metadata = MetaData()
 
@@ -82,23 +84,70 @@ class TestSourceSQL(TestCase):
         ]))
 
     def test_m2o(self):
+        store = Store()
+
         foo_rows = query_foo(self.engine, ['name', 'count', 'bar_id'],
                              [3, 2, 1])
+        for row in foo_rows:
+            store.update(
+                'foo',
+                row.id,
+                zip(['name', 'count', 'bar'],
+                    [row.name, row.count, store.ref('bar', row.bar_id)]),
+            )
 
         bar_ids = foo_bar_link(self.engine, foo_rows)
-
         bar_rows = query_bar(self.engine, ['name', 'type'], bar_ids)
-        self.assertEqual(bar_rows,
-                         [('bar3', 3, 3), ('bar2', 2, 2), ('bar1', 1, 1)])
+        for row in bar_rows:
+            store.update('bar',
+                         row.id,
+                         zip(['name', 'type'], [row.name, row.type]))
+
+        self.assertEqual(
+            [store.ref('foo', i) for i in [3, 2, 1]],
+            [
+                {'name': 'foo3', 'count': 15,
+                 'bar': {'name': 'bar3', 'type': 3}},
+                {'name': 'foo2', 'count': 10,
+                 'bar': {'name': 'bar2', 'type': 2}},
+                {'name': 'foo1', 'count': 5,
+                 'bar': {'name': 'bar1', 'type': 1}},
+            ]
+        )
 
     def test_o2m(self):
+        store = Store()
+
         bar_rows = query_bar(self.engine, ['id', 'name', 'type'],
                              [3, 2, 1])
+        for row in bar_rows:
+            store.update('bar',
+                         row.id,
+                         zip(['name', 'type'], [row.name, row.type]))
 
-        foo_ids = bar_foo_link(self.engine, bar_rows)
-        self.assertEqual(foo_ids, [[3], [2], [1]])
+        foo_ids_list = bar_foo_link(self.engine, bar_rows)
+        for bar_row, foo_ids in zip(bar_rows, foo_ids_list):
+            store.update('bar', bar_row.id,
+                         [('foo_list', [store.ref('foo', i) for i in foo_ids])])
 
         foo_rows = query_foo(self.engine, ['name', 'count'],
-                             list(chain.from_iterable(foo_ids)))
-        self.assertEqual(foo_rows,
-                         [('foo3', 15, 3), ('foo2', 10, 2), ('foo1', 5, 1)])
+                             list(chain.from_iterable(foo_ids_list)))
+        for row in foo_rows:
+            store.update('foo',
+                         row.id,
+                         zip(['name', 'count'], [row.name, row.count]))
+
+        self.assertEqual(
+            [store.ref('bar', i) for i in [3, 2, 1]],
+            [
+                {'name': 'bar3', 'type': 3, 'foo_list': [
+                    {'name': 'foo3', 'count': 15},
+                ]},
+                {'name': 'bar2', 'type': 2, 'foo_list': [
+                    {'name': 'foo2', 'count': 10},
+                ]},
+                {'name': 'bar1', 'type': 1, 'foo_list': [
+                    {'name': 'foo1', 'count': 5},
+                ]},
+            ],
+        )
