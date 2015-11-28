@@ -32,12 +32,33 @@ bar_table = Table(
 
 
 def _query(engine, table, attrs, idents):
+    attrs = [a.attr if isinstance(a, Rel) else a for a in attrs]
     p_key, = list(table.primary_key)
     columns = [getattr(table.c, attr) for attr in attrs]
     rows = engine.execute(select(columns + [p_key])
                           .where(p_key.in_(idents))).fetchall()
     rows_map = {row[p_key]: row for row in rows}
     return [rows_map.get(ident) for ident in idents]
+
+
+class Rel(object):
+
+    def __init__(self, name, attr, entity):
+        self.name = name
+        self.attr = attr
+        self.entity = entity
+
+
+def store_update(store, entity, rows, attrs):
+    def proc(row):
+        for attr, value in zip(attrs, row):
+            if isinstance(attr, Rel):
+                yield (attr.name, store.ref(attr.entity, value))
+            else:
+                yield (attr, value)
+
+    for row in rows:
+        store.update(entity, row.id, proc(row))
 
 
 def query_foo(engine, attrs, idents):
@@ -49,11 +70,12 @@ def query_bar(engine, attrs, idents):
 
 
 def foo_bar_link(engine, foo_rows):
-    # needs bar_id in parent query
+    # needs bar_id in the parent query
     return [r.bar_id for r in foo_rows]
 
 
 def bar_foo_link(engine, bar_rows):
+    # needs id in the parent query
     bar_ids = [r.id for r in bar_rows]
     rows = engine.execute(select([foo_table.c.id, foo_table.c.bar_id])
                           .where(foo_table.c.bar_id.in_(bar_ids))).fetchall()
@@ -85,23 +107,15 @@ class TestSourceSQL(TestCase):
 
     def test_m2o(self):
         store = Store()
-
-        foo_rows = query_foo(self.engine, ['name', 'count', 'bar_id'],
-                             [3, 2, 1])
-        for row in foo_rows:
-            store.update(
-                'foo',
-                row.id,
-                zip(['name', 'count', 'bar'],
-                    [row.name, row.count, store.ref('bar', row.bar_id)]),
-            )
+        foo_attrs = ['name', 'count', Rel('bar', 'bar_id', 'bar')]
+        foo_rows = query_foo(self.engine, foo_attrs, [3, 2, 1])
+        store_update(store, 'foo', foo_rows, foo_attrs)
 
         bar_ids = foo_bar_link(self.engine, foo_rows)
-        bar_rows = query_bar(self.engine, ['name', 'type'], bar_ids)
-        for row in bar_rows:
-            store.update('bar',
-                         row.id,
-                         zip(['name', 'type'], [row.name, row.type]))
+
+        bar_attrs = ['name', 'type']
+        bar_rows = query_bar(self.engine, bar_attrs, bar_ids)
+        store_update(store, 'bar', bar_rows, bar_attrs)
 
         self.assertEqual(
             [store.ref('foo', i) for i in [3, 2, 1]],
@@ -118,24 +132,19 @@ class TestSourceSQL(TestCase):
     def test_o2m(self):
         store = Store()
 
-        bar_rows = query_bar(self.engine, ['id', 'name', 'type'],
-                             [3, 2, 1])
-        for row in bar_rows:
-            store.update('bar',
-                         row.id,
-                         zip(['name', 'type'], [row.name, row.type]))
+        bar_attrs = ['name', 'type']
+        bar_rows = query_bar(self.engine, bar_attrs, [3, 2, 1])
+        store_update(store, 'bar', bar_rows, bar_attrs)
 
         foo_ids_list = bar_foo_link(self.engine, bar_rows)
         for bar_row, foo_ids in zip(bar_rows, foo_ids_list):
             store.update('bar', bar_row.id,
                          [('foo_list', [store.ref('foo', i) for i in foo_ids])])
 
-        foo_rows = query_foo(self.engine, ['name', 'count'],
+        foo_attrs = ['name', 'count']
+        foo_rows = query_foo(self.engine, foo_attrs,
                              list(chain.from_iterable(foo_ids_list)))
-        for row in foo_rows:
-            store.update('foo',
-                         row.id,
-                         zip(['name', 'count'], [row.name, row.count]))
+        store_update(store, 'foo', foo_rows, foo_attrs)
 
         self.assertEqual(
             [store.ref('bar', i) for i in [3, 2, 1]],
