@@ -33,34 +33,12 @@ bar_table = Table(
 
 
 def _query(engine, table, attrs, idents):
-    attrs = [a.attr if isinstance(a, Rel) else a for a in attrs]
     p_key, = list(table.primary_key)
     columns = [getattr(table.c, attr) for attr in attrs]
-    rows = engine.execute(select(columns + [p_key])
+    rows = engine.execute(select([p_key] + columns)
                           .where(p_key.in_(idents))).fetchall()
-    rows_map = {row[p_key]: row for row in rows}
+    rows_map = {row[p_key]: [row[k] for k in columns] for row in rows}
     return [rows_map.get(ident) for ident in idents]
-
-
-class Rel(object):
-
-    def __init__(self, name, attr, entity):
-        self.name = name
-        self.attr = attr
-        self.entity = entity
-
-
-def store_update(store, entity, rows, attrs):
-    def proc(row):
-        for attr, value in zip(attrs, row):
-            if isinstance(attr, Rel):
-                yield (attr.attr, value)
-                yield (attr.name, store.ref(attr.entity, value))
-            else:
-                yield (attr, value)
-
-    for row in rows:
-        store.update(entity, row.id, proc(row))
 
 
 def query_foo(engine, attrs, idents):
@@ -71,14 +49,11 @@ def query_bar(engine, attrs, idents):
     return _query(engine, bar_table, attrs, idents)
 
 
-def foo_bar_link(engine, foo_rows):
-    # needs bar_id in the parent query
-    return [r['bar_id'] for r in foo_rows]
+def foo_bar_link(engine, bar_ids):
+    return bar_ids
 
 
-def bar_foo_link(engine, bar_rows):
-    # needs id in the parent query
-    bar_ids = [r['id'] for r in bar_rows]
+def bar_foo_link(engine, bar_ids):
     rows = engine.execute(select([foo_table.c.id, foo_table.c.bar_id])
                           .where(foo_table.c.bar_id.in_(bar_ids))).fetchall()
     mapping = defaultdict(list)
@@ -105,25 +80,41 @@ bar_edge = Edge('bar', {
 })
 
 
-def requirements(edge, fields):
+def query_edge(engine, store, edge, fields, ids):
+    mapping = defaultdict(list)
     for field_name in fields:
         field = edge.fields[field_name]
         if isinstance(field, Link):
-            link = field
-            field = edge.fields[link.requires]
-            yield field.func, Rel(field_name, field.name, link.entity)
-        else:
-            yield field.func, field.name
-
-
-def query_edge(engine, store, edge, fields, ids):
-    mapping = defaultdict(list)
-    for func, name in requirements(edge, fields):
-        mapping[func].append(name)
+            field = edge.fields[field.requires]
+        mapping[field.func].append(field.name)
 
     for func, names in mapping.items():
         rows = func(engine, names, ids)
-        store_update(store, edge.name, rows, names)
+        for row_id, row in zip(ids, rows):
+            store.update(edge.name, row_id, zip(names, row))
+
+
+def query_link_one(engine, store, edge, link_name, ids):
+    link = edge.fields[link_name]
+
+    from_ids = [store.ref(edge.name, i)[link.requires] for i in ids]
+    to_ids = link.func(engine, from_ids)
+    for from_id, to_id in zip(from_ids, to_ids):
+        store.update(edge.name, from_id,
+                     [(link_name, store.ref(link.entity, to_id))])
+    return to_ids
+
+
+def query_link_many(engine, store, edge, link_name, ids):
+    link = edge.fields[link_name]
+
+    from_ids = [store.ref(edge.name, i)[link.requires] for i in ids]
+    to_ids_list = link.func(engine, from_ids)
+    for from_id, to_ids in zip(from_ids, to_ids_list):
+        store.update(edge.name, from_id,
+                     [(link_name, [store.ref(link.entity, i)
+                                   for i in to_ids])])
+    return list(chain.from_iterable(to_ids_list))
 
 
 class TestSourceSQL(TestCase):
@@ -152,8 +143,10 @@ class TestSourceSQL(TestCase):
 
         query_edge(self.engine, store, foo_edge,
                    ['name', 'count', 'bar'], foo_ids)
-        bar_ids = foo_bar_link(self.engine,
-                               [store.ref('foo', i) for i in foo_ids])
+
+        bar_ids = query_link_one(self.engine, store, foo_edge, 'bar',
+                                 foo_ids)
+
         query_edge(self.engine, store, bar_edge,
                    ['name', 'type'], bar_ids)
 
@@ -176,14 +169,11 @@ class TestSourceSQL(TestCase):
         query_edge(self.engine, store, bar_edge,
                    ['name', 'type', 'foo_list'], bar_ids)
 
-        bar_list = [store.ref('bar', i) for i in bar_ids]
-        foo_ids_list = bar_foo_link(self.engine, bar_list)
-        for bar, foo_ids in zip(bar_list, foo_ids_list):
-            store.update('bar', bar['id'],
-                         [('foo_list', [store.ref('foo', i) for i in foo_ids])])
+        foo_ids = query_link_many(self.engine, store, bar_edge, 'foo_list',
+                                  bar_ids)
 
-        query_edge(self.engine, store, foo_edge, ['name', 'count'],
-                   list(chain.from_iterable(foo_ids_list)))
+        query_edge(self.engine, store, foo_edge,
+                   ['name', 'count'], foo_ids)
 
         self.assertEqual(
             [store.ref('bar', i) for i in [3, 2, 1]],
