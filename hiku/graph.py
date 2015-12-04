@@ -14,7 +14,8 @@ class Edge(object):
 
 class Link(object):
 
-    def __init__(self, requires, entity, func):
+    def __init__(self, requires, entity, func, is_list):
         self.requires = requires
         self.entity = entity
         self.func = func
+        self.is_list = is_list

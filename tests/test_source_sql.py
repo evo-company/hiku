@@ -68,7 +68,7 @@ foo_edge = Edge('foo', {
     'count': Field('count', query_foo),
     'bar_id': Field('bar_id', query_foo),
 
-    'bar': Link('bar_id', 'bar', foo_bar_link),
+    'bar': Link('bar_id', 'bar', foo_bar_link, False),
 })
 
 bar_edge = Edge('bar', {
@@ -76,7 +76,7 @@ bar_edge = Edge('bar', {
     'name': Field('name', query_bar),
     'type': Field('type', query_bar),
 
-    'foo_list': Link('id', 'foo', bar_foo_link),
+    'foo_list': Link('id', 'foo', bar_foo_link, True),
 })
 
 
@@ -94,27 +94,23 @@ def query_edge(engine, store, edge, fields, ids):
             store.update(edge.name, row_id, zip(names, row))
 
 
-def query_link_one(engine, store, edge, link_name, ids):
+def query_link(engine, store, edge, link_name, ids):
     link = edge.fields[link_name]
-
-    from_ids = [store.ref(edge.name, i)[link.requires] for i in ids]
-    to_ids = link.func(engine, from_ids)
-    for from_id, to_id in zip(from_ids, to_ids):
-        store.update(edge.name, from_id,
-                     [(link_name, store.ref(link.entity, to_id))])
-    return to_ids
-
-
-def query_link_many(engine, store, edge, link_name, ids):
-    link = edge.fields[link_name]
-
-    from_ids = [store.ref(edge.name, i)[link.requires] for i in ids]
-    to_ids_list = link.func(engine, from_ids)
-    for from_id, to_ids in zip(from_ids, to_ids_list):
-        store.update(edge.name, from_id,
-                     [(link_name, [store.ref(link.entity, i)
-                                   for i in to_ids])])
-    return list(chain.from_iterable(to_ids_list))
+    if link.is_list:
+        from_ids = [store.ref(edge.name, i)[link.requires] for i in ids]
+        to_ids_list = link.func(engine, from_ids)
+        for from_id, to_ids in zip(from_ids, to_ids_list):
+            store.update(edge.name, from_id,
+                         [(link_name, [store.ref(link.entity, i)
+                                       for i in to_ids])])
+        return list(chain.from_iterable(to_ids_list))
+    else:
+        from_ids = [store.ref(edge.name, i)[link.requires] for i in ids]
+        to_ids = link.func(engine, from_ids)
+        for from_id, to_id in zip(from_ids, to_ids):
+            store.update(edge.name, from_id,
+                         [(link_name, store.ref(link.entity, to_id))])
+        return to_ids
 
 
 class TestSourceSQL(TestCase):
@@ -144,8 +140,7 @@ class TestSourceSQL(TestCase):
         query_edge(self.engine, store, foo_edge,
                    ['name', 'count', 'bar'], foo_ids)
 
-        bar_ids = query_link_one(self.engine, store, foo_edge, 'bar',
-                                 foo_ids)
+        bar_ids = query_link(self.engine, store, foo_edge, 'bar', foo_ids)
 
         query_edge(self.engine, store, bar_edge,
                    ['name', 'type'], bar_ids)
@@ -169,8 +164,7 @@ class TestSourceSQL(TestCase):
         query_edge(self.engine, store, bar_edge,
                    ['name', 'type', 'foo_list'], bar_ids)
 
-        foo_ids = query_link_many(self.engine, store, bar_edge, 'foo_list',
-                                  bar_ids)
+        foo_ids = query_link(self.engine, store, bar_edge, 'foo_list', bar_ids)
 
         query_edge(self.engine, store, foo_edge,
                    ['name', 'count'], foo_ids)
