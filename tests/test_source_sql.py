@@ -10,8 +10,14 @@ from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
 from hiku.edn import Keyword, Dict
 from hiku.reader import read
+from hiku.compat import PY3
 from hiku.store import Store
 from hiku.graph import Field, Edge, Link
+
+if not PY3:
+    import warnings
+    from sqlalchemy.exc import SAWarning
+    warnings.filterwarnings('ignore', '', SAWarning, '', 0)
 
 
 metadata = MetaData()
