@@ -1,11 +1,15 @@
 from unittest import TestCase
 from itertools import chain
-from collections import defaultdict
+from collections import defaultdict, deque
+from concurrent.futures import ThreadPoolExecutor
 
 from sqlalchemy import create_engine, select
+from sqlalchemy.pool import StaticPool
 from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
+from hiku.edn import Keyword, Dict
+from hiku.reader import read
 from hiku.store import Store
 from hiku.graph import Field, Edge, Link
 
@@ -113,10 +117,64 @@ def query_link(engine, store, edge, link_name, ids):
         return to_ids
 
 
+ENV = {
+    'foo': foo_edge,
+    'bar': bar_edge,
+}
+
+executor = ThreadPoolExecutor(2)
+
+futures_queue = deque()
+
+
+def _process_link(engine, store, edge, link_name, fields, ids):
+    link = edge.fields[link_name]
+    to_ids = query_link(engine, store, edge, link_name, ids)
+    process_edge(engine, store, link.entity, fields, to_ids)
+
+
+def process_links(engine, store, links, ids):
+    for edge_name, link_name, fields in links:
+        edge = ENV[edge_name]
+        # TODO: some links doesn't perform any IO
+        futures_queue.append(executor.submit(_process_link, engine, store, edge,
+                                             link_name, fields, ids))
+
+
+def _process_edge(engine, store, edge, fields, links, ids):
+    query_edge(engine, store, edge, fields, ids)
+    process_links(engine, store, links, ids)
+
+
+def process_edge(engine, store, edge_name, fields, ids):
+    edge = ENV[edge_name]
+
+    _fields = []
+    _links = []
+
+    for field in fields:
+        if isinstance(field, Keyword):
+            _fields.append(field)
+        elif isinstance(field, Dict):
+            for key, value in field.items():
+                _fields.append(key)
+                # TODO: some links can be queried in parallel with current edge
+                _links.append((edge.name, key, value))
+        else:
+            raise TypeError(type(field))
+
+    futures_queue.append(executor.submit(_process_edge, engine, store, edge,
+                                         _fields, _links, ids))
+
+
 class TestSourceSQL(TestCase):
 
     def setUp(self):
-        self.engine = e = create_engine('sqlite://')
+        self.engine = e = create_engine(
+            'sqlite://',
+            connect_args={'check_same_thread': False},
+            poolclass=StaticPool,
+        )
         metadata.create_all(e)
 
         bar_insert = lambda r: e.execute(bar_table.insert(), r).lastrowid
@@ -137,13 +195,13 @@ class TestSourceSQL(TestCase):
         foo_ids = [3, 2, 1]
         store = Store()
 
-        query_edge(self.engine, store, foo_edge,
-                   ['name', 'count', 'bar'], foo_ids)
+        pattern = read(b'{:foo [:name :count {:bar [:name :type]}]}')
+        (edge_name, fields), = pattern.items()
 
-        bar_ids = query_link(self.engine, store, foo_edge, 'bar', foo_ids)
+        process_edge(self.engine, store, edge_name, fields, foo_ids)
 
-        query_edge(self.engine, store, bar_edge,
-                   ['name', 'type'], bar_ids)
+        while futures_queue:
+            futures_queue.popleft().result()
 
         self.assertEqual(
             [store.ref('foo', i) for i in [3, 2, 1]],
@@ -161,13 +219,13 @@ class TestSourceSQL(TestCase):
         bar_ids = [3, 2, 1]
         store = Store()
 
-        query_edge(self.engine, store, bar_edge,
-                   ['name', 'type', 'foo_list'], bar_ids)
+        pattern = read(b'{:bar [:name :type {:foo_list [:name :count]}]}')
+        (edge_name, fields), = pattern.items()
 
-        foo_ids = query_link(self.engine, store, bar_edge, 'foo_list', bar_ids)
+        process_edge(self.engine, store, edge_name, fields, bar_ids)
 
-        query_edge(self.engine, store, foo_edge,
-                   ['name', 'count'], foo_ids)
+        while futures_queue:
+            futures_queue.popleft().result()
 
         self.assertEqual(
             [store.ref('bar', i) for i in [3, 2, 1]],
