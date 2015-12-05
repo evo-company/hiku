@@ -1,7 +1,7 @@
 from unittest import TestCase
 from itertools import chain
-from collections import defaultdict, deque
-from concurrent.futures import ThreadPoolExecutor
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.pool import StaticPool
@@ -9,10 +9,10 @@ from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
 from hiku.edn import Keyword, Dict
-from hiku.reader import read
-from hiku.compat import PY3
 from hiku.store import Store
 from hiku.graph import Field, Edge, Link
+from hiku.reader import read
+from hiku.compat import PY3
 
 if not PY3:
     import warnings
@@ -130,47 +130,96 @@ ENV = {
 
 executor = ThreadPoolExecutor(2)
 
-futures_queue = deque()
+futures_set = set()
+futures_callbacks = defaultdict(list)
 
 
-def _process_link(engine, store, edge, link_name, fields, ids):
+def store_rows(fut_result, store, edge_name, names, ids):
+    for row_id, row in zip(ids, fut_result):
+        store.update(edge_name, row_id, zip(names, row))
+
+
+def store_links(fut_result, store, edge, link_name, requirements):
     link = edge.fields[link_name]
-    to_ids = query_link(engine, store, edge, link_name, ids)
+    if link.is_list:
+        for from_id, to_ids in zip(requirements, fut_result):
+            store.update(edge.name, from_id,
+                         [(link_name, [store.ref(link.entity, i)
+                                       for i in to_ids])])
+    else:
+        for from_id, to_id in zip(requirements, fut_result):
+            store.update(edge.name, from_id,
+                         [(link_name, store.ref(link.entity, to_id))])
+
+
+def process_linked_edge(fut_result, engine, store, link, fields):
+    if link.is_list:
+        to_ids = list(chain.from_iterable(fut_result))
+    else:
+        to_ids = fut_result
     process_edge(engine, store, link.entity, fields, to_ids)
 
 
-def process_links(engine, store, links, ids):
-    for edge_name, link_name, fields in links:
-        edge = ENV[edge_name]
-        # TODO: some links doesn't perform any IO
-        futures_queue.append(executor.submit(_process_link, engine, store, edge,
-                                             link_name, fields, ids))
-
-
-def _process_edge(engine, store, edge, fields, links, ids):
-    query_edge(engine, store, edge, fields, ids)
-    process_links(engine, store, links, ids)
+def process_link(fut_result, engine, store, edge, link_name, fields, ids):
+    link = edge.fields[link_name]
+    requirements = [store.ref(edge.name, i)[link.requires] for i in ids]
+    fut = executor.submit(link.func, engine, requirements)
+    futures_set.add(fut)
+    futures_callbacks[fut]\
+        .append((store_links, store, edge, link_name, requirements))
+    futures_callbacks[fut]\
+        .append((process_linked_edge, engine, store, link, fields))
 
 
 def process_edge(engine, store, edge_name, fields, ids):
     edge = ENV[edge_name]
 
-    _fields = []
-    _links = []
+    field_names = []
+    links = []
 
     for field in fields:
         if isinstance(field, Keyword):
-            _fields.append(field)
+            field_names.append(field)
         elif isinstance(field, Dict):
             for key, value in field.items():
-                _fields.append(key)
+                field_names.append(key)
                 # TODO: some links can be queried in parallel with current edge
-                _links.append((edge.name, key, value))
+                links.append((edge.name, key, value))
         else:
             raise TypeError(type(field))
 
-    futures_queue.append(executor.submit(_process_edge, engine, store, edge,
-                                         _fields, _links, ids))
+    mapping = defaultdict(list)
+    for field_name in field_names:
+        field = edge.fields[field_name]
+        if isinstance(field, Link):
+            field = edge.fields[field.requires]
+        mapping[field.func].append(field.name)
+
+    name_to_fut = {}
+    for func, names in mapping.items():
+        fut = executor.submit(func, engine, names, ids)
+        futures_set.add(fut)
+        futures_callbacks[fut]\
+            .append((store_rows, store, edge.name, names, ids))
+        for name in names:
+            name_to_fut[name] = fut
+
+    for edge_name, link_name, fields in links:
+        edge = ENV[edge_name]
+        link = edge.fields[link_name]
+        fut = name_to_fut[link.requires]
+        futures_callbacks[fut].append((process_link, engine, store, edge,
+                                       link_name, fields, ids))
+
+
+def wait_processing():
+    while futures_set:
+        done, _ = wait(futures_set, return_when=FIRST_COMPLETED)
+        for fut in done:
+            for cb_tuple in futures_callbacks[fut]:
+                fn, args = cb_tuple[0], cb_tuple[1:]
+                fn(fut.result(), *args)
+            futures_set.remove(fut)
 
 
 class TestSourceSQL(TestCase):
@@ -205,9 +254,7 @@ class TestSourceSQL(TestCase):
         (edge_name, fields), = pattern.items()
 
         process_edge(self.engine, store, edge_name, fields, foo_ids)
-
-        while futures_queue:
-            futures_queue.popleft().result()
+        wait_processing()
 
         self.assertEqual(
             [store.ref('foo', i) for i in [3, 2, 1]],
@@ -229,9 +276,7 @@ class TestSourceSQL(TestCase):
         (edge_name, fields), = pattern.items()
 
         process_edge(self.engine, store, edge_name, fields, bar_ids)
-
-        while futures_queue:
-            futures_queue.popleft().result()
+        wait_processing()
 
         self.assertEqual(
             [store.ref('bar', i) for i in [3, 2, 1]],
