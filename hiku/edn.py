@@ -2,8 +2,12 @@
 Based on the code from https://github.com/gns24/pydatomic project
 """
 from uuid import UUID
+from decimal import Decimal
 from datetime import datetime
+from itertools import chain
 from collections import namedtuple
+from json.encoder import encode_basestring, encode_basestring_ascii
+
 
 from .compat import texttype
 
@@ -83,7 +87,7 @@ def appender(l):
 
 
 def inst_handler(time_string):
-    return datetime.strptime(time_string[:23], '%Y-%m-%dT%H:%M:%S.%f')
+    return datetime.strptime(time_string, '%Y-%m-%dT%H:%M:%S.%fZ')
 
 
 TAG_HANDLERS = {'inst': inst_handler, 'uuid': UUID}
@@ -271,3 +275,78 @@ def loads(s, tag_handlers=None):
         raise ValueError("Expected exactly one top-level element "
                          "in edn string", s)
     return l[0]
+
+
+def _iterencode_items(items, encoder):
+    items_iter = iter(items)
+    first = next(items_iter)
+    for chunk in _iterencode(first, encoder):
+        yield chunk
+    while True:
+        next_item = next(items_iter)
+        yield ' '
+        for chunk in _iterencode(next_item, encoder):
+            yield chunk
+
+
+def _iterencode(obj, encoder):
+    if obj is None:
+        yield 'nil'
+    elif obj is True:
+        yield 'true'
+    elif obj is False:
+        yield 'false'
+    elif isinstance(obj, int):
+        yield texttype(int(obj))
+    elif isinstance(obj, float):
+        # FIXME: proper float encoding
+        yield texttype(float(obj))
+    elif isinstance(obj, Decimal):
+        yield '{}M'.format(obj)
+    elif isinstance(obj, Keyword):
+        yield ':{}'.format(obj)
+    elif isinstance(obj, Symbol):
+        yield obj
+    elif isinstance(obj, str):
+        yield encoder(obj)
+    elif isinstance(obj, Tuple):
+        yield '('
+        for chunk in _iterencode_items(obj, encoder):
+            yield chunk
+        yield ')'
+    elif isinstance(obj, List):
+        yield '['
+        for chunk in _iterencode_items(obj, encoder):
+            yield chunk
+        yield ']'
+    elif isinstance(obj, Dict):
+        yield '{'
+        for chunk in _iterencode_items(chain.from_iterable(obj.items()),
+                                       encoder):
+            yield chunk
+        yield '}'
+    elif isinstance(obj, Set):
+        yield '#{'
+        for chunk in _iterencode_items(obj, encoder):
+            yield chunk
+        yield '}'
+    elif isinstance(obj, datetime):
+        # FIXME: proper RFC-3339 encoding
+        assert not obj.tzinfo
+        yield obj.strftime('#inst "%Y-%m-%dT%H:%M:%S.%fZ"')
+    elif isinstance(obj, UUID):
+        yield '#uuid "{}"'.format(obj)
+    elif isinstance(obj, TaggedElement):
+        yield '#{} '.format(obj.name)
+        for chunk in _iterencode(obj.value, encoder):
+            yield chunk
+    else:
+        raise ValueError('{!r} is not EDN serializable'.format(obj))
+
+
+def dumps(obj, ensure_ascii=True):
+    if ensure_ascii:
+        encoder = encode_basestring_ascii
+    else:
+        encoder = encode_basestring
+    return ''.join(_iterencode(obj, encoder))
