@@ -17,7 +17,6 @@ class ImmutableDict(dict):
 
     def __hash__(self):
         if self._hash is None:
-            print('compute hash')
             self._hash = hash(frozenset(self.items()))
         return self._hash
 
