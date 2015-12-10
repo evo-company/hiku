@@ -25,6 +25,9 @@ class Store(object):
         self.refs = {}
         self.index = defaultdict(partial(defaultdict, dict))
 
+    def add(self, values):
+        self.index.update(values)
+
     def update(self, entity, ident, values):
         self.index[entity][ident].update(values)
 

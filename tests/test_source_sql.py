@@ -75,7 +75,19 @@ def bar_foo_link(bar_ids):
     return [mapping[bar_id] for bar_id in bar_ids]
 
 
+def foo_list():
+    return [3, 2, 1]
+
+
+def bar_list():
+    return [3, 2, 1]
+
+
 ENV = {
+    None: Edge(None, {
+        'foo-list': Link(None, 'foo', foo_list, True),
+        'bar-list': Link(None, 'bar', bar_list, True),
+    }),
     'foo': Edge('foo', {
         'id': Field('id', query_foo),
         'name': Field('name', query_foo),
@@ -89,7 +101,7 @@ ENV = {
         'name': Field('name', query_bar),
         'type': Field('type', query_bar),
 
-        'foo_list': Link('id', 'foo', bar_foo_link, True),
+        'foo-s': Link('id', 'foo', bar_foo_link, True),
     }),
 }
 
@@ -127,11 +139,10 @@ class TestSourceSQL(TestCase):
     def test_m2o(self):
         engine = Engine(ENV, ThreadExecutor(thread_pool))
         result = engine.execute(
-            b'{:foo [:name :count {:bar [:name :type]}]}',
-            [3, 2, 1],
+            b'{:foo-list [:name :count {:bar [:name :type]}]}',
         )
         self.assertEqual(
-            result,
+            result['foo-list'],
             [
                 {'name': 'foo3', 'count': 15, 'bar_id': 3,
                  'bar': {'name': 'bar3', 'type': 3}},
@@ -145,19 +156,18 @@ class TestSourceSQL(TestCase):
     def test_o2m(self):
         engine = Engine(ENV, ThreadExecutor(thread_pool))
         result = engine.execute(
-            b'{:bar [:name :type {:foo_list [:name :count]}]}',
-            [3, 2, 1],
+            b'{(:bar-list {:a "b"}) [:name :type {:foo-s [:name :count]}]}',
         )
         self.assertEqual(
-            result,
+            result['bar-list'],
             [
-                {'id': 3, 'name': 'bar3', 'type': 3, 'foo_list': [
+                {'id': 3, 'name': 'bar3', 'type': 3, 'foo-s': [
                     {'name': 'foo3', 'count': 15},
                 ]},
-                {'id': 2, 'name': 'bar2', 'type': 2, 'foo_list': [
+                {'id': 2, 'name': 'bar2', 'type': 2, 'foo-s': [
                     {'name': 'foo2', 'count': 10},
                 ]},
-                {'id': 1, 'name': 'bar1', 'type': 1, 'foo_list': [
+                {'id': 1, 'name': 'bar1', 'type': 1, 'foo-s': [
                     {'name': 'foo1', 'count': 5},
                 ]},
             ],
