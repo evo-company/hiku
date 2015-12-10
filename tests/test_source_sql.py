@@ -84,10 +84,6 @@ def bar_list():
 
 
 ENV = {
-    None: Edge(None, {
-        'foo-list': Link(None, 'foo', foo_list, True),
-        'bar-list': Link(None, 'bar', bar_list, True),
-    }),
     'foo': Edge('foo', {
         'id': Field('id', query_foo),
         'name': Field('name', query_foo),
@@ -103,6 +99,8 @@ ENV = {
 
         'foo-s': Link('id', 'foo', bar_foo_link, True),
     }),
+    'foo-list': Link(None, 'foo', foo_list, True),
+    'bar-list': Link(None, 'bar', bar_list, True),
 }
 
 thread_pool = ThreadPoolExecutor(2)

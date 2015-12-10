@@ -24,14 +24,14 @@ class Query(object):
                 link_name, link_params = link_spec
             else:
                 link_name, link_params = link_spec, Dict()
-            self._process_link(None, self.env[None], link_name, fields, [None])
+            link = self.env[link_name]
+            self._process_link(None, None, link, link_name, fields, [None])
 
     def _store_rows(self, fut_result, edge_name, names, ids):
         for row_id, row in zip(ids, fut_result):
             self.store.update(edge_name, row_id, zip(names, row))
 
-    def _store_links(self, fut_result, edge, link_name, requirements):
-        link = edge.fields[link_name]
+    def _store_links(self, fut_result, edge, link, link_name, requirements):
         if link.requires is None:
             if link.is_list:
                 self.store.add([(link_name, [self.store.ref(link.entity, i)
@@ -62,8 +62,7 @@ class Query(object):
             to_ids = fut_result
         self._process_edge(link.entity, fields, to_ids)
 
-    def _process_link(self, fut_result, edge, link_name, fields, ids):
-        link = edge.fields[link_name]
+    def _process_link(self, fut_result, edge, link, link_name, fields, ids):
         if link.requires is not None:
             reqs = [self.store.ref(edge.name, i)[link.requires] for i in ids]
             fut = self.executor.submit(link.func, reqs)
@@ -71,7 +70,7 @@ class Query(object):
             reqs = [None]
             fut = self.executor.submit(link.func)
         self.futures.add(fut)
-        self.callbacks[fut].append((self._store_links, edge, link_name, reqs))
+        self.callbacks[fut].append((self._store_links, edge, link, link_name, reqs))
         self.callbacks[fut].append((self._process_linked_edge, link, fields))
 
     def _process_edge(self, edge_name, fields, ids):
@@ -112,8 +111,8 @@ class Query(object):
             edge = self.env[edge_name]
             link = edge.fields[link_name]
             fut = name_to_fut[link.requires]
-            self.callbacks[fut].append((self._process_link, edge, link_name,
-                                        fields, ids))
+            self.callbacks[fut].append((self._process_link, edge, link,
+                                        link_name, fields, ids))
 
     def progress(self, futures):
         for fut in futures:
