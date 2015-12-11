@@ -137,7 +137,7 @@ class TestSourceSQL(TestCase):
     def test_m2o(self):
         engine = Engine(ENV, ThreadExecutor(thread_pool))
         result = engine.execute(
-            b'{:foo-list [:name :count {:bar [:name :type]}]}',
+            b'[{:foo-list [:name :count {:bar [:name :type]}]}]',
         )
         self.assertEqual(
             result['foo-list'],
@@ -154,7 +154,7 @@ class TestSourceSQL(TestCase):
     def test_o2m(self):
         engine = Engine(ENV, ThreadExecutor(thread_pool))
         result = engine.execute(
-            b'{(:bar-list {:a "b"}) [:name :type {:foo-s [:name :count]}]}',
+            b'[{(:bar-list {:a "b"}) [:name :type {:foo-s [:name :count]}]}]',
         )
         self.assertEqual(
             result['bar-list'],

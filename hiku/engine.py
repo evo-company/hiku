@@ -19,13 +19,14 @@ class Query(object):
         self.callbacks = defaultdict(list)
 
     def begin(self):
-        for link_spec, fields in self.pattern.items():
-            if isinstance(link_spec, Tuple):
-                link_name, link_params = link_spec
-            else:
-                link_name, link_params = link_spec, Dict()
-            link = self.env[link_name]
-            self._process_link(None, None, link, link_name, fields, [None])
+        for item in self.pattern:
+            for link_spec, fields in item.items():
+                if isinstance(link_spec, Tuple):
+                    link_name, link_params = link_spec
+                else:
+                    link_name, link_params = link_spec, Dict()
+                link = self.env[link_name]
+                self._process_link(None, None, link, link_name, fields, [None])
 
     def _store_rows(self, fut_result, edge_name, names, ids):
         for row_id, row in zip(ids, fut_result):
