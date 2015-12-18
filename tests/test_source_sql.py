@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from unittest import TestCase
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -135,7 +137,7 @@ class TestSourceSQL(TestCase):
     def test_m2o(self):
         engine = Engine(ENV, ThreadExecutor(thread_pool))
         result = engine.execute(
-            b'[{:foo-list [:name :count {:bar [:name :type]}]}]',
+            '[{:foo-list [:name :count {:bar [:name :type]}]}]',
         )
         self.assertEqual(
             result['foo-list'],
@@ -152,7 +154,7 @@ class TestSourceSQL(TestCase):
     def test_o2m(self):
         engine = Engine(ENV, ThreadExecutor(thread_pool))
         result = engine.execute(
-            b'[{:bar-list [:name :type {:foo-s [:name :count]}]}]',
+            '[{:bar-list [:name :type {:foo-s [:name :count]}]}]',
         )
         self.assertEqual(
             result['bar-list'],

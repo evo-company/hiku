@@ -265,9 +265,12 @@ def parser(target, tag_handlers, stop=None):
 
 
 def loads(s, tag_handlers=None):
+    if not isinstance(s, texttype):
+        raise TypeError('The EDN value must be {!r}, not {!r}'
+                        .format(texttype.__name__, type(s).__name__))
     l = []
     target = parser(appender(l), dict(tag_handlers or (), **TAG_HANDLERS))
-    for c in s.decode('utf-8'):
+    for c in s:
         target.send(c)
     target.send(' ')
     if len(l) != 1:

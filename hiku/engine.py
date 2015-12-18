@@ -77,10 +77,10 @@ def store_links(store, edge, link, ids, result):
         store[link.name] = field_val(result)
 
 
-def link_result_to_ids(link, result):
-    if link.requires and link.to_list:
+def link_result_to_ids(is_list, to_list, result):
+    if is_list and to_list:
         return list(chain.from_iterable(result))
-    elif link.requires or link.to_list:
+    elif is_list or to_list:
         return result
     else:
         return [result]
@@ -154,7 +154,7 @@ class Query(object):
 
     def _process_link(self, edge, link, link_pattern, ids, result):
         store_links(self.store, edge, link, ids, result)
-        to_ids = link_result_to_ids(link, result)
+        to_ids = link_result_to_ids(ids is not None, link.to_list, result)
         self._process_edge(self.root.fields[link.entity], link_pattern,
                            to_ids)
 
