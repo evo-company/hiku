@@ -9,13 +9,14 @@ class Edge(object):
 
     def __init__(self, name, fields):
         self.name = name
-        self.fields = fields
+        self.fields = {f.name: f for f in fields}
 
 
 class Link(object):
 
-    def __init__(self, requires, entity, func, is_list):
+    def __init__(self, name, requires, entity, func, to_list=False):
+        self.name = name
         self.requires = requires
         self.entity = entity
         self.func = func
-        self.is_list = is_list
+        self.to_list = to_list

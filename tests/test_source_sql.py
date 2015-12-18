@@ -83,25 +83,23 @@ def bar_list():
     return [3, 2, 1]
 
 
-ENV = {
-    'foo': Edge('foo', {
-        'id': Field('id', query_foo),
-        'name': Field('name', query_foo),
-        'count': Field('count', query_foo),
-        'bar_id': Field('bar_id', query_foo),
-
-        'bar': Link('bar_id', 'bar', foo_bar_link, False),
-    }),
-    'bar': Edge('bar', {
-        'id': Field('id', query_bar),
-        'name': Field('name', query_bar),
-        'type': Field('type', query_bar),
-
-        'foo-s': Link('id', 'foo', bar_foo_link, True),
-    }),
-    'foo-list': Link(None, 'foo', foo_list, True),
-    'bar-list': Link(None, 'bar', bar_list, True),
-}
+ENV = [
+    Edge('foo', [
+        Field('id', query_foo),
+        Field('name', query_foo),
+        Field('count', query_foo),
+        Field('bar_id', query_foo),
+        Link('bar', 'bar_id', 'bar', foo_bar_link),
+    ]),
+    Edge('bar', [
+        Field('id', query_bar),
+        Field('name', query_bar),
+        Field('type', query_bar),
+        Link('foo-s', 'id', 'foo', bar_foo_link, to_list=True),
+    ]),
+    Link('foo-list', None, 'foo', foo_list, to_list=True),
+    Link('bar-list', None, 'bar', bar_list, to_list=True),
+]
 
 thread_pool = ThreadPoolExecutor(2)
 
@@ -154,7 +152,7 @@ class TestSourceSQL(TestCase):
     def test_o2m(self):
         engine = Engine(ENV, ThreadExecutor(thread_pool))
         result = engine.execute(
-            b'[{(:bar-list {:a "b"}) [:name :type {:foo-s [:name :count]}]}]',
+            b'[{:bar-list [:name :type {:foo-s [:name :count]}]}]',
         )
         self.assertEqual(
             result['bar-list'],

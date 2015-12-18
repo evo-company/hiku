@@ -1,17 +1,96 @@
+from functools import partial
 from itertools import chain
 from collections import defaultdict
 
-from .edn import Keyword, Dict, Tuple
-from .graph import Link
+from .edn import Keyword, Dict
+from .graph import Link, Edge
 from .store import Store
 from .reader import read
+
+
+def edge_split(edge, pattern):
+    fields = []
+    links = []
+
+    for item in pattern:
+        if isinstance(item, Keyword):
+            fields.append(edge.fields[item])
+        elif isinstance(item, Dict):
+            for key, value in item.items():
+                field = edge.fields[key]
+                if isinstance(field, Link):
+                    if field.requires:
+                        fields.append(edge.fields[field.requires])
+                    links.append((field, value))
+                elif isinstance(field, Edge):
+                    _fields, _links = edge_split(field, value)
+                    fields.extend(_fields)
+                    links.extend(_links)
+                else:
+                    raise ValueError('Unexpected name: {}'.format(key))
+        else:
+            raise ValueError('Unexpected value: {!r}'.format(item))
+
+    return fields, links
+
+
+def store_fields(store, edge, fields, ids, result):
+    names = [f.name for f in fields]
+    if edge.name is not None:
+        if ids is not None:
+            for i, row in zip(ids, result):
+                store[edge.name][i].update(zip(names, row))
+        else:
+            store[edge.name].update(zip(names, result))
+    else:
+        store.update(zip(names, result))
+
+
+def link_reqs(store, edge, link, ids):
+    if edge.name is not None:
+        if ids is not None:
+            return [store[edge.name][i][link.requires] for i in ids]
+        else:
+            return store[edge.name][link.requires]
+    else:
+        return store[link.requires]
+
+
+def link_ref(store, link, ident):
+    return store.ref(link.entity, ident)
+
+
+def link_refs(store, link, idents):
+    return [store.ref(link.entity, i) for i in idents]
+
+
+def store_links(store, edge, link, ids, result):
+    field_val = partial(link_refs if link.to_list else link_ref,
+                        store, link)
+    if edge.name is not None:
+        if ids is not None:
+            for i, res in zip(ids, result):
+                store[edge.name][i][link.name] = field_val(res)
+        else:
+            store[edge.name][link.name] = field_val(result)
+    else:
+        store[link.name] = field_val(result)
+
+
+def link_result_to_ids(link, result):
+    if link.requires and link.to_list:
+        return list(chain.from_iterable(result))
+    elif link.requires or link.to_list:
+        return result
+    else:
+        return [result]
 
 
 class Query(object):
 
     def __init__(self, executor, env, pattern):
         self.executor = executor
-        self.env = env
+        self.root = Edge(None, env)
         self.pattern = pattern
 
         self.store = Store()
@@ -19,111 +98,75 @@ class Query(object):
         self.callbacks = defaultdict(list)
 
     def begin(self):
-        for item in self.pattern:
-            for link_spec, fields in item.items():
-                if isinstance(link_spec, Tuple):
-                    link_name, link_params = link_spec
-                else:
-                    link_name, link_params = link_spec, Dict()
-                link = self.env[link_name]
-                self._process_link(None, None, link, link_name, fields, [None])
+        self._process_edge(self.root, self.pattern, None)
 
-    def _store_rows(self, fut_result, edge_name, names, ids):
-        for row_id, row in zip(ids, fut_result):
-            self.store.update(edge_name, row_id, zip(names, row))
-
-    def _store_links(self, fut_result, edge, link, link_name, requirements):
-        if link.requires is None:
-            if link.is_list:
-                self.store.add([(link_name, [self.store.ref(link.entity, i)
-                                             for i in fut_result])])
-            else:
-                self.store.add([(link_name, self.store.ref(link.entity,
-                                                           fut_result))])
-        else:
-            if link.is_list:
-                for from_id, to_ids in zip(requirements, fut_result):
-                    self.store.update(edge.name, from_id,
-                                      [(link_name,
-                                        [self.store.ref(link.entity, i)
-                                         for i in to_ids])])
-            else:
-                for from_id, to_id in zip(requirements, fut_result):
-                    self.store.update(edge.name, from_id,
-                                      [(link_name,
-                                        self.store.ref(link.entity, to_id))])
-
-    def _process_linked_edge(self, fut_result, link, fields):
-        if link.requires is None:
-            fut_result = [fut_result]
-
-        if link.is_list:
-            to_ids = list(chain.from_iterable(fut_result))
-        else:
-            to_ids = fut_result
-        self._process_edge(link.entity, fields, to_ids)
-
-    def _process_link(self, fut_result, edge, link, link_name, fields, ids):
-        if link.requires is not None:
-            reqs = [self.store.ref(edge.name, i)[link.requires] for i in ids]
-            fut = self.executor.submit(link.func, reqs)
-        else:
-            reqs = [None]
-            fut = self.executor.submit(link.func)
+    def _submit(self, fn, *args):
+        fut = self.executor.submit(fn, *args)
         self.futures.add(fut)
-        self.callbacks[fut].append((self._store_links, edge, link, link_name, reqs))
-        self.callbacks[fut].append((self._process_linked_edge, link, fields))
+        return fut
 
-    def _process_edge(self, edge_name, fields, ids):
-        edge = self.env[edge_name]
+    def _process_edge(self, edge, pattern, ids):
+        fields, links = edge_split(edge, pattern)
 
-        field_names = []
-        links = []
-
+        to_func = {}
+        from_func = defaultdict(list)
         for field in fields:
-            if isinstance(field, Keyword):
-                field_names.append(field)
-            elif isinstance(field, Dict):
-                for key, value in field.items():
-                    field_names.append(key)
-                    # TODO: some links can be queried in parallel
-                    # with current edge
-                    links.append((edge.name, key, value))
+            to_func[field.name] = field.func
+            from_func[field.func].append(field.name)
+
+        # schedule fields resolve
+        to_fut = {}
+        for func, names in from_func.items():
+            if ids is not None:
+                fut = self._submit(func, names, ids)
             else:
-                raise TypeError(type(field))
+                fut = self._submit(func, names)
+            to_fut[func] = fut
+            self.callbacks[fut].append(
+                lambda _fut=fut:
+                store_fields(self.store, edge, fields, ids, _fut.result())
+            )
 
-        mapping = defaultdict(list)
-        for field_name in field_names:
-            field = edge.fields[field_name]
-            if isinstance(field, Link):
-                field = edge.fields[field.requires]
-            mapping[field.func].append(field.name)
+        # schedule link resolve
+        for link, link_pattern in links:
+            if link.requires:
+                fut = to_fut[to_func[link.requires]]
+                self.callbacks[fut].append(
+                    lambda:
+                    self._process_edge_link(edge, link, link_pattern, ids)
+                )
+            else:
+                fut = self._submit(link.func)
+                self.callbacks[fut].append(
+                    lambda _fut=fut:
+                    self._process_link(edge, link, link_pattern, ids,
+                                       _fut.result())
+                )
 
-        name_to_fut = {}
-        for func, names in mapping.items():
-            fut = self.executor.submit(func, names, ids)
-            self.futures.add(fut)
-            self.callbacks[fut]\
-                .append((self._store_rows, edge.name, names, ids))
-            for name in names:
-                name_to_fut[name] = fut
+    def _process_edge_link(self, edge, link, link_pattern, ids):
+        reqs = link_reqs(self.store, edge, link, ids)
+        fut = self._submit(link.func, reqs)
+        self.futures.add(fut)
+        self.callbacks[fut].append(
+            lambda:
+            self._process_link(edge, link, link_pattern, ids, fut.result())
+        )
 
-        for edge_name, link_name, fields in links:
-            edge = self.env[edge_name]
-            link = edge.fields[link_name]
-            fut = name_to_fut[link.requires]
-            self.callbacks[fut].append((self._process_link, edge, link,
-                                        link_name, fields, ids))
+    def _process_link(self, edge, link, link_pattern, ids, result):
+        store_links(self.store, edge, link, ids, result)
+        to_ids = link_result_to_ids(link, result)
+        self._process_edge(self.root.fields[link.entity], link_pattern,
+                           to_ids)
 
     def progress(self, futures):
         for fut in futures:
-            for cb_tuple in self.callbacks[fut]:
-                fn, args = cb_tuple[0], cb_tuple[1:]
-                fn(fut.result(), *args)
+            for callback in self.callbacks[fut]:
+                callback()
+            self.callbacks.pop(fut)
             self.futures.remove(fut)
 
     def result(self):
-        return self.store.index
+        return self.store
 
 
 class Engine(object):

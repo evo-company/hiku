@@ -1,4 +1,3 @@
-from functools import partial
 from collections import defaultdict
 
 
@@ -10,26 +9,19 @@ class Ref(object):
         self.ident = ident
 
     def __getitem__(self, key):
-        return self.storage.index[self.entity].get(self.ident)[key]
+        return self.storage[self.entity].get(self.ident)[key]
 
     def __repr__(self):
         return '<{}:{}>'.format(self.entity, self.ident)
 
     def __eq__(self, other):
-        return self.storage.index[self.entity].get(self.ident) == other
+        return self.storage[self.entity].get(self.ident) == other
 
 
-class Store(object):
+class Store(defaultdict):
 
     def __init__(self):
-        self.refs = {}
-        self.index = defaultdict(partial(defaultdict, dict))
-
-    def add(self, values):
-        self.index.update(values)
-
-    def update(self, entity, ident, values):
-        self.index[entity][ident].update(values)
+        super(Store, self).__init__(Store)
 
     def ref(self, entity, ident):
         return Ref(self, entity, ident)
