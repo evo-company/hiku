@@ -10,9 +10,10 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
-from hiku.graph import Field, Edge, Link
+from hiku.graph import Edge, Link
 from hiku.engine import Engine
 from hiku.compat import PY3
+from hiku.sources.sql import db_fields
 from hiku.executors.thread import ThreadExecutor
 
 if not PY3:
@@ -44,23 +45,6 @@ bar_table = Table(
 )
 
 
-def _query(table, attrs, idents):
-    p_key, = list(table.primary_key)
-    columns = [getattr(table.c, attr) for attr in attrs]
-    rows = session.execute(select([p_key] + columns)
-                           .where(p_key.in_(idents))).fetchall()
-    rows_map = {row[p_key]: [row[k] for k in columns] for row in rows}
-    return [rows_map.get(ident) for ident in idents]
-
-
-def query_foo(attrs, idents):
-    return _query(foo_table, attrs, idents)
-
-
-def query_bar(attrs, idents):
-    return _query(bar_table, attrs, idents)
-
-
 def foo_bar_link(bar_ids):
     return bar_ids
 
@@ -86,19 +70,23 @@ def bar_list():
 
 
 ENV = [
-    Edge('foo', [
-        Field('id', query_foo),
-        Field('name', query_foo),
-        Field('count', query_foo),
-        Field('bar_id', query_foo),
-        Link('bar', 'bar_id', 'bar', foo_bar_link),
-    ]),
-    Edge('bar', [
-        Field('id', query_bar),
-        Field('name', query_bar),
-        Field('type', query_bar),
-        Link('foo-s', 'id', 'foo', bar_foo_link, to_list=True),
-    ]),
+    Edge('foo',
+         db_fields(session, foo_table, [
+            'id',
+            'name',
+            'count',
+            'bar_id',
+         ]) + [
+             Link('bar', 'bar_id', 'bar', foo_bar_link),
+         ]),
+    Edge('bar',
+         db_fields(session, bar_table, [
+             'id',
+             'name',
+             'type',
+         ]) + [
+             Link('foo-s', 'id', 'foo', bar_foo_link, to_list=True),
+         ]),
     Link('foo-list', None, 'foo', foo_list, to_list=True),
     Link('bar-list', None, 'bar', bar_list, to_list=True),
 ]
