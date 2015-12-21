@@ -1,6 +1,8 @@
+from collections import defaultdict
+
 from sqlalchemy import select
 
-from hiku.graph import Edge, Field
+from ..graph import Edge, Field, Link
 
 
 def db_fields(conn, table, fields):
@@ -26,6 +28,17 @@ def db_fields(conn, table, fields):
     return edge_fields
 
 
+def db_link(conn, name, from_, to_, to_list):
+    if not to_list:
+        def query_func(ids):
+            return ids
+    else:
+        def query_func(ids):
+            return query_link_o2m(conn, to_, ids)
+
+    return Link(name, from_.name, to_.table.name, query_func, to_list)
+
+
 def query_fields(conn, pkey, mapping, fields, ids):
     if not ids:
         return []
@@ -45,3 +58,16 @@ def query_fields(conn, pkey, mapping, fields, ids):
     rows = conn.execute(expr.where(pkey.in_(ids))).fetchall()
     rows_map = {row[pkey]: [row[k] for k in columns] for row in rows}
     return [rows_map.get(id_) for id_ in ids]
+
+
+def query_link_o2m(conn, to_, ids):
+    to_pkey, = list(to_.table.primary_key)
+    rows = (
+        conn.execute(select([to_pkey, to_])
+                     .where(to_.in_(ids)))
+        .fetchall()
+    )
+    mapping = defaultdict(list)
+    for pkey, ref in rows:
+        mapping[pkey].append(ref)
+    return [mapping[id_] for id_ in ids]

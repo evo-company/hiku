@@ -1,10 +1,9 @@
 from __future__ import unicode_literals
 
 from unittest import TestCase
-from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.types import Integer, Unicode
@@ -12,14 +11,8 @@ from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
 from hiku.graph import Edge, Link
 from hiku.engine import Engine
-from hiku.compat import PY3
-from hiku.sources.sql import db_fields
+from hiku.sources.sql import db_fields, db_link
 from hiku.executors.thread import ThreadExecutor
-
-if not PY3:
-    import warnings
-    from sqlalchemy.exc import SAWarning
-    warnings.filterwarnings('ignore', '', SAWarning, '', 0)
 
 
 metadata = MetaData()
@@ -45,22 +38,6 @@ bar_table = Table(
 )
 
 
-def foo_bar_link(bar_ids):
-    return bar_ids
-
-
-def bar_foo_link(bar_ids):
-    rows = (
-        session.execute(select([foo_table.c.id, foo_table.c.bar_id])
-                        .where(foo_table.c.bar_id.in_(bar_ids)))
-        .fetchall()
-    )
-    mapping = defaultdict(list)
-    for row in rows:
-        mapping[row.bar_id].append(row.id)
-    return [mapping[bar_id] for bar_id in bar_ids]
-
-
 def foo_list():
     return [3, 2, 1]
 
@@ -70,25 +47,27 @@ def bar_list():
 
 
 ENV = [
-    Edge('foo',
+    Edge(foo_table.name,
          db_fields(session, foo_table, [
             'id',
             'name',
             'count',
             'bar_id',
          ]) + [
-             Link('bar', 'bar_id', 'bar', foo_bar_link),
+             db_link(session, 'bar',
+                     foo_table.c.bar_id, bar_table.c.id, False),
          ]),
-    Edge('bar',
+    Edge(bar_table.name,
          db_fields(session, bar_table, [
              'id',
              'name',
              'type',
          ]) + [
-             Link('foo-s', 'id', 'foo', bar_foo_link, to_list=True),
+             db_link(session, 'foo-s',
+                     bar_table.c.id, foo_table.c.bar_id, True),
          ]),
-    Link('foo-list', None, 'foo', foo_list, to_list=True),
-    Link('bar-list', None, 'bar', bar_list, to_list=True),
+    Link('foo-list', None, foo_table.name, foo_list, to_list=True),
+    Link('bar-list', None, bar_table.name, bar_list, to_list=True),
 ]
 
 thread_pool = ThreadPoolExecutor(2)
