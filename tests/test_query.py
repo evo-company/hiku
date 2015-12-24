@@ -101,3 +101,23 @@ class TestRequirements(TestCase):
             Edge([Field('a1'), Field('a2'), Field('b1'), Field('b2'),
                   Field('c1'), Field('c2'), Field('d1'), Field('d2')]),
         )
+
+    def testEachExpr(self):
+        self.assertRequires(
+            Tuple([
+                Symbol('each'),
+                Symbol('x'),
+                Tuple([Symbol('get'), Symbol('this'), Symbol('link')]),
+                Tuple([Symbol('foo'), Symbol('x'),
+                       Tuple([Symbol('get'), Symbol('x'), Symbol('b')])]),
+            ]),
+            Edge([
+                Link('link', Edge([
+                    Field('a1'), Field('a2'),
+                    Link('b', Edge([
+                        Field('b1'),
+                        Field('b2'),
+                    ])),
+                ])),
+            ]),
+        )

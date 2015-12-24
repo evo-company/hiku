@@ -1,10 +1,14 @@
 from itertools import chain
-from collections import defaultdict
+from contextlib import contextmanager
+from collections import defaultdict, deque
 
 from .nodes import Symbol, Tuple
 
 
 this = object()
+
+this_sym = Symbol('this')
+this_sym.__ref__ = this
 
 
 class Ref(object):
@@ -71,13 +75,39 @@ def if_(test, then_, else_):
 if_.__requires__ = [None, None, None]
 
 
-BUILTINS = {'if': if_}
+BUILTINS = {'this': this_sym, 'if': if_}
+
+
+class Environ(object):
+
+    def __init__(self, values):
+        self.vars = deque([dict(values)])
+
+    @contextmanager
+    def push(self, mapping):
+        self.vars.append(mapping)
+        try:
+            yield
+        finally:
+            self.vars.pop()
+
+    def __getitem__(self, key):
+        for d in reversed(self.vars):
+            try:
+                return d[key]
+            except KeyError:
+                continue
+        else:
+            raise KeyError(repr(key))
+
+    def __contains__(self, key):
+        return any(key in d for d in self.vars)
 
 
 class RequirementsExtractor(object):
 
     def __init__(self, env):
-        self.env = dict(BUILTINS, **env)
+        self.env = Environ(dict(BUILTINS, **env))
         self._requirements = []
 
     def get_requirements(self):
@@ -101,10 +131,22 @@ class RequirementsExtractor(object):
         tup.__ref__ = Ref(obj.__ref__, name.name)
         return tup
 
+    def visit_each_expr(self, node):
+        sym, var, col, expr = node.values
+        assert isinstance(var, Symbol)
+        col = self.visit(col)
+        var = Symbol(var.name)
+        var.__ref__ = col.__ref__
+        with self.env.push({var.name: var}):
+            expr = self.visit(expr)
+        return Tuple([sym, var, col, expr])
+
     def visit_tuple(self, node):
         sym = node.values[0]
         if sym.name == 'get':
             return self.visit_get_expr(node)
+        elif sym.name == 'each':
+            return self.visit_each_expr(node)
         else:
             args = [self.visit(val) for val in node.values[1:]]
             fn = self.env[sym.name]
@@ -116,7 +158,4 @@ class RequirementsExtractor(object):
             return Tuple([sym] + args)
 
     def visit_symbol(self, node):
-        sym = Symbol(node.name)
-        assert sym.name == 'this', sym
-        sym.__ref__ = this
-        return sym
+        return self.env[node.name]
