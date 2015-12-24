@@ -9,7 +9,7 @@ from .base import reqs_eq_patcher
 def foo(a):
     print('foo', a)
 
-foo.__requires__ = [['a1', 'a2']]
+foo.__requires__ = [[Field('a1'), Field('a2')]]
 
 
 ENV = {
@@ -21,12 +21,10 @@ class RequirementsExtractor(object):
 
     def __init__(self, env):
         self.env = env
-        self.requirements = []
+        self._requirements = []
 
-    def _add_requirements(self, ref, reqs):
-        _reqs = self.requirements
-        if ref is this:
-            _reqs.extend(reqs)
+    def get_requirements(self):
+        return merge(self._requirements)
 
     def visit(self, node):
         if hasattr(node, 'accept'):
@@ -43,7 +41,7 @@ class RequirementsExtractor(object):
         fn = self.env[sym.name]
         fn_reqs = fn.__requires__
         for arg, arg_reqs in zip(args, fn_reqs):
-            self._add_requirements(arg.__ref__, arg_reqs)
+            self._requirements.append(qualified_reqs(arg.__ref__, arg_reqs))
         return Tuple([sym] + args)
 
     def visit_symbol(self, node):
@@ -58,13 +56,14 @@ class TestRequirements(TestCase):
     def assertRequires(self, node, requirements):
         re = RequirementsExtractor(ENV)
         re.visit(node)
-        self.assertEqual(re.requirements, requirements)
+        self.assertEqual(re.get_requirements(), requirements)
 
     def testTuple(self):
-        self.assertRequires(
-            Tuple([Symbol('foo'), Symbol('this')]),
-            ['a1', 'a2'],
-        )
+        with reqs_eq_patcher():
+            self.assertRequires(
+                Tuple([Symbol('foo'), Symbol('this')]),
+                Edge([Field('a1'), Field('a2')]),
+            )
 
     def testMerge(self):
         with reqs_eq_patcher():
