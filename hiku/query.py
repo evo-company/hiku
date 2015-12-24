@@ -65,10 +65,19 @@ def qualified_reqs(ref, reqs):
     return edge
 
 
+def if_(test, then_, else_):
+    pass
+
+if_.__requires__ = [None, None, None]
+
+
+BUILTINS = {'if': if_}
+
+
 class RequirementsExtractor(object):
 
     def __init__(self, env):
-        self.env = env
+        self.env = dict(BUILTINS, **env)
         self._requirements = []
 
     def get_requirements(self):
@@ -101,7 +110,9 @@ class RequirementsExtractor(object):
             fn = self.env[sym.name]
             fn_reqs = fn.__requires__
             for arg, arg_reqs in zip(args, fn_reqs):
-                self._requirements.append(qualified_reqs(arg.__ref__, arg_reqs))
+                if arg_reqs is not None:
+                    self._requirements.append(qualified_reqs(arg.__ref__,
+                                                             arg_reqs))
             return Tuple([sym] + args)
 
     def visit_symbol(self, node):

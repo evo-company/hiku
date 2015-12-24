@@ -14,8 +14,16 @@ foo.__requires__ = [[Field('a1'), Field('a2')],
                     [Field('b1'), Field('b2')]]
 
 
+def bar(c, d):
+    print('bar', c, d)
+
+bar.__requires__ = [[Field('c1'), Field('c2')],
+                    [Field('d1'), Field('d2')]]
+
+
 ENV = {
     'foo': foo,
+    'bar': bar,
 }
 
 
@@ -81,4 +89,15 @@ class TestRequirements(TestCase):
                    Tuple([Symbol('get'), Symbol('this'), Symbol('b')])]),
             Edge([Field('a1'), Field('a2'),
                   Link('b', Edge([Field('b1'), Field('b2')]))]),
+        )
+
+    def testIfExpr(self):
+        self.assertRequires(
+            Tuple([
+                Symbol('if'),
+                Tuple([Symbol('foo'), Symbol('this'), Symbol('this')]),
+                Tuple([Symbol('bar'), Symbol('this'), Symbol('this')]),
+            ]),
+            Edge([Field('a1'), Field('a2'), Field('b1'), Field('b2'),
+                  Field('c1'), Field('c2'), Field('d1'), Field('d2')]),
         )
