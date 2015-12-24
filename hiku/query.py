@@ -1,6 +1,8 @@
 from itertools import chain
 from collections import defaultdict
 
+from .nodes import Symbol, Tuple
+
 
 this = object()
 
@@ -61,3 +63,49 @@ def qualified_reqs(ref, reqs):
         edge = Edge([Link(ref.name, edge)])
         ref = ref.backref
     return edge
+
+
+class RequirementsExtractor(object):
+
+    def __init__(self, env):
+        self.env = env
+        self._requirements = []
+
+    def get_requirements(self):
+        return merge(self._requirements)
+
+    def visit(self, node):
+        if hasattr(node, 'accept'):
+            return node.accept(self)
+        else:
+            return self.generic_visit(node)
+
+    def generic_visit(self, node):
+        return node
+
+    def visit_get_expr(self, node):
+        sym, obj, name = node.values
+        assert isinstance(name, Symbol)
+        obj = self.visit(obj)
+        assert hasattr(obj, '__ref__'), 'Object does not have a reference'
+        tup = Tuple([sym, obj, name])
+        tup.__ref__ = Ref(obj.__ref__, name.name)
+        return tup
+
+    def visit_tuple(self, node):
+        sym = node.values[0]
+        if sym.name == 'get':
+            return self.visit_get_expr(node)
+        else:
+            args = [self.visit(val) for val in node.values[1:]]
+            fn = self.env[sym.name]
+            fn_reqs = fn.__requires__
+            for arg, arg_reqs in zip(args, fn_reqs):
+                self._requirements.append(qualified_reqs(arg.__ref__, arg_reqs))
+            return Tuple([sym] + args)
+
+    def visit_symbol(self, node):
+        sym = Symbol(node.name)
+        assert sym.name == 'this', sym
+        sym.__ref__ = this
+        return sym
