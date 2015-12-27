@@ -78,7 +78,7 @@ class ExpressionCompiler(object):
                        py.Load())
 
     def visit_dict(self, node):
-        assert len(node.values) / 2, 'Probably missing keyword value'
+        assert not len(node.values) % 2, 'Probably missing keyword value'
         keys = node.values[::2]
         values = node.values[1::2]
         assert all(isinstance(k, Keyword) for k in keys), 'Wrong arguments'
