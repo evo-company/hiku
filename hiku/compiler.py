@@ -1,4 +1,4 @@
-from .nodes import Symbol
+from .nodes import Symbol, Keyword
 from .compat import ast as py
 
 
@@ -72,3 +72,15 @@ class ExpressionCompiler(object):
             return self._env_load(node.name)
         else:
             return self._ctx_load(node.name)
+
+    def visit_list(self, node):
+        return py.List([self.visit(value) for value in node.values],
+                       py.Load())
+
+    def visit_dict(self, node):
+        assert len(node.values) / 2, 'Probably missing keyword value'
+        keys = node.values[::2]
+        values = node.values[1::2]
+        assert all(isinstance(k, Keyword) for k in keys), 'Wrong arguments'
+        return py.Dict([py.Str(key.name) for key in keys],
+                       [self.visit(value) for value in values])

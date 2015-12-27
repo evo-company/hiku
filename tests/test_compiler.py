@@ -4,7 +4,7 @@ from unittest import TestCase
 
 import astor
 
-from hiku.nodes import Tuple, Symbol
+from hiku.nodes import Tuple, Symbol, List, Dict, Keyword
 from hiku.compiler import ExpressionCompiler
 
 
@@ -62,5 +62,27 @@ class TestCompiler(TestCase):
             ]),
             """
             [env['foo'](x, x['a']) for x in ctx['col']]
+            """
+        )
+
+    def testList(self):
+        self.assertCompiles(
+            List([
+                Tuple([Symbol('foo'), 1]),
+                Tuple([Symbol('baz'), 2]),
+            ]),
+            """
+            [env['foo'](1), env['baz'](2)]
+            """
+        )
+
+    def testDict(self):
+        self.assertCompiles(
+            Dict([
+                Keyword('foo-value'), Tuple([Symbol('foo'), 1]),
+                Keyword('baz-value'), Tuple([Symbol('baz'), 2]),
+            ]),
+            """
+            {'foo-value': env['foo'](1), 'baz-value': env['baz'](2), }
             """
         )

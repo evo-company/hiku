@@ -2,8 +2,7 @@ from itertools import chain
 from contextlib import contextmanager
 from collections import defaultdict, deque
 
-from .nodes import Symbol, Tuple
-
+from .nodes import Symbol, Tuple, Keyword
 
 this = object()
 
@@ -159,3 +158,15 @@ class RequirementsExtractor(object):
 
     def visit_symbol(self, node):
         return self.env[node.name]
+
+    def visit_list(self, node):
+        for value in node.values:
+            self.visit(value)
+
+    def visit_dict(self, node):
+        assert len(node.values) / 2, 'Probably missing keyword value'
+        keys = node.values[::2]
+        values = node.values[1::2]
+        assert all(isinstance(k, Keyword) for k in keys), 'Wrong arguments'
+        for value in values:
+            self.visit(value)

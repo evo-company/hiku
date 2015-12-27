@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from hiku.nodes import Tuple, Symbol
+from hiku.nodes import Tuple, Symbol, List, Dict, Keyword
 from hiku.query import merge, Edge, Field, Link, qualified_reqs, this, Ref
 from hiku.query import RequirementsExtractor
 
@@ -118,6 +118,44 @@ class TestQuery(TestCase):
                         Field('b1'),
                         Field('b2'),
                     ])),
+                ])),
+            ]),
+        )
+
+    def testList(self):
+        self.assertRequires(
+            Tuple([
+                Symbol('each'),
+                Symbol('x'),
+                Tuple([Symbol('get'), Symbol('this'), Symbol('link')]),
+                List([Tuple([Symbol('foo'), Symbol('x'), Symbol('x')]),
+                      Tuple([Symbol('bar'), Symbol('x'), Symbol('x')])]),
+            ]),
+            Edge([
+                Link('link', Edge([
+                    Field('a1'), Field('a2'), Field('b1'), Field('b2'),
+                    Field('c1'), Field('c2'), Field('d1'), Field('d2'),
+                ])),
+            ]),
+        )
+
+    def testDict(self):
+        self.assertRequires(
+            Tuple([
+                Symbol('each'),
+                Symbol('x'),
+                Tuple([Symbol('get'), Symbol('this'), Symbol('link')]),
+                Dict([
+                    Keyword('foo-value'),
+                    Tuple([Symbol('foo'), Symbol('x'), Symbol('x')]),
+                    Keyword('bar-value'),
+                    Tuple([Symbol('bar'), Symbol('x'), Symbol('x')]),
+                ]),
+            ]),
+            Edge([
+                Link('link', Edge([
+                    Field('a1'), Field('a2'), Field('b1'), Field('b2'),
+                    Field('c1'), Field('c2'), Field('d1'), Field('d2'),
                 ])),
             ]),
         )
