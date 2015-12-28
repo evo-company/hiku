@@ -25,9 +25,9 @@ def to_expr(arg):
     if isinstance(arg, _DotHandler):
         return arg.obj
     elif isinstance(arg, list):
-        return List(arg)
+        return List(to_expr(v) for v in arg)
     elif isinstance(arg, dict):
-        values = chain.from_iterable((Keyword(k), v)
+        values = chain.from_iterable((Keyword(k), to_expr(v))
                                      for k, v in arg.items())
         return Dict(values)
     else:
