@@ -1,18 +1,29 @@
 import difflib
 from textwrap import dedent
 from unittest import TestCase
+from collections import OrderedDict
 
 import astor
 
-from hiku.nodes import Tuple, Symbol, List, Dict, Keyword
+from hiku.dsl import define, S, if_, each, to_expr
 from hiku.compiler import ExpressionCompiler
+
+
+@define(_name='foo')
+def foo():
+    pass
+
+
+@define(_name='baz')
+def baz():
+    pass
 
 
 class TestCompiler(TestCase):
 
     def assertCompiles(self, expr, code):
         ec = ExpressionCompiler({'foo', 'baz'})
-        py_expr = ec.visit(expr)
+        py_expr = ec.visit(to_expr(expr))
         first = astor.to_source(py_expr)
         second = dedent(code).strip()
         if first != second:
@@ -23,7 +34,7 @@ class TestCompiler(TestCase):
 
     def testTuple(self):
         self.assertCompiles(
-            Tuple([Symbol('foo'), Symbol('bar')]),
+            foo(S.bar),
             """
             env['foo'](ctx['bar'])
             """
@@ -31,8 +42,7 @@ class TestCompiler(TestCase):
 
     def testGetExpr(self):
         self.assertCompiles(
-            Tuple([Symbol('foo'),
-                   Tuple([Symbol('get'), Symbol('bar'), Symbol('baz')])]),
+            foo(S.bar.baz),
             """
             env['foo'](ctx['bar']['baz'])
             """
@@ -40,12 +50,7 @@ class TestCompiler(TestCase):
 
     def testIfExpr(self):
         self.assertCompiles(
-            Tuple([
-                Symbol('if'),
-                1,
-                Tuple([Symbol('foo'), Symbol('bar')]),
-                Tuple([Symbol('baz'), Symbol('bar')]),
-            ]),
+            if_(1, foo(S.bar), baz(S.bar)),
             """
             (env['foo'](ctx['bar']) if 1 else env['baz'](ctx['bar']))
             """
@@ -53,13 +58,8 @@ class TestCompiler(TestCase):
 
     def testEachExpr(self):
         self.assertCompiles(
-            Tuple([
-                Symbol('each'),
-                Symbol('x'),
-                Symbol('col'),
-                Tuple([Symbol('foo'), Symbol('x'),
-                       Tuple([Symbol('get'), Symbol('x'), Symbol('a')])]),
-            ]),
+            each(S.x, S.col,
+                 foo(S.x, S.x.a)),
             """
             [env['foo'](x, x['a']) for x in ctx['col']]
             """
@@ -67,10 +67,7 @@ class TestCompiler(TestCase):
 
     def testList(self):
         self.assertCompiles(
-            List([
-                Tuple([Symbol('foo'), 1]),
-                Tuple([Symbol('baz'), 2]),
-            ]),
+            [foo(1), baz(2)],
             """
             [env['foo'](1), env['baz'](2)]
             """
@@ -78,10 +75,8 @@ class TestCompiler(TestCase):
 
     def testDict(self):
         self.assertCompiles(
-            Dict([
-                Keyword('foo-value'), Tuple([Symbol('foo'), 1]),
-                Keyword('baz-value'), Tuple([Symbol('baz'), 2]),
-            ]),
+            OrderedDict([('foo-value', foo(1)),
+                         ('baz-value', baz(2))]),
             """
             {'foo-value': env['foo'](1), 'baz-value': env['baz'](2), }
             """

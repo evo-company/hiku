@@ -21,7 +21,7 @@ class _S(object):
 S = _S()
 
 
-def _process_arg(arg):
+def to_expr(arg):
     if isinstance(arg, _DotHandler):
         return arg.obj
     elif isinstance(arg, list):
@@ -41,7 +41,7 @@ def define(*requires, **kwargs):
         assert not kwargs, 'Unknown keyword arguments: {!r}'.format(kwargs)
 
         def expr(*args):
-            return Tuple([Symbol(name)] + [_process_arg(arg) for arg in args])
+            return Tuple([Symbol(name)] + [to_expr(arg) for arg in args])
 
         expr.fn = fn
         expr.__fn_name__ = name
