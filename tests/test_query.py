@@ -1,29 +1,27 @@
 from unittest import TestCase
 
-from hiku.nodes import Tuple, Symbol, List, Dict, Keyword
+from hiku.dsl import define, S, if_, each
 from hiku.query import merge, Edge, Field, Link, qualified_reqs, this, Ref
 from hiku.query import RequirementsExtractor
 
 from .base import reqs_eq_patcher
 
 
+@define(Edge([Field('a1'), Field('a2')]),
+        Edge([Field('b1'), Field('b2')]))
 def foo(a, b):
     print('foo', a, b)
 
-foo.__requires__ = [[Field('a1'), Field('a2')],
-                    [Field('b1'), Field('b2')]]
 
-
+@define(Edge([Field('c1'), Field('c2')]),
+        Edge([Field('d1'), Field('d2')]))
 def bar(c, d):
     print('bar', c, d)
 
-bar.__requires__ = [[Field('c1'), Field('c2')],
-                    [Field('d1'), Field('d2')]]
-
 
 ENV = {
-    'foo': foo,
-    'bar': bar,
+    foo.__fn_name__: foo,
+    bar.__fn_name__: bar,
 }
 
 
@@ -52,21 +50,21 @@ class TestQuery(TestCase):
     def testQualifiedReqs(self):
         with reqs_eq_patcher():
             self.assertEqual(
-                qualified_reqs(this, [Field('a'), Field('b')]),
+                qualified_reqs(this, Edge([Field('a'), Field('b')])),
                 Edge([Field('a'), Field('b')]),
             )
 
         with reqs_eq_patcher():
             self.assertEqual(
                 qualified_reqs(Ref(this, 'foo'),
-                               [Field('a'), Field('b')]),
+                               Edge([Field('a'), Field('b')])),
                 Edge([Link('foo', Edge([Field('a'), Field('b')]))]),
             )
 
         with reqs_eq_patcher():
             self.assertEqual(
                 qualified_reqs(Ref(Ref(this, 'foo'), 'bar'),
-                               [Field('a'), Field('b')]),
+                               Edge([Field('a'), Field('b')])),
                 Edge([
                     Link('foo', Edge([
                         Link('bar', Edge([
@@ -79,38 +77,28 @@ class TestQuery(TestCase):
 
     def testTuple(self):
         self.assertRequires(
-            Tuple([Symbol('foo'), Symbol('this')]),
-            Edge([Field('a1'), Field('a2')]),
+            foo(S.this, S.this),
+            Edge([Field('a1'), Field('a2'), Field('b1'), Field('b2')]),
         )
 
     def testGetExpr(self):
         self.assertRequires(
-            Tuple([Symbol('foo'), Symbol('this'),
-                   Tuple([Symbol('get'), Symbol('this'), Symbol('b')])]),
+            foo(S.this, S.this.b),
             Edge([Field('a1'), Field('a2'),
                   Link('b', Edge([Field('b1'), Field('b2')]))]),
         )
 
     def testIfExpr(self):
         self.assertRequires(
-            Tuple([
-                Symbol('if'),
-                Tuple([Symbol('foo'), Symbol('this'), Symbol('this')]),
-                Tuple([Symbol('bar'), Symbol('this'), Symbol('this')]),
-            ]),
+            if_(1, foo(S.this, S.this), bar(S.this, S.this)),
             Edge([Field('a1'), Field('a2'), Field('b1'), Field('b2'),
                   Field('c1'), Field('c2'), Field('d1'), Field('d2')]),
         )
 
     def testEachExpr(self):
         self.assertRequires(
-            Tuple([
-                Symbol('each'),
-                Symbol('x'),
-                Tuple([Symbol('get'), Symbol('this'), Symbol('link')]),
-                Tuple([Symbol('foo'), Symbol('x'),
-                       Tuple([Symbol('get'), Symbol('x'), Symbol('b')])]),
-            ]),
+            each(S.x, S.this.link,
+                 foo(S.x, S.x.b)),
             Edge([
                 Link('link', Edge([
                     Field('a1'), Field('a2'),
@@ -124,13 +112,8 @@ class TestQuery(TestCase):
 
     def testList(self):
         self.assertRequires(
-            Tuple([
-                Symbol('each'),
-                Symbol('x'),
-                Tuple([Symbol('get'), Symbol('this'), Symbol('link')]),
-                List([Tuple([Symbol('foo'), Symbol('x'), Symbol('x')]),
-                      Tuple([Symbol('bar'), Symbol('x'), Symbol('x')])]),
-            ]),
+            each(S.x, S.this.link,
+                 [foo(S.x, S.x), bar(S.x, S.x)]),
             Edge([
                 Link('link', Edge([
                     Field('a1'), Field('a2'), Field('b1'), Field('b2'),
@@ -141,17 +124,9 @@ class TestQuery(TestCase):
 
     def testDict(self):
         self.assertRequires(
-            Tuple([
-                Symbol('each'),
-                Symbol('x'),
-                Tuple([Symbol('get'), Symbol('this'), Symbol('link')]),
-                Dict([
-                    Keyword('foo-value'),
-                    Tuple([Symbol('foo'), Symbol('x'), Symbol('x')]),
-                    Keyword('bar-value'),
-                    Tuple([Symbol('bar'), Symbol('x'), Symbol('x')]),
-                ]),
-            ]),
+            each(S.x, S.this.link,
+                 {'foo-value': foo(S.x, S.x),
+                  'bar-value': bar(S.x, S.x)}),
             Edge([
                 Link('link', Edge([
                     Field('a1'), Field('a2'), Field('b1'), Field('b2'),

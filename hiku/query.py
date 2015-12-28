@@ -60,8 +60,7 @@ def merge(edges):
     return Edge(_merge(edges))
 
 
-def qualified_reqs(ref, reqs):
-    edge = Edge(reqs)
+def qualified_reqs(ref, edge):
     while ref is not this:
         edge = Edge([Link(ref.name, edge)])
         ref = ref.backref
