@@ -50,7 +50,7 @@ def define(*requires, **kwargs):
     return decorator
 
 
-@define('each', None, None, None, _name='each')
+@define(None, None, None, _name='each')
 def each(var, col, expr):
     pass
 
