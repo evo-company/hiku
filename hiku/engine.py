@@ -86,6 +86,15 @@ def link_result_to_ids(is_list, to_list, result):
         return [result]
 
 
+def _process_wait_list(wait_list, futures):
+    for fut_set, callback in wait_list:
+        fut_set.difference_update(futures)
+        if fut_set:
+            yield fut_set, callback
+        else:
+            callback()
+
+
 class Query(object):
 
     def __init__(self, executor, env, pattern):
@@ -95,7 +104,7 @@ class Query(object):
 
         self.store = Store()
         self.futures = set()
-        self.callbacks = defaultdict(list)
+        self._wait_list = []
 
     def begin(self):
         self._process_edge(self.root, self.pattern, None)
@@ -106,15 +115,11 @@ class Query(object):
         return fut
 
     def _wait(self, futures, callback):
-        fut, = futures
-        self.callbacks[fut].append(callback)
+        self._wait_list.append((set(futures), callback))
 
     def progress(self, futures):
-        for fut in futures:
-            for callback in self.callbacks[fut]:
-                callback()
-            self.callbacks.pop(fut)
-            self.futures.remove(fut)
+        self._wait_list = list(_process_wait_list(self._wait_list, futures))
+        self.futures.difference_update(futures)
 
     def result(self):
         return self.store
