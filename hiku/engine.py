@@ -97,9 +97,9 @@ def _process_wait_list(wait_list, futures):
 
 class Query(object):
 
-    def __init__(self, executor, env, pattern):
+    def __init__(self, executor, root, pattern):
         self.executor = executor
-        self.root = Edge(None, env)
+        self.root = root
         self.pattern = pattern
 
         self.store = Store()
@@ -179,11 +179,9 @@ class Query(object):
 
 class Engine(object):
 
-    def __init__(self, env, executor):
-        self.env = env
+    def __init__(self, executor):
         self.executor = executor
 
-    def execute(self, pattern):
-        pattern = read(pattern)
-        query = Query(self.executor, self.env, pattern)
+    def execute(self, root, pattern):
+        query = Query(self.executor, root, pattern)
         return self.executor.process(query)

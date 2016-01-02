@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from hiku.graph import Edge, Field
 from hiku.engine import Engine
+from hiku.reader import read
 from hiku.executors.thread import ThreadExecutor
 
 from .base import patch
@@ -24,12 +25,12 @@ def _patch(func):
     return patch('{}.{}'.format(__name__, func.__name__))
 
 
-TEST_ENV = [
+TEST_ENV = Edge(None, [
     Field('a', _(query_fields)),
     Edge('b', [
         Field('c', _(query_fields)),
     ]),
-]
+])
 
 thread_pool = ThreadPoolExecutor(2)
 
@@ -37,10 +38,10 @@ thread_pool = ThreadPoolExecutor(2)
 class TestEngine(TestCase):
 
     def setUp(self):
-        self.engine = Engine(TEST_ENV, ThreadExecutor(thread_pool))
+        self.engine = Engine(ThreadExecutor(thread_pool))
 
     def execute(self, query):
-        return self.engine.execute(query)
+        return self.engine.execute(TEST_ENV, read(query))
 
     def testField(self):
         with _patch(query_fields) as p:

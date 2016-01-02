@@ -11,6 +11,7 @@ from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
 from hiku.graph import Edge, Link
 from hiku.engine import Engine
+from hiku.reader import read
 from hiku.sources.sql import db_fields, db_link
 from hiku.executors.thread import ThreadExecutor
 
@@ -46,7 +47,7 @@ def bar_list():
     return [3, 2, 1]
 
 
-ENV = [
+ENV = Edge(None, [
     Edge(foo_table.name,
          db_fields(session, foo_table, [
             'id',
@@ -68,7 +69,7 @@ ENV = [
          ]),
     Link('foo-list', None, foo_table.name, foo_list, to_list=True),
     Link('bar-list', None, bar_table.name, bar_list, to_list=True),
-]
+])
 
 thread_pool = ThreadPoolExecutor(2)
 
@@ -102,9 +103,10 @@ class TestSourceSQL(TestCase):
         session.remove()
 
     def test_m2o(self):
-        engine = Engine(ENV, ThreadExecutor(thread_pool))
+        engine = Engine(ThreadExecutor(thread_pool))
         result = engine.execute(
-            '[{:foo-list [:name :count {:bar [:name :type]}]}]',
+            ENV,
+            read('[{:foo-list [:name :count {:bar [:name :type]}]}]'),
         )
         self.assertEqual(
             result['foo-list'],
@@ -119,9 +121,10 @@ class TestSourceSQL(TestCase):
         )
 
     def test_o2m(self):
-        engine = Engine(ENV, ThreadExecutor(thread_pool))
+        engine = Engine(ThreadExecutor(thread_pool))
         result = engine.execute(
-            '[{:bar-list [:name :type {:foo-s [:name :count]}]}]',
+            ENV,
+            read('[{:bar-list [:name :type {:foo-s [:name :count]}]}]'),
         )
         self.assertEqual(
             result['bar-list'],
