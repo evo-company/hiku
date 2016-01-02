@@ -105,6 +105,20 @@ class Query(object):
         self.futures.add(fut)
         return fut
 
+    def _wait(self, futures, callback):
+        fut, = futures
+        self.callbacks[fut].append(callback)
+
+    def progress(self, futures):
+        for fut in futures:
+            for callback in self.callbacks[fut]:
+                callback()
+            self.callbacks.pop(fut)
+            self.futures.remove(fut)
+
+    def result(self):
+        return self.store
+
     def _process_edge(self, edge, pattern, ids):
         fields, links = edge_split(edge, pattern)
 
@@ -122,51 +136,40 @@ class Query(object):
             else:
                 fut = self._submit(func, names)
             to_fut[func] = fut
-            self.callbacks[fut].append(
+            self._wait([fut], (
                 lambda _fut=fut:
                 store_fields(self.store, edge, fields, ids, _fut.result())
-            )
+            ))
 
         # schedule link resolve
         for link, link_pattern in links:
             if link.requires:
                 fut = to_fut[to_func[link.requires]]
-                self.callbacks[fut].append(
+                self._wait([fut], (
                     lambda:
                     self._process_edge_link(edge, link, link_pattern, ids)
-                )
+                ))
             else:
                 fut = self._submit(link.func)
-                self.callbacks[fut].append(
+                self._wait([fut], (
                     lambda _fut=fut:
                     self._process_link(edge, link, link_pattern, ids,
                                        _fut.result())
-                )
+                ))
 
     def _process_edge_link(self, edge, link, link_pattern, ids):
         reqs = link_reqs(self.store, edge, link, ids)
         fut = self._submit(link.func, reqs)
-        self.futures.add(fut)
-        self.callbacks[fut].append(
+        self._wait([fut], (
             lambda:
             self._process_link(edge, link, link_pattern, ids, fut.result())
-        )
+        ))
 
     def _process_link(self, edge, link, link_pattern, ids, result):
         store_links(self.store, edge, link, ids, result)
         to_ids = link_result_to_ids(ids is not None, link.to_list, result)
         self._process_edge(self.root.fields[link.entity], link_pattern,
                            to_ids)
-
-    def progress(self, futures):
-        for fut in futures:
-            for callback in self.callbacks[fut]:
-                callback()
-            self.callbacks.pop(fut)
-            self.futures.remove(fut)
-
-    def result(self):
-        return self.store
 
 
 class Engine(object):
