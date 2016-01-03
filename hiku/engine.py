@@ -5,7 +5,6 @@ from collections import defaultdict
 from .edn import Keyword, Dict
 from .graph import Link, Edge
 from .store import Store
-from .reader import read
 
 
 def edge_split(edge, pattern):
@@ -103,7 +102,6 @@ class Query(object):
         self.pattern = pattern
 
         self.store = Store()
-        self.futures = set()
         self._wait_list = []
 
     def begin(self):
@@ -111,7 +109,6 @@ class Query(object):
 
     def _submit(self, fn, *args):
         fut = self.executor.submit(fn, *args)
-        self.futures.add(fut)
         return fut
 
     def _wait(self, futures, callback):
@@ -119,7 +116,6 @@ class Query(object):
 
     def progress(self, futures):
         self._wait_list = list(_process_wait_list(self._wait_list, futures))
-        self.futures.difference_update(futures)
 
     def result(self):
         return self.store
