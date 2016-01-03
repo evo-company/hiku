@@ -85,15 +85,6 @@ def link_result_to_ids(is_list, to_list, result):
         return [result]
 
 
-def _process_wait_list(wait_list, futures):
-    for fut_set, callback in wait_list:
-        fut_set.difference_update(futures)
-        if fut_set:
-            yield fut_set, callback
-        else:
-            callback()
-
-
 class Query(object):
 
     def __init__(self, executor, root, pattern):
@@ -106,16 +97,6 @@ class Query(object):
 
     def begin(self):
         self._process_edge(self.root, self.pattern, None)
-
-    def _submit(self, fn, *args):
-        fut = self.executor.submit(fn, *args)
-        return fut
-
-    def _wait(self, futures, callback):
-        self._wait_list.append((set(futures), callback))
-
-    def progress(self, futures):
-        self._wait_list = list(_process_wait_list(self._wait_list, futures))
 
     def result(self):
         return self.store
@@ -133,11 +114,11 @@ class Query(object):
         to_fut = {}
         for func, names in from_func.items():
             if ids is not None:
-                fut = self._submit(func, names, ids)
+                fut = self.executor.submit(func, names, ids)
             else:
-                fut = self._submit(func, names)
+                fut = self.executor.submit(func, names)
             to_fut[func] = fut
-            self._wait([fut], (
+            self.executor.wait([fut], (
                 lambda _fut=fut:
                 store_fields(self.store, edge, fields, ids, _fut.result())
             ))
@@ -146,13 +127,13 @@ class Query(object):
         for link, link_pattern in links:
             if link.requires:
                 fut = to_fut[to_func[link.requires]]
-                self._wait([fut], (
+                self.executor.wait([fut], (
                     lambda:
                     self._process_edge_link(edge, link, link_pattern, ids)
                 ))
             else:
-                fut = self._submit(link.func)
-                self._wait([fut], (
+                fut = self.executor.submit(link.func)
+                self.executor.wait([fut], (
                     lambda _fut=fut:
                     self._process_link(edge, link, link_pattern, ids,
                                        _fut.result())
@@ -160,8 +141,8 @@ class Query(object):
 
     def _process_edge_link(self, edge, link, link_pattern, ids):
         reqs = link_reqs(self.store, edge, link, ids)
-        fut = self._submit(link.func, reqs)
-        self._wait([fut], (
+        fut = self.executor.submit(link.func, reqs)
+        self.executor.wait([fut], (
             lambda:
             self._process_link(edge, link, link_pattern, ids, fut.result())
         ))
