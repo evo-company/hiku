@@ -5,6 +5,7 @@ from collections import defaultdict
 from .edn import Keyword, Dict
 from .graph import Link, Edge
 from .store import Store
+from .executors.queue import Workflow, Queue
 
 
 def edge_split(edge, pattern):
@@ -85,15 +86,14 @@ def link_result_to_ids(is_list, to_list, result):
         return [result]
 
 
-class Query(object):
+class Query(Workflow):
 
-    def __init__(self, executor, root, pattern):
-        self.executor = executor
+    def __init__(self, queue, task_set, root, pattern):
+        self._queue = queue
+        self._task_set = task_set
         self.root = root
         self.pattern = pattern
-
         self.store = Store()
-        self._wait_list = []
 
     def begin(self):
         self._process_edge(self.root, self.pattern, None)
@@ -114,37 +114,36 @@ class Query(object):
         to_fut = {}
         for func, names in from_func.items():
             if ids is not None:
-                fut = self.executor.submit(func, names, ids)
+                fut = self._task_set.submit(func, names, ids)
             else:
-                fut = self.executor.submit(func, names)
+                fut = self._task_set.submit(func, names)
             to_fut[func] = fut
-            self.executor.wait([fut], (
-                lambda _fut=fut:
-                store_fields(self.store, edge, fields, ids, _fut.result())
+            self._queue.add_callback(fut, (
+                lambda result:
+                store_fields(self.store, edge, fields, ids, result)
             ))
 
         # schedule link resolve
         for link, link_pattern in links:
             if link.requires:
                 fut = to_fut[to_func[link.requires]]
-                self.executor.wait([fut], (
-                    lambda:
+                self._queue.add_callback(fut, (
+                    lambda _:
                     self._process_edge_link(edge, link, link_pattern, ids)
                 ))
             else:
-                fut = self.executor.submit(link.func)
-                self.executor.wait([fut], (
-                    lambda _fut=fut:
-                    self._process_link(edge, link, link_pattern, ids,
-                                       _fut.result())
+                fut = self._task_set.submit(link.func)
+                self._queue.add_callback(fut, (
+                    lambda result:
+                    self._process_link(edge, link, link_pattern, ids, result)
                 ))
 
     def _process_edge_link(self, edge, link, link_pattern, ids):
         reqs = link_reqs(self.store, edge, link, ids)
-        fut = self.executor.submit(link.func, reqs)
-        self.executor.wait([fut], (
-            lambda:
-            self._process_link(edge, link, link_pattern, ids, fut.result())
+        fut = self._task_set.submit(link.func, reqs)
+        self._queue.add_callback(fut, (
+            lambda result:
+            self._process_link(edge, link, link_pattern, ids, result)
         ))
 
     def _process_link(self, edge, link, link_pattern, ids, result):
@@ -160,5 +159,8 @@ class Engine(object):
         self.executor = executor
 
     def execute(self, root, pattern):
-        query = Query(self.executor, root, pattern)
-        return self.executor.process(query)
+        queue = Queue(self.executor)
+        task_set = queue.fork()
+        query = Query(queue, task_set, root, pattern)
+        query.begin()
+        return self.executor.process(queue, query)
