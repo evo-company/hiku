@@ -10,6 +10,13 @@ class ExpressionCompiler(object):
         self.env = set(env)
         self.vars = set([])
 
+    def compile_lambda_expr(self, node):
+        body = self.visit(node)
+        py_args = [py.arg(self.env_var), py.arg(self.ctx_var)]
+        expr = py.Lambda(py.arguments(py_args, None, None, []), body)
+        py.fix_missing_locations(expr)
+        return py.Expression(expr)
+
     def _ctx_load(self, name):
         return py.Subscript(py.Name(self.ctx_var, py.Load()),
                             py.Index(py.Str(name)), py.Load())

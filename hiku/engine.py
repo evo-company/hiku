@@ -113,15 +113,27 @@ class Query(Workflow):
         # schedule fields resolve
         to_fut = {}
         for func, names in from_func.items():
-            if ids is not None:
-                fut = self._task_set.submit(func, names, ids)
+            if getattr(func, '__subquery__', None):
+                task_set = self._queue.fork()
+                if ids is not None:
+                    result_proc = func(self._queue, task_set, fields, ids)
+                else:
+                    result_proc = func(self._queue, task_set, fields)
+                to_fut[func] = task_set
+                self._queue.add_callback(task_set, (
+                    lambda:
+                    result_proc(self.store)
+                ))
             else:
-                fut = self._task_set.submit(func, names)
-            to_fut[func] = fut
-            self._queue.add_callback(fut, (
-                lambda result:
-                store_fields(self.store, edge, fields, ids, result)
-            ))
+                if ids is not None:
+                    fut = self._task_set.submit(func, names, ids)
+                else:
+                    fut = self._task_set.submit(func, names)
+                to_fut[func] = fut
+                self._queue.add_callback(fut, (
+                    lambda result:
+                    store_fields(self.store, edge, fields, ids, result)
+                ))
 
         # schedule link resolve
         for link, link_pattern in links:
