@@ -111,10 +111,7 @@ class TestCompiler(TestCase):
             Edge('a', [
                 Field('f', query_a),
             ]),
-            Link('la', None, 'a', link_to_a, True),
         ])
-
-        print(e.execute(r, read('[{:la [:f]}]')))
 
         # ----------------------------------------------
 
@@ -145,12 +142,14 @@ class TestCompiler(TestCase):
             procs = [procs_map[f.name] for f in fields]
 
             query = Query(queue, task_set, r, None)
-            query._process_link(r, r.fields['la'], reqs, None, ids)
+
+            this_link = Link('this', None, this, None, True)
+            query._process_link(r, this_link, reqs, None, ids)
 
             def result_proc(store):
                 rows = []
                 ctx = {}
-                for sub_row in query.result()['la']:
+                for sub_row in query.result()['this']:
                     ctx['this'] = sub_row
                     rows.append([proc(env, ctx) for proc in procs])
 
