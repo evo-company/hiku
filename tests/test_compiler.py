@@ -9,7 +9,7 @@ import astor
 
 from hiku import query
 from hiku.dsl import define, S, if_, each, to_expr
-from hiku.query import RequirementsExtractor, export
+from hiku.query import RequirementsExtractor, export, merge
 from hiku.compat import PY3
 from hiku.engine import Query, store_fields
 from hiku.reader import read
@@ -119,43 +119,41 @@ class TestCompiler(TestCase):
         def inc(obj):
             return obj['f'] + 1
 
-        env = {'inc': inc.fn}
+        fn_env = {'inc': inc.fn}
+        re_env = {'inc': inc}
+        ec_env = {'inc'}
 
         exprs = {
             'f': inc(S.this),
         }
 
-        ec = ExpressionCompiler({'inc'})
-        procs_map = {name: eval(compile(ec.compile_lambda_expr(expr),
-                                        '<expr>', 'eval'))
-                     for name, expr in exprs.items()}
+        ec = ExpressionCompiler(ec_env)
+
+        reqs_map = {}
+        procs_map = {}
+        for name, expr in exprs.items():
+            re = RequirementsExtractor(re_env)
+            re.visit(expr)
+            reqs_map[name] = re.get_requirements()
+            procs_map[name] = eval(compile(ec.compile_lambda_expr(expr),
+                                           '<expr>', 'eval'))
 
         def query_a1(queue, task_set, fields, ids):
-            this = 'a'
+            this_edge = 'a'
 
-            re = RequirementsExtractor({'inc': inc})
-            for field in fields:
-                re.visit(exprs[field.name])
-            reqs = export(re.get_requirements())
-            print(reqs)
-
+            reqs = export(merge(reqs_map[f.name] for f in fields))
             procs = [procs_map[f.name] for f in fields]
 
             query = Query(queue, task_set, r, None)
-
-            this_link = Link('this', None, this, None, True)
+            this_link = Link('this', None, this_edge, None, True)
             query._process_link(r, this_link, reqs, None, ids)
 
             def result_proc(store):
                 rows = []
                 ctx = {}
-                for sub_row in query.result()['this']:
-                    ctx['this'] = sub_row
-                    rows.append([proc(env, ctx) for proc in procs])
-
-                print('>>>', rows)
-                store_fields(store, r1.fields[this], fields, ids, rows)
-                print('>>>', ids, query.result())
+                for this in query.result()['this']:
+                    rows.append([proc(this, fn_env, ctx) for proc in procs])
+                store_fields(store, r1.fields[this_edge], fields, ids, rows)
 
             return result_proc
 

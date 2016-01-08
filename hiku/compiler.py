@@ -8,11 +8,11 @@ class ExpressionCompiler(object):
 
     def __init__(self, env):
         self.env = set(env)
-        self.vars = set([])
+        self.vars = {'this'}
 
     def compile_lambda_expr(self, node):
         body = self.visit(node)
-        py_args = [py.arg(self.env_var), py.arg(self.ctx_var)]
+        py_args = [py.arg('this'), py.arg(self.env_var), py.arg(self.ctx_var)]
         expr = py.Lambda(py.arguments(py_args, None, None, []), body)
         py.fix_missing_locations(expr)
         return py.Expression(expr)
