@@ -116,9 +116,9 @@ class Query(Workflow):
             if getattr(func, '__subquery__', None):
                 task_set = self._queue.fork()
                 if ids is not None:
-                    result_proc = func(self._queue, task_set, fields, ids)
+                    result_proc = func(self._queue, task_set, edge, fields, ids)
                 else:
-                    result_proc = func(self._queue, task_set, fields)
+                    result_proc = func(self._queue, task_set, edge, fields)
                 to_fut[func] = task_set
                 self._queue.add_callback(task_set, (
                     lambda:
