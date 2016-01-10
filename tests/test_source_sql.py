@@ -11,8 +11,8 @@ from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
 from hiku.graph import Edge, Link
 from hiku.engine import Engine
-from hiku.reader import read
 from hiku.sources.sql import db_fields, db_link
+from hiku.readers.simple import read
 from hiku.executors.thread import ThreadExecutor
 
 

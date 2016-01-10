@@ -1,4 +1,4 @@
-from .edn import loads
+from ..edn import loads
 
 
 def read(src):

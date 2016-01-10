@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from hiku.graph import Edge, Field
 from hiku.engine import Engine
-from hiku.reader import read
+from hiku.readers.simple import read
 from hiku.executors.thread import ThreadExecutor
 
 from .base import patch
