@@ -279,19 +279,23 @@ def loads(s, tag_handlers=None):
     return l[0]
 
 
-def _iterencode_items(items, encoder):
+def _iterencode_items(items, default, encoder):
     items_iter = iter(items)
     first = next(items_iter)
-    for chunk in _iterencode(first, encoder):
+    for chunk in _iterencode(first, default, encoder):
         yield chunk
     while True:
         next_item = next(items_iter)
         yield ' '
-        for chunk in _iterencode(next_item, encoder):
+        for chunk in _iterencode(next_item, default, encoder):
             yield chunk
 
 
-def _iterencode(obj, encoder):
+def _default(obj):
+    raise ValueError('{!r} is not EDN serializable'.format(obj))
+
+
+def _iterencode(obj, default, encoder):
     if obj is None:
         yield 'nil'
     elif obj is True:
@@ -313,23 +317,23 @@ def _iterencode(obj, encoder):
         yield encoder(obj)
     elif isinstance(obj, Tuple):
         yield '('
-        for chunk in _iterencode_items(obj, encoder):
+        for chunk in _iterencode_items(obj, default, encoder):
             yield chunk
         yield ')'
     elif isinstance(obj, List):
         yield '['
-        for chunk in _iterencode_items(obj, encoder):
+        for chunk in _iterencode_items(obj, default, encoder):
             yield chunk
         yield ']'
     elif isinstance(obj, Dict):
         yield '{'
         for chunk in _iterencode_items(chain.from_iterable(obj.items()),
-                                       encoder):
+                                       default, encoder):
             yield chunk
         yield '}'
     elif isinstance(obj, Set):
         yield '#{'
-        for chunk in _iterencode_items(obj, encoder):
+        for chunk in _iterencode_items(obj, default, encoder):
             yield chunk
         yield '}'
     elif isinstance(obj, datetime):
@@ -340,15 +344,19 @@ def _iterencode(obj, encoder):
         yield '#uuid "{}"'.format(obj)
     elif isinstance(obj, TaggedElement):
         yield '#{} '.format(obj.name)
-        for chunk in _iterencode(obj.value, encoder):
+        for chunk in _iterencode(obj.value, _default, encoder):
             yield chunk
     else:
-        raise ValueError('{!r} is not EDN serializable'.format(obj))
+        obj = default(obj)
+        for chunk in _iterencode(obj, default, encoder):
+            yield chunk
 
 
-def dumps(obj, ensure_ascii=True):
+def dumps(obj, default=None, ensure_ascii=True):
+    if default is None:
+        default = _default
     if ensure_ascii:
         encoder = encode_basestring_ascii
     else:
         encoder = encode_basestring
-    return ''.join(_iterencode(obj, encoder))
+    return ''.join(_iterencode(obj, default, encoder))
