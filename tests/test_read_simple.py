@@ -6,7 +6,7 @@ from hiku.edn import List, Keyword, Dict, TaggedElement, Tuple, Symbol
 from hiku.readers.simple import read
 
 
-class TestReader(TestCase):
+class TestReadSimple(TestCase):
 
     def test(self):
         n = read('[:foo {:bar [:baz]} (limit 10) '

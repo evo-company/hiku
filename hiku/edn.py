@@ -313,7 +313,7 @@ def _iterencode(obj, default, encoder):
         yield ':{}'.format(obj)
     elif isinstance(obj, Symbol):
         yield obj
-    elif isinstance(obj, str):
+    elif isinstance(obj, texttype):
         yield encoder(obj)
     elif isinstance(obj, Tuple):
         yield '('
