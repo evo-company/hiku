@@ -2,7 +2,6 @@ from itertools import chain
 from contextlib import contextmanager
 from collections import defaultdict, deque
 
-from . import edn
 from .nodes import Symbol, Tuple, Keyword
 
 this = object()
@@ -59,17 +58,6 @@ def _merge(edges):
 
 def merge(edges):
     return Edge(_merge(edges))
-
-
-def export(obj):
-    if isinstance(obj, Edge):
-        return edn.List(export(val) for val in obj.fields.values())
-    elif isinstance(obj, Link):
-        return edn.Dict({edn.Keyword(obj.name): export(obj.edge)})
-    elif isinstance(obj, Field):
-        return edn.Keyword(obj.name)
-    else:
-        raise TypeError(repr(obj))
 
 
 def qualified_reqs(ref, edge):

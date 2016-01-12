@@ -1,5 +1,5 @@
 from hiku.graph import Link, Field
-from hiku.query import export, merge, RequirementsExtractor
+from hiku.query import merge, RequirementsExtractor
 from hiku.engine import Query, store_fields
 from hiku.compiler import ExpressionCompiler
 
@@ -34,7 +34,7 @@ def subquery_fields(sub_root, sub_edge_name, funcs, exprs):
     def query_func(queue, task_set, edge, fields, ids):
         this_link = Link(THIS_LINK_NAME, None, sub_edge_name, None, True)
 
-        reqs = export(merge(reqs_map[f.name] for f in fields))
+        reqs = merge(reqs_map[f.name] for f in fields)
         procs = [procs_map[f.name] for f in fields]
 
         query = Query(queue, task_set, sub_root, None)

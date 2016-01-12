@@ -2,33 +2,35 @@ from functools import partial
 from itertools import chain
 from collections import defaultdict
 
-from .edn import Keyword, Dict
+from . import query
 from .graph import Link, Edge
 from .store import Store
-from .compat import texttype
 from .executors.queue import Workflow, Queue
 
 
 def edge_split(edge, pattern):
+    assert isinstance(pattern, query.Edge)
+
     fields = []
     links = []
 
-    for item in pattern:
-        if isinstance(item, Keyword):
-            fields.append(edge.fields[texttype(item)])
-        elif isinstance(item, Dict):
-            for key, value in item.items():
-                field = edge.fields[texttype(key)]
-                if isinstance(field, Link):
-                    if field.requires:
-                        fields.append(edge.fields[field.requires])
-                    links.append((field, value))
-                elif isinstance(field, Edge):
-                    _fields, _links = edge_split(field, value)
-                    fields.extend(_fields)
-                    links.extend(_links)
-                else:
-                    raise ValueError('Unexpected name: {}'.format(key))
+    for item in pattern.fields.values():
+        if isinstance(item, query.Field):
+            fields.append(edge.fields[item.name])
+        elif isinstance(item, query.Link):
+            field = edge.fields[item.name]
+            if isinstance(field, Link):
+                if field.requires:
+                    fields.append(edge.fields[field.requires])
+                links.append((field, item.edge))
+            elif isinstance(field, Edge):
+                # nested edge
+                _fields, _links = edge_split(field, item.edge)
+                fields.extend(_fields)
+                links.extend(_links)
+            else:
+                raise ValueError('Unexpected edge member: {!r} ({})'
+                                 .format(field, item.name))
         else:
             raise ValueError('Unexpected value: {!r}'.format(item))
 

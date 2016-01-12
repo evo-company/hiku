@@ -1,5 +1,27 @@
-from ..edn import loads
+from ..edn import loads, Dict, List, Keyword
+from ..query import Edge, Link, Field
+from ..compat import texttype
+
+
+def _extract(values):
+    for value in values:
+        if isinstance(value, Keyword):
+            yield Field(texttype(value))
+        elif isinstance(value, Dict):
+            for key, val in value.items():
+                yield Link(texttype(key), transform(val))
+        else:
+            raise ValueError('Invalid edge member: {!r}'.format(value))
+
+
+def transform(value):
+    if isinstance(value, List):
+        return Edge(list(_extract(value)))
+    else:
+        raise ValueError('Edge should be defined as vector, '
+                         '{!r} provided instead'.format(value))
 
 
 def read(src):
-    return loads(src)
+    edn_ast = loads(src)
+    return transform(edn_ast)
