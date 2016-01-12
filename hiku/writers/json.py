@@ -11,5 +11,5 @@ def default(obj):
     raise TypeError('Can not encode this type: {!r}'.format(obj))
 
 
-def dumps(data):
-    return _dumps(data, default=default)
+def dumps(store):
+    return _dumps(store, default=default)

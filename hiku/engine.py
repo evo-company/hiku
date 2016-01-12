@@ -5,6 +5,7 @@ from collections import defaultdict
 from .edn import Keyword, Dict
 from .graph import Link, Edge
 from .store import Store
+from .compat import texttype
 from .executors.queue import Workflow, Queue
 
 
@@ -14,10 +15,10 @@ def edge_split(edge, pattern):
 
     for item in pattern:
         if isinstance(item, Keyword):
-            fields.append(edge.fields[item])
+            fields.append(edge.fields[texttype(item)])
         elif isinstance(item, Dict):
             for key, value in item.items():
-                field = edge.fields[key]
+                field = edge.fields[texttype(key)]
                 if isinstance(field, Link):
                     if field.requires:
                         fields.append(edge.fields[field.requires])
@@ -39,7 +40,7 @@ def store_fields(store, edge, fields, ids, result):
     if edge.name is not None:
         if ids is not None:
             for i, row in zip(ids, result):
-                store[edge.name][i].update(zip(names, row))
+                store.idx[edge.name][i].update(zip(names, row))
         else:
             store[edge.name].update(zip(names, result))
     else:
@@ -49,7 +50,7 @@ def store_fields(store, edge, fields, ids, result):
 def link_reqs(store, edge, link, ids):
     if edge.name is not None:
         if ids is not None:
-            return [store[edge.name][i][link.requires] for i in ids]
+            return [store.idx[edge.name][i][link.requires] for i in ids]
         else:
             return store[edge.name][link.requires]
     else:
@@ -70,7 +71,7 @@ def store_links(store, edge, link, ids, result):
     if edge.name is not None:
         if ids is not None:
             for i, res in zip(ids, result):
-                store[edge.name][i][link.name] = field_val(res)
+                store.idx[edge.name][i][link.name] = field_val(res)
         else:
             store[edge.name][link.name] = field_val(result)
     else:

@@ -18,9 +18,9 @@ class TestWriteSimple(TestCase):
         store = Store()
         store['f1'] = 1
         store['a']['f2'] = 2
-        store['b'][1] = {'f3': 'bar1'}
-        store['b'][2] = {'f3': 'bar2'}
-        store['b'][3] = {'f3': 'bar3'}
+        store.idx['b'][1] = {'f3': 'bar1'}
+        store.idx['b'][2] = {'f3': 'bar2'}
+        store.idx['b'][3] = {'f3': 'bar3'}
         store['l1'] = store.ref('b', 1)
         store['l2'] = [store.ref('b', 2), store.ref('b', 3)]
         self.assertWrites(

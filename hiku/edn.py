@@ -1,6 +1,8 @@
 """
 Based on the code from https://github.com/gns24/pydatomic project
 """
+from __future__ import unicode_literals
+
 from uuid import UUID
 from decimal import Decimal
 from datetime import datetime
@@ -33,11 +35,25 @@ class Symbol(texttype):
     def __repr__(self):
         return self
 
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and \
+               super(Symbol, self).__eq__(other)
+
+    def __hash__(self):
+        return super(Symbol, self).__hash__()
+
 
 class Keyword(texttype):
 
     def __repr__(self):
         return ':{}'.format(self)
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and \
+               super(Keyword, self).__eq__(other)
+
+    def __hash__(self):
+        return super(Keyword, self).__hash__()
 
 
 class List(tuple):
@@ -315,23 +331,25 @@ def _iterencode(obj, default, encoder):
         yield obj
     elif isinstance(obj, texttype):
         yield encoder(obj)
-    elif isinstance(obj, Tuple):
-        yield '('
-        for chunk in _iterencode_items(obj, default, encoder):
-            yield chunk
-        yield ')'
-    elif isinstance(obj, List):
+    elif isinstance(obj, (list, List)):
+        # NOTE: `(list, List)` check should be before `(tuple, Tuple)`,
+        # because `List` is implemented as tuple subclass
         yield '['
         for chunk in _iterencode_items(obj, default, encoder):
             yield chunk
         yield ']'
-    elif isinstance(obj, Dict):
+    elif isinstance(obj, (tuple, Tuple)):
+        yield '('
+        for chunk in _iterencode_items(obj, default, encoder):
+            yield chunk
+        yield ')'
+    elif isinstance(obj, (dict, Dict)):
         yield '{'
         for chunk in _iterencode_items(chain.from_iterable(obj.items()),
                                        default, encoder):
             yield chunk
         yield '}'
-    elif isinstance(obj, Set):
+    elif isinstance(obj, (set, Set)):
         yield '#{'
         for chunk in _iterencode_items(obj, default, encoder):
             yield chunk

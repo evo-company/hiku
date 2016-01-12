@@ -1,4 +1,6 @@
-from ..edn import dumps as _dumps, TaggedElement, Dict, List, Keyword
+from __future__ import unicode_literals
+
+from ..edn import dumps as _dumps, TaggedElement, List, Keyword
 from ..store import Ref
 from ..compat import texttype
 
@@ -6,15 +8,26 @@ from ..compat import texttype
 def default(obj):
     if isinstance(obj, Ref):
         return TaggedElement('graph/ref', List((obj.entity, obj.ident)))
-    elif isinstance(obj, dict):
-        return Dict(
-            (Keyword(k) if isinstance(k, texttype) else k, v)
-            for k, v in obj.items()
-        )
-    elif isinstance(obj, list):
-        return List(obj)
     raise TypeError('Can not tag this object: {!r}'.format(obj))
 
 
-def dumps(data):
+def _transform(obj):
+    if isinstance(obj, list):
+        return [_transform(v) for v in obj]
+    elif isinstance(obj, dict):
+        assert all(isinstance(k, texttype) for k in obj.keys())
+        return {Keyword(k): _transform(v) for k, v in obj.items()}
+    else:
+        return obj
+
+
+def _transform_idx(idx):
+    for name, value in idx.items():
+        yield Keyword(name), {ident: _transform(val)
+                              for ident, val in value.items()}
+
+
+def dumps(store):
+    data = _transform(store)
+    data.update(_transform_idx(store.idx))
     return _dumps(data, default=default)

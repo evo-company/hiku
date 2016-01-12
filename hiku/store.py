@@ -18,10 +18,17 @@ class Ref(object):
         return self.storage[self.entity].get(self.ident) == other
 
 
-class Store(defaultdict):
+class State(defaultdict):
 
     def __init__(self):
-        super(Store, self).__init__(Store)
+        super(State, self).__init__(State)
+
+
+class Store(State):
+
+    def __init__(self):
+        super(Store, self).__init__()
+        self.idx = State()
 
     def ref(self, entity, ident):
-        return Ref(self, entity, ident)
+        return Ref(self.idx, entity, ident)
