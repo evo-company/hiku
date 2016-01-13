@@ -13,6 +13,7 @@ def edge_split(edge, pattern):
 
     fields = []
     links = []
+    edges = []
 
     for item in pattern.fields.values():
         if isinstance(item, query.Field):
@@ -24,17 +25,14 @@ def edge_split(edge, pattern):
                     fields.append(edge.fields[field.requires])
                 links.append((field, item.edge))
             elif isinstance(field, Edge):
-                # nested edge
-                _fields, _links = edge_split(field, item.edge)
-                fields.extend(_fields)
-                links.extend(_links)
+                edges.append(item)
             else:
                 raise ValueError('Unexpected edge member: {!r} ({})'
                                  .format(field, item.name))
         else:
             raise ValueError('Unexpected value: {!r}'.format(item))
 
-    return fields, links
+    return fields, links, edges
 
 
 def store_fields(store, edge, fields, ids, result):
@@ -105,7 +103,11 @@ class Query(Workflow):
         return self.store
 
     def _process_edge(self, edge, pattern, ids):
-        fields, links = edge_split(edge, pattern)
+        fields, links, edges = edge_split(edge, pattern)
+
+        assert not (edge.name and edges), 'Nested edges are not supported yet'
+        for link in edges:
+            self._process_edge(edge.fields[link.name], link.edge, None)
 
         to_func = {}
         from_func = defaultdict(list)

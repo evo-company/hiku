@@ -50,7 +50,6 @@ class TestEngine(TestCase):
                              {'a': 'test'})
             p.assert_called_once_with(['a'])
 
-    @skip('TODO: implement nested edges')
     def testEdgeField(self):
         with _patch(query_fields) as p:
             p.return_value = ['test']
