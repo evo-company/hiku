@@ -13,9 +13,9 @@ from hiku.dsl import define, S, if_, each, to_expr
 from hiku.compat import PY3
 from hiku.engine import Engine
 from hiku.compiler import ExpressionCompiler
+from hiku.sources.graph import subquery_fields
 from hiku.readers.simple import read
 from hiku.executors.thread import ThreadExecutor
-from hiku.sources.subgraph import subquery_fields
 
 
 @define(_name='foo')
