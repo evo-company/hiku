@@ -47,6 +47,14 @@ def bar_list():
     return [3, 2, 1]
 
 
+def not_found_one():
+    return -1
+
+
+def not_found_list():
+    return [3, -2, 1]
+
+
 ENV = Edge(None, [
     Edge(foo_table.name,
          db_fields(session, foo_table, [
@@ -69,6 +77,8 @@ ENV = Edge(None, [
          ]),
     Link('foo-list', None, foo_table.name, foo_list, to_list=True),
     Link('bar-list', None, bar_table.name, bar_list, to_list=True),
+    Link('not-found-one', None, bar_table.name, not_found_one, to_list=False),
+    Link('not-found-list', None, bar_table.name, not_found_list, to_list=True),
 ])
 
 thread_pool = ThreadPoolExecutor(2)
@@ -102,7 +112,7 @@ class TestSourceSQL(TestCase):
     def tearDown(self):
         session.remove()
 
-    def test_m2o(self):
+    def testManyToOne(self):
         engine = Engine(ThreadExecutor(thread_pool))
         result = engine.execute(
             ENV,
@@ -120,7 +130,7 @@ class TestSourceSQL(TestCase):
             ]
         )
 
-    def test_o2m(self):
+    def testOneToMany(self):
         engine = Engine(ThreadExecutor(thread_pool))
         result = engine.execute(
             ENV,
@@ -138,5 +148,25 @@ class TestSourceSQL(TestCase):
                 {'id': 1, 'name': 'bar1', 'type': 1, 'foo-s': [
                     {'name': 'foo1', 'count': 5},
                 ]},
+            ],
+        )
+
+    def testNotFound(self):
+        engine = Engine(ThreadExecutor(thread_pool))
+        result = engine.execute(
+            ENV,
+            read('[{:not-found-one [:name :type]}'
+                 ' {:not-found-list [:name :type]}]'),
+        )
+        self.assertEqual(
+            result['not-found-one'],
+            {'name': None, 'type': None},
+        )
+        self.assertEqual(
+            result['not-found-list'],
+            [
+                {'name': 'bar3', 'type': 3},
+                {'name': None, 'type': None},
+                {'name': 'bar1', 'type': 1},
             ],
         )

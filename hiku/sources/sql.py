@@ -57,7 +57,8 @@ def query_fields(conn, pkey, mapping, fields, ids):
 
     rows = conn.execute(expr.where(pkey.in_(ids))).fetchall()
     rows_map = {row[pkey]: [row[k] for k in columns] for row in rows}
-    return [rows_map.get(id_) for id_ in ids]
+    nulls = [None for _ in fields]
+    return [rows_map.get(id_, nulls) for id_ in ids]
 
 
 def query_link_o2m(conn, to_, ids):
