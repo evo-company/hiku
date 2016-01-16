@@ -145,14 +145,14 @@ class Query(Workflow):
             if link.requires:
                 fut = to_fut[to_func[link.requires]]
                 self._queue.add_callback(fut, (
-                    lambda _:
-                    self._process_edge_link(edge, link, link_pattern, ids)
+                    lambda _, _link=link, _link_pattern=link_pattern:
+                    self._process_edge_link(edge, _link, _link_pattern, ids)
                 ))
             else:
                 fut = self._task_set.submit(link.func)
                 self._queue.add_callback(fut, (
-                    lambda result:
-                    self._process_link(edge, link, link_pattern, ids, result)
+                    lambda result, _link=link, _link_pattern=link_pattern:
+                    self._process_link(edge, _link, _link_pattern, ids, result)
                 ))
 
     def _process_edge_link(self, edge, link, link_pattern, ids):

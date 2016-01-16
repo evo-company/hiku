@@ -1,14 +1,17 @@
 from contextlib import contextmanager
 try:
     from unittest.mock import patch as _patch, Mock as _Mock
+    from unittest.mock import call as _call
 except ImportError:
     from mock import patch as _patch, Mock as _Mock
+    from mock import call as _call
 
 from hiku.query import Field, Link, Edge
 
 
 patch = _patch
 Mock = _Mock
+call = _call
 
 
 def _ne(self, other):

@@ -1,17 +1,21 @@
 from __future__ import unicode_literals
 
-from unittest import TestCase, skip
+from unittest import TestCase
 from concurrent.futures import ThreadPoolExecutor
 
-from hiku.graph import Edge, Field
+from hiku.graph import Edge, Field, Link
 from hiku.engine import Engine
 from hiku.readers.simple import read
 from hiku.executors.thread import ThreadExecutor
 
-from .base import patch
+from .base import patch, call
 
 
 def query_fields(*args, **kwargs):
+    pass
+
+
+def query_link(*args, **kwargs):
     pass
 
 
@@ -29,7 +33,10 @@ TEST_ENV = Edge(None, [
     Field('a', _(query_fields)),
     Edge('b', [
         Field('c', _(query_fields)),
+        Field('d', _(query_fields)),
     ]),
+    Link('e', None, 'b', _(query_link), to_list=True),
+    Link('f', None, 'b', _(query_link), to_list=True),
 ])
 
 thread_pool = ThreadPoolExecutor(2)
@@ -56,3 +63,23 @@ class TestEngine(TestCase):
             self.assertEqual(self.execute('[{:b [:c]}]'),
                              {'b': {'c': 'test'}})
             p.assert_called_once_with(['c'])
+
+    def testLinks(self):
+        with _patch(query_fields) as pf, _patch(query_link) as pl:
+            pl.return_value = [1]
+            pf.return_value = [['test']]
+
+            res = self.execute('[{:e [:c]} {:f [:d]}]')
+
+            pf.assert_has_calls([call(['c'], [1]),
+                                 call(['d'], [1])],
+                                any_order=True)
+
+            self.assertEqual(
+                [r['c'] for r in res['e']],
+                ['test']
+            )
+            self.assertEqual(
+                [r['d'] for r in res['f']],
+                ['test']
+            )
