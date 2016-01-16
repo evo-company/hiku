@@ -140,3 +140,59 @@ class TestSourceSQL(TestCase):
                 ]},
             ],
         )
+
+    def test_foo_bar(self):
+        engine = Engine(ThreadExecutor(thread_pool))
+        result = engine.execute(
+            ENV,
+            read(
+                '[{:bar-list [:name :type {:foo-s [:name :count]}]}'
+                ' '
+                '{:foo-list [:name :count {:bar [:name :type]}]}]'
+            ),
+        )
+        self.assertEqual(
+            result['bar-list'],
+            [
+                {'id': 3, 'name': 'bar3', 'type': 3, 'foo-s': [
+                    {'name': 'foo3', 'count': 15},
+                ]},
+                {'id': 2, 'name': 'bar2', 'type': 2, 'foo-s': [
+                    {'name': 'foo2', 'count': 10},
+                ]},
+                {'id': 1, 'name': 'bar1', 'type': 1, 'foo-s': [
+                    {'name': 'foo1', 'count': 5},
+                ]},
+            ],
+        )
+        self.assertEqual(
+            result['foo-list'],
+            [
+                {'name': 'foo3', 'count': 15, 'bar_id': 3,
+                 'bar': {'name': 'bar3', 'type': 3}},
+                {'name': 'foo2', 'count': 10, 'bar_id': 2,
+                 'bar': {'name': 'bar2', 'type': 2}},
+                {'name': 'foo1', 'count': 5, 'bar_id': 1,
+                 'bar': {'name': 'bar1', 'type': 1}},
+            ]
+        )
+
+    def test_not_found(self):
+        engine = Engine(ThreadExecutor(thread_pool))
+        env = Edge(None, [
+            Edge(foo_table.name,
+                 db_fields(session, foo_table, [
+                    'id',
+                    'name',
+                    'count',
+                 ])),
+            Link('foo-list', None, foo_table.name, lambda: [-1], to_list=True),
+        ])
+        result = engine.execute(
+            env,
+            read("[{:foo-list [:id :name :count]}]")
+        )
+        self.assertEqual(
+            result['foo-list'],
+            []
+        )
