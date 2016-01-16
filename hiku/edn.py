@@ -81,10 +81,18 @@ class Set(frozenset):
         return '#{{{}}}'.format(' '.join(map(repr, self)))
 
 
-class TaggedElement(namedtuple('TaggedElement', 'name, value')):
+class TaggedElement(object):
+
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
 
     def __repr__(self):
         return '#{} {!r}'.format(self.name, self.value)
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and \
+            self.name == other.name and self.value == other.value
 
 
 def coroutine(func):
