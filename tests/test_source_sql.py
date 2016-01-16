@@ -176,3 +176,23 @@ class TestSourceSQL(TestCase):
                  'bar': {'name': 'bar1', 'type': 1}},
             ]
         )
+
+    def test_not_found(self):
+        engine = Engine(ThreadExecutor(thread_pool))
+        env = Edge(None, [
+            Edge(foo_table.name,
+                 db_fields(session, foo_table, [
+                    'id',
+                    'name',
+                    'count',
+                 ])),
+            Link('foo-list', None, foo_table.name, lambda: [-1], to_list=True),
+        ])
+        result = engine.execute(
+            env,
+            read("[{:foo-list [:id :name :count]}]")
+        )
+        self.assertEqual(
+            result['foo-list'],
+            []
+        )
