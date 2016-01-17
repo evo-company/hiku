@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-from unittest import TestCase
 from concurrent.futures import ThreadPoolExecutor
 
 from hiku.graph import Edge, Field, Link
@@ -8,7 +7,7 @@ from hiku.engine import Engine
 from hiku.readers.simple import read
 from hiku.executors.thread import ThreadExecutor
 
-from .base import patch, call
+from .base import TestCase, patch, call
 
 
 def query_fields(*args, **kwargs):
@@ -75,11 +74,8 @@ class TestEngine(TestCase):
                                  call(['d'], [1])],
                                 any_order=True)
 
-            self.assertEqual(
-                [r['c'] for r in res['e']],
-                ['test']
-            )
-            self.assertEqual(
-                [r['d'] for r in res['f']],
-                ['test']
+            self.assertResult(
+                res,
+                {'e': [{'c': 'test'}],
+                 'f': [{'d': 'test'}]},
             )

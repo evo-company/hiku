@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-from unittest import TestCase
 from concurrent.futures import ThreadPoolExecutor
 
 from sqlalchemy import create_engine
@@ -15,10 +14,11 @@ from hiku.sources.sql import db_fields, db_link
 from hiku.readers.simple import read
 from hiku.executors.thread import ThreadExecutor
 
+from .base import TestCase
+
 
 metadata = MetaData()
 session = scoped_session(sessionmaker())
-
 
 foo_table = Table(
     'foo',
@@ -28,7 +28,6 @@ foo_table = Table(
     Column('count', Integer),
     Column('bar_id', ForeignKey('bar.id')),
 )
-
 
 bar_table = Table(
     'bar',
@@ -87,58 +86,55 @@ thread_pool = ThreadPoolExecutor(2)
 class TestSourceSQL(TestCase):
 
     def setUp(self):
-        engine = create_engine(
+        sa_engine = create_engine(
             'sqlite://',
             connect_args={'check_same_thread': False},
             poolclass=StaticPool,
         )
-        metadata.create_all(engine)
-        session.configure(bind=engine)
+        metadata.create_all(sa_engine)
+        session.configure(bind=sa_engine)
 
-        bar_insert = lambda r: engine.execute(bar_table.insert(), r).lastrowid
+        bar_insert = lambda r: (sa_engine.execute(bar_table.insert(), r)
+                                .lastrowid)
         self.bar_ids = list(map(bar_insert, [
             {'name': 'bar1', 'type': 1},
             {'name': 'bar2', 'type': 2},
             {'name': 'bar3', 'type': 3},
         ]))
 
-        foo_insert = lambda r: engine.execute(foo_table.insert(), r).lastrowid
+        foo_insert = lambda r: (sa_engine.execute(foo_table.insert(), r)
+                                .lastrowid)
         list(map(foo_insert, [
             {'name': 'foo1', 'count': 5, 'bar_id': self.bar_ids[0]},
             {'name': 'foo2', 'count': 10, 'bar_id': self.bar_ids[1]},
             {'name': 'foo3', 'count': 15, 'bar_id': self.bar_ids[2]},
         ]))
+        self.engine = Engine(ThreadExecutor(thread_pool))
 
     def tearDown(self):
         session.remove()
 
+    def assertExecute(self, src, result):
+        store = self.engine.execute(ENV, read(src))
+        self.assertResult(store, result)
+
     def testManyToOne(self):
-        engine = Engine(ThreadExecutor(thread_pool))
-        result = engine.execute(
-            ENV,
-            read('[{:foo-list [:name :count {:bar [:name :type]}]}]'),
-        )
-        self.assertEqual(
-            result['foo-list'],
-            [
+        self.assertExecute(
+            '[{:foo-list [:name :count {:bar [:name :type]}]}]',
+            {'foo-list': [
                 {'name': 'foo3', 'count': 15, 'bar_id': 3,
                  'bar': {'name': 'bar3', 'type': 3}},
                 {'name': 'foo2', 'count': 10, 'bar_id': 2,
                  'bar': {'name': 'bar2', 'type': 2}},
                 {'name': 'foo1', 'count': 5, 'bar_id': 1,
                  'bar': {'name': 'bar1', 'type': 1}},
-            ]
+            ]}
         )
 
     def testOneToMany(self):
-        engine = Engine(ThreadExecutor(thread_pool))
-        result = engine.execute(
-            ENV,
-            read('[{:bar-list [:name :type {:foo-s [:name :count]}]}]'),
-        )
-        self.assertEqual(
-            result['bar-list'],
-            [
+        self.assertExecute(
+            '[{:bar-list [:name :type {:foo-s [:name :count]}]}]',
+            {'bar-list': [
                 {'id': 3, 'name': 'bar3', 'type': 3, 'foo-s': [
                     {'name': 'foo3', 'count': 15},
                 ]},
@@ -148,25 +144,19 @@ class TestSourceSQL(TestCase):
                 {'id': 1, 'name': 'bar1', 'type': 1, 'foo-s': [
                     {'name': 'foo1', 'count': 5},
                 ]},
-            ],
+            ]},
         )
 
     def testNotFound(self):
-        engine = Engine(ThreadExecutor(thread_pool))
-        result = engine.execute(
-            ENV,
-            read('[{:not-found-one [:name :type]}'
-                 ' {:not-found-list [:name :type]}]'),
-        )
-        self.assertEqual(
-            result['not-found-one'],
-            {'name': None, 'type': None},
-        )
-        self.assertEqual(
-            result['not-found-list'],
-            [
-                {'name': 'bar3', 'type': 3},
-                {'name': None, 'type': None},
-                {'name': 'bar1', 'type': 1},
-            ],
+        self.assertExecute(
+            '[{:not-found-one [:name :type]}'
+            ' {:not-found-list [:name :type]}]',
+            {
+                'not-found-one': {'name': None, 'type': None},
+                'not-found-list': [
+                    {'name': 'bar3', 'type': 3},
+                    {'name': None, 'type': None},
+                    {'name': 'bar1', 'type': 1},
+                ],
+            },
         )
