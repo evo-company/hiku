@@ -113,31 +113,33 @@ class Query(Workflow):
         from_func = defaultdict(list)
         for field in fields:
             to_func[field.name] = field.func
-            from_func[field.func].append(field.name)
+            from_func[field.func].append(field)
 
         # schedule fields resolve
         to_fut = {}
-        for func, names in from_func.items():
+        for func, func_fields in from_func.items():
             if getattr(func, '__subquery__', None):
                 task_set = self._queue.fork()
                 if ids is not None:
-                    result_proc = func(self._queue, task_set, edge, fields, ids)
+                    result_proc = func(self._queue, task_set, edge, func_fields,
+                                       ids)
                 else:
-                    result_proc = func(self._queue, task_set, edge, fields)
+                    result_proc = func(self._queue, task_set, edge, func_fields)
                 to_fut[func] = task_set
                 self._queue.add_callback(task_set, (
                     lambda:
                     result_proc(self.store)
                 ))
             else:
+                field_names = [f.name for f in func_fields]
                 if ids is not None:
-                    fut = self._task_set.submit(func, names, ids)
+                    fut = self._task_set.submit(func, field_names, ids)
                 else:
-                    fut = self._task_set.submit(func, names)
+                    fut = self._task_set.submit(func, field_names)
                 to_fut[func] = fut
                 self._queue.add_callback(fut, (
-                    lambda result:
-                    store_fields(self.store, edge, fields, ids, result)
+                    lambda result, _func_fields=func_fields:
+                    store_fields(self.store, edge, _func_fields, ids, result)
                 ))
 
         # schedule link resolve
