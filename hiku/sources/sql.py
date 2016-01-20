@@ -63,6 +63,8 @@ def query_fields(conn, pkey, mapping, fields, ids):
 
 def query_link_o2m(conn, to_, ids):
     to_pkey, = list(to_.table.primary_key)
+    if not ids:
+        return []
     rows = (
         conn.execute(select([to_pkey, to_])
                      .where(to_.in_(ids)))
