@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 from json import loads
 
-from unittest import TestCase, skip
+from unittest import TestCase
 
 from hiku.store import Store
 from hiku.writers.json import dumps

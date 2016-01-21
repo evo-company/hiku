@@ -57,10 +57,10 @@ def not_found_list():
 ENV = Edge(None, [
     Edge(foo_table.name,
          db_fields(session, foo_table, [
-            'id',
-            'name',
-            'count',
-            'bar_id',
+             'id',
+             'name',
+             'count',
+             'bar_id',
          ]) + [
              db_link(session, 'bar',
                      foo_table.c.bar_id, bar_table.c.id, False),
@@ -94,16 +94,18 @@ class TestSourceSQL(TestCase):
         metadata.create_all(sa_engine)
         session.configure(bind=sa_engine)
 
-        bar_insert = lambda r: (sa_engine.execute(bar_table.insert(), r)
-                                .lastrowid)
+        def bar_insert(r):
+            return sa_engine.execute(bar_table.insert(), r).lastrowid
+
         self.bar_ids = list(map(bar_insert, [
             {'name': 'bar1', 'type': 1},
             {'name': 'bar2', 'type': 2},
             {'name': 'bar3', 'type': 3},
         ]))
 
-        foo_insert = lambda r: (sa_engine.execute(foo_table.insert(), r)
-                                .lastrowid)
+        def foo_insert(r):
+            return sa_engine.execute(foo_table.insert(), r).lastrowid
+
         list(map(foo_insert, [
             {'name': 'foo1', 'count': 5, 'bar_id': self.bar_ids[0]},
             {'name': 'foo2', 'count': 10, 'bar_id': self.bar_ids[1]},

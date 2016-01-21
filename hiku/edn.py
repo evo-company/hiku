@@ -7,7 +7,6 @@ from uuid import UUID
 from decimal import Decimal
 from datetime import datetime
 from itertools import chain
-from collections import namedtuple
 from json.encoder import encode_basestring, encode_basestring_ascii
 
 
@@ -37,7 +36,7 @@ class Symbol(texttype):
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and \
-               super(Symbol, self).__eq__(other)
+            super(Symbol, self).__eq__(other)
 
     def __hash__(self):
         return super(Symbol, self).__hash__()
@@ -50,7 +49,7 @@ class Keyword(texttype):
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and \
-               super(Keyword, self).__eq__(other)
+            super(Keyword, self).__eq__(other)
 
     def __hash__(self):
         return super(Keyword, self).__hash__()
@@ -145,7 +144,7 @@ _END_CHARS = {
 def tag_handler(tag_name, tag_handlers):
     while True:
         c = (yield)
-        if c in STOP_CHARS+'{"[(\\#':
+        if c in STOP_CHARS + '{"[(\\#':
             break
         tag_name += c
     elements = []
@@ -253,10 +252,10 @@ def parser(target, tag_handlers, stop=None):
             handler = number_handler(c)
         elif c in '-.':
             c2 = (yield)
-            if c2.isdigit():    # .5 should be an error
-                handler = number_handler(c+c2)
+            if c2.isdigit():  # .5 should be an error
+                handler = number_handler(c + c2)
             else:
-                handler = symbol_handler(c+c2)
+                handler = symbol_handler(c + c2)
         elif c.isalpha() or c == ':':
             handler = symbol_handler(c)
         elif c in '[({#':
