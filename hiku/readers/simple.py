@@ -1,15 +1,15 @@
 from ..edn import loads, Dict, List, Keyword
 from ..query import Edge, Link, Field
-from ..compat import texttype
+from ..compat import text_type
 
 
 def _extract(values):
     for value in values:
         if isinstance(value, Keyword):
-            yield Field(texttype(value))
+            yield Field(text_type(value))
         elif isinstance(value, Dict):
             for key, val in value.items():
-                yield Link(texttype(key), transform(val))
+                yield Link(text_type(key), transform(val))
         else:
             raise ValueError('Invalid edge member: {!r}'.format(value))
 

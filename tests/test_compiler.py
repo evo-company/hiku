@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import astor
 
-from hiku import query, graph
+from hiku import graph
 from hiku.dsl import define, S, if_, each, to_expr
 from hiku.compat import PY3
 from hiku.engine import Engine
@@ -109,7 +109,7 @@ class TestCompiler(TestCase):
 
         # ----------------------------------------------
 
-        @define(query.Edge([query.Field('f')]), _name='inc_f')
+        @define('[[:f]]', _name='inc_f')
         def inc_f(obj):
             return obj['f'] + 1
 

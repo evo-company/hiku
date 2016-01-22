@@ -1,6 +1,9 @@
 from itertools import chain
 
+from hiku.edn import loads
 from hiku.nodes import Symbol, Tuple, List, Keyword, Dict
+from hiku.compat import text_type, string_types
+from hiku.readers.simple import transform
 
 
 class _DotHandler(object):
@@ -45,7 +48,13 @@ def define(*requires, **kwargs):
 
         expr.fn = fn
         expr.__fn_name__ = name
-        expr.__requires__ = requires
+
+        if len(requires) == 1 and isinstance(requires[0], string_types):
+            reqs_list = loads(text_type(requires[0]))
+            expr.__requires__ = [transform(reqs) for reqs in reqs_list]
+        else:
+            expr.__requires__ = requires
+
         return expr
     return decorator
 

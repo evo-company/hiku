@@ -41,7 +41,9 @@ ast = _AST()
 
 
 if PY3:
-    texttype = str
+    text_type = str
+    string_types = str,
 
 else:
-    texttype = unicode
+    text_type = unicode  # noqa
+    string_types = basestring,  # noqa

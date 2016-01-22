@@ -10,7 +10,7 @@ from itertools import chain
 from json.encoder import encode_basestring, encode_basestring_ascii
 
 
-from .compat import texttype
+from .compat import text_type
 
 
 class ImmutableDict(dict):
@@ -29,7 +29,7 @@ class ImmutableDict(dict):
     clear = pop = popitem = setdefault = update = _immutable
 
 
-class Symbol(texttype):
+class Symbol(text_type):
 
     def __repr__(self):
         return self
@@ -42,7 +42,7 @@ class Symbol(texttype):
         return super(Symbol, self).__hash__()
 
 
-class Keyword(texttype):
+class Keyword(text_type):
 
     def __repr__(self):
         return ':{}'.format(self)
@@ -288,9 +288,9 @@ def parser(target, tag_handlers, stop=None):
 
 
 def loads(s, tag_handlers=None):
-    if not isinstance(s, texttype):
+    if not isinstance(s, text_type):
         raise TypeError('The EDN value must be {!r}, not {!r}'
-                        .format(texttype.__name__, type(s).__name__))
+                        .format(text_type.__name__, type(s).__name__))
     l = []
     target = parser(appender(l), dict(tag_handlers or (), **TAG_HANDLERS))
     for c in s:
@@ -326,17 +326,17 @@ def _iterencode(obj, default, encoder):
     elif obj is False:
         yield 'false'
     elif isinstance(obj, int):
-        yield texttype(int(obj))
+        yield text_type(int(obj))
     elif isinstance(obj, float):
         # FIXME: proper float encoding
-        yield texttype(float(obj))
+        yield text_type(float(obj))
     elif isinstance(obj, Decimal):
         yield '{}M'.format(obj)
     elif isinstance(obj, Keyword):
         yield ':{}'.format(obj)
     elif isinstance(obj, Symbol):
         yield obj
-    elif isinstance(obj, texttype):
+    elif isinstance(obj, text_type):
         yield encoder(obj)
     elif isinstance(obj, (list, List)):
         # NOTE: `(list, List)` check should be before `(tuple, Tuple)`,

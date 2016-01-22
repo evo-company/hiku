@@ -7,14 +7,12 @@ from hiku.query import RequirementsExtractor
 from .base import reqs_eq_patcher
 
 
-@define(Edge([Field('a1'), Field('a2')]),
-        Edge([Field('b1'), Field('b2')]))
+@define('[[:a1 :a2] [:b1 :b2]]')
 def foo(a, b):
     print('foo', a, b)
 
 
-@define(Edge([Field('c1'), Field('c2')]),
-        Edge([Field('d1'), Field('d2')]))
+@define('[[:c1 :c2] [:d1 :d2]]')
 def bar(c, d):
     print('bar', c, d)
 

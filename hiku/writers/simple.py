@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 from ..edn import dumps as _dumps, TaggedElement, List, Keyword
 from ..store import Ref
-from ..compat import texttype
+from ..compat import text_type
 
 
 def default(obj):
@@ -15,7 +15,7 @@ def _transform(obj):
     if isinstance(obj, list):
         return [_transform(v) for v in obj]
     elif isinstance(obj, dict):
-        assert all(isinstance(k, texttype) for k in obj.keys())
+        assert all(isinstance(k, text_type) for k in obj.keys())
         return {Keyword(k): _transform(v) for k, v in obj.items()}
     else:
         return obj
