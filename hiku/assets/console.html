@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/codemirror.min.css">
+    <style type="text/css">
+        .CodeMirror {
+            border-bottom: 1px solid #eee;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div style="float:left"><button>run</button></div>
+        <div id="query"></div>
+        <div style="clear:both"></div>
+    </div>
+    <div id="result"></div>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/codemirror.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/addon/selection/active-line.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/addon/edit/matchbrackets.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/mode/clojure/clojure.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/mode/javascript/javascript.min.js"></script>
+    <script>
+        var queryView = CodeMirror(document.getElementById("query"), {
+            value: "[:foo {:bar [:a :b :c]}]",
+            viewportMargin: Infinity,
+            matchBrackets: true,
+            mode: "clojure"
+        });
+        var resultView = CodeMirror(document.getElementById("result"), {
+            value: JSON.stringify({foo: [{bar: {a: 1, b: 2, c: 3}}]}, null, "  "),
+            mode: {name: "javascript", json: true},
+            readOnly: true
+        });
+    </script>
+</body>
+</html>
