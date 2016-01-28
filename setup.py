@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='Hiku',
@@ -7,7 +7,8 @@ setup(
     author='Vladimir Magamedov',
     author_email='vladimir@magamedov.com',
     url='https://github.com/vmagamedov/hiku',
-    packages=['hiku', 'hiku.sources'],
+    packages=find_packages(),
+    include_package_data=True,
     license='BSD',
     install_requires=[],
 )
