@@ -9,8 +9,7 @@ except ImportError:
     from mock import call as _call
     from itertools import izip_longest as zip_longest
 
-from hiku.query import Field, Link, Edge
-
+from hiku.query import Field, Link, Edge, Ref
 
 patch = _patch
 Mock = _Mock
@@ -21,20 +20,29 @@ def _ne(self, other):
     return not self.__eq__(other)
 
 
-def _req_eq(self, other):
+def _eq(self, other):
     if type(self) is not type(other):
         return False
     return self.__dict__ == other.__dict__
 
 
-_field_patch = patch.multiple(Field, __eq__=_req_eq, __ne__=_ne)
-_link_patch = patch.multiple(Link, __eq__=_req_eq, __ne__=_ne)
-_edge_patch = patch.multiple(Edge, __eq__=_req_eq, __ne__=_ne)
+_field_patch = patch.multiple(Field, __eq__=_eq, __ne__=_ne)
+_link_patch = patch.multiple(Link, __eq__=_eq, __ne__=_ne)
+_edge_patch = patch.multiple(Edge, __eq__=_eq, __ne__=_ne)
 
 
 @contextmanager
 def reqs_eq_patcher():
     with _field_patch, _link_patch, _edge_patch:
+        yield
+
+
+_ref_patch = patch.multiple(Ref, __eq__=_eq, __ne__=_ne)
+
+
+@contextmanager
+def ref_eq_patcher():
+    with _ref_patch:
         yield
 
 

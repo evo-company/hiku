@@ -9,7 +9,8 @@ from .executors.queue import Workflow, Queue
 
 
 def edge_split(edge, pattern):
-    assert isinstance(pattern, query.Edge)
+    assert isinstance(edge, Edge), repr(edge)
+    assert isinstance(pattern, query.Edge), repr(pattern)
 
     fields = []
     links = []
