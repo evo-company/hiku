@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 from json import dumps as _dumps
 
-from ..store import Ref
+from ..result import Ref
 
 
 def default(obj):
@@ -11,5 +11,5 @@ def default(obj):
     raise TypeError('Can not encode this type: {!r}'.format(obj))
 
 
-def dumps(store):
-    return _dumps(store, default=default)
+def dumps(result):
+    return _dumps(result, default=default)

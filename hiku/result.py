@@ -24,10 +24,10 @@ class State(defaultdict):
         super(State, self).__init__(State)
 
 
-class Store(State):
+class Result(State):
 
     def __init__(self):
-        super(Store, self).__init__()
+        super(Result, self).__init__()
         self.idx = State()
 
     def ref(self, entity, ident):

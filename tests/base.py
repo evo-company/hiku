@@ -46,20 +46,20 @@ def ref_eq_patcher():
         yield
 
 
-def store_match(store, value, path=None):
+def result_match(result, value, path=None):
     path = [] if path is None else path
     if isinstance(value, dict):
         for k, v in value.items():
-            ok, sp, sv = store_match(store[k], v, path + [k])
+            ok, sp, sv = result_match(result[k], v, path + [k])
             if not ok:
                 return ok, sp, sv
     elif isinstance(value, (list, tuple)):
-        pairs = zip_longest(store, value)
+        pairs = zip_longest(result, value)
         for i, (v1, v2) in enumerate(pairs):
-            ok, sp, sv = store_match(v1, v2, path + [i])
+            ok, sp, sv = result_match(v1, v2, path + [i])
             if not ok:
                 return ok, sp, sv
-    elif store != value:
+    elif result != value:
         return False, path, value
 
     return True, None, None
@@ -67,10 +67,10 @@ def store_match(store, value, path=None):
 
 class TestCase(unittest.TestCase):
 
-    def assertResult(self, store, value):
-        ok, path, subval = store_match(store, value)
+    def assertResult(self, result, value):
+        ok, path, subval = result_match(result, value)
         if not ok:
-            path_str = 'store' + ''.join('[{!r}]'.format(v) for v in path)
+            path_str = 'result' + ''.join('[{!r}]'.format(v) for v in path)
             msg = ('Result mismatch, first different element '
                    'path: {}, value: {!r}'
                    .format(path_str, subval))

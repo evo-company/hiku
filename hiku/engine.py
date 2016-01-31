@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from . import query
 from .graph import Link, Edge
-from .store import Store
+from .result import Result
 from .executors.queue import Workflow, Queue
 
 
@@ -36,47 +36,47 @@ def edge_split(edge, pattern):
     return fields, links, edges
 
 
-def store_fields(store, edge, fields, ids, result):
+def store_fields(result, edge, fields, ids, query_result):
     names = [f.name for f in fields]
     if edge.name is not None:
         if ids is not None:
-            for i, row in zip(ids, result):
-                store.idx[edge.name][i].update(zip(names, row))
+            for i, row in zip(ids, query_result):
+                result.idx[edge.name][i].update(zip(names, row))
         else:
-            store[edge.name].update(zip(names, result))
+            result[edge.name].update(zip(names, query_result))
     else:
-        store.update(zip(names, result))
+        result.update(zip(names, query_result))
 
 
-def link_reqs(store, edge, link, ids):
+def link_reqs(result, edge, link, ids):
     if edge.name is not None:
         if ids is not None:
-            return [store.idx[edge.name][i][link.requires] for i in ids]
+            return [result.idx[edge.name][i][link.requires] for i in ids]
         else:
-            return store[edge.name][link.requires]
+            return result[edge.name][link.requires]
     else:
-        return store[link.requires]
+        return result[link.requires]
 
 
-def link_ref(store, link, ident):
-    return store.ref(link.entity, ident)
+def link_ref(result, link, ident):
+    return result.ref(link.entity, ident)
 
 
-def link_refs(store, link, idents):
-    return [store.ref(link.entity, i) for i in idents]
+def link_refs(result, link, idents):
+    return [result.ref(link.entity, i) for i in idents]
 
 
-def store_links(store, edge, link, ids, result):
+def store_links(result, edge, link, ids, query_result):
     field_val = partial(link_refs if link.to_list else link_ref,
-                        store, link)
+                        result, link)
     if edge.name is not None:
         if ids is not None:
-            for i, res in zip(ids, result):
-                store.idx[edge.name][i][link.name] = field_val(res)
+            for i, res in zip(ids, query_result):
+                result.idx[edge.name][i][link.name] = field_val(res)
         else:
-            store[edge.name][link.name] = field_val(result)
+            result[edge.name][link.name] = field_val(query_result)
     else:
-        store[link.name] = field_val(result)
+        result[link.name] = field_val(query_result)
 
 
 def link_result_to_ids(is_list, to_list, result):
@@ -95,13 +95,13 @@ class Query(Workflow):
         self._task_set = task_set
         self.root = root
         self.pattern = pattern
-        self.store = Store()
+        self._result = Result()
 
     def begin(self):
         self._process_edge(self.root, self.pattern, None)
 
     def result(self):
-        return self.store
+        return self._result
 
     def _process_edge(self, edge, pattern, ids):
         fields, links, edges = edge_split(edge, pattern)
@@ -129,7 +129,7 @@ class Query(Workflow):
                 to_fut[func] = task_set
                 self._queue.add_callback(task_set, (
                     lambda:
-                    result_proc(self.store)
+                    result_proc(self._result)
                 ))
             else:
                 field_names = [f.name for f in func_fields]
@@ -140,7 +140,7 @@ class Query(Workflow):
                 to_fut[func] = fut
                 self._queue.add_callback(fut, (
                     lambda _fut=fut, _func_fields=func_fields:
-                    store_fields(self.store, edge, _func_fields, ids,
+                    store_fields(self._result, edge, _func_fields, ids,
                                  _fut.result())
                 ))
 
@@ -161,7 +161,7 @@ class Query(Workflow):
                 ))
 
     def _process_edge_link(self, edge, link, link_pattern, ids):
-        reqs = link_reqs(self.store, edge, link, ids)
+        reqs = link_reqs(self._result, edge, link, ids)
         fut = self._task_set.submit(link.func, reqs)
         self._queue.add_callback(fut, (
             lambda:
@@ -169,7 +169,7 @@ class Query(Workflow):
         ))
 
     def _process_link(self, edge, link, link_pattern, ids, result):
-        store_links(self.store, edge, link, ids, result)
+        store_links(self._result, edge, link, ids, result)
         to_ids = link_result_to_ids(ids is not None, link.to_list, result)
         self._process_edge(self.root.fields[link.entity], link_pattern,
                            to_ids)

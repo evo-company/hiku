@@ -9,10 +9,11 @@ THIS_LINK_NAME = '__link_to_this'
 
 
 def _create_result_proc(query, env, edge, fields, field_procs, ids):
-    def result_proc(store):
-        store_fields(store, edge, fields, ids, [
-            [field_proc(this, env, query.store) for field_proc in field_procs]
-            for this in query.store[THIS_LINK_NAME]
+    def result_proc(result):
+        sq_result = query.result()
+        store_fields(result, edge, fields, ids, [
+            [field_proc(this, env, sq_result) for field_proc in field_procs]
+            for this in sq_result[THIS_LINK_NAME]
         ])
     return result_proc
 

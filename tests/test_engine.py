@@ -81,9 +81,9 @@ class TestEngine(TestCase):
             ql1.return_value = [1]
             qf1.return_value = [['d1']]
             qf2.return_value = [['e1']]
-            store = self.execute('[{:f [:d :e]}]')
-            self.assertResult(store, {'f': [{'d': 'd1', 'e': 'e1'}]})
-            self.assertEqual(store.idx, {'c': {1: {'d': 'd1', 'e': 'e1'}}})
+            result = self.execute('[{:f [:d :e]}]')
+            self.assertResult(result, {'f': [{'d': 'd1', 'e': 'e1'}]})
+            self.assertEqual(result.idx, {'c': {1: {'d': 'd1', 'e': 'e1'}}})
             ql1.assert_called_once_with()
             qf1.assert_called_once_with(['d'], [1])
             qf2.assert_called_once_with(['e'], [1])
@@ -95,9 +95,10 @@ class TestEngine(TestCase):
             qf1.return_value = [['d1']]
             ql2.return_value = [2]
             qf2.return_value = [['e1']]
-            store = self.execute('[{:f [:d]} {:g [:e]}]')
-            self.assertResult(store, {'f': [{'d': 'd1'}], 'g': [{'e': 'e1'}]})
-            self.assertEqual(store.idx, {'c': {1: {'d': 'd1'}, 2: {'e': 'e1'}}})
+            result = self.execute('[{:f [:d]} {:g [:e]}]')
+            self.assertResult(result, {'f': [{'d': 'd1'}], 'g': [{'e': 'e1'}]})
+            self.assertEqual(result.idx, {'c': {1: {'d': 'd1'},
+                                                2: {'e': 'e1'}}})
             ql1.assert_called_once_with()
             qf1.assert_called_once_with(['d'], [1])
             ql2.assert_called_once_with()

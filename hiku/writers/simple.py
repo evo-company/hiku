@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from ..edn import dumps as _dumps, TaggedElement, List, Keyword
-from ..store import Ref
+from ..result import Ref
 from ..compat import text_type
 
 
@@ -27,7 +27,7 @@ def _transform_idx(idx):
                               for ident, val in value.items()}
 
 
-def dumps(store):
-    data = _transform(store)
-    data.update(_transform_idx(store.idx))
+def dumps(result):
+    data = _transform(result)
+    data.update(_transform_idx(result.idx))
     return _dumps(data, default=default)

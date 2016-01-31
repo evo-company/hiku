@@ -117,8 +117,8 @@ class TestSourceSQL(TestCase):
         session.remove()
 
     def assertExecute(self, src, result):
-        store = self.engine.execute(ENV, read(src))
-        self.assertResult(store, result)
+        result = self.engine.execute(ENV, read(src))
+        self.assertResult(result, result)
 
     def testManyToOne(self):
         self.assertExecute(

@@ -4,7 +4,7 @@ from json import loads
 
 from unittest import TestCase
 
-from hiku.store import Store
+from hiku.result import Result
 from hiku.writers.json import dumps
 
 
@@ -16,16 +16,16 @@ class TestWriteJSON(TestCase):
         self.assertEqual(first, second)
 
     def testSimple(self):
-        store = Store()
-        store['f1'] = 1
-        store['a']['f2'] = 2
-        store.idx['b'][1] = {'f3': 'bar1'}
-        store.idx['b'][2] = {'f3': 'bar2'}
-        store.idx['b'][3] = {'f3': 'bar3'}
-        store['l1'] = store.ref('b', 1)
-        store['l2'] = [store.ref('b', 2), store.ref('b', 3)]
+        result = Result()
+        result['f1'] = 1
+        result['a']['f2'] = 2
+        result.idx['b'][1] = {'f3': 'bar1'}
+        result.idx['b'][2] = {'f3': 'bar2'}
+        result.idx['b'][3] = {'f3': 'bar3'}
+        result['l1'] = result.ref('b', 1)
+        result['l2'] = [result.ref('b', 2), result.ref('b', 3)]
         self.assertWrites(
-            store,
+            result,
             """
             {
               "f1": 1,

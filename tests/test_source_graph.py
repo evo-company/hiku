@@ -119,8 +119,8 @@ class TestSourceGraph(TestCase):
         self.engine = Engine(ThreadsExecutor(ThreadPoolExecutor(2)))
 
     def testField(self):
-        store = self.engine.execute(HIGH_ENV, read('[{:xs1 [:a]}]'))
-        self.assertResult(store, {'xs1': [
+        result = self.engine.execute(HIGH_ENV, read('[{:xs1 [:a]}]'))
+        self.assertResult(result, {'xs1': [
             {'a': 'a1'},
             {'a': 'a2'},
             {'a': 'a3'},
