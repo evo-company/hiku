@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from hiku.graph import Edge, Field, Link
 from hiku.engine import Engine
 from hiku.readers.simple import read
-from hiku.executors.thread import ThreadExecutor
+from hiku.executors.threads import ThreadsExecutor
 
 from .base import TestCase, patch
 
@@ -53,7 +53,7 @@ thread_pool = ThreadPoolExecutor(2)
 class TestEngine(TestCase):
 
     def setUp(self):
-        self.engine = Engine(ThreadExecutor(thread_pool))
+        self.engine = Engine(ThreadsExecutor(thread_pool))
 
     def execute(self, query):
         return self.engine.execute(TEST_ENV, read(query))

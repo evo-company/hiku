@@ -1,7 +1,7 @@
 from concurrent.futures import wait, FIRST_COMPLETED
 
 
-class ThreadExecutor(object):
+class ThreadsExecutor(object):
 
     def __init__(self, pool):
         self._pool = pool

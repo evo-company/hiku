@@ -8,7 +8,7 @@ from hiku.graph import Edge, Link, Field
 from hiku.engine import Engine
 from hiku.sources.graph import subquery_fields
 from hiku.readers.simple import read
-from hiku.executors.thread import ThreadExecutor
+from hiku.executors.threads import ThreadsExecutor
 
 from .base import TestCase
 
@@ -116,7 +116,7 @@ HIGH_ENV = Edge(None, [
 class TestSourceGraph(TestCase):
 
     def setUp(self):
-        self.engine = Engine(ThreadExecutor(ThreadPoolExecutor(2)))
+        self.engine = Engine(ThreadsExecutor(ThreadPoolExecutor(2)))
 
     def testField(self):
         store = self.engine.execute(HIGH_ENV, read('[{:xs1 [:a]}]'))

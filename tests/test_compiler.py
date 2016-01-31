@@ -15,7 +15,7 @@ from hiku.engine import Engine
 from hiku.compiler import ExpressionCompiler
 from hiku.sources.graph import subquery_fields
 from hiku.readers.simple import read
-from hiku.executors.thread import ThreadExecutor
+from hiku.executors.threads import ThreadsExecutor
 
 
 @define(_name='foo')
@@ -95,7 +95,7 @@ class TestCompiler(TestCase):
 
     def testSubQuery(self):
         thread_pool = ThreadPoolExecutor(2)
-        e = Engine(ThreadExecutor(thread_pool))
+        e = Engine(ThreadsExecutor(thread_pool))
 
         def query_a(fields, ids):
             data = {1: {'f': 2}}
