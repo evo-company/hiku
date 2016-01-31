@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+<head>
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/codemirror.min.css">
+    <style type="text/css">
+        .CodeMirror {
+            height: auto;
+        }
+        .CodeMirror pre.CodeMirror-placeholder {
+            color: #999;
+        }
+        #query {
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div style="float:left"><button onclick="submit();">run</button></div>
+        <div id="query"></div>
+        <div style="clear:both"></div>
+    </div>
+    <div id="result"></div>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/codemirror.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/addon/selection/active-line.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/addon/edit/matchbrackets.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/addon/display/placeholder.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/mode/clojure/clojure.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/mode/javascript/javascript.min.js"></script>
+    <script>
+        var command_btn = navigator.platform == "MacIntel"? String.fromCharCode(8984) : "Ctrl+";
+        var queryView = CodeMirror(document.getElementById("query"), {
+            placeholder: "Type your query here and press " + command_btn + "Enter",
+            indentWithTabs: true,
+            tabSize: 2,
+            viewportMargin: Infinity,
+            matchBrackets: true,
+            mode: "clojure"
+        });
+        var resultView = CodeMirror(document.getElementById("result"), {
+            mode: {name: "javascript", json: true},
+            readOnly: "nocursor"
+        });
+        function submit() {
+            var httpRequest = new XMLHttpRequest();
+            httpRequest.onreadystatechange = function() {
+                if (httpRequest.readyState === XMLHttpRequest.DONE) {
+                    if (httpRequest.status === 200) {
+                        var result = JSON.parse(httpRequest.responseText);
+                        resultView.setValue(JSON.stringify(result, null, "  "));
+                    } else {
+                        resultView.setValue('Error');
+                    }
+                }
+            };
+            httpRequest.open("POST", "");
+            httpRequest.setRequestHeader('Content-Type', 'application/edn');
+            httpRequest.send(queryView.getValue());
+        }
+        queryView.setOption("extraKeys", {
+            "Ctrl-Enter": function() {submit()},
+            "Cmd-Enter": function() {submit()}
+        });
+        window.onload = function() {
+            queryView.focus();
+        };
+    </script>
+</body>
+</html>
