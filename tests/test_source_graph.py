@@ -91,7 +91,7 @@ def baz(y):
 
 
 HIGH_ENV = Edge(None, [
-    Edge('x1', subquery_fields(LOW_ENV, 'x', [foo, bar, baz], {
+    Edge('x1', subquery_fields(LOW_ENV, 'x', {
         'id': S.this.id,
         'a': S.this.a,
         'foo': foo(S.this, S.this.y),
@@ -99,7 +99,7 @@ HIGH_ENV = Edge(None, [
         'baz': baz(S.this.y),
         # 'y': S.this.y,
     })),
-    Edge('y1', subquery_fields(LOW_ENV, 'y', [foo, bar, baz], {
+    Edge('y1', subquery_fields(LOW_ENV, 'y', {
         'id': S.this.id,
         'c': S.this.c,
         'foo': each(S.x, S.this.xs, foo(S.x, S.this)),

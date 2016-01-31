@@ -1,9 +1,13 @@
 from itertools import chain
+from collections import namedtuple
 
 from hiku.edn import loads
 from hiku.nodes import Symbol, Tuple, List, Keyword, Dict
 from hiku.compat import text_type, string_types
 from hiku.readers.simple import transform
+
+
+_Func = namedtuple('__func__', 'expr, args')
 
 
 class _DotHandler(object):
@@ -24,27 +28,31 @@ class _S(object):
 S = _S()
 
 
-def to_expr(arg):
-    if isinstance(arg, _DotHandler):
-        return arg.obj
-    elif isinstance(arg, list):
-        return List(to_expr(v) for v in arg)
-    elif isinstance(arg, dict):
-        values = chain.from_iterable((Keyword(k), to_expr(v))
-                                     for k, v in arg.items())
+def to_expr(obj, fn_reg):
+    if isinstance(obj, _DotHandler):
+        return obj.obj
+    elif isinstance(obj, _Func):
+        fn_reg[obj.expr.__fn_name__] = obj.expr
+        return Tuple([Symbol(obj.expr.__fn_name__)] +
+                     [to_expr(arg, fn_reg) for arg in obj.args])
+    elif isinstance(obj, list):
+        return List(to_expr(v, fn_reg) for v in obj)
+    elif isinstance(obj, dict):
+        values = chain.from_iterable((Keyword(k), to_expr(v, fn_reg))
+                                     for k, v in obj.items())
         return Dict(values)
     else:
-        return arg
+        return obj
 
 
 def define(*requires, **kwargs):
     def decorator(fn):
         name = kwargs.pop('_name', None)
-        name = name or '{}/{}'.format(fn.__module__, fn.__name__)
+        name = name or '{}/{}_{}'.format(fn.__module__, fn.__name__, id(fn))
         assert not kwargs, 'Unknown keyword arguments: {!r}'.format(kwargs)
 
         def expr(*args):
-            return Tuple([Symbol(name)] + [to_expr(arg) for arg in args])
+            return _Func(expr, args)
 
         expr.fn = fn
         expr.__fn_name__ = name

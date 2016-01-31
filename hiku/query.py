@@ -84,7 +84,7 @@ def ref_to_req(ref, add_req=None):
 
     elif isinstance(ref.to, graph.Field):
         assert isinstance(ref, NamedRef), type(ref)
-        assert add_req is None
+        assert add_req is None, repr(add_req)
         return ref_to_req(ref.backref, Edge([Field(ref.name)]))
 
     elif isinstance(ref.to, graph.Edge):
@@ -127,7 +127,7 @@ class Checker(NodeTransformer):
 
     def visit_get_expr(self, node):
         obj, name = node.values[1:]
-        assert isinstance(name, Symbol)
+        assert isinstance(name, Symbol), type(name)
         obj = self.visit(obj)
         assert hasattr(obj, '__ref__'), 'Object does not have a reference'
 
@@ -239,10 +239,13 @@ class RequirementsExtractor(NodeVisitor):
         sym, args = node.values[0], node.values[1:]
         if sym.name in self.env:
             for arg, req in zip(args, self.env[sym.name].__requires__):
+                if req is None:
+                    continue
                 if isinstance(arg.__ref__.to, (graph.Edge, graph.Link)):
-                    assert isinstance(req, Edge)
+                    assert isinstance(req, Edge), type(req)
                     self._reqs.append(ref_to_req(arg.__ref__, req))
                 else:
-                    assert isinstance(arg.__ref__.to, graph.Field)
-                    assert isinstance(req, None)
+                    assert isinstance(arg.__ref__.to, graph.Field), \
+                        type(arg.__ref__.to)
+                    assert isinstance(req, None), repr(req)
         super(RequirementsExtractor, self).visit_tuple(node)

@@ -32,7 +32,7 @@ class TestCompiler(TestCase):
 
     def assertCompiles(self, expr, code):
         ec = ExpressionCompiler({'foo', 'baz'})
-        py_expr = ec.visit(to_expr(expr))
+        py_expr = ec.visit(to_expr(expr, {}))
         first = astor.to_source(py_expr)
         if not PY3:
             first = first.replace("u'", "'")
@@ -114,7 +114,7 @@ class TestCompiler(TestCase):
             return obj['f'] + 1
 
         r1 = graph.Edge(None, [
-            graph.Edge('a1', subquery_fields(r, 'a', [inc_f], {
+            graph.Edge('a1', subquery_fields(r, 'a', {
                 'f1': inc_f(S.this),
             })),
             graph.Link('la1', None, 'a1', lambda: [1], True),

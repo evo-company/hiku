@@ -1,5 +1,5 @@
 from hiku.dsl import to_expr
-from hiku.graph import Link, Field, Edge
+from hiku.graph import Link, Field
 from hiku.query import merge, RequirementsExtractor
 from hiku.engine import Query, store_fields
 from hiku.compiler import ExpressionCompiler
@@ -18,20 +18,19 @@ def _create_result_proc(query, env, edge, fields, field_procs, ids):
     return result_proc
 
 
-def subquery_fields(sub_root, sub_edge_name, funcs, exprs):
-    ec_env = {func.__fn_name__ for func in funcs}
-    re_env = {func.__fn_name__: func for func in funcs}
-    fn_env = {func.__fn_name__: func.fn for func in funcs}
+def subquery_fields(sub_root, sub_edge_name, exprs):
+    re_env = {}
+    exprs = {name: to_expr(obj, re_env) for name, obj in exprs.items()}
+    ec_env = {func.__fn_name__ for func in re_env.values()}
+    fn_env = {func.__fn_name__: func.fn for func in re_env.values()}
 
     re_env['this'] = sub_root.fields[sub_edge_name]
-    re_env.update({v.name: v for v in sub_root.fields.values()
-                   if isinstance(v, Edge)})
+    re_env.update(sub_root.fields)
 
     ec = ExpressionCompiler(ec_env)
     reqs_map = {}
     procs_map = {}
     for name, expr in exprs.items():
-        expr = to_expr(expr)
         reqs_map[name] = RequirementsExtractor.analyze(re_env, expr)
         procs_map[name] = eval(compile(ec.compile_lambda_expr(expr),
                                        '<expr>', 'eval'))

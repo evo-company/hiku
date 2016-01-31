@@ -123,7 +123,10 @@ class TestMerge(TestCase):
 class TestChecker(TestCase):
 
     def check(self, expr):
-        return Checker(_ENV).visit(to_expr(expr))
+        fn_reg = {}
+        expr = to_expr(expr, fn_reg)
+        env = dict(_ENV, **{fn.__fn_name__: fn for fn in fn_reg.values()})
+        return Checker(env).visit(expr)
 
     def assertRef(self, node, ref):
         with ref_eq_patcher():
@@ -142,7 +145,10 @@ class TestChecker(TestCase):
 class TestQuery(TestCase):
 
     def assertRequires(self, expr, reqs):
-        expr_reqs = RequirementsExtractor.analyze(_ENV, to_expr(expr))
+        fn_reg = {}
+        expr = to_expr(expr, fn_reg)
+        env = dict(_ENV, **{fn.__fn_name__: fn for fn in fn_reg.values()})
+        expr_reqs = RequirementsExtractor.analyze(env, expr)
         with reqs_eq_patcher():
             self.assertEqual(expr_reqs, reqs)
 
