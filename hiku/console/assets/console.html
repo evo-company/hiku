@@ -24,17 +24,18 @@
     <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/codemirror.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/addon/selection/active-line.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/addon/edit/matchbrackets.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/addon/edit/closebrackets.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/addon/display/placeholder.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/mode/clojure/clojure.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/mode/javascript/javascript.min.js"></script>
     <script>
-        var command_btn = navigator.platform == "MacIntel"? String.fromCharCode(8984) : "Ctrl+";
+        var osx = navigator.platform == "MacIntel";
+        var run_key_name = osx ? String.fromCharCode(8984) + "Enter" : "Ctrl+Enter";
         var queryView = CodeMirror(document.getElementById("query"), {
-            placeholder: "Type your query here and press " + command_btn + "Enter",
-            indentWithTabs: true,
-            tabSize: 2,
+            placeholder: "Type your query here and press " + run_key_name,
             viewportMargin: Infinity,
             matchBrackets: true,
+            autoCloseBrackets: "[](){}\"\"",
             mode: "clojure"
         });
         var resultView = CodeMirror(document.getElementById("result"), {
@@ -57,10 +58,14 @@
             httpRequest.setRequestHeader('Content-Type', 'application/edn');
             httpRequest.send(queryView.getValue());
         }
-        queryView.setOption("extraKeys", {
-            "Ctrl-Enter": function() {submit()},
-            "Cmd-Enter": function() {submit()}
-        });
+        var key_map = {
+            "Tab": function(cm) {
+                var spaces = new Array(cm.getOption("indentUnit") + 1).join(" ");
+                cm.replaceSelection(spaces);
+            }
+        };
+        key_map[osx ? "Cmd-Enter" : "Ctrl-Enter"] = function() {submit()};
+        queryView.setOption("extraKeys", key_map);
         window.onload = function() {
             queryView.focus();
         };
