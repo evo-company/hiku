@@ -12,6 +12,9 @@
         #query {
             border-bottom: 1px solid #eee;
         }
+        #result .CodeMirror-cursor {
+            visibility: hidden;
+        }
     </style>
 </head>
 <body>
@@ -40,7 +43,7 @@
         });
         var resultView = CodeMirror(document.getElementById("result"), {
             mode: {name: "javascript", json: true},
-            readOnly: "nocursor"
+            readOnly: true
         });
         function submit() {
             var httpRequest = new XMLHttpRequest();
