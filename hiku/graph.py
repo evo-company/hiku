@@ -1,3 +1,6 @@
+from collections import OrderedDict
+
+
 class Field(object):
 
     def __init__(self, name, func):
@@ -9,7 +12,7 @@ class Edge(object):
 
     def __init__(self, name, fields):
         self.name = name
-        self.fields = {f.name: f for f in fields}
+        self.fields = OrderedDict((f.name, f) for f in fields)
 
 
 class Link(object):
