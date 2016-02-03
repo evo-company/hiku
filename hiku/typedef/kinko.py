@@ -8,14 +8,9 @@ from ..graph import Edge, Link, Field
 from .types import TypeDef, TypeRef, Record
 
 
-def graph_to_types(obj):
+def _translate(obj):
     if isinstance(obj, Edge):
-        if obj.name:
-            return TypeDef(obj.name, Record((f.name, graph_to_types(f))
-                                            for f in obj.fields.values()))
-        else:
-            # root edge
-            return [graph_to_types(f) for f in obj.fields.values()]
+        return Record((f.name, _translate(f)) for f in obj.fields.values())
     elif isinstance(obj, Link):
         if obj.to_list:
             return ListType(TypeRef(obj.entity))
@@ -28,7 +23,29 @@ def graph_to_types(obj):
         raise TypeError(type(obj))
 
 
-class SchemaPrinter(object):
+def graph_to_types(root):
+    types = []
+    for item in root.fields.values():
+        types.append(TypeDef(item.name, _translate(item)))
+    return types
+
+
+class _LinePrinter(object):
+
+    def visit(self, type_):
+        return type_.accept(self)
+
+    def visit_string(self, type_):
+        return 'String'
+
+    def visit_integer(self, type_):
+        return 'Integer'
+
+    def visit_typeref(self, type_):
+        return type_.name
+
+
+class _IndentedPrinter(object):
     _indent_size = 2
 
     def __init__(self):
@@ -44,11 +61,16 @@ class SchemaPrinter(object):
     def _newline(self):
         self._buffer.append('')
 
-    def _print(self, line):
+    def _print_call(self, line):
         self._buffer.append((' ' * self._indent_size * self._indent) + line)
 
-    def _append(self, string):
-        self._buffer[-1] += string
+    def _print_arg(self, type_):
+        if isinstance(type_, (Record, ListType)):
+            # has constructor
+            with self._add_indent():
+                self.visit(type_)
+        else:
+            self._buffer[-1] += ' ' + _LinePrinter().visit(type_)
 
     @classmethod
     def dumps(cls, types):
@@ -62,31 +84,22 @@ class SchemaPrinter(object):
     def visit(self, type_):
         type_.accept(self)
 
-    def visit_string(self, type_):
-        self._append('String')
-
-    def visit_integer(self, type_):
-        self._append('Integer')
-
-    def visit_list(self, type_):
-        raise NotImplementedError
+    def visit_typedef(self, type_):
+        self._print_call('type {}'.format(type_.name))
+        self._print_arg(type_.type)
 
     def visit_record(self, type_):
-        self._print('Record')
+        self._print_call('Record')
         with self._add_indent():
             for name, field_type in type_.fields.items():
-                self._print(':{} '.format(name))
-                self.visit(field_type)
+                self._print_call(':{}'.format(name))
+                self._print_arg(field_type)
 
-    def visit_typedef(self, type_):
-        self._print('type {}'.format(type_.name))
-        with self._add_indent():
-            self.visit(type_.type)
-
-    def visit_typeref(self, type_):
-        raise NotImplementedError
+    def visit_list(self, type_):
+        self._print_call('List')
+        self._print_arg(type_.item_type)
 
 
 def dumps(root):
     types = graph_to_types(root)
-    return SchemaPrinter.dumps(types)
+    return _IndentedPrinter.dumps(types)
