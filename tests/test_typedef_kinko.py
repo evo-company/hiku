@@ -26,7 +26,7 @@ class TestTypeDefKinko(TestCase):
     def testField(self):
         self.assertDumps(
             Edge(None, [
-                Field('A', noop),
+                Field('A', StringType, noop),
             ]),
             """
             type A String
@@ -37,12 +37,12 @@ class TestTypeDefKinko(TestCase):
         self.assertDumps(
             Edge(None, [
                 Edge('Foo', [
-                    Field('a', noop),
-                    Field('c', noop),
+                    Field('a', StringType, noop),
+                    Field('c', StringType, noop),
                 ]),
                 Edge('Bar', [
-                    Field('d', noop),
-                    Field('b', noop),
+                    Field('d', StringType, noop),
+                    Field('b', StringType, noop),
                 ]),
             ]),
             """
@@ -59,10 +59,10 @@ class TestTypeDefKinko(TestCase):
         )
 
     def testListSimple(self):
-        f = Field('A', noop)
-        f.type = ListType(IntegerType())
         self.assertDumps(
-            Edge(None, [f]),
+            Edge(None, [
+                Field('A', ListType(IntegerType), noop),
+            ]),
             """
             type A
               List Integer
@@ -70,10 +70,10 @@ class TestTypeDefKinko(TestCase):
         )
 
     def testListComplex(self):
-        f = Field('A', noop)
-        f.type = ListType(ListType(IntegerType()))
         self.assertDumps(
-            Edge(None, [f]),
+            Edge(None, [
+                Field('A', ListType(ListType(IntegerType)), noop),
+            ]),
             """
             type A
               List
@@ -82,10 +82,10 @@ class TestTypeDefKinko(TestCase):
         )
 
     def testDictSimple(self):
-        f = Field('A', noop)
-        f.type = DictType(StringType(), IntegerType())
         self.assertDumps(
-            Edge(None, [f]),
+            Edge(None, [
+                Field('A', DictType(StringType, IntegerType), noop),
+            ]),
             """
             type A
               Dict String Integer
@@ -93,11 +93,12 @@ class TestTypeDefKinko(TestCase):
         )
 
     def testDictComplex(self):
-        f = Field('A', noop)
-        f.type = DictType(StringType(),
-                          DictType(IntegerType(), IntegerType()))
         self.assertDumps(
-            Edge(None, [f]),
+            Edge(None, [
+                Field('A', DictType(StringType,
+                                    DictType(IntegerType, IntegerType)),
+                      noop),
+            ]),
             """
             type A
               Dict String
@@ -109,14 +110,14 @@ class TestTypeDefKinko(TestCase):
         self.assertDumps(
             Edge(None, [
                 Edge('Foo', [
-                    Field('a', noop),
+                    Field('a', StringType, noop),
                 ]),
                 Edge('Bar', [
-                    Field('b', noop),
+                    Field('b', StringType, noop),
                     Link('c', None, 'Foo', noop, to_list=False),
                 ]),
                 Edge('Baz', [
-                    Field('d', noop),
+                    Field('d', StringType, noop),
                     Link('e', None, 'Foo', noop, to_list=True),
                 ]),
             ]),

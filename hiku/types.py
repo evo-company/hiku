@@ -29,10 +29,20 @@ class ContainerType(Type):
     pass
 
 
+def to_instance(type_):
+    if isinstance(type_, type):
+        if issubclass(type_, ContainerType):
+            raise TypeError('Type {!r} is not instantiated'.format(type_))
+        else:
+            return type_()
+    else:
+        return type_
+
+
 class OptionType(ContainerType):
 
     def __init__(self, type_):
-        self.type = type_
+        self.type = to_instance(type_)
 
     def accept(self, visitor):
         return visitor.visit_option(self)
@@ -41,7 +51,7 @@ class OptionType(ContainerType):
 class ListType(ContainerType):
 
     def __init__(self, item_type):
-        self.item_type = item_type
+        self.item_type = to_instance(item_type)
 
     def accept(self, visitor):
         return visitor.visit_list(self)
@@ -50,8 +60,8 @@ class ListType(ContainerType):
 class DictType(ContainerType):
 
     def __init__(self, key_type, value_type):
-        self.key_type = key_type
-        self.value_type = value_type
+        self.key_type = to_instance(key_type)
+        self.value_type = to_instance(value_type)
 
     def accept(self, visitor):
         return visitor.visit_dict(self)
@@ -60,7 +70,9 @@ class DictType(ContainerType):
 class RecordType(ContainerType):
 
     def __init__(self, fields):
-        self.fields = OrderedDict(fields)
+        self.fields = OrderedDict(
+            (k, to_instance(v)) for k, v in OrderedDict(fields).items()
+        )
 
     def accept(self, visitor):
         return visitor.visit_record(self)

@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 from contextlib import contextmanager
 
-from ..types import ContainerType, StringType, RecordType, ListType
+from ..types import ContainerType, RecordType, ListType
 from ..graph import Edge, Link, Field
 
 from .types import TypeDef, TypeRef
@@ -17,8 +17,7 @@ def _translate(obj):
         else:
             return TypeRef(obj.entity)
     elif isinstance(obj, Field):
-        # FIXME: annotate all fields with types
-        return getattr(obj, 'type', None) or StringType()
+        return obj.type
     else:
         raise TypeError(type(obj))
 
