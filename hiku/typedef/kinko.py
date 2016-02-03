@@ -8,6 +8,24 @@ from ..graph import Edge, Link, Field
 from .types import TypeDef, TypeRef
 
 
+class TypeDoc(object):
+
+    def __init__(self, type_, doc):
+        self.type = type_
+        self.doc = doc
+
+    def accept(self, visitor):
+        return visitor.visit_typedoc(self)
+
+
+def _wrap_with_typedoc(func):
+    def wrapper(obj):
+        type_ = func(obj)
+        return TypeDoc(type_, obj.doc) if obj.doc is not None else type_
+    return wrapper
+
+
+@_wrap_with_typedoc
 def _translate(obj):
     if isinstance(obj, Edge):
         return RecordType((f.name, _translate(f)) for f in obj.fields.values())
@@ -53,6 +71,7 @@ class _IndentedPrinter(object):
     def __init__(self):
         self._indent = 0
         self._buffer = []
+        self._docs = {}
 
     @contextmanager
     def _add_indent(self):
@@ -67,11 +86,21 @@ class _IndentedPrinter(object):
         self._buffer.append((' ' * self._indent_size * self._indent) + line)
 
     def _print_arg(self, type_):
+        if isinstance(type_, TypeDoc):
+            self._docs[len(self._buffer) - 1] = type_.doc
+            type_ = type_.type
         if isinstance(type_, ContainerType):
             with self._add_indent():
                 self.visit(type_)
         else:
             self._buffer[-1] += ' ' + _LinePrinter().visit(type_)
+
+    def _iter_lines(self):
+        for i, line in enumerate(self._buffer):
+            if i in self._docs:
+                yield line + '  ; {}'.format(self._docs[i])
+            else:
+                yield line
 
     @classmethod
     def dumps(cls, types):
@@ -80,7 +109,7 @@ class _IndentedPrinter(object):
             if i > 0:
                 printer._newline()
             printer.visit(type_)
-        return '\n'.join(printer._buffer) + '\n'
+        return '\n'.join(printer._iter_lines()) + '\n'
 
     def visit(self, type_):
         type_.accept(self)

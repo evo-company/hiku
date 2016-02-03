@@ -138,3 +138,38 @@ class TestTypeDefKinko(TestCase):
                   List Foo
             """,
         )
+
+    def testDocs(self):
+        self.assertDumps(
+            Edge(None, [
+                Edge('Foo', [
+                    Field('a', StringType, noop, doc="Attribute a"),
+                ], doc="Some Foo explanation"),
+                Edge('Bar', [
+                    Field('b', StringType, noop, doc="Attribute b"),
+                    Link('c', None, 'Foo', noop, to_list=False,
+                         doc="Link c to Foo"),
+                ], doc="Some Bar explanation"),
+                Edge('Baz', [
+                    Field('d', StringType, noop, doc="Attribute d"),
+                    Link('e', None, 'Foo', noop, to_list=True,
+                         doc="Link e to Foo"),
+                ], doc="Some Baz explanation"),
+            ]),
+            """
+            type Foo  ; Some Foo explanation
+              Record
+                :a String  ; Attribute a
+
+            type Bar  ; Some Bar explanation
+              Record
+                :b String  ; Attribute b
+                :c Foo  ; Link c to Foo
+
+            type Baz  ; Some Baz explanation
+              Record
+                :d String  ; Attribute d
+                :e  ; Link e to Foo
+                  List Foo
+            """,
+        )
