@@ -2,15 +2,15 @@ from __future__ import absolute_import
 
 from contextlib import contextmanager
 
-from ..types import StringType, ListType
+from ..types import ContainerType, StringType, RecordType, ListType
 from ..graph import Edge, Link, Field
 
-from .types import TypeDef, TypeRef, Record
+from .types import TypeDef, TypeRef
 
 
 def _translate(obj):
     if isinstance(obj, Edge):
-        return Record((f.name, _translate(f)) for f in obj.fields.values())
+        return RecordType((f.name, _translate(f)) for f in obj.fields.values())
     elif isinstance(obj, Link):
         if obj.to_list:
             return ListType(TypeRef(obj.entity))
@@ -34,6 +34,9 @@ class _LinePrinter(object):
 
     def visit(self, type_):
         return type_.accept(self)
+
+    def visit_boolean(self, type_):
+        return 'Boolean'
 
     def visit_string(self, type_):
         return 'String'
@@ -65,8 +68,7 @@ class _IndentedPrinter(object):
         self._buffer.append((' ' * self._indent_size * self._indent) + line)
 
     def _print_arg(self, type_):
-        if isinstance(type_, (Record, ListType)):
-            # has constructor
+        if isinstance(type_, ContainerType):
             with self._add_indent():
                 self.visit(type_)
         else:
@@ -98,6 +100,11 @@ class _IndentedPrinter(object):
     def visit_list(self, type_):
         self._print_call('List')
         self._print_arg(type_.item_type)
+
+    def visit_dict(self, type_):
+        self._print_call('Dict')
+        self._print_arg(type_.key_type)
+        self._print_arg(type_.value_type)
 
 
 def dumps(root):

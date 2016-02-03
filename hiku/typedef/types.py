@@ -1,6 +1,3 @@
-from collections import OrderedDict
-
-
 class TypeDef(object):
 
     def __init__(self, name, fields):
@@ -18,12 +15,3 @@ class TypeRef(object):
 
     def accept(self, visitor):
         return visitor.visit_typeref(self)
-
-
-class Record(object):
-
-    def __init__(self, fields):
-        self.fields = OrderedDict(fields)
-
-    def accept(self, visitor):
-        return visitor.visit_record(self)

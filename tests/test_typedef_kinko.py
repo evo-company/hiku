@@ -3,7 +3,8 @@ from textwrap import dedent
 
 from hiku.graph import Edge, Field, Link
 from hiku.typedef.kinko import dumps
-
+from hiku.types import IntegerType, DictType, StringType
+from hiku.types import ListType
 from .base import TestCase
 
 
@@ -54,6 +55,53 @@ class TestTypeDefKinko(TestCase):
               Record
                 :d String
                 :b String
+            """,
+        )
+
+    def testListSimple(self):
+        f = Field('A', noop)
+        f.type = ListType(IntegerType())
+        self.assertDumps(
+            Edge(None, [f]),
+            """
+            type A
+              List Integer
+            """,
+        )
+
+    def testListComplex(self):
+        f = Field('A', noop)
+        f.type = ListType(ListType(IntegerType()))
+        self.assertDumps(
+            Edge(None, [f]),
+            """
+            type A
+              List
+                List Integer
+            """,
+        )
+
+    def testDictSimple(self):
+        f = Field('A', noop)
+        f.type = DictType(StringType(), IntegerType())
+        self.assertDumps(
+            Edge(None, [f]),
+            """
+            type A
+              Dict String Integer
+            """,
+        )
+
+    def testDictComplex(self):
+        f = Field('A', noop)
+        f.type = DictType(StringType(),
+                          DictType(IntegerType(), IntegerType()))
+        self.assertDumps(
+            Edge(None, [f]),
+            """
+            type A
+              Dict String
+                Dict Integer Integer
             """,
         )
 
