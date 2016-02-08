@@ -4,18 +4,12 @@ import difflib
 from textwrap import dedent
 from unittest import TestCase
 from collections import OrderedDict
-from concurrent.futures import ThreadPoolExecutor
 
 import astor
 
-from hiku import graph
 from hiku.dsl import define, S, if_, each, to_expr
 from hiku.compat import PY3
-from hiku.engine import Engine
 from hiku.compiler import ExpressionCompiler
-from hiku.sources.graph import subquery_fields
-from hiku.readers.simple import read
-from hiku.executors.threads import ThreadsExecutor
 
 
 @define(_name='foo')
@@ -92,33 +86,3 @@ class TestCompiler(TestCase):
             {'foo-value': env['foo'](1), 'baz-value': env['baz'](2), }
             """
         )
-
-    def testSubQuery(self):
-        thread_pool = ThreadPoolExecutor(2)
-        e = Engine(ThreadsExecutor(thread_pool))
-
-        def query_a(fields, ids):
-            data = {1: {'f': 2}}
-            return [[data[i][f] for f in fields] for i in ids]
-
-        r = graph.Edge(None, [
-            graph.Edge('a', [
-                graph.Field('f', query_a),
-            ]),
-        ])
-
-        # ----------------------------------------------
-
-        @define('[[:f]]', _name='inc_f')
-        def inc_f(obj):
-            return obj['f'] + 1
-
-        r1 = graph.Edge(None, [
-            graph.Edge('a1', subquery_fields(r, 'a', {
-                'f1': inc_f(S.this),
-            })),
-            graph.Link('la1', None, 'a1', lambda: [1], to_list=True),
-        ])
-
-        self.assertEqual(e.execute(r1, read('[{:la1 [:f1]}]'))['la1'],
-                         [{'f1': 3}])
