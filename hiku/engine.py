@@ -90,25 +90,21 @@ def link_result_to_ids(is_list, to_list, result):
 
 class Query(Workflow):
 
-    def __init__(self, queue, task_set, root, pattern):
+    def __init__(self, queue, task_set, root):
         self._queue = queue
         self._task_set = task_set
         self.root = root
-        self.pattern = pattern
         self._result = Result()
-
-    def begin(self):
-        self._process_edge(self.root, self.pattern, None)
 
     def result(self):
         return self._result
 
-    def _process_edge(self, edge, pattern, ids):
+    def process_edge(self, edge, pattern, ids):
         fields, links, edges = edge_split(edge, pattern)
 
         assert not (edge.name and edges), 'Nested edges are not supported yet'
         for link in edges:
-            self._process_edge(edge.fields[link.name], link.edge, None)
+            self.process_edge(edge.fields[link.name], link.edge, None)
 
         to_func = {}
         from_func = defaultdict(list)
@@ -156,7 +152,7 @@ class Query(Workflow):
                 fut = self._task_set.submit(graph_link.func)
                 self._queue.add_callback(fut, (
                     lambda _fut=fut, _gl=graph_link, _qe=query_link.edge:
-                    self._process_link(edge, _gl, _qe, ids, _fut.result())
+                    self.process_link(edge, _gl, _qe, ids, _fut.result())
                 ))
 
     def _process_edge_link(self, edge, graph_link, query_link, ids):
@@ -164,15 +160,15 @@ class Query(Workflow):
         fut = self._task_set.submit(graph_link.func, reqs)
         self._queue.add_callback(fut, (
             lambda:
-            self._process_link(edge, graph_link, query_link.edge, ids,
-                               fut.result())
+            self.process_link(edge, graph_link, query_link.edge, ids,
+                              fut.result())
         ))
 
-    def _process_link(self, edge, graph_link, query_edge, ids, result):
+    def process_link(self, edge, graph_link, query_edge, ids, result):
         store_links(self._result, edge, graph_link, ids, result)
         to_ids = link_result_to_ids(ids is not None, graph_link.to_list, result)
-        self._process_edge(self.root.fields[graph_link.entity], query_edge,
-                           to_ids)
+        self.process_edge(self.root.fields[graph_link.entity], query_edge,
+                          to_ids)
 
 
 class Engine(object):
@@ -183,6 +179,6 @@ class Engine(object):
     def execute(self, root, pattern):
         queue = Queue(self.executor)
         task_set = queue.fork(None)
-        query = Query(queue, task_set, root, pattern)
-        query.begin()
-        return self.executor.process(queue, query)
+        q = Query(queue, task_set, root)
+        q.process_edge(q.root, pattern, None)
+        return self.executor.process(queue, q)

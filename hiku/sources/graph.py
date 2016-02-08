@@ -45,8 +45,8 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
         pattern = reqs.fields['this'].edge
         procs = [procs_map[f.name] for f in fields]
 
-        query = Query(queue, task_set, sub_root, None)
-        query._process_link(sub_root, this_link, pattern, None, ids)
+        query = Query(queue, task_set, sub_root)
+        query.process_link(sub_root, this_link, pattern, None, ids)
 
         return _create_result_proc(query, fn_env, edge, fields, procs, ids)
 
