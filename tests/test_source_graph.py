@@ -14,6 +14,8 @@ from .base import TestCase
 
 
 DATA = {
+    'f1': 7,
+    'f2': 8,
     'x': {
         1: {'id': 1, 'a': 'a1', 'b': 'b1', 'y_id': 6},
         2: {'id': 2, 'a': 'a2', 'b': 'b2', 'y_id': 5},
@@ -29,6 +31,10 @@ DATA = {
 _XS_BY_Y_INDEX = defaultdict(list)
 for x in DATA['x'].values():
     _XS_BY_Y_INDEX[x['y_id']].append(x['id'])
+
+
+def query_f(fields):
+    return [DATA[f] for f in fields]
 
 
 def query_x(fields, ids):
@@ -56,6 +62,8 @@ def y_to_x(ids):
 
 
 LOW_ENV = Edge(None, [
+    Field('f1', query_f),
+    Field('f2', query_f),
     Edge('x', [
         Field('id', query_x),
         Field('a', query_x),
@@ -74,17 +82,17 @@ LOW_ENV = Edge(None, [
 ])
 
 
-@define('[[:b] [:d]]', _name='foo')
+@define('[[:b] [:d]]')
 def foo(x, y):
     return '{x[y]} {y[d]}'.format(x=x, y=y).upper()
 
 
-@define('[[:b {:y [:d]}]]', _name='bar')
+@define('[[:b {:y [:d]}]]')
 def bar(x):
     return '{x[b]} {x[y][d]}'.format(x=x).upper()
 
 
-@define('[[:d {:xs [:b]}]]', _name='baz')
+@define('[[:d {:xs [:b]}]]')
 def baz(y):
     xs = ', '.join('{x[b]}'.format(x=x) for x in y['xs'])
     return '{y[d]} [{xs}]'.format(y=y, xs=xs).upper()
@@ -94,6 +102,7 @@ HIGH_ENV = Edge(None, [
     Edge('x1', subquery_fields(LOW_ENV, 'x', {
         'id': S.this.id,
         'a': S.this.a,
+        'f': S.f1,
         'foo': foo(S.this, S.this.y),
         'bar': bar(S.this),
         'baz': baz(S.this.y),
@@ -102,6 +111,7 @@ HIGH_ENV = Edge(None, [
     Edge('y1', subquery_fields(LOW_ENV, 'y', {
         'id': S.this.id,
         'c': S.this.c,
+        'f': S.f2,
         'foo': each(S.x, S.this.xs, foo(S.x, S.this)),
         'bar': each(S.x, S.this.xs, bar(S.x)),
         'baz': baz(S.this),
@@ -119,9 +129,9 @@ class TestSourceGraph(TestCase):
         self.engine = Engine(ThreadsExecutor(ThreadPoolExecutor(2)))
 
     def testField(self):
-        result = self.engine.execute(HIGH_ENV, read('[{:xs1 [:a]}]'))
+        result = self.engine.execute(HIGH_ENV, read('[{:xs1 [:a :f]}]'))
         self.assertResult(result, {'xs1': [
-            {'a': 'a1'},
-            {'a': 'a2'},
-            {'a': 'a3'},
+            {'a': 'a1', 'f': 7},
+            {'a': 'a2', 'f': 7},
+            {'a': 'a3', 'f': 7},
         ]})

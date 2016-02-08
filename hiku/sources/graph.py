@@ -1,3 +1,4 @@
+from hiku import query
 from hiku.dsl import to_expr
 from hiku.graph import Link, Field
 from hiku.query import merge, RequirementsExtractor
@@ -40,15 +41,16 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
                          to_list=True)
 
         reqs = merge(reqs_map[f.name] for f in fields)
-        # FIXME: implement proper way to handle "this" value
-        # and query other possible data from sub_root
-        pattern = reqs.fields['this'].edge
         procs = [procs_map[f.name] for f in fields]
 
-        query = Query(queue, task_set, sub_root)
-        query.process_link(sub_root, this_link, pattern, None, ids)
+        this_req = reqs.fields['this'].edge
+        other_reqs = query.Edge([r for r in reqs.fields.values()
+                                 if r.name != 'this'])
 
-        return _create_result_proc(query, fn_env, edge, fields, procs, ids)
+        q = Query(queue, task_set, sub_root)
+        q.process_link(sub_root, this_link, this_req, None, ids)
+        q.process_edge(sub_root, other_reqs, None)
+        return _create_result_proc(q, fn_env, edge, fields, procs, ids)
 
     query_func.__subquery__ = True
 
