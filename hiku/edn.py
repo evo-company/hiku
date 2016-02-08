@@ -196,6 +196,12 @@ def symbol_handler(s):
         if c in '}])' + STOP_CHARS:
             if s[0] == ':':
                 yield Keyword(s[1:]), False
+            elif s == 'true':
+                yield True, False
+            elif s == 'false':
+                yield False, False
+            elif s == 'nil':
+                yield None, False
             else:
                 yield Symbol(s), False
         else:
@@ -222,12 +228,7 @@ def parser(target, tag_handlers, stop=None):
             return
         if c in STOP_CHARS:
             continue
-        if c in 'tfn':
-            expecting = {'t': 'rue', 'f': 'alse', 'n': 'il'}[c]
-            for char in expecting:
-                assert (yield) == char
-            target.send({'t': True, 'f': False, 'n': None}[c])
-        elif c == ';':
+        if c == ';':
             while (yield) != '\n':
                 pass
         elif c == '"':

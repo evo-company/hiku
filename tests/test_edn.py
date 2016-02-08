@@ -8,6 +8,9 @@ from hiku.edn import List, Keyword, Dict, TaggedElement, Tuple, Symbol
 
 class TestEDN(TestCase):
 
+    def testSymbol(self):
+        self.assertEqual(loads('foo'), Symbol('foo'))
+
     def testLoads(self):
         n = loads('[:foo {:bar [:baz]} (limit 10) '
                   '#foo/uuid "678d88b2-87b0-403b-b63d-5da7465aecc3"]')
