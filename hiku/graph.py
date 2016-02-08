@@ -26,11 +26,12 @@ class Field(object):
             raise TypeError('More positional arguments ({}) than expected (2)'
                             .format(len(other)))
 
-        doc, = _kw_only(['doc'], kwargs)
+        options, doc, = _kw_only(['options', 'doc'], kwargs)
 
         self.name = name
         self.type = to_instance(type_) if type_ is not None else None
         self.func = func
+        self.options = options
         self.doc = doc
 
 
@@ -44,10 +45,13 @@ class Edge(object):
 
 class Link(object):
 
-    def __init__(self, name, requires, entity, func, to_list=False, **kwargs):
+    def __init__(self, name, requires, entity, func, **kwargs):
+        to_list, options, doc, = _kw_only(['to_list', 'options', 'doc'], kwargs)
+
         self.name = name
         self.requires = requires
         self.entity = entity
         self.func = func
         self.to_list = to_list
-        self.doc, = _kw_only(['doc'], kwargs)
+        self.options = options
+        self.doc = doc

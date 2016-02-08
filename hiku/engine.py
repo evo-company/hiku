@@ -24,7 +24,7 @@ def edge_split(edge, pattern):
             if isinstance(field, Link):
                 if field.requires:
                     fields.append(edge.fields[field.requires])
-                links.append((field, item.edge))
+                links.append((field, item))
             elif isinstance(field, Edge):
                 edges.append(item)
             else:
@@ -145,33 +145,33 @@ class Query(Workflow):
                 ))
 
         # schedule link resolve
-        for link, link_pattern in links:
-            if link.requires:
-                fut = to_fut[to_func[link.requires]]
+        for graph_link, query_link in links:
+            if graph_link.requires:
+                fut = to_fut[to_func[graph_link.requires]]
                 self._queue.add_callback(fut, (
-                    lambda _link=link, _link_pattern=link_pattern:
-                    self._process_edge_link(edge, _link, _link_pattern, ids)
+                    lambda _gl=graph_link, _ql=query_link:
+                    self._process_edge_link(edge, _gl, _ql, ids)
                 ))
             else:
-                fut = self._task_set.submit(link.func)
+                fut = self._task_set.submit(graph_link.func)
                 self._queue.add_callback(fut, (
-                    lambda _fut=fut, _link=link, _link_pattern=link_pattern:
-                    self._process_link(edge, _link, _link_pattern, ids,
-                                       _fut.result())
+                    lambda _fut=fut, _gl=graph_link, _qe=query_link.edge:
+                    self._process_link(edge, _gl, _qe, ids, _fut.result())
                 ))
 
-    def _process_edge_link(self, edge, link, link_pattern, ids):
-        reqs = link_reqs(self._result, edge, link, ids)
-        fut = self._task_set.submit(link.func, reqs)
+    def _process_edge_link(self, edge, graph_link, query_link, ids):
+        reqs = link_reqs(self._result, edge, graph_link, ids)
+        fut = self._task_set.submit(graph_link.func, reqs)
         self._queue.add_callback(fut, (
             lambda:
-            self._process_link(edge, link, link_pattern, ids, fut.result())
+            self._process_link(edge, graph_link, query_link.edge, ids,
+                               fut.result())
         ))
 
-    def _process_link(self, edge, link, link_pattern, ids, result):
-        store_links(self._result, edge, link, ids, result)
-        to_ids = link_result_to_ids(ids is not None, link.to_list, result)
-        self._process_edge(self.root.fields[link.entity], link_pattern,
+    def _process_link(self, edge, graph_link, query_edge, ids, result):
+        store_links(self._result, edge, graph_link, ids, result)
+        to_ids = link_result_to_ids(ids is not None, graph_link.to_list, result)
+        self._process_edge(self.root.fields[graph_link.entity], query_edge,
                            to_ids)
 
 

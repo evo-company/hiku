@@ -6,6 +6,14 @@ from . import graph
 from .nodes import Symbol, Tuple, Keyword, NodeVisitor, NodeTransformer
 
 
+def _name_repr(name, options):
+    if options is None:
+        return ':{}'.format(name)
+    else:
+        return '(:{} {})'.format(name, ' '.join((':{} {!r}'.format(k, v)
+                                                 for k, v in options.items())))
+
+
 class Ref(object):
 
     def __init__(self, backref, to):
@@ -22,21 +30,24 @@ class NamedRef(Ref):
 
 class Field(object):
 
-    def __init__(self, name):
+    def __init__(self, name, options=None):
         self.name = name
+        self.options = options
 
     def __repr__(self):
-        return ':{}'.format(self.name)
+        return _name_repr(self.name, self.options)
 
 
 class Link(object):
 
-    def __init__(self, name, edge):
+    def __init__(self, name, edge, options=None):
         self.name = name
         self.edge = edge
+        self.options = options
 
     def __repr__(self):
-        return '{{:{} {!r}}}'.format(self.name, self.edge)
+        return '{{{} {!r}}}'.format(_name_repr(self.name, self.options),
+                                    self.edge)
 
 
 class Edge(object):

@@ -31,17 +31,17 @@ class Env(object):
         graph.Field('b', lambda _: 1/0),
         graph.Field('c', lambda _: 1/0),
     ])
-    x1 = graph.Link('x1', None, 'x', lambda: 1/0, False)
-    xs = graph.Link('xs', None, 'x', lambda: 1/0, True)
+    x1 = graph.Link('x1', None, 'x', lambda: 1/0, to_list=False)
+    xs = graph.Link('xs', None, 'x', lambda: 1/0, to_list=True)
     y = graph.Edge('y', [
         graph.Field('d', lambda _: 1/0),
         graph.Field('e', lambda _: 1/0),
         graph.Field('f', lambda _: 1/0),
-        graph.Link('x1', None, 'x', lambda: 1/0, False),
-        graph.Link('xs', None, 'x', lambda: 1/0, True),
+        graph.Link('x1', None, 'x', lambda: 1/0, to_list=False),
+        graph.Link('xs', None, 'x', lambda: 1/0, to_list=True),
     ])
-    y1 = graph.Link('y1', None, 'y', lambda: 1/0, False)
-    ys = graph.Link('ys', None, 'y', lambda: 1/0, True)
+    y1 = graph.Link('y1', None, 'y', lambda: 1/0, to_list=False)
+    ys = graph.Link('ys', None, 'y', lambda: 1/0, to_list=True)
 
 
 _ENV = {i.name: i

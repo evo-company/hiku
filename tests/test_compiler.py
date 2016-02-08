@@ -117,7 +117,7 @@ class TestCompiler(TestCase):
             graph.Edge('a1', subquery_fields(r, 'a', {
                 'f1': inc_f(S.this),
             })),
-            graph.Link('la1', None, 'a1', lambda: [1], True),
+            graph.Link('la1', None, 'a1', lambda: [1], to_list=True),
         ])
 
         self.assertEqual(e.execute(r1, read('[{:la1 [:f1]}]'))['la1'],

@@ -36,7 +36,7 @@ def db_link(conn, name, from_, to_, to_list):
         def query_func(ids):
             return query_link_o2m(conn, to_, ids)
 
-    return Link(name, from_.name, to_.table.name, query_func, to_list)
+    return Link(name, from_.name, to_.table.name, query_func, to_list=to_list)
 
 
 def query_fields(conn, pkey, mapping, fields, ids):

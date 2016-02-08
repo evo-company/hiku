@@ -36,7 +36,8 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
                                        '<expr>', 'eval'))
 
     def query_func(queue, task_set, edge, fields, ids):
-        this_link = Link(THIS_LINK_NAME, None, sub_edge_name, None, True)
+        this_link = Link(THIS_LINK_NAME, None, sub_edge_name, None,
+                         to_list=True)
 
         reqs = merge(reqs_map[f.name] for f in fields)
         # FIXME: implement proper way to handle "this" value
