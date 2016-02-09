@@ -2,7 +2,7 @@ from wsgiref.simple_server import make_server
 
 from hiku.console.ui import ConsoleResponse, QueryResponse
 
-from tests.test_source_sql import TestSourceSQL, ENV
+from tests.test_source_sqlalchemy import TestSourceSQL, ENV
 
 
 class Application(object):
