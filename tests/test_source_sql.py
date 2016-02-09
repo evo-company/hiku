@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from itertools import chain
 from concurrent.futures import ThreadPoolExecutor
 
 from sqlalchemy import create_engine
@@ -43,7 +44,7 @@ def foo_list():
 
 
 def bar_list():
-    return [3, 2, 1]
+    return [6, 5, 4]
 
 
 def not_found_one():
@@ -51,29 +52,36 @@ def not_found_one():
 
 
 def not_found_list():
-    return [3, -2, 1]
+    return [6, -1, 4]
+
+
+def direct_link(ids):
+    return ids
 
 
 ENV = Edge(None, [
-    Edge(foo_table.name,
-         db_fields(session, foo_table, [
-             'id',
-             'name',
-             'count',
-             'bar_id',
-         ]) + [
-             db_link(session, 'bar',
-                     foo_table.c.bar_id, bar_table.c.id, False),
-         ]),
-    Edge(bar_table.name,
-         db_fields(session, bar_table, [
-             'id',
-             'name',
-             'type',
-         ]) + [
-             db_link(session, 'foo-s',
-                     bar_table.c.id, foo_table.c.bar_id, True),
-         ]),
+    Edge(foo_table.name, chain(
+        db_fields(session, foo_table, [
+            'id',
+            'name',
+            'count',
+            'bar_id',
+        ]),
+        [
+            Link('bar', 'bar_id', 'bar', direct_link, to_list=False),
+        ],
+    )),
+    Edge(bar_table.name, chain(
+        db_fields(session, bar_table, [
+            'id',
+            'name',
+            'type',
+        ]),
+        [
+            db_link(session, 'foo-s', 'id',
+                    foo_table.c.bar_id, foo_table.c.id, to_list=True),
+        ],
+    )),
     Link('foo-list', None, foo_table.name, foo_list, to_list=True),
     Link('bar-list', None, bar_table.name, bar_list, to_list=True),
     Link('not-found-one', None, bar_table.name, not_found_one, to_list=False),
@@ -94,42 +102,42 @@ class TestSourceSQL(TestCase):
         metadata.create_all(sa_engine)
         session.configure(bind=sa_engine)
 
-        def bar_insert(r):
-            return sa_engine.execute(bar_table.insert(), r).lastrowid
+        for r in [
+            {'id': 4, 'name': 'bar1', 'type': 1},
+            {'id': 5, 'name': 'bar2', 'type': 2},
+            {'id': 6, 'name': 'bar3', 'type': 3},
+        ]:
+            sa_engine.execute(bar_table.insert(), r)
 
-        self.bar_ids = list(map(bar_insert, [
-            {'name': 'bar1', 'type': 1},
-            {'name': 'bar2', 'type': 2},
-            {'name': 'bar3', 'type': 3},
-        ]))
+        for r in [
+            {'name': 'foo1', 'count': 5, 'bar_id': 6},
+            {'name': 'foo2', 'count': 10, 'bar_id': 5},
+            {'name': 'foo3', 'count': 15, 'bar_id': 4},
+            {'name': 'foo4', 'count': 20, 'bar_id': 6},
+            {'name': 'foo5', 'count': 25, 'bar_id': 5},
+            {'name': 'foo6', 'count': 30, 'bar_id': 4},
+        ]:
+            sa_engine.execute(foo_table.insert(), r)
 
-        def foo_insert(r):
-            return sa_engine.execute(foo_table.insert(), r).lastrowid
-
-        list(map(foo_insert, [
-            {'name': 'foo1', 'count': 5, 'bar_id': self.bar_ids[0]},
-            {'name': 'foo2', 'count': 10, 'bar_id': self.bar_ids[1]},
-            {'name': 'foo3', 'count': 15, 'bar_id': self.bar_ids[2]},
-        ]))
         self.engine = Engine(ThreadsExecutor(thread_pool))
 
     def tearDown(self):
         session.remove()
 
-    def assertExecute(self, src, result):
+    def assertExecute(self, src, value):
         result = self.engine.execute(ENV, read(src))
-        self.assertResult(result, result)
+        self.assertResult(result, value)
 
     def testManyToOne(self):
         self.assertExecute(
             '[{:foo-list [:name :count {:bar [:name :type]}]}]',
             {'foo-list': [
-                {'name': 'foo3', 'count': 15, 'bar_id': 3,
-                 'bar': {'name': 'bar3', 'type': 3}},
-                {'name': 'foo2', 'count': 10, 'bar_id': 2,
-                 'bar': {'name': 'bar2', 'type': 2}},
-                {'name': 'foo1', 'count': 5, 'bar_id': 1,
+                {'name': 'foo3', 'count': 15, 'bar_id': 4,
                  'bar': {'name': 'bar1', 'type': 1}},
+                {'name': 'foo2', 'count': 10, 'bar_id': 5,
+                 'bar': {'name': 'bar2', 'type': 2}},
+                {'name': 'foo1', 'count': 5, 'bar_id': 6,
+                 'bar': {'name': 'bar3', 'type': 3}},
             ]}
         )
 
@@ -137,14 +145,17 @@ class TestSourceSQL(TestCase):
         self.assertExecute(
             '[{:bar-list [:name :type {:foo-s [:name :count]}]}]',
             {'bar-list': [
-                {'id': 3, 'name': 'bar3', 'type': 3, 'foo-s': [
-                    {'name': 'foo3', 'count': 15},
-                ]},
-                {'id': 2, 'name': 'bar2', 'type': 2, 'foo-s': [
-                    {'name': 'foo2', 'count': 10},
-                ]},
-                {'id': 1, 'name': 'bar1', 'type': 1, 'foo-s': [
+                {'id': 6, 'name': 'bar3', 'type': 3, 'foo-s': [
                     {'name': 'foo1', 'count': 5},
+                    {'name': 'foo4', 'count': 20},
+                ]},
+                {'id': 5, 'name': 'bar2', 'type': 2, 'foo-s': [
+                    {'name': 'foo2', 'count': 10},
+                    {'name': 'foo5', 'count': 25},
+                ]},
+                {'id': 4, 'name': 'bar1', 'type': 1, 'foo-s': [
+                    {'name': 'foo3', 'count': 15},
+                    {'name': 'foo6', 'count': 30},
                 ]},
             ]},
         )
