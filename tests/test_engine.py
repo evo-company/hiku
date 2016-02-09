@@ -2,12 +2,13 @@ from __future__ import unicode_literals
 
 from concurrent.futures import ThreadPoolExecutor
 
+from hiku import query
 from hiku.graph import Edge, Field, Link
 from hiku.engine import Engine
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
 
-from .base import TestCase, patch
+from .base import TestCase, patch, reqs_eq_patcher
 
 
 def query_fields1(*args, **kwargs):
@@ -63,8 +64,9 @@ class TestEngine(TestCase):
             qf1.return_value = ['a1']
             qf2.return_value = ['b1']
             self.assertResult(self.execute('[:a :b]'), {'a': 'a1', 'b': 'b1'})
-            qf1.assert_called_once_with(['a'])
-            qf2.assert_called_once_with(['b'])
+            with reqs_eq_patcher():
+                qf1.assert_called_once_with([query.Field('a')])
+                qf2.assert_called_once_with([query.Field('b')])
 
     def testEdgeFields(self):
         with _patch(query_fields1) as qf1, _patch(query_fields2) as qf2:
@@ -72,8 +74,9 @@ class TestEngine(TestCase):
             qf2.return_value = ['e1']
             self.assertResult(self.execute('[{:c [:d :e]}]'),
                               {'c': {'d': 'd1', 'e': 'e1'}})
-            qf1.assert_called_once_with(['d'])
-            qf2.assert_called_once_with(['e'])
+            with reqs_eq_patcher():
+                qf1.assert_called_once_with([query.Field('d')])
+                qf2.assert_called_once_with([query.Field('e')])
 
     def testLinkFields(self):
         with _patch(query_fields1) as qf1, _patch(query_fields2) as qf2,\
@@ -84,9 +87,10 @@ class TestEngine(TestCase):
             result = self.execute('[{:f [:d :e]}]')
             self.assertResult(result, {'f': [{'d': 'd1', 'e': 'e1'}]})
             self.assertEqual(result.idx, {'c': {1: {'d': 'd1', 'e': 'e1'}}})
-            ql1.assert_called_once_with()
-            qf1.assert_called_once_with(['d'], [1])
-            qf2.assert_called_once_with(['e'], [1])
+            with reqs_eq_patcher():
+                ql1.assert_called_once_with()
+                qf1.assert_called_once_with([query.Field('d')], [1])
+                qf2.assert_called_once_with([query.Field('e')], [1])
 
     def testLinks(self):
         with _patch(query_fields1) as qf1, _patch(query_fields2) as qf2,\
@@ -99,7 +103,29 @@ class TestEngine(TestCase):
             self.assertResult(result, {'f': [{'d': 'd1'}], 'g': [{'e': 'e1'}]})
             self.assertEqual(result.idx, {'c': {1: {'d': 'd1'},
                                                 2: {'e': 'e1'}}})
-            ql1.assert_called_once_with()
-            qf1.assert_called_once_with(['d'], [1])
-            ql2.assert_called_once_with()
-            qf2.assert_called_once_with(['e'], [2])
+            with reqs_eq_patcher():
+                ql1.assert_called_once_with()
+                qf1.assert_called_once_with([query.Field('d')], [1])
+                ql2.assert_called_once_with()
+                qf2.assert_called_once_with([query.Field('e')], [2])
+
+    def testFieldOptions(self):
+        with _patch(query_fields1) as qf1:
+            qf1.return_value = ['a1']
+            result = self.execute('[(:a :foo "bar")]')
+            self.assertResult(result, {'a': 'a1'})
+            with reqs_eq_patcher():
+                qf1.assert_called_once_with([
+                    query.Field('a', options={'foo': 'bar'}),
+                ])
+
+    @patch.object(TEST_ENV.fields['f'], 'options', {'foo'})
+    def testLinkOptions(self):
+        with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
+            ql1.return_value = [1]
+            qf1.return_value = [['d1']]
+            result = self.execute('[{(:f :foo "bar") [:d]}]')
+            self.assertResult(result, {'f': [{'d': 'd1'}]})
+            with reqs_eq_patcher():
+                ql1.assert_called_once_with({'foo': 'bar'})
+                qf1.assert_called_once_with([query.Field('d')], [1])

@@ -31,7 +31,7 @@ class Field(object):
         self.name = name
         self.type = to_instance(type_) if type_ is not None else None
         self.func = func
-        self.options = options
+        self.options = frozenset(options or ())
         self.doc = doc
 
 
@@ -53,5 +53,5 @@ class Link(object):
         self.entity = entity
         self.func = func
         self.to_list = to_list
-        self.options = options
+        self.options = frozenset(options or ())
         self.doc = doc

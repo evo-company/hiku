@@ -18,12 +18,13 @@ def edge_split(edge, pattern):
 
     for item in pattern.fields.values():
         if isinstance(item, query.Field):
-            fields.append(edge.fields[item.name])
+            fields.append((edge.fields[item.name], item))
         elif isinstance(item, query.Link):
             field = edge.fields[item.name]
             if isinstance(field, Link):
                 if field.requires:
-                    fields.append(edge.fields[field.requires])
+                    fields.append((edge.fields[field.requires],
+                                   query.Field(field.requires)))
                 links.append((field, item))
             elif isinstance(field, Edge):
                 edges.append(item)
@@ -108,9 +109,9 @@ class Query(Workflow):
 
         to_func = {}
         from_func = defaultdict(list)
-        for field in fields:
-            to_func[field.name] = field.func
-            from_func[field.func].append(field)
+        for graph_field, query_field in fields:
+            to_func[graph_field.name] = graph_field.func
+            from_func[graph_field.func].append(query_field)
 
         # schedule fields resolve
         to_fut = {}
@@ -128,11 +129,10 @@ class Query(Workflow):
                     result_proc(self._result)
                 ))
             else:
-                field_names = [f.name for f in func_fields]
                 if ids is not None:
-                    fut = self._task_set.submit(func, field_names, ids)
+                    fut = self._task_set.submit(func, func_fields, ids)
                 else:
-                    fut = self._task_set.submit(func, field_names)
+                    fut = self._task_set.submit(func, func_fields)
                 to_fut[func] = fut
                 self._queue.add_callback(fut, (
                     lambda _fut=fut, _func_fields=func_fields:
@@ -149,7 +149,13 @@ class Query(Workflow):
                     self._process_edge_link(edge, _gl, _ql, ids)
                 ))
             else:
-                fut = self._task_set.submit(graph_link.func)
+                # TODO: validate query_link.options according to the
+                # graph_link.options
+                if graph_link.options:
+                    fut = self._task_set.submit(graph_link.func,
+                                                query_link.options)
+                else:
+                    fut = self._task_set.submit(graph_link.func)
                 self._queue.add_callback(fut, (
                     lambda _fut=fut, _gl=graph_link, _qe=query_link.edge:
                     self.process_link(edge, _gl, _qe, ids, _fut.result())
@@ -157,7 +163,13 @@ class Query(Workflow):
 
     def _process_edge_link(self, edge, graph_link, query_link, ids):
         reqs = link_reqs(self._result, edge, graph_link, ids)
-        fut = self._task_set.submit(graph_link.func, reqs)
+        # TODO: validate query_link.options according to the
+        # graph_link.options
+        if graph_link.options:
+            fut = self._task_set.submit(graph_link.func, reqs,
+                                        query_link.options)
+        else:
+            fut = self._task_set.submit(graph_link.func, reqs)
         self._queue.add_callback(fut, (
             lambda:
             self.process_link(edge, graph_link, query_link.edge, ids,

@@ -34,15 +34,15 @@ for x in DATA['x'].values():
 
 
 def query_f(fields):
-    return [DATA[f] for f in fields]
+    return [DATA[f.name] for f in fields]
 
 
 def query_x(fields, ids):
-    return [[DATA['x'][id_][f] for f in fields] for id_ in ids]
+    return [[DATA['x'][id_][f.name] for f in fields] for id_ in ids]
 
 
 def query_y(fields, ids):
-    return [[DATA['y'][id_][f] for f in fields] for id_ in ids]
+    return [[DATA['y'][id_][f.name] for f in fields] for id_ in ids]
 
 
 def to_x():

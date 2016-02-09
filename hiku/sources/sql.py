@@ -46,7 +46,7 @@ def query_fields(conn, pkey, mapping, fields, ids):
     ops = set([])
     columns = []
     for field in fields:
-        (table, column_name), op = mapping[field]
+        (table, column_name), op = mapping[field.name]
         columns.append(getattr(table.c, column_name))
         if op is not None:
             ops.add(op)
