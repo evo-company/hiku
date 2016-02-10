@@ -13,6 +13,13 @@ def _kw_only(names, kwargs):
         return values
 
 
+class Option(object):
+
+    def __init__(self, name, type_=None):
+        self.name = name
+        self.type = to_instance(type_) if type_ is not None else None
+
+
 class Field(object):
 
     def __init__(self, name, *other, **kwargs):
@@ -31,7 +38,7 @@ class Field(object):
         self.name = name
         self.type = to_instance(type_) if type_ is not None else None
         self.func = func
-        self.options = frozenset(options or ())
+        self.options = OrderedDict((o.name, o) for o in (options or ()))
         self.doc = doc
 
 
@@ -53,5 +60,5 @@ class Link(object):
         self.entity = entity
         self.func = func
         self.to_list = to_list
-        self.options = frozenset(options or ())
+        self.options = OrderedDict((o.name, o) for o in (options or ()))
         self.doc = doc

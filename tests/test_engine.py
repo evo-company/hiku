@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from concurrent.futures import ThreadPoolExecutor
 
 from hiku import query
-from hiku.graph import Edge, Field, Link
+from hiku.graph import Edge, Field, Link, Option
 from hiku.engine import Engine
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
@@ -119,7 +119,7 @@ class TestEngine(TestCase):
                     query.Field('a', options={'foo': 'bar'}),
                 ])
 
-    @patch.object(TEST_ENV.fields['f'], 'options', {'foo'})
+    @patch.object(TEST_ENV.fields['f'], 'options', {'foo': Option('foo')})
     def testLinkOptions(self):
         with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
             ql1.return_value = [1]
