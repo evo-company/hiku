@@ -36,20 +36,28 @@ class TestReadSimple(TestCase):
     def testFieldOptions(self):
         self.assertReads(
             """
-            [(:foo :bar 1) :baz]
+            [(:foo {:bar 1}) :baz]
             """,
             Edge([Field('foo', options={'bar': 1}),
                   Field('baz')]),
         )
 
     def testFieldInvalidOptions(self):
-        # missing keyword value
+        # missing options
+        with self.assertRaises(TypeError):
+            read('[(:foo)]')
+
+        # invalid options type
         with self.assertRaises(TypeError):
             read('[(:foo :bar)]')
 
-        # not a keyword
+        # more arguments than expected
         with self.assertRaises(TypeError):
             read('[(:foo 1 2)]')
+
+        # invalid option key
+        with self.assertRaises(TypeError):
+            read('[(:foo {1 2})]')
 
     def testLink(self):
         self.assertReads(
@@ -62,7 +70,7 @@ class TestReadSimple(TestCase):
     def testLinkOptions(self):
         self.assertReads(
             """
-            [{(:foo :bar 1) [:baz]}]
+            [{(:foo {:bar 1}) [:baz]}]
             """,
             Edge([Link('foo', Edge([Field('baz')]),
                        options={'bar': 1})]),
@@ -75,10 +83,18 @@ class TestReadSimple(TestCase):
             read('[{foo [:baz]}]')
 
     def testLinkInvalidOptions(self):
-        # missing keyword value
+        # missing options
+        with self.assertRaises(TypeError):
+            read('[{(:foo) [:baz]}]')
+
+        # invalid options type
         with self.assertRaises(TypeError):
             read('[{(:foo :bar) [:baz]}]')
 
-        # not a keyword
+        # more arguments than expected
         with self.assertRaises(TypeError):
             read('[{(:foo 1 2) [:bar]}]')
+
+        # invalid option key
+        with self.assertRaises(TypeError):
+            read('[{(:foo {1 2}) [:bar]}]')

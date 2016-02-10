@@ -3,34 +3,44 @@ from ..query import Edge, Link, Field
 from ..compat import text_type
 
 
-def _iter_options(args):
-    i = iter(args)
-    while True:
-        key = next(i)
-        if not isinstance(key, Keyword):
-            raise TypeError('Option keyword expected, {} received instead'
-                            .format(key))
-        try:
-            value = next(i)
-        except StopIteration:
-            raise TypeError('Missing keyword value')
-        else:
-            yield (text_type(key), value)
+def _get_options(value):
+    if len(value) < 2:
+        raise TypeError('Missing options argument')
+    elif len(value) > 2:
+        raise TypeError('More arguments than expected')
+
+    keyword_value, options_value = value
+    if not isinstance(keyword_value, Keyword):
+        raise TypeError('Names should be specified as keywords, not as {!r}'
+                        .format(type(keyword_value)))
+
+    if not isinstance(options_value, Dict):
+        raise TypeError('Options should be specified as mapping, not as {!r}'
+                        .format(type(options_value)))
+
+    non_keyword = set((k, type(k)) for k in options_value.keys()
+                      if not isinstance(k, Keyword))
+    if non_keyword:
+        keys_repr = ' '.join('{} {!r}'.format(k, t) for k, t in non_keyword)
+        raise TypeError('Option names should be specified as keywords: {}'
+                        .format(keys_repr))
+
+    name = text_type(keyword_value)
+    options = {text_type(k): v for k, v in options_value.items()}
+    return name, options
 
 
 def _extract(values):
     for value in values:
         if isinstance(value, Tuple):
-            name = text_type(value[0])
-            options = dict(_iter_options(value[1:]))
+            name, options = _get_options(value)
             yield Field(name, options)
         elif isinstance(value, Keyword):
             yield Field(text_type(value))
         elif isinstance(value, Dict):
             for key, val in value.items():
                 if isinstance(key, Tuple):
-                    name = text_type(key[0])
-                    options = dict(_iter_options(key[1:]))
+                    name, options = _get_options(key)
                 elif isinstance(key, Keyword):
                     name = text_type(key)
                     options = None

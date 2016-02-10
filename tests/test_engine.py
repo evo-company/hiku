@@ -112,7 +112,7 @@ class TestEngine(TestCase):
     def testFieldOptions(self):
         with _patch(query_fields1) as qf1:
             qf1.return_value = ['a1']
-            result = self.execute('[(:a :foo "bar")]')
+            result = self.execute('[(:a {:foo "bar"})]')
             self.assertResult(result, {'a': 'a1'})
             with reqs_eq_patcher():
                 qf1.assert_called_once_with([
@@ -124,7 +124,7 @@ class TestEngine(TestCase):
         with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
             ql1.return_value = [1]
             qf1.return_value = [['d1']]
-            result = self.execute('[{(:f :foo "bar") [:d]}]')
+            result = self.execute('[{(:f {:foo "bar"}) [:d]}]')
             self.assertResult(result, {'f': [{'d': 'd1'}]})
             with reqs_eq_patcher():
                 ql1.assert_called_once_with({'foo': 'bar'})
