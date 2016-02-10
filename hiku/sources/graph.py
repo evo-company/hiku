@@ -1,9 +1,11 @@
-from hiku import query
-from hiku.dsl import to_expr
-from hiku.graph import Link, Field
-from hiku.query import merge, RequirementsExtractor
-from hiku.engine import Query, store_fields
-from hiku.compiler import ExpressionCompiler
+from .. import query
+from ..dsl import to_expr
+from ..refs import RequirementsExtractor
+from ..graph import Link, Field
+from ..query import merge
+from ..engine import Query, store_fields
+from ..checker import check
+from ..compiler import ExpressionCompiler
 
 
 THIS_LINK_NAME = '__link_to_this'
@@ -32,7 +34,8 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
     reqs_map = {}
     procs_map = {}
     for name, expr in exprs.items():
-        reqs_map[name] = RequirementsExtractor.analyze(re_env, expr)
+        expr = check(re_env, expr)
+        reqs_map[name] = RequirementsExtractor.extract(re_env, expr)
         procs_map[name] = eval(compile(ec.compile_lambda_expr(expr),
                                        '<expr>', 'eval'))
 

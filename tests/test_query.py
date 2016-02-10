@@ -2,9 +2,9 @@ from unittest import TestCase
 
 from hiku import graph
 from hiku.dsl import define, S, each, to_expr
-from hiku.query import merge, Edge, Field, Link, Ref, Checker
-from hiku.query import NamedRef, ref_to_req
-from hiku.query import RequirementsExtractor
+from hiku.refs import Ref, NamedRef, ref_to_req, RequirementsExtractor
+from hiku.query import merge, Edge, Field, Link
+from hiku.checker import Checker, check
 
 from .base import reqs_eq_patcher, ref_eq_patcher
 
@@ -148,7 +148,8 @@ class TestQuery(TestCase):
         fn_reg = {}
         expr = to_expr(expr, fn_reg)
         env = dict(_ENV, **{fn.__fn_name__: fn for fn in fn_reg.values()})
-        expr_reqs = RequirementsExtractor.analyze(env, expr)
+        expr = check(env, expr)
+        expr_reqs = RequirementsExtractor.extract(env, expr)
         with reqs_eq_patcher():
             self.assertEqual(expr_reqs, reqs)
 

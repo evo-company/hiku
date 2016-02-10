@@ -9,7 +9,8 @@ except ImportError:
     from mock import call as _call
     from itertools import izip_longest as zip_longest
 
-from hiku.query import Field, Link, Edge, Ref
+from hiku.refs import Ref
+from hiku.query import Field, Link, Edge
 
 patch = _patch
 Mock = _Mock
