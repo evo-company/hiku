@@ -19,6 +19,9 @@ class Field(object):
     def __repr__(self):
         return _name_repr(self.name, self.options)
 
+    def accept(self, visitor):
+        return visitor.visit_field(self)
+
 
 class Link(object):
 
@@ -31,6 +34,9 @@ class Link(object):
         return '{{{} {!r}}}'.format(_name_repr(self.name, self.options),
                                     self.edge)
 
+    def accept(self, visitor):
+        return visitor.visit_link(self)
+
 
 class Edge(object):
 
@@ -39,6 +45,9 @@ class Edge(object):
 
     def __repr__(self):
         return '[{}]'.format(' '.join(map(repr, self.fields.values())))
+
+    def accept(self, visitor):
+        return visitor.visit_edge(self)
 
 
 def _merge(edges):
