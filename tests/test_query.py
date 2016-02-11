@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 from hiku import graph
-from hiku.dsl import define, S, each, to_expr
+from hiku.expr import define, S, each, to_expr
 from hiku.refs import Ref, NamedRef, ref_to_req, RequirementsExtractor
 from hiku.query import merge, Edge, Field, Link
 from hiku.checker import Checker, check

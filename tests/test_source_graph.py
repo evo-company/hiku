@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
-from hiku.dsl import define, S, each, Expr
+from hiku.expr import define, S, each, Expr
 from hiku.graph import Edge, Link, Field
 from hiku.engine import Engine
 from hiku.sources.graph import subquery_fields

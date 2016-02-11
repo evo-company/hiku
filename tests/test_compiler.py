@@ -7,7 +7,7 @@ from collections import OrderedDict
 
 import astor
 
-from hiku.dsl import define, S, if_, each, to_expr
+from hiku.expr import define, S, if_, each, to_expr
 from hiku.compat import PY3
 from hiku.compiler import ExpressionCompiler
 
