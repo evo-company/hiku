@@ -1,7 +1,8 @@
 import pkgutil
 
 from ..compat import text_type
-from ..writers.json import dumps
+from ..writers.json import dumps as dumps_result
+from ..typedef.kinko import dumps as dumps_typedef
 from ..readers.simple import read
 
 
@@ -36,6 +37,19 @@ class ConsoleResponse(object):
         return [self.page]
 
 
+class DocResponse(object):
+
+    def __init__(self, root):
+        self.doc_data = dumps_typedef(root).encode('utf-8')
+
+    def __call__(self, environ, start_response):
+        start_response('200 OK', [
+            ('Content-Type', 'text/html'),
+            ('Content-Length', text_type(len(self.doc_data))),
+        ])
+        return [self.doc_data]
+
+
 class QueryResponse(object):
 
     def __init__(self, engine, root):
@@ -48,7 +62,7 @@ class QueryResponse(object):
         pattern = environ['wsgi.input'].read(int(environ['CONTENT_LENGTH']))
         query = read(pattern.decode('utf-8'))
         result = self.engine.execute(self.root, query)
-        result_data = dumps(result).encode('utf-8')
+        result_data = dumps_result(result).encode('utf-8')
         start_response('200 OK', [
             ('Content-Type', 'application/json'),
             ('Content-Length', text_type(len(result_data))),

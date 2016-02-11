@@ -15,3 +15,9 @@ class TypeRef(object):
 
     def accept(self, visitor):
         return visitor.visit_typeref(self)
+
+
+class UnknownType(object):
+
+    def accept(self, visitor):
+        return visitor.visit_unknown(self)

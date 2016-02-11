@@ -12,18 +12,27 @@
         #query {
             border-bottom: 1px solid #eee;
         }
-        #result .CodeMirror-cursor {
+        #result .CodeMirror-cursor, #docs .CodeMirror-cursor {
             visibility: hidden;
         }
     </style>
 </head>
 <body>
     <div>
-        <div style="float:left"><button onclick="submit();">run</button></div>
-        <div id="query"></div>
+        <div id="main" style="float: left; width: 100%;">
+            <div>
+                <div style="float:left"><button onclick="submit();">run</button></div>
+                <div style="float:right"><button onclick="showDocs();">docs</button></div>
+                <div id="query"></div>
+                <div style="clear:both"></div>
+            </div>
+            <div id="result"></div>
+        </div>
+        <div id="sidebar" style="float: right; width: 30%; visibility: hidden;">
+            <div id="docs"></div>
+        </div>
         <div style="clear:both"></div>
     </div>
-    <div id="result"></div>
     <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/codemirror.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/addon/selection/active-line.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/addon/edit/matchbrackets.min.js"></script>
@@ -57,7 +66,7 @@
                     }
                 }
             };
-            httpRequest.open("POST", "");
+            httpRequest.open("POST", "/");
             httpRequest.setRequestHeader('Content-Type', 'application/edn');
             httpRequest.send(queryView.getValue());
         }
@@ -72,6 +81,41 @@
         window.onload = function() {
             queryView.focus();
         };
+
+        var mainView = document.getElementById("main");
+        var sideView = document.getElementById("sidebar");
+        var docsView = CodeMirror(document.getElementById("docs"), {
+            readOnly: true
+        });
+
+        function loadDocs() {
+            var httpRequest = new XMLHttpRequest();
+            httpRequest.onreadystatechange = function() {
+                if (httpRequest.readyState === XMLHttpRequest.DONE) {
+                    if (httpRequest.status === 200) {
+                        docsView.setValue(httpRequest.responseText);
+                    } else {
+                        docsView.setValue("Error");
+                    }
+                }
+            };
+            httpRequest.open("GET", "/doc");
+            httpRequest.send();
+            docsView.setValue("Loading...");
+        }
+
+        function showDocs() {
+            if (docsView.getValue() === "") {
+                loadDocs();
+            }
+            if (sideView.style.visibility === "hidden") {
+                mainView.style.width = "70%";
+                sideView.style.visibility = "visible";
+            } else {
+                mainView.style.width = "100%";
+                sideView.style.visibility = "hidden";
+            }
+        }
     </script>
 </body>
 </html>

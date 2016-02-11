@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from ..types import ContainerType, RecordType, ListType
 from ..graph import Edge, Link, Field
 
-from .types import TypeDef, TypeRef
+from .types import TypeDef, TypeRef, UnknownType
 
 
 class TypeDoc(object):
@@ -35,7 +35,7 @@ def _translate(obj):
         else:
             return TypeRef(obj.entity)
     elif isinstance(obj, Field):
-        return obj.type
+        return obj.type or UnknownType()
     else:
         raise TypeError(type(obj))
 
@@ -63,6 +63,9 @@ class _LinePrinter(object):
 
     def visit_typeref(self, type_):
         return type_.name
+
+    def visit_unknown(self, type_):
+        return 'Unknown'
 
 
 class _IndentedPrinter(object):
