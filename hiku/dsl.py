@@ -1,10 +1,36 @@
 from itertools import chain
 from collections import namedtuple
 
-from hiku.edn import loads
-from hiku.nodes import Symbol, Tuple, List, Keyword, Dict
-from hiku.compat import text_type, string_types
-from hiku.readers.simple import transform
+from .edn import loads
+from .nodes import Symbol, Tuple, List, Keyword, Dict
+from .utils import kw_only
+from .compat import text_type, string_types
+from .readers.simple import transform
+
+
+class Expr(object):
+
+    def __init__(self, name, *other, **kwargs):
+        if not len(other):
+            raise TypeError('Missing required argument')
+        elif len(other) == 1:
+            type_, expr = None, other[0]
+        elif len(other) == 2:
+            type_, expr = other
+        else:
+            raise TypeError('More positional arguments ({}) than expected (2)'
+                            .format(len(other)))
+
+        doc, = kw_only(['doc'], kwargs)
+
+        functions = {}
+        node = to_expr(expr, functions)
+
+        self.name = name
+        self.type = type_
+        self.node = node
+        self.functions = functions
+        self.doc = doc
 
 
 _Func = namedtuple('__func__', 'expr, args')

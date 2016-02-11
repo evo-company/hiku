@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from graphql.core.language.parser import parse
 from graphql.core.language.visitor import Visitor, visit
 
-from hiku.query import Edge, Field
+from ..query import Edge, Field
 
 
 class GraphQLTransformer(Visitor):

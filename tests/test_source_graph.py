@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
-from hiku.dsl import define, S, each
+from hiku.dsl import define, S, each, Expr
 from hiku.graph import Edge, Link, Field
 from hiku.engine import Engine
 from hiku.sources.graph import subquery_fields
@@ -99,24 +99,24 @@ def baz(y):
 
 
 HIGH_ENV = Edge(None, [
-    Edge('x1', subquery_fields(LOW_ENV, 'x', {
-        'id': S.this.id,
-        'a': S.this.a,
-        'f': S.f1,
-        'foo': foo(S.this, S.this.y),
-        'bar': bar(S.this),
-        'baz': baz(S.this.y),
-        # 'y': S.this.y,
-    })),
-    Edge('y1', subquery_fields(LOW_ENV, 'y', {
-        'id': S.this.id,
-        'c': S.this.c,
-        'f': S.f2,
-        'foo': each(S.x, S.this.xs, foo(S.x, S.this)),
-        'bar': each(S.x, S.this.xs, bar(S.x)),
-        'baz': baz(S.this),
-        # 'xs': S.this.xs,
-    })),
+    Edge('x1', subquery_fields(LOW_ENV, 'x', [
+        Expr('id', S.this.id),
+        Expr('a', S.this.a),
+        Expr('f', S.f1),
+        Expr('foo', foo(S.this, S.this.y)),
+        Expr('bar', bar(S.this)),
+        Expr('baz', baz(S.this.y)),
+        # Expr('y', S.this.y),
+    ])),
+    Edge('y1', subquery_fields(LOW_ENV, 'y', [
+        Expr('id', S.this.id),
+        Expr('c', S.this.c),
+        Expr('f', S.f2),
+        Expr('foo', each(S.x, S.this.xs, foo(S.x, S.this))),
+        Expr('bar', each(S.x, S.this.xs, bar(S.x))),
+        Expr('baz', baz(S.this)),
+        # Expr('xs', S.this.xs),
+    ])),
     # TODO: links reuse
     Link('xs1', None, 'x1', to_x, to_list=True),
     Link('ys2', None, 'y2', to_y, to_list=True),

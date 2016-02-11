@@ -1,5 +1,4 @@
 from .. import query
-from ..dsl import to_expr
 from ..refs import RequirementsExtractor
 from ..graph import Link, Field
 from ..query import merge
@@ -23,7 +22,8 @@ def _create_result_proc(query, env, edge, fields, field_procs, ids):
 
 def subquery_fields(sub_root, sub_edge_name, exprs):
     re_env = {}
-    exprs = {name: to_expr(obj, re_env) for name, obj in exprs.items()}
+    for expr in exprs:
+        re_env.update(expr.functions)
     ec_env = {func.__fn_name__ for func in re_env.values()}
     fn_env = {func.__fn_name__: func.fn for func in re_env.values()}
 
@@ -33,11 +33,11 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
     ec = ExpressionCompiler(ec_env)
     reqs_map = {}
     procs_map = {}
-    for name, expr in exprs.items():
-        expr = check(re_env, expr)
-        reqs_map[name] = RequirementsExtractor.extract(re_env, expr)
-        procs_map[name] = eval(compile(ec.compile_lambda_expr(expr),
-                                       '<expr>', 'eval'))
+    for expr in exprs:
+        expr_node = check(re_env, expr.node)
+        reqs_map[expr.name] = RequirementsExtractor.extract(re_env, expr_node)
+        procs_map[expr.name] = eval(compile(ec.compile_lambda_expr(expr_node),
+                                            '<expr>', 'eval'))
 
     def query_func(queue, task_set, edge, fields, ids):
         this_link = Link(THIS_LINK_NAME, None, sub_edge_name, None,
@@ -57,4 +57,5 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
 
     query_func.__subquery__ = True
 
-    return [Field(name, query_func) for name in exprs.keys()]
+    return [Field(expr.name, expr.type, query_func, doc=expr.doc)
+            for expr in exprs]
