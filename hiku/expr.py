@@ -1,5 +1,5 @@
 from itertools import chain
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 
 from .edn import loads
 from .nodes import Symbol, Tuple, List, Keyword, Dict
@@ -21,7 +21,7 @@ class Expr(object):
             raise TypeError('More positional arguments ({}) than expected (2)'
                             .format(len(other)))
 
-        doc, = kw_only(['doc'], kwargs)
+        options, doc = kw_only(['options', 'doc'], kwargs)
 
         functions = {}
         node = to_expr(expr, functions)
@@ -30,6 +30,7 @@ class Expr(object):
         self.type = type_
         self.node = node
         self.functions = functions
+        self.options = OrderedDict((o.name, o) for o in (options or ()))
         self.doc = doc
 
 

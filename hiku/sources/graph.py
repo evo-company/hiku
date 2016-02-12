@@ -57,5 +57,6 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
 
     query_func.__subquery__ = True
 
-    return [Field(expr.name, expr.type, query_func, doc=expr.doc)
+    return [Field(expr.name, expr.type, query_func,
+                  options=expr.options, doc=expr.doc)
             for expr in exprs]

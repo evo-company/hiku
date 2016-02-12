@@ -24,7 +24,7 @@ class Field(object):
             raise TypeError('More positional arguments ({}) than expected (2)'
                             .format(len(other)))
 
-        options, doc, = kw_only(['options', 'doc'], kwargs)
+        options, doc = kw_only(['options', 'doc'], kwargs)
 
         self.name = name
         self.type = to_instance(type_) if type_ is not None else None
