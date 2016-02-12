@@ -65,6 +65,8 @@ def _to_list_mapper(pairs, values):
 
 
 def _query_link(conn, from_column, to_column, values, mapper):
+    if not values:
+        return []
     pairs = (
         conn.execute(select([from_column, to_column])
                      .where(from_column.in_(values)))
