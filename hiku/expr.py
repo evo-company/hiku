@@ -85,7 +85,8 @@ def define(*requires, **kwargs):
 
         if len(requires) == 1 and isinstance(requires[0], string_types):
             reqs_list = loads(text_type(requires[0]))
-            expr.__requires__ = [transform(reqs) for reqs in reqs_list]
+            expr.__requires__ = [transform(reqs) if reqs is not None else None
+                                 for reqs in reqs_list]
         else:
             expr.__requires__ = requires
 

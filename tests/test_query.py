@@ -24,6 +24,11 @@ def baz(y):
     pass
 
 
+@define('[[:a :c] nil [:d :f] nil]')
+def buz(x, m, y, n):
+    pass
+
+
 class Env(object):
     f = graph.Field('f', lambda: 1/0)
     x = graph.Edge('x', [
@@ -236,6 +241,13 @@ class TestQuery(TestCase):
             Edge([Link('ys',
                        Edge([Field('e'),
                              Link('xs', Edge([Field('b')]))]))]),
+        )
+
+    def testTupleWithSimpleArgs(self):
+        self.assertRequires(
+            buz(S.x, 1, S.y, 2),
+            Edge([Link('x', Edge([Field('a'), Field('c')])),
+                  Link('y', Edge([Field('d'), Field('f')]))]),
         )
 
     def testList(self):

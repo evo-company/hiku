@@ -108,8 +108,12 @@ class Checker(NodeTransformer):
         fn = self.env[sym.name].to
         fn_reqs = fn.__requires__
         for arg, arg_reqs in zip(args, fn_reqs):
-            assert hasattr(arg, '__ref__'), 'Argument does not have a reference'
-            self.check_arg(arg_reqs, arg.__ref__.to)
+            # `arg_reqs == None` means that there are no requirements for
+            # this argument (simple argument)
+            if arg_reqs is not None:
+                assert hasattr(arg, '__ref__'), \
+                    'Argument does not have a reference'
+                self.check_arg(arg_reqs, arg.__ref__.to)
         return Tuple([sym] + args)
 
     def visit_tuple(self, node):
