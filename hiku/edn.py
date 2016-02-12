@@ -139,6 +139,8 @@ _END_CHARS = {
     '(': ')',
 }
 
+_NIL = object()
+
 
 @coroutine
 def tag_handler(tag_name, tag_handlers):
@@ -201,7 +203,7 @@ def symbol_handler(s):
             elif s == 'false':
                 yield False, False
             elif s == 'nil':
-                yield None, False
+                yield _NIL, False
             else:
                 yield Symbol(s), False
         else:
@@ -221,7 +223,10 @@ def parser(target, tag_handlers, stop=None):
                 handler = None
                 v, consumed = v
                 if v is not None:
-                    target.send(v)
+                    if v is _NIL:
+                        target.send(None)
+                    else:
+                        target.send(v)
                 if consumed:
                     continue
         if c == stop:

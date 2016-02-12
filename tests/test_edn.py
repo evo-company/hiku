@@ -11,6 +11,9 @@ class TestEDN(TestCase):
     def testSymbol(self):
         self.assertEqual(loads('foo'), Symbol('foo'))
 
+    def testNil(self):
+        self.assertEqual(loads('[1 nil 2]'), List([1, None, 2]))
+
     def testLoads(self):
         n = loads('[:foo {:bar [:baz]} (limit 10) '
                   '#foo/uuid "678d88b2-87b0-403b-b63d-5da7465aecc3"]')
