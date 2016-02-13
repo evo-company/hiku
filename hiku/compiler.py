@@ -5,14 +5,17 @@ from .compat import ast as py
 class ExpressionCompiler(object):
     ctx_var = 'ctx'
     env_var = 'env'
+    options_var = 'options'
 
-    def __init__(self, env):
+    def __init__(self, env, options=None):
         self.env = set(env)
         self.vars = {'this'}
+        self.options = options or {}
 
     def compile_lambda_expr(self, node):
         body = self.visit(node)
-        py_args = [py.arg('this'), py.arg(self.env_var), py.arg(self.ctx_var)]
+        py_args = [py.arg('this'), py.arg(self.env_var), py.arg(self.ctx_var),
+                   py.arg(self.options_var)]
         expr = py.Lambda(py.arguments(py_args, None, None, []), body)
         py.fix_missing_locations(expr)
         return py.Expression(expr)
@@ -23,6 +26,10 @@ class ExpressionCompiler(object):
 
     def _env_load(self, name):
         return py.Subscript(py.Name(self.env_var, py.Load()),
+                            py.Index(py.Str(name)), py.Load())
+
+    def _option_load(self, name):
+        return py.Subscript(py.Name(self.options_var, py.Load()),
                             py.Index(py.Str(name)), py.Load())
 
     def visit(self, node):
@@ -75,6 +82,8 @@ class ExpressionCompiler(object):
     def visit_symbol(self, node):
         if node.name in self.vars:
             return py.Name(node.name, py.Load())
+        elif node.name in self.options:
+            return self._option_load(node.name)
         elif node.name in self.env:
             return self._env_load(node.name)
         else:

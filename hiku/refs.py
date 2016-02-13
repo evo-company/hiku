@@ -41,6 +41,9 @@ def ref_to_req(ref, add_req=None):
         return ref_to_req(ref.backref,
                           query.Edge([query.Link(ref.name, edge)]))
 
+    elif isinstance(ref.to, graph.Option):
+        return None
+
     else:
         raise TypeError(type(ref.to))
 
@@ -60,7 +63,9 @@ class RequirementsExtractor(NodeVisitor):
     def visit(self, node):
         ref = getattr(node, '__ref__', None)
         if ref is not None:
-            self._reqs.append(ref_to_req(ref))
+            req = ref_to_req(ref)
+            if req is not None:
+                self._reqs.append(req)
         super(RequirementsExtractor, self).visit(node)
 
     def visit_tuple(self, node):

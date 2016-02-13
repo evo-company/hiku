@@ -10,11 +10,12 @@ from ..compiler import ExpressionCompiler
 THIS_LINK_NAME = '__link_to_this'
 
 
-def _create_result_proc(query, env, edge, fields, field_procs, ids):
+def _create_result_proc(query, env, edge, fields, procs, options, ids):
     def result_proc(result):
         sq_result = query.result()
         store_fields(result, edge, fields, ids, [
-            [field_proc(this, env, sq_result) for field_proc in field_procs]
+            [proc(this, env, sq_result, opts)
+             for proc, opts in zip(procs, options)]
             for this in sq_result[THIS_LINK_NAME]
         ])
     return result_proc
@@ -30,12 +31,13 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
     re_env['this'] = sub_root.fields[sub_edge_name]
     re_env.update(sub_root.fields)
 
-    ec = ExpressionCompiler(ec_env)
     reqs_map = {}
     procs_map = {}
     for expr in exprs:
-        expr_node = check(re_env, expr.node)
+        ce_env = dict(re_env, **expr.options)
+        expr_node = check(ce_env, expr.node)
         reqs_map[expr.name] = RequirementsExtractor.extract(re_env, expr_node)
+        ec = ExpressionCompiler(ec_env, expr.options)
         procs_map[expr.name] = eval(compile(ec.compile_lambda_expr(expr_node),
                                             '<expr>', 'eval'))
 
@@ -45,6 +47,7 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
 
         reqs = merge(reqs_map[f.name] for f in fields)
         procs = [procs_map[f.name] for f in fields]
+        options = [f.options for f in fields]
 
         this_req = reqs.fields['this'].edge
         other_reqs = query.Edge([r for r in reqs.fields.values()
@@ -53,10 +56,10 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
         q = Query(queue, task_set, sub_root)
         q.process_link(sub_root, this_link, this_req, None, ids)
         q.process_edge(sub_root, other_reqs, None)
-        return _create_result_proc(q, fn_env, edge, fields, procs, ids)
+        return _create_result_proc(q, fn_env, edge, fields, procs, options, ids)
 
     query_func.__subquery__ = True
 
     return [Field(expr.name, expr.type, query_func,
-                  options=expr.options, doc=expr.doc)
+                  options=expr.options.values(), doc=expr.doc)
             for expr in exprs]

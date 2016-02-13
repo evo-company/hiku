@@ -4,7 +4,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 from hiku.expr import define, S, each, Expr
-from hiku.graph import Edge, Link, Field
+from hiku.graph import Edge, Link, Field, Option
 from hiku.engine import Engine
 from hiku.sources.graph import subquery_fields
 from hiku.readers.simple import read
@@ -98,6 +98,11 @@ def baz(y):
     return '{y[d]} [{xs}]'.format(y=y, xs=xs).upper()
 
 
+@define('[[:a] nil]')
+def buz(x, size):
+    return '{x[a]} - {size}'.format(x=x, size=size)
+
+
 HIGH_ENV = Edge(None, [
     Edge('x1', subquery_fields(LOW_ENV, 'x', [
         Expr('id', S.this.id),
@@ -106,7 +111,7 @@ HIGH_ENV = Edge(None, [
         Expr('foo', foo(S.this, S.this.y)),
         Expr('bar', bar(S.this)),
         Expr('baz', baz(S.this.y)),
-        # Expr('y', S.this.y),
+        Expr('buz', buz(S.this, S.size), options=[Option('size')]),
     ])),
     Edge('y1', subquery_fields(LOW_ENV, 'y', [
         Expr('id', S.this.id),
@@ -115,11 +120,10 @@ HIGH_ENV = Edge(None, [
         Expr('foo', each(S.x, S.this.xs, foo(S.x, S.this))),
         Expr('bar', each(S.x, S.this.xs, bar(S.x))),
         Expr('baz', baz(S.this)),
-        # Expr('xs', S.this.xs),
     ])),
     # TODO: links reuse
-    Link('xs1', None, 'x1', to_x, to_list=True),
-    Link('ys2', None, 'y2', to_y, to_list=True),
+    Link('x1s', None, 'x1', to_x, to_list=True),
+    Link('y1s', None, 'y2', to_y, to_list=True),
 ])
 
 
@@ -129,9 +133,18 @@ class TestSourceGraph(TestCase):
         self.engine = Engine(ThreadsExecutor(ThreadPoolExecutor(2)))
 
     def testField(self):
-        result = self.engine.execute(HIGH_ENV, read('[{:xs1 [:a :f]}]'))
-        self.assertResult(result, {'xs1': [
+        result = self.engine.execute(HIGH_ENV, read('[{:x1s [:a :f]}]'))
+        self.assertResult(result, {'x1s': [
             {'a': 'a1', 'f': 7},
             {'a': 'a2', 'f': 7},
             {'a': 'a3', 'f': 7},
+        ]})
+
+    def testFieldOptions(self):
+        result = self.engine.execute(HIGH_ENV,
+                                     read('[{:x1s [(:buz {:size "100"})]}]'))
+        self.assertResult(result, {'x1s': [
+            {'buz': 'a1 - 100'},
+            {'buz': 'a2 - 100'},
+            {'buz': 'a3 - 100'},
         ]})
