@@ -66,7 +66,7 @@
                     }
                 }
             };
-            httpRequest.open("POST", "/");
+            httpRequest.open("POST", "$index_url");
             httpRequest.setRequestHeader('Content-Type', 'application/edn');
             httpRequest.send(queryView.getValue());
         }
@@ -99,7 +99,7 @@
                     }
                 }
             };
-            httpRequest.open("GET", "/doc");
+            httpRequest.open("GET", "$docs_url");
             httpRequest.send();
             docsView.setValue("Loading...");
         }
