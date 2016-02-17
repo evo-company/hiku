@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-from unittest import skip
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
@@ -141,7 +140,6 @@ class TestSourceGraph(TestCase):
             {'a': 'a3', 'f': 7},
         ]})
 
-    @skip('FIXME')
     def testFieldOptions(self):
         result = self.engine.execute(HIGH_ENV,
                                      read('[{:x1s [(:buz {:size "100"})]}]'))

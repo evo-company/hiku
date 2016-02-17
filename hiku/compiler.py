@@ -41,11 +41,12 @@ class ExpressionCompiler(object):
         return cls().visit(node)
 
     @classmethod
-    def compile_lambda_expr(cls, node):
+    def compile_lambda_expr(cls, node, args=None):
         compiler = cls()
-        with compiler.env.push(['this']):
+        with compiler.env.push(['this'] + (args or [])):
             body = compiler.visit(node)
         py_args = [py.arg('this'), py.arg(cls.env_var), py.arg(cls.ctx_var)]
+        py_args += [py.arg(name) for name in args]
         expr = py.Lambda(py.arguments(py_args, None, None, []), body)
         py.fix_missing_locations(expr)
         return py.Expression(expr)

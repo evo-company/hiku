@@ -15,8 +15,8 @@ def _create_result_proc(query, env, edge, fields, procs, options, ids):
     def result_proc(result):
         sq_result = query.result()
         store_fields(result, edge, fields, ids, [
-            [proc(this, env, sq_result)  # FIXME: fix options support
-             for proc, opts in zip(procs, options)]
+            [proc(this, env, sq_result, *opt_args)
+             for proc, opt_args in zip(procs, options)]
             for this in sq_result[THIS_LINK_NAME]
         ])
     return result_proc
@@ -30,6 +30,7 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
 
     reqs_map = {}
     procs_map = {}
+    options_map = {}
     funcs_set = set([])
     for expr in exprs:
         expr_types = types.copy()
@@ -38,11 +39,18 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
                            for opt in expr.options.values()})
         expr_node = check(expr.node, expr_types)
 
-        reqs_map[expr.name] = \
-            RequirementsExtractor.extract(expr_types, expr_node)
+        options_set = set(expr.options.keys())
+        edge = RequirementsExtractor.extract(expr_types, expr_node)
+        edge = query.Edge([f for f in edge.fields.values()
+                           if f.name not in options_set])
+        reqs_map[expr.name] = edge
 
-        code = ExpressionCompiler.compile_lambda_expr(expr_node)
+        options_list = [opt.name for opt in expr.options.values()]
+        code = ExpressionCompiler.compile_lambda_expr(expr_node, options_list)
+
         procs_map[expr.name] = eval(compile(code, '<expr>', 'eval'))
+
+        options_map[expr.name] = options_list
 
         funcs_set.update(expr.functions)
 
@@ -54,7 +62,9 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
 
         reqs = merge(reqs_map[f.name] for f in fields)
         procs = [procs_map[f.name] for f in fields]
-        options = [f.options for f in fields]
+        options = [[f.options.get(name, None)
+                    for name in options_map[f.name]]
+                   for f in fields]
 
         this_req = reqs.fields['this'].edge
         other_reqs = query.Edge([r for r in reqs.fields.values()
