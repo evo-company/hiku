@@ -79,36 +79,36 @@ class Environ(object):
         return any(key in d for d in self.vars)
 
 
-def get_type(env, obj):
+def get_type(types, obj):
     if isinstance(obj, TypeRef):
-        return env[obj.name].to
+        return types[obj.name]
     else:
         return obj
 
 
-def node_type(env, node):
-    return get_type(env, node.__ref__.to)
+def node_type(types, node):
+    return get_type(types, node.__ref__.to)
 
 
-def check_type(env, t1, t2):
-    t1 = get_type(env, t1)
-    t2 = get_type(env, t2)
+def check_type(types, t1, t2):
+    t1 = get_type(types, t1)
+    t2 = get_type(types, t2)
     if isinstance(t2, UnknownType):
         pass
     else:
         if isinstance(t1, type(t2)):
             if isinstance(t2, ListType):
-                check_type(env, t1.item_type, t2.item_type)
+                check_type(types, t1.item_type, t2.item_type)
             elif isinstance(t2, DictType):
-                check_type(env, t1.key_type, t2.key_type)
-                check_type(env, t1.value_type, t2.value_type)
+                check_type(types, t1.key_type, t2.key_type)
+                check_type(types, t1.value_type, t2.value_type)
             elif isinstance(t2, RecordType):
                 for key, v2 in t2.fields.items():
                     v1 = t1.fields.get(key)
                     if v1 is None:
                         raise TypeError('Missing field {}'.format(key))
-                    v1 = get_type(env, v1)
-                    check_type(env, v1, v2)
+                    v1 = get_type(types, v1)
+                    check_type(types, v1, v2)
         else:
             raise TypeError('Types mismatch: {} != {}'
                             .format(type(t1), type(t2)))
@@ -117,6 +117,7 @@ def check_type(env, t1, t2):
 class Checker(NodeTransformer):
 
     def __init__(self, types):
+        self.types = types
         self.env = Environ(types)
 
     def visit_get_expr(self, node):
@@ -125,8 +126,8 @@ class Checker(NodeTransformer):
         obj = self.visit(obj)
         assert hasattr(obj, '__ref__'), 'Object does not have a reference'
 
-        ref_to = node_type(self.env, obj)
-        check_type(self.env, ref_to, RecordType({name.name: UnknownType()}))
+        ref_to = node_type(self.types, obj)
+        check_type(self.types, ref_to, RecordType({name.name: UnknownType()}))
 
         res = ref_to.fields.get(name.name)
         assert res is not None, 'Undefined field name: {}'.format(name.name)
@@ -139,8 +140,8 @@ class Checker(NodeTransformer):
         assert isinstance(var, Symbol), repr(var)
         col = self.visit(col)
         assert hasattr(col, '__ref__'), 'Object does not have a reference'
-        col_type = node_type(self.env, col)
-        check_type(self.env, col_type, ListType(RecordType({})))
+        col_type = node_type(self.types, col)
+        check_type(self.types, col_type, ListType(RecordType({})))
         var = Symbol(var.name)
         var.__ref__ = Ref(col.__ref__, col_type.item_type)
         with self.env.push({var.name: var.__ref__}):
@@ -151,14 +152,14 @@ class Checker(NodeTransformer):
         sym = self.visit(node.values[0])
         assert isinstance(sym, Symbol), type(sym)
         args = [self.visit(val) for val in node.values[1:]]
-        fn_type = node_type(self.env, sym)
+        fn_type = node_type(self.types, sym)
         assert len(fn_type.arg_types) == len(args), 'Wrong arguments count'
         for arg, arg_type in zip(args, fn_type.arg_types):
             ref = getattr(arg, '__ref__', None)
             if ref is not None:
-                check_type(self.env, node_type(self.env, arg), arg_type)
+                check_type(self.types, node_type(self.types, arg), arg_type)
             else:
-                check_type(self.env, UnknownType(), arg_type)
+                check_type(self.types, UnknownType(), arg_type)
         return Tuple([sym] + args)
 
     def visit_tuple(self, node):

@@ -4,7 +4,7 @@ from unittest import skip
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
-from hiku.expr import define, S, Expr
+from hiku.expr import define, S, Expr, each
 from hiku.graph import Edge, Link, Field
 from hiku.engine import Engine
 from hiku.sources.graph import subquery_fields
@@ -118,8 +118,8 @@ HIGH_ENV = Edge(None, [
         Expr('id', S.this.id),
         Expr('c', S.this.c),
         Expr('f', S.f2),
-        # Expr('foo', each(S.x, S.this.xs, foo(S.x, S.this))),
-        # Expr('bar', each(S.x, S.this.xs, bar(S.x))),
+        Expr('foo', each(S.x, S.this.xs, foo(S.x, S.this))),
+        Expr('bar', each(S.x, S.this.xs, bar(S.x))),
         # Expr('baz', baz(S.this)),
     ])),
     # TODO: links reuse
