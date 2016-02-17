@@ -23,8 +23,7 @@ class Expr(object):
 
         options, doc = kw_only(['options', 'doc'], kwargs)
 
-        functions = {}
-        node = to_expr(expr, functions)
+        node, functions = to_expr(expr)
 
         self.name = name
         self.type = type_
@@ -55,21 +54,27 @@ class _S(object):
 S = _S()
 
 
-def to_expr(obj, fn_reg):
+def _to_expr(obj, fn_reg):
     if isinstance(obj, _DotHandler):
         return obj.obj
     elif isinstance(obj, _Func):
-        fn_reg[obj.expr.__fn_name__] = obj.expr
+        fn_reg.add(obj.expr)
         return Tuple([Symbol(obj.expr.__fn_name__)] +
-                     [to_expr(arg, fn_reg) for arg in obj.args])
+                     [_to_expr(arg, fn_reg) for arg in obj.args])
     elif isinstance(obj, list):
-        return List(to_expr(v, fn_reg) for v in obj)
+        return List(_to_expr(v, fn_reg) for v in obj)
     elif isinstance(obj, dict):
-        values = chain.from_iterable((Keyword(k), to_expr(v, fn_reg))
+        values = chain.from_iterable((Keyword(k), _to_expr(v, fn_reg))
                                      for k, v in obj.items())
         return Dict(values)
     else:
         return obj
+
+
+def to_expr(obj):
+    functions = set([])
+    node = _to_expr(obj, functions)
+    return node, tuple(functions)
 
 
 def define(*requires, **kwargs):

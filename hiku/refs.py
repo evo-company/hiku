@@ -1,5 +1,7 @@
-from . import query, graph
+from .query import Edge, Link, Field, merge
+from .types import RecordType, ListType
 from .nodes import NodeVisitor
+from .typedef.types import UnknownType, TypeRef
 
 
 class Ref(object):
@@ -16,69 +18,90 @@ class NamedRef(Ref):
         self.name = name
 
 
-def ref_to_req(ref, add_req=None):
+def get_type(types, type_):
+    return types[type_.name] if isinstance(type_, TypeRef) else type_
+
+
+def ref_to_req(types, ref, add_req=None):
     if ref is None:
         assert add_req is not None
         return add_req
 
-    elif isinstance(ref.to, graph.Field):
+    ref_type = get_type(types, ref.to)
+
+    if isinstance(ref_type, UnknownType):
         assert isinstance(ref, NamedRef), type(ref)
         assert add_req is None, repr(add_req)
-        return ref_to_req(ref.backref,
-                          query.Edge([query.Field(ref.name)]))
+        return ref_to_req(types, ref.backref,
+                          Edge([Field(ref.name)]))
 
-    elif isinstance(ref.to, graph.Edge):
+    elif isinstance(ref_type, RecordType):
         if isinstance(ref, NamedRef):
-            edge = query.Edge([]) if add_req is None else add_req
-            return ref_to_req(ref.backref,
-                              query.Edge([query.Link(ref.name, edge)]))
+            edge = Edge([]) if add_req is None else add_req
+            return ref_to_req(types, ref.backref,
+                              Edge([Link(ref.name, edge)]))
         else:
-            return ref_to_req(ref.backref, add_req)
+            return ref_to_req(types, ref.backref, add_req)
 
-    elif isinstance(ref.to, graph.Link):
-        assert isinstance(ref, NamedRef), type(ref)
-        edge = query.Edge([]) if add_req is None else add_req
-        return ref_to_req(ref.backref,
-                          query.Edge([query.Link(ref.name, edge)]))
-
-    elif isinstance(ref.to, graph.Option):
-        return None
+    elif isinstance(ref_type, ListType):
+        item_type = get_type(types, ref_type.item_type)
+        if isinstance(item_type, RecordType):
+            assert isinstance(ref, NamedRef), type(ref)
+            edge = Edge([]) if add_req is None else add_req
+            return ref_to_req(types, ref.backref,
+                              Edge([Link(ref.name, edge)]))
+        else:
+            raise NotImplementedError
 
     else:
         raise TypeError(type(ref.to))
 
 
+def type_to_query(type_):
+    fields = []
+    for f_name, f_type in type_.fields.items():
+        if isinstance(f_type, RecordType):
+            fields.append(Link(f_name, type_to_query(f_type)))
+        elif isinstance(f_type, ListType):
+            if isinstance(f_type.item_type, RecordType):
+                fields.append(Link(f_name, type_to_query(f_type.item_type)))
+            else:
+                raise NotImplementedError
+        else:
+            fields.append(Field(f_name))
+    return Edge(fields)
+
+
 class RequirementsExtractor(NodeVisitor):
 
-    def __init__(self, env):
-        self.env = env
+    def __init__(self, types):
+        self._types = types
         self._reqs = []
 
     @classmethod
-    def extract(cls, env, expr):
-        extractor = cls(env)
+    def extract(cls, types, expr):
+        extractor = cls(types)
         extractor.visit(expr)
-        return query.merge(extractor._reqs)
+        return merge(extractor._reqs)
 
     def visit(self, node):
         ref = getattr(node, '__ref__', None)
         if ref is not None:
-            req = ref_to_req(ref)
+            req = ref_to_req(self._types, ref)
             if req is not None:
                 self._reqs.append(req)
         super(RequirementsExtractor, self).visit(node)
 
     def visit_tuple(self, node):
         sym, args = node.values[0], node.values[1:]
-        if sym.name in self.env:
-            for arg, req in zip(args, self.env[sym.name].__requires__):
-                if req is None:
-                    continue
-                if isinstance(arg.__ref__.to, (graph.Edge, graph.Link)):
-                    assert isinstance(req, query.Edge), type(req)
-                    self._reqs.append(ref_to_req(arg.__ref__, req))
+        sym_ref = getattr(sym, '__ref__', None)
+        if sym_ref is not None:
+            for arg, arg_type in zip(args, sym_ref.to.arg_types):
+                if isinstance(arg_type, RecordType):
+                    self._reqs.append(ref_to_req(self._types, arg.__ref__,
+                                                 type_to_query(arg_type)))
                 else:
-                    assert isinstance(arg.__ref__.to, graph.Field), \
-                        type(arg.__ref__.to)
-                    assert isinstance(req, None), repr(req)
-        super(RequirementsExtractor, self).visit_tuple(node)
+                    self.visit(arg)
+        else:
+            for arg in args:
+                self.visit(arg)

@@ -3,7 +3,7 @@ from ..refs import RequirementsExtractor
 from ..graph import Link, Field
 from ..query import merge
 from ..engine import Query, store_fields
-from ..checker import check
+from ..checker import check, graph_types, fn_types
 from ..compiler import ExpressionCompiler
 
 
@@ -14,7 +14,7 @@ def _create_result_proc(query, env, edge, fields, procs, options, ids):
     def result_proc(result):
         sq_result = query.result()
         store_fields(result, edge, fields, ids, [
-            [proc(this, env, sq_result, opts)
+            [proc(this, env, sq_result)  # FIXME: fix options support
              for proc, opts in zip(procs, options)]
             for this in sq_result[THIS_LINK_NAME]
         ])
@@ -22,24 +22,28 @@ def _create_result_proc(query, env, edge, fields, procs, options, ids):
 
 
 def subquery_fields(sub_root, sub_edge_name, exprs):
-    re_env = {}
-    for expr in exprs:
-        re_env.update(expr.functions)
-    ec_env = {func.__fn_name__ for func in re_env.values()}
-    fn_env = {func.__fn_name__: func.fn for func in re_env.values()}
+    types = graph_types(sub_root)
 
-    re_env['this'] = sub_root.fields[sub_edge_name]
-    re_env.update(sub_root.fields)
+    # make an alias
+    types['this'] = types[sub_edge_name]
 
     reqs_map = {}
     procs_map = {}
+    funcs_set = set([])
     for expr in exprs:
-        ce_env = dict(re_env, **expr.options)
-        expr_node = check(ce_env, expr.node)
-        reqs_map[expr.name] = RequirementsExtractor.extract(re_env, expr_node)
-        ec = ExpressionCompiler(ec_env, expr.options)
-        procs_map[expr.name] = eval(compile(ec.compile_lambda_expr(expr_node),
-                                            '<expr>', 'eval'))
+        expr_types = types.copy()
+        expr_types.update(fn_types(expr.functions))
+        expr_node = check(expr.node, expr_types)
+
+        reqs_map[expr.name] = \
+            RequirementsExtractor.extract(expr_types, expr_node)
+
+        code = ExpressionCompiler.compile_lambda_expr(expr_node)
+        procs_map[expr.name] = eval(compile(code, '<expr>', 'eval'))
+
+        funcs_set.update(expr.functions)
+
+    fn_env = {f.__fn_name__: f.fn for f in funcs_set}
 
     def query_func(queue, task_set, edge, fields, ids):
         this_link = Link(THIS_LINK_NAME, None, sub_edge_name, None,

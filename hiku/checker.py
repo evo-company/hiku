@@ -4,6 +4,50 @@ from collections import deque
 from . import graph, query
 from .refs import NamedRef, Ref
 from .nodes import NodeTransformer, Symbol, Keyword, Tuple
+from .types import RecordType, ListType, DictType, FunctionType
+from .typedef.types import TypeRef, UnknownType
+
+
+def _graph_to_types(obj):
+    if isinstance(obj, graph.Edge):
+        return RecordType((f.name, _graph_to_types(f))
+                          for f in obj.fields.values())
+    elif isinstance(obj, graph.Link):
+        if obj.to_list:
+            return ListType(TypeRef(obj.entity))
+        else:
+            return TypeRef(obj.entity)
+    elif isinstance(obj, graph.Field):
+        return obj.type or UnknownType()
+    else:
+        raise TypeError(type(obj))
+
+
+def graph_types(obj):
+    return {name: field
+            for name, field in _graph_to_types(obj).fields.items()}
+
+
+def _query_to_types(obj):
+    if isinstance(obj, query.Edge):
+        return RecordType((f.name, _query_to_types(f))
+                          for f in obj.fields.values())
+    elif isinstance(obj, query.Link):
+        return _query_to_types(obj.edge)
+    elif isinstance(obj, query.Field):
+        return UnknownType()
+    else:
+        raise TypeError(type(obj))
+
+
+def fn_types(functions):
+    return {
+        fn.__fn_name__: FunctionType([
+            _query_to_types(r) if r is not None else UnknownType()
+            for r in fn.__requires__
+        ])
+        for fn in functions
+    }
 
 
 class Environ(object):
@@ -35,36 +79,59 @@ class Environ(object):
         return any(key in d for d in self.vars)
 
 
+def get_type(env, obj):
+    if isinstance(obj, TypeRef):
+        return env[obj.name].to
+    else:
+        return obj
+
+
+def node_type(env, node):
+    return get_type(env, node.__ref__.to)
+
+
+def check_type(env, t1, t2):
+    t1 = get_type(env, t1)
+    t2 = get_type(env, t2)
+    if isinstance(t2, UnknownType):
+        pass
+    else:
+        if isinstance(t1, type(t2)):
+            if isinstance(t2, ListType):
+                check_type(env, t1.item_type, t2.item_type)
+            elif isinstance(t2, DictType):
+                check_type(env, t1.key_type, t2.key_type)
+                check_type(env, t1.value_type, t2.value_type)
+            elif isinstance(t2, RecordType):
+                for key, v2 in t2.fields.items():
+                    v1 = t1.fields.get(key)
+                    if v1 is None:
+                        raise TypeError('Missing field {}'.format(key))
+                    v1 = get_type(env, v1)
+                    check_type(env, v1, v2)
+        else:
+            raise TypeError('Types mismatch: {} != {}'
+                            .format(type(t1), type(t2)))
+
+
 class Checker(NodeTransformer):
 
-    def __init__(self, env):
-        self.edges = {item.name: item for item in env.values()
-                      if isinstance(item, graph.Edge)}
-        self.env = Environ(env)
+    def __init__(self, types):
+        self.env = Environ(types)
 
     def visit_get_expr(self, node):
-        obj, name = node.values[1:]
+        sym, obj, name = node.values
         assert isinstance(name, Symbol), type(name)
         obj = self.visit(obj)
         assert hasattr(obj, '__ref__'), 'Object does not have a reference'
 
-        ref_to = obj.__ref__.to
-        if isinstance(ref_to, graph.Edge):
-            edge = obj.__ref__.to
-            ref_to_edge = obj.__ref__
+        ref_to = node_type(self.env, obj)
+        check_type(self.env, ref_to, RecordType({name.name: UnknownType()}))
 
-        elif isinstance(ref_to, graph.Link):
-            assert not ref_to.to_list, 'Only links to one object possible'
-            edge = self.edges[obj.__ref__.to.entity]
-            ref_to_edge = Ref(obj.__ref__, edge)
-
-        else:
-            raise TypeError(repr(ref_to))
-
-        res = edge.fields.get(name.name)
+        res = ref_to.fields.get(name.name)
         assert res is not None, 'Undefined field name: {}'.format(name.name)
-        tup = Tuple([Symbol('get'), obj, name])
-        tup.__ref__ = NamedRef(ref_to_edge, name.name, res)
+        tup = Tuple([sym, obj, name])
+        tup.__ref__ = NamedRef(obj.__ref__, name.name, res)
         return tup
 
     def visit_each_expr(self, node):
@@ -72,48 +139,26 @@ class Checker(NodeTransformer):
         assert isinstance(var, Symbol), repr(var)
         col = self.visit(col)
         assert hasattr(col, '__ref__'), 'Object does not have a reference'
-        assert isinstance(col.__ref__.to, graph.Link) and \
-            col.__ref__.to.to_list is True, type(col.__ref__.to)
-
+        col_type = node_type(self.env, col)
+        check_type(self.env, col_type, ListType(RecordType({})))
         var = Symbol(var.name)
-        var.__ref__ = Ref(col.__ref__, self.edges[col.__ref__.to.entity])
+        var.__ref__ = Ref(col.__ref__, col_type.item_type)
         with self.env.push({var.name: var.__ref__}):
             expr = self.visit(expr)
         return Tuple([Symbol('each'), var, col, expr])
 
-    def check_arg(self, req, arg):
-        if isinstance(req, query.Edge):
-            if isinstance(arg, graph.Edge):
-                edge = arg
-            elif isinstance(arg, graph.Link):
-                assert not arg.to_list
-                edge = self.edges[arg.entity]
-            else:
-                raise TypeError(type(arg))
-            for name, field in req.fields.items():
-                assert name in edge.fields, name
-                self.check_arg(field, edge.fields[name])
-        elif isinstance(req, query.Link):
-            assert isinstance(arg, graph.Link), type(arg)
-            assert arg.entity in self.edges, arg.entity
-            self.check_arg(req.edge, self.edges[arg.entity])
-        elif isinstance(req, query.Field):
-            assert isinstance(arg, graph.Field), type(arg)
-        else:
-            raise TypeError(type(req))
-
     def visit_tuple_generic(self, node):
-        sym = node.values[0]
+        sym = self.visit(node.values[0])
+        assert isinstance(sym, Symbol), type(sym)
         args = [self.visit(val) for val in node.values[1:]]
-        fn = self.env[sym.name].to
-        fn_reqs = fn.__requires__
-        for arg, arg_reqs in zip(args, fn_reqs):
-            # `arg_reqs == None` means that there are no requirements for
-            # this argument (simple argument)
-            if arg_reqs is not None:
-                assert hasattr(arg, '__ref__'), \
-                    'Argument does not have a reference'
-                self.check_arg(arg_reqs, arg.__ref__.to)
+        fn_type = node_type(self.env, sym)
+        assert len(fn_type.arg_types) == len(args), 'Wrong arguments count'
+        for arg, arg_type in zip(args, fn_type.arg_types):
+            ref = getattr(arg, '__ref__', None)
+            if ref is not None:
+                check_type(self.env, node_type(self.env, arg), arg_type)
+            else:
+                check_type(self.env, UnknownType(), arg_type)
         return Tuple([sym] + args)
 
     def visit_tuple(self, node):
@@ -127,6 +172,7 @@ class Checker(NodeTransformer):
 
     def visit_symbol(self, node):
         sym = Symbol(node.name)
+        assert node.name in self.env, 'Unknown symbol {}'.format(node.name)
         sym.__ref__ = self.env[node.name]
         return sym
 
@@ -137,5 +183,5 @@ class Checker(NodeTransformer):
         return super(Checker, self).visit_dict(node)
 
 
-def check(env, expr):
-    return Checker(env).visit(expr)
+def check(expr, types):
+    return Checker(types).visit(expr)

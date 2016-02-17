@@ -76,3 +76,12 @@ class RecordType(ContainerType):
 
     def accept(self, visitor):
         return visitor.visit_record(self)
+
+
+class FunctionType(Type):
+
+    def __init__(self, arg_types):
+        self.arg_types = arg_types
+
+    def accept(self, visitor):
+        return visitor.visit_function(self)
