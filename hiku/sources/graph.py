@@ -62,7 +62,7 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
 
         reqs = merge(reqs_map[f.name] for f in fields)
         procs = [procs_map[f.name] for f in fields]
-        options = [[f.options.get(name, None)
+        options = [[f.options.get(name, None) if f.options else None
                     for name in options_map[f.name]]
                    for f in fields]
 

@@ -148,3 +148,12 @@ class TestSourceGraph(TestCase):
             {'buz': 'a2 - 100'},
             {'buz': 'a3 - 100'},
         ]})
+
+    def testFieldWithoutOptions(self):
+        result = self.engine.execute(HIGH_ENV,
+                                     read('[{:x1s [:buz]}]'))
+        self.assertResult(result, {'x1s': [
+            {'buz': 'a1 - None'},
+            {'buz': 'a2 - None'},
+            {'buz': 'a3 - None'},
+        ]})
