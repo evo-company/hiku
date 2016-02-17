@@ -5,6 +5,7 @@ from ..query import merge
 from ..engine import Query, store_fields
 from ..checker import check, graph_types, fn_types
 from ..compiler import ExpressionCompiler
+from ..typedef.types import UnknownType
 
 
 THIS_LINK_NAME = '__link_to_this'
@@ -33,6 +34,8 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
     for expr in exprs:
         expr_types = types.copy()
         expr_types.update(fn_types(expr.functions))
+        expr_types.update({opt.name: UnknownType()
+                           for opt in expr.options.values()})
         expr_node = check(expr.node, expr_types)
 
         reqs_map[expr.name] = \

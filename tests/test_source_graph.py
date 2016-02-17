@@ -5,7 +5,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 from hiku.expr import define, S, Expr, each
-from hiku.graph import Edge, Link, Field
+from hiku.graph import Edge, Link, Field, Option
 from hiku.engine import Engine
 from hiku.sources.graph import subquery_fields
 from hiku.readers.simple import read
@@ -112,7 +112,7 @@ HIGH_ENV = Edge(None, [
         Expr('foo', foo(S.this, S.this.y)),
         Expr('bar', bar(S.this)),
         # Expr('baz', baz(S.this.y)),
-        # Expr('buz', buz(S.this, S.size), options=[Option('size')]),
+        Expr('buz', buz(S.this, S.size), options=[Option('size')]),
     ])),
     Edge('y1', subquery_fields(LOW_ENV, 'y', [
         Expr('id', S.this.id),
