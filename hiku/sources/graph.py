@@ -45,12 +45,14 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
                            if f.name not in options_set])
         reqs_map[expr.name] = edge
 
-        options_list = [opt.name for opt in expr.options.values()]
-        code = ExpressionCompiler.compile_lambda_expr(expr_node, options_list)
+        option_names = [opt.name for opt in expr.options.values()]
+        option_defaults = [(name, expr.options[name].default)
+                           for name in option_names]
+        code = ExpressionCompiler.compile_lambda_expr(expr_node, option_names)
 
         procs_map[expr.name] = eval(compile(code, '<expr>', 'eval'))
 
-        options_map[expr.name] = options_list
+        options_map[expr.name] = option_defaults
 
         funcs_set.update(expr.functions)
 
@@ -62,8 +64,8 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
 
         reqs = merge(reqs_map[f.name] for f in fields)
         procs = [procs_map[f.name] for f in fields]
-        options = [[f.options.get(name, None) if f.options else None
-                    for name in options_map[f.name]]
+        options = [[f.options.get(name, default) if f.options else default
+                    for name, default in options_map[f.name]]
                    for f in fields]
 
         this_req = reqs.fields['this'].edge

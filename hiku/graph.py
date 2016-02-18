@@ -6,9 +6,10 @@ from .utils import kw_only
 
 class Option(object):
 
-    def __init__(self, name, type_=None):
+    def __init__(self, name, type_=None, default=None):
         self.name = name
         self.type = to_instance(type_) if type_ is not None else None
+        self.default = default
 
 
 class Field(object):

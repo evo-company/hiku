@@ -112,6 +112,8 @@ HIGH_ENV = Edge(None, [
         Expr('bar', bar(S.this)),
         # Expr('baz', baz(S.this.y)),
         Expr('buz', buz(S.this, S.size), options=[Option('size')]),
+        Expr('buz2', buz(S.this, S.size),
+             options=[Option('size', default=100)]),
     ])),
     Edge('y1', subquery_fields(LOW_ENV, 'y', [
         Expr('id', S.this.id),
@@ -156,4 +158,20 @@ class TestSourceGraph(TestCase):
             {'buz': 'a1 - None'},
             {'buz': 'a2 - None'},
             {'buz': 'a3 - None'},
+        ]})
+
+    def testFieldOptionDefaults(self):
+        result = self.engine.execute(HIGH_ENV,
+                                     read('[{:x1s [:buz2]}]'))
+        self.assertResult(result, {'x1s': [
+            {'buz2': 'a1 - 100'},
+            {'buz2': 'a2 - 100'},
+            {'buz2': 'a3 - 100'},
+        ]})
+        result = self.engine.execute(HIGH_ENV,
+                                     read('[{:x1s [(:buz2 {:size 200})]}]'))
+        self.assertResult(result, {'x1s': [
+            {'buz2': 'a1 - 200'},
+            {'buz2': 'a2 - 200'},
+            {'buz2': 'a3 - 200'},
         ]})
