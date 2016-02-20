@@ -103,6 +103,14 @@ def db_link(conn, name, requires, from_column, to_column, to_list,
                 to_column=f2b.c.bar_id, to_list=True)
 
     """
+    if from_column.table is not to_column.table:
+        raise ValueError('from_column and to_column should belong to '
+                         'the one table')
+
+    if from_column is to_column:
+        raise ValueError('from_column and to_column should not be '
+                         'the same column')
+
     mapper = _to_list_mapper if to_list else _to_one_mapper
 
     def query_func(ids):

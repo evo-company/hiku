@@ -128,6 +128,16 @@ class TestSourceSQL(TestCase):
         result = self.engine.execute(ENV, read(src))
         self.assertResult(result, value)
 
+    def testSameTable(self):
+        with self.assertRaisesRegexp(ValueError, 'should belong'):
+            db_link(session, 'name', 'requires',
+                    foo_table.c.id, bar_table.c.id, to_list=True)
+
+    def testSameColumn(self):
+        with self.assertRaisesRegexp(ValueError, 'same column'):
+            db_link(session, 'name', 'requires',
+                    foo_table.c.id, foo_table.c.id, to_list=True)
+
     def testManyToOne(self):
         self.assertExecute(
             '[{:foo-list [:name :count {:bar [:name :type]}]}]',
