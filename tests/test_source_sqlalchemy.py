@@ -138,6 +138,10 @@ class TestSourceSQL(TestCase):
             db_link(session, 'name', 'requires',
                     foo_table.c.id, foo_table.c.id, to_list=True)
 
+    def testMissingColumn(self):
+        with self.assertRaisesRegexp(ValueError, 'does not have a column'):
+            db_fields(session, foo_table, ['unknown'])
+
     def testManyToOne(self):
         self.assertExecute(
             '[{:foo-list [:name :count {:bar [:name :type]}]}]',

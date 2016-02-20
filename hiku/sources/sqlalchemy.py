@@ -4,51 +4,50 @@ from collections import defaultdict
 
 from sqlalchemy import select
 
-from ..graph import Edge, Field, Link
+from ..graph import Field, Link
 
 
-def _query_fields(conn, pkey, mapping, fields, ids):
+def _query_fields(conn, primary_key, columns_map, fields, ids):
     if not ids:
         return []
 
-    ops = set([])
-    columns = []
-    for field in fields:
-        (table, column_name), op = mapping[field.name]
-        columns.append(getattr(table.c, column_name))
-        if op is not None:
-            ops.add(op)
-
-    expr = select([pkey] + columns)
-    for op in ops:
-        expr = op(expr)
-
-    rows = conn.execute(expr.where(pkey.in_(ids))).fetchall()
-    rows_map = {row[pkey]: [row[k] for k in columns] for row in rows}
+    columns = [columns_map[field.name] for field in fields]
+    sql_expr = select([primary_key] + columns).where(primary_key.in_(ids))
+    rows = conn.execute(sql_expr).fetchall()
+    rows_map = {row[primary_key]: [row[c] for c in columns]
+                for row in rows}
     nulls = [None for _ in fields]
     return [rows_map.get(id_, nulls) for id_ in ids]
 
 
 def db_fields(conn, table, fields):
-    pkey, = list(table.primary_key)
-    mapping = {}
+    """Fields maker for DB columns
 
-    def query_func(fields, ids):
-        return _query_fields(conn, pkey, mapping, fields, ids)
+    To expose `foo_table`::
+
+        Edge(foo_table.name, db_fields(session, foo_table, [
+            'id',
+            'name',
+        ]))
+
+    """
+    primary_key, = list(table.primary_key)
+    columns_map = {}
+    for field_name in fields:
+        try:
+            column = getattr(table.c, field_name)
+        except AttributeError:
+            raise ValueError('Table {} does not have a column named {}'
+                             .format(table, field_name))
+        else:
+            columns_map[field_name] = column
+
+    def query_func(fields_, ids):
+        return _query_fields(conn, primary_key, columns_map, fields_, ids)
 
     edge_fields = []
-    for field in fields:
-        if isinstance(field, tuple):
-            sub_edge_fields = []
-            sub_name, sub_table, op, sub_fields = field
-            for sub_field in sub_fields:
-                mapping[(sub_name, sub_field)] = ((sub_table, sub_field), op)
-                sub_edge_fields.append(Field(sub_field, query_func))
-            edge_fields.append(Edge(sub_name, sub_edge_fields))
-        else:
-            mapping[field] = ((table, field), None)
-            edge_fields.append(Field(field, query_func))
-
+    for field_name in fields:
+        edge_fields.append(Field(field_name, query_func))
     return edge_fields
 
 
