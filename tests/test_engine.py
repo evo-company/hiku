@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from concurrent.futures import ThreadPoolExecutor
 
 from hiku import query
-from hiku.graph import Edge, Field, Link, Option
+from hiku.graph import Graph, Edge, Field, Link, Option
 from hiku.engine import Engine
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
@@ -37,7 +37,7 @@ def _patch(func):
     return patch('{}.{}'.format(__name__, func.__name__))
 
 
-TEST_ENV = Edge(None, [
+TEST_ENV = Graph([
     Field('a', _(query_fields1)),
     Field('b', _(query_fields2)),
     Edge('c', [

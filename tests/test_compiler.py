@@ -8,7 +8,7 @@ from collections import OrderedDict
 import astor
 
 from hiku.expr import define, S, if_, each, to_expr
-from hiku.graph import Field, Edge, Link
+from hiku.graph import Graph, Field, Edge, Link
 from hiku.compat import PY3
 from hiku.checker import check, graph_types, fn_types
 from hiku.compiler import ExpressionCompiler
@@ -33,7 +33,7 @@ def noop(*_):
     return 1/0
 
 
-ENV = Edge(None, [
+ENV = Graph([
     Field('a', noop),
     Edge('x', [
         Field('b', noop),

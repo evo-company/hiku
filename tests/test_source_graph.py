@@ -4,7 +4,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 from hiku.expr import define, S, Expr, each
-from hiku.graph import Edge, Link, Field, Option
+from hiku.graph import Graph, Edge, Link, Field, Option
 from hiku.engine import Engine
 from hiku.sources.graph import subquery_fields
 from hiku.readers.simple import read
@@ -61,7 +61,7 @@ def y_to_x(ids):
     return [_XS_BY_Y_INDEX[y_id] for y_id in ids]
 
 
-LOW_ENV = Edge(None, [
+LOW_ENV = Graph([
     Field('f1', query_f),
     Field('f2', query_f),
     Edge('x', [
@@ -103,7 +103,7 @@ def buz(x, size):
     return '{x[a]} - {size}'.format(x=x, size=size)
 
 
-HIGH_ENV = Edge(None, [
+HIGH_ENV = Graph([
     Edge('x1', subquery_fields(LOW_ENV, 'x', [
         Expr('id', S.this.id),
         Expr('a', S.this.a),

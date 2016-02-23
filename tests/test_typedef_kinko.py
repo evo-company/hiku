@@ -1,7 +1,7 @@
 import difflib
 from textwrap import dedent
 
-from hiku.graph import Edge, Field, Link
+from hiku.graph import Graph, Edge, Field, Link
 from hiku.typedef.kinko import dumps
 from hiku.types import IntegerType, DictType, StringType
 from hiku.types import ListType
@@ -25,7 +25,7 @@ class TestTypeDefKinko(TestCase):
 
     def testField(self):
         self.assertDumps(
-            Edge(None, [
+            Graph([
                 Field('A', StringType, noop),
             ]),
             """
@@ -35,7 +35,7 @@ class TestTypeDefKinko(TestCase):
 
     def testEdge(self):
         self.assertDumps(
-            Edge(None, [
+            Graph([
                 Edge('Foo', [
                     Field('a', StringType, noop),
                     Field('c', StringType, noop),
@@ -60,7 +60,7 @@ class TestTypeDefKinko(TestCase):
 
     def testListSimple(self):
         self.assertDumps(
-            Edge(None, [
+            Graph([
                 Field('A', ListType(IntegerType), noop),
             ]),
             """
@@ -71,7 +71,7 @@ class TestTypeDefKinko(TestCase):
 
     def testListComplex(self):
         self.assertDumps(
-            Edge(None, [
+            Graph([
                 Field('A', ListType(ListType(IntegerType)), noop),
             ]),
             """
@@ -83,7 +83,7 @@ class TestTypeDefKinko(TestCase):
 
     def testDictSimple(self):
         self.assertDumps(
-            Edge(None, [
+            Graph([
                 Field('A', DictType(StringType, IntegerType), noop),
             ]),
             """
@@ -94,7 +94,7 @@ class TestTypeDefKinko(TestCase):
 
     def testDictComplex(self):
         self.assertDumps(
-            Edge(None, [
+            Graph([
                 Field('A', DictType(StringType,
                                     DictType(IntegerType, IntegerType)),
                       noop),
@@ -108,7 +108,7 @@ class TestTypeDefKinko(TestCase):
 
     def testTypeRef(self):
         self.assertDumps(
-            Edge(None, [
+            Graph([
                 Edge('Foo', [
                     Field('a', StringType, noop),
                 ]),
@@ -141,7 +141,7 @@ class TestTypeDefKinko(TestCase):
 
     def testDocs(self):
         self.assertDumps(
-            Edge(None, [
+            Graph([
                 Edge('Foo', [
                     Field('a', StringType, noop, doc="Attribute a"),
                 ], doc="Some Foo explanation"),

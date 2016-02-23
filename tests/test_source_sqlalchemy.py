@@ -9,7 +9,7 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
-from hiku.graph import Edge, Link
+from hiku.graph import Graph, Edge, Link
 from hiku.engine import Engine
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
@@ -59,7 +59,7 @@ def direct_link(ids):
     return ids
 
 
-ENV = Edge(None, [
+ENV = Graph([
     Edge(foo_table.name, chain(
         db_fields(session, foo_table, [
             'id',

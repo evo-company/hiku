@@ -33,7 +33,7 @@ def noop(*_):
     return 1/0
 
 
-ENV = graph.Edge(None, [
+ENV = graph.Graph([
     graph.Field('f', noop),
     graph.Edge('x', [
         graph.Field('a', noop),

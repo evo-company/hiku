@@ -54,3 +54,9 @@ class Link(object):
         self.to_list = to_list
         self.options = OrderedDict((o.name, o) for o in (options or ()))
         self.doc = doc
+
+
+class Graph(Edge):
+
+    def __init__(self, items):
+        super(Graph, self).__init__(None, items)
