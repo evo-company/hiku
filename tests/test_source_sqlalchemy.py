@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
+from hiku.types import IntegerType, StringType
 from hiku.graph import Graph, Edge, Link
 from hiku.engine import Engine
 from hiku.readers.simple import read
@@ -59,7 +60,7 @@ def direct_link(ids):
     return ids
 
 
-ENV = Graph([
+GRAPH = Graph([
     Edge(foo_table.name, chain(
         db_fields(session, foo_table, [
             'id',
@@ -124,8 +125,14 @@ class TestSourceSQL(TestCase):
     def tearDown(self):
         session.remove()
 
+    def testTypes(self):
+        self.assertIsInstance(GRAPH.fields[foo_table.name].fields['id'].type,
+                              IntegerType)
+        self.assertIsInstance(GRAPH.fields[foo_table.name].fields['name'].type,
+                              StringType)
+
     def assertExecute(self, src, value):
-        result = self.engine.execute(ENV, read(src))
+        result = self.engine.execute(GRAPH, read(src))
         self.assertResult(result, value)
 
     def testSameTable(self):

@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from ..types import ContainerType, RecordType, ListType
 from ..graph import Edge, Link, Field
 
-from .types import TypeDef, TypeRef, UnknownType
+from .types import TypeDef, TypeRef
 
 
 class TypeDoc(object):
@@ -28,14 +28,20 @@ def _wrap_with_typedoc(func):
 @_wrap_with_typedoc
 def _translate(obj):
     if isinstance(obj, Edge):
-        return RecordType((f.name, _translate(f)) for f in obj.fields.values())
+        rec_fields = []
+        for f in obj.fields.values():
+            if isinstance(f, Field) and f.type is None:
+                continue
+            rec_fields.append((f.name, _translate(f)))
+        return RecordType(rec_fields)
     elif isinstance(obj, Link):
         if obj.to_list:
             return ListType(TypeRef(obj.entity))
         else:
             return TypeRef(obj.entity)
     elif isinstance(obj, Field):
-        return obj.type or UnknownType()
+        assert obj.type is not None, repr(obj.type)
+        return obj.type
     else:
         raise TypeError(type(obj))
 
@@ -43,6 +49,8 @@ def _translate(obj):
 def graph_to_types(root):
     types = []
     for item in root.fields.values():
+        if isinstance(item, Field) and item.type is None:
+            continue
         types.append(TypeDef(item.name, _translate(item)))
     return types
 

@@ -2,8 +2,10 @@ from __future__ import absolute_import
 
 from collections import defaultdict
 
+import sqlalchemy
 from sqlalchemy import select
 
+from ..types import StringType, IntegerType
 from ..graph import Field, Link
 
 
@@ -18,6 +20,15 @@ def _query_fields(conn, primary_key, columns_map, fields, ids):
                 for row in rows}
     nulls = [None for _ in fields]
     return [rows_map.get(id_, nulls) for id_ in ids]
+
+
+def translate_type(column):
+    if isinstance(column.type, sqlalchemy.Integer):
+        return IntegerType
+    elif isinstance(column.type, sqlalchemy.Unicode):
+        return StringType
+    else:
+        return None
 
 
 def db_fields(conn, table, fields):
@@ -47,7 +58,8 @@ def db_fields(conn, table, fields):
 
     edge_fields = []
     for field_name in fields:
-        edge_fields.append(Field(field_name, query_func))
+        type_ = translate_type(getattr(table.c, field_name))
+        edge_fields.append(Field(field_name, type_, query_func))
     return edge_fields
 
 
