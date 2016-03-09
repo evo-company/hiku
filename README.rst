@@ -1,4 +1,4 @@
-**Hiku** is a library to design *Graph API*s
+**Hiku** is a library to design *Graph API*
 
 `Documentation <https://github.com/vmagamedov/hiku/wiki>`_ |
 `Example <https://github.com/vmagamedov/sw.kinko>`_
