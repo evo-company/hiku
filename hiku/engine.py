@@ -8,33 +8,40 @@ from .result import Result
 from .executors.queue import Workflow, Queue
 
 
-def edge_split(edge, pattern):
-    assert isinstance(edge, Edge), repr(edge)
-    assert isinstance(pattern, query.Edge), repr(pattern)
+class SplitPattern(object):
 
-    fields = []
-    links = []
-    edges = []
+    def __init__(self, edge):
+        self._edge = edge
+        self._fields = []
+        self._links = []
+        self._edges = []
 
-    for item in pattern.fields.values():
-        if isinstance(item, query.Field):
-            fields.append((edge.fields[item.name], item))
-        elif isinstance(item, query.Link):
-            field = edge.fields[item.name]
-            if isinstance(field, Link):
-                if field.requires:
-                    fields.append((edge.fields[field.requires],
-                                   query.Field(field.requires)))
-                links.append((field, item))
-            elif isinstance(field, Edge):
-                edges.append(item)
-            else:
-                raise ValueError('Unexpected edge member: {!r} ({})'
-                                 .format(field, item.name))
+    def split(self, pattern):
+        for item in pattern.fields.values():
+            self.visit(item)
+        return self._fields, self._links, self._edges
+
+    def visit(self, node):
+        node.accept(self)
+
+    def visit_edge(self, node):
+        raise ValueError('Unexpected value: {!r}'.format(node))
+
+    def visit_field(self, node):
+        self._fields.append((self._edge.fields[node.name], node))
+
+    def visit_link(self, node):
+        field = self._edge.fields[node.name]
+        if isinstance(field, Link):
+            if field.requires:
+                self._fields.append((self._edge.fields[field.requires],
+                                     query.Field(field.requires)))
+            self._links.append((field, node))
+        elif isinstance(field, Edge):
+            self._edges.append(node)
         else:
-            raise ValueError('Unexpected value: {!r}'.format(item))
-
-    return fields, links, edges
+            raise ValueError('Unexpected edge member: {!r} ({})'
+                             .format(field, node.name))
 
 
 def store_fields(result, edge, fields, ids, query_result):
@@ -101,7 +108,7 @@ class Query(Workflow):
         return self._result
 
     def process_edge(self, edge, pattern, ids):
-        fields, links, edges = edge_split(edge, pattern)
+        fields, links, edges = SplitPattern(edge).split(pattern)
 
         assert not (edge.name and edges), 'Nested edges are not supported yet'
         for link in edges:
