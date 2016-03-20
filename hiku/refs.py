@@ -1,5 +1,5 @@
 from .query import Edge, Link, Field, merge
-from .types import RecordType, ListType
+from .types import RecordType, ListType, Type, ContainerType
 from .nodes import NodeVisitor
 from .typedef.types import UnknownType, TypeRef
 
@@ -29,13 +29,7 @@ def ref_to_req(types, ref, add_req=None):
 
     ref_type = get_type(types, ref.to)
 
-    if isinstance(ref_type, UnknownType):
-        assert isinstance(ref, NamedRef), type(ref)
-        assert add_req is None, repr(add_req)
-        return ref_to_req(types, ref.backref,
-                          Edge([Field(ref.name)]))
-
-    elif isinstance(ref_type, RecordType):
+    if isinstance(ref_type, RecordType):
         if isinstance(ref, NamedRef):
             edge = Edge([]) if add_req is None else add_req
             return ref_to_req(types, ref.backref,
@@ -53,8 +47,16 @@ def ref_to_req(types, ref, add_req=None):
         else:
             raise NotImplementedError
 
+    elif isinstance(ref_type, (Type, UnknownType)):
+        assert not isinstance(ref_type, ContainerType)
+        assert isinstance(ref, NamedRef), type(ref)
+        assert add_req is None, repr(add_req)
+        return ref_to_req(types, ref.backref,
+                          Edge([Field(ref.name)]))
+
     else:
-        raise TypeError(type(ref.to))
+        raise TypeError('Reference to the invalid type: {!r}'
+                        .format(ref_type))
 
 
 def type_to_query(type_):
