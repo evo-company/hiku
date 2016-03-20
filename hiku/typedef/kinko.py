@@ -145,6 +145,10 @@ class _IndentedPrinter(object):
         self._print_arg(type_.key_type)
         self._print_arg(type_.value_type)
 
+    def visit_option(self, type_):
+        self._print_call('Option')
+        self._print_arg(type_.type)
+
 
 def dumps(root):
     types = graph_to_types(root)

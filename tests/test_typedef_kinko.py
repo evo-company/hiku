@@ -3,7 +3,7 @@ from textwrap import dedent
 
 from hiku.graph import Graph, Edge, Field, Link
 from hiku.typedef.kinko import dumps
-from hiku.types import IntegerType, DictType, StringType
+from hiku.types import IntegerType, DictType, StringType, OptionType
 from hiku.types import ListType
 from .base import TestCase
 
@@ -146,7 +146,7 @@ class TestTypeDefKinko(TestCase):
                     Field('a', StringType, noop, doc="Attribute a"),
                 ], doc="Some Foo explanation"),
                 Edge('Bar', [
-                    Field('b', StringType, noop, doc="Attribute b"),
+                    Field('b', OptionType(StringType), noop, doc="Attribute b"),
                     Link('c', None, 'Foo', noop, to_list=False,
                          doc="Link c to Foo"),
                 ], doc="Some Bar explanation"),
@@ -163,7 +163,8 @@ class TestTypeDefKinko(TestCase):
 
             type Bar  ; Some Bar explanation
               Record
-                :b String  ; Attribute b
+                :b  ; Attribute b
+                  Option String
                 :c Foo  ; Link c to Foo
 
             type Baz  ; Some Baz explanation
