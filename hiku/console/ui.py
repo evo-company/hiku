@@ -1,7 +1,8 @@
+import json
 import string
 import pkgutil
 
-from ..writers.json import dumps as dumps_result
+from ..result import denormalize
 from ..typedef.kinko import dumps as dumps_typedef
 from ..readers.simple import read
 
@@ -102,7 +103,7 @@ class ConsoleApplication(object):
         pattern = environ['wsgi.input'].read(limit)
         query = read(_decode(pattern))
         result = self.engine.execute(self.root, query)
-        result_data = _encode(dumps_result(result))
+        result_data = _encode(json.dumps(denormalize(self.root, result, query)))
         start_response('200 OK', [
             ('Content-Type', 'application/json'),
             ('Content-Length', str(len(result_data))),
