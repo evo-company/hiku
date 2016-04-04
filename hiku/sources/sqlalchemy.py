@@ -118,10 +118,6 @@ def db_link(conn, name, requires, from_column, to_column, to_list,
         raise ValueError('from_column and to_column should belong to '
                          'the one table')
 
-    if from_column is to_column:
-        raise ValueError('from_column and to_column should not be '
-                         'the same column')
-
     mapper = _to_list_mapper if to_list else _to_one_mapper
 
     def query_func(ids):
