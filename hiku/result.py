@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 from .query import Edge, Field, Link
+from .graph import Link as GraphLink
 
 
 class Ref(object):
@@ -46,12 +47,15 @@ def _denormalize(graph, graph_obj, result, query_obj):
         return result
 
     elif isinstance(query_obj, Link):
-        graph_edge = graph.fields[graph_obj.entity]
-        if graph_obj.to_list:
-            return [_denormalize(graph, graph_edge, v, query_obj.edge)
-                    for v in result]
+        if isinstance(graph_obj, GraphLink):
+            graph_edge = graph.fields[graph_obj.entity]
+            if graph_obj.to_list:
+                return [_denormalize(graph, graph_edge, v, query_obj.edge)
+                        for v in result]
+            else:
+                return _denormalize(graph, graph_edge, result, query_obj.edge)
         else:
-            return _denormalize(graph, graph_edge, result, query_obj.edge)
+            return _denormalize(graph, graph_obj, result, query_obj.edge)
 
 
 def denormalize(graph, result, query):

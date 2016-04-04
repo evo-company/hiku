@@ -31,6 +31,11 @@ class TestDenormalize(TestCase):
             ]),
             Link('xs', None, 'x', noop, to_list=True),
             Link('y1', None, 'y', noop, to_list=False),
+            Edge('z', [
+                Field('e', noop),
+                Link('y1', None, 'y', noop, to_list=False),
+                Link('xs', None, 'x', noop, to_list=True),
+            ]),
         ])
         self.result = Result()
         self.result.idx['x'][1] = {
@@ -53,6 +58,11 @@ class TestDenormalize(TestCase):
         }
         self.result['xs'] = [self.result.ref('x', 2), self.result.ref('x', 1)]
         self.result['y1'] = self.result.ref('y', 3)
+        self.result['z'] = {
+            'e': 5,
+            'y1': self.result.ref('y', 3),
+            'xs': [self.result.ref('x', 1), self.result.ref('x', 2)],
+        }
 
     def check_denormalize(self, query_string, result):
         new_result = denormalize(self.graph, self.result, read(query_string))
@@ -60,6 +70,14 @@ class TestDenormalize(TestCase):
         self.assertEqual(
             new_result,
             result,
+        )
+
+    def testSingleEdge(self):
+        self.check_denormalize(
+            '[{:z [:e {:y1 [:c]} {:xs [:b]}]}]',
+            {'z': {'e': 5,
+                   'y1': {'c': 3},
+                   'xs': [{'b': 2}, {'b': 4}]}},
         )
 
     def testLinkOne(self):
