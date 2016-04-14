@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from ..edn import dumps as _dumps, TaggedElement, List, Keyword
+from ..edn import dumps as _dumps, TaggedElement, List
 from ..result import Ref
 from ..compat import text_type
 
@@ -16,15 +16,15 @@ def _transform(obj):
         return [_transform(v) for v in obj]
     elif isinstance(obj, dict):
         assert all(isinstance(k, text_type) for k in obj.keys())
-        return {Keyword(k): _transform(v) for k, v in obj.items()}
+        return {k: _transform(v) for k, v in obj.items()}
     else:
         return obj
 
 
 def _transform_idx(idx):
     for name, value in idx.items():
-        yield Keyword(name), {ident: _transform(val)
-                              for ident, val in value.items()}
+        yield name, {ident: _transform(val)
+                     for ident, val in value.items()}
 
 
 def dumps(result):
