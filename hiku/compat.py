@@ -3,6 +3,7 @@ import ast as _ast
 
 
 PY3 = sys.version_info[0] == 3
+PY35 = sys.version_info >= (3, 5)
 
 
 class _AST(object):
@@ -18,6 +19,13 @@ class _AST(object):
         @staticmethod
         def arg(arg):
             return _ast.arg(arg, None)
+
+        if PY35:
+            @staticmethod
+            def Call(func, args, keywords, starargs, kwargs):
+                return _ast.Call(func, args, keywords)
+        else:
+            Call = _ast.Call
 
     else:
         @staticmethod
@@ -35,6 +43,8 @@ class _AST(object):
         @staticmethod
         def arg(arg):
             return _ast.Name(str(arg), _ast.Param())
+
+        Call = _ast.Call
 
 
 ast = _AST()
