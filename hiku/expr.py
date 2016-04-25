@@ -21,7 +21,7 @@ class Expr(object):
             raise TypeError('More positional arguments ({}) than expected (2)'
                             .format(len(other)))
 
-        options, doc = kw_only(['options', 'doc'], kwargs)
+        options, doc = kw_only(kwargs, [], ['options', 'doc'])
 
         node, functions = to_expr(expr)
 

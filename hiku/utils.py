@@ -1,8 +1,20 @@
-def kw_only(names, kwargs):
-    kwargs = kwargs.copy()
-    values = [kwargs.pop(name, None) for name in names]
-    if kwargs:
+_undefined = object()
+
+
+def kw_only(mapping, required, optional=None):
+    d = mapping.copy()
+    result = []
+    for arg in required:
+        value = d.pop(arg, _undefined)
+        if value is _undefined:
+            raise TypeError('Required keyword argument {!r} not specified'
+                            .format(arg))
+        result.append(value)
+    if optional is not None:
+        for key in optional:
+            value = d.pop(key, None)
+            result.append(value)
+    if d:
         raise TypeError('Unknown keyword arguments: {}'
-                        .format(', '.join(kwargs.keys())))
-    else:
-        return values
+                        .format(', '.join(d.keys())))
+    return result
