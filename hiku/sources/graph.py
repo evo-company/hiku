@@ -59,7 +59,7 @@ def subquery_fields(sub_root, sub_edge_name, exprs):
     fn_env = {f.__fn_name__: f.fn for f in funcs_set}
 
     def query_func(queue, task_set, edge, fields, ids):
-        this_link = Link(THIS_LINK_NAME, None, sub_edge_name, None,
+        this_link = Link(THIS_LINK_NAME, None, to=sub_edge_name, requires=None,
                          to_list=True)
 
         reqs = merge(reqs_map[f.name] for f in fields)

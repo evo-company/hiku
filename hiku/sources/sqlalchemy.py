@@ -6,26 +6,39 @@ import sqlalchemy
 
 from ..utils import kw_only
 from ..types import StringType, IntegerType
-from ..graph import Field, link as _link
+from ..graph import Field as FieldBase, Link as LinkBase
 
 
-def _query_fields(conn, primary_key, columns_map, fields_, ids):
-    if not ids:
-        return []
+class FieldsQuery(object):
 
-    columns = [columns_map[field.name] for field in fields_]
-    sql_expr = (
-        sqlalchemy.select([primary_key] + columns)
-        .where(primary_key.in_(ids))
-    )
-    rows = conn.execute(sql_expr).fetchall()
-    rows_map = {row[primary_key]: [row[c] for c in columns]
-                for row in rows}
-    nulls = [None for _ in fields_]
-    return [rows_map.get(id_, nulls) for id_ in ids]
+    def __init__(self, connection, from_clause, primary_key=None):
+        self.connection = connection
+        self.from_clause = from_clause
+        if primary_key is not None:
+            self.primary_key = primary_key
+        else:
+            # currently only one column supported
+            self.primary_key, = from_clause.primary_key
+
+    def __call__(self, fields_, ids):
+        if not ids:
+            return []
+
+        columns = [getattr(self.from_clause.c, f.name) for f in fields_]
+        expr = (
+            sqlalchemy.select([self.primary_key] + columns)
+            .select_from(self.from_clause)
+            .where(self.primary_key.in_(ids))
+        )
+        rows = self.connection.execute(expr).fetchall()
+        rows_map = {row[self.primary_key]: [row[c] for c in columns]
+                    for row in rows}
+
+        nulls = [None for _ in fields_]
+        return [rows_map.get(id_, nulls) for id_ in ids]
 
 
-def translate_type(column):
+def _translate_type(column):
     if isinstance(column.type, sqlalchemy.Integer):
         return IntegerType
     elif isinstance(column.type, sqlalchemy.Unicode):
@@ -34,36 +47,16 @@ def translate_type(column):
         return None
 
 
-def fields(conn, table, field_names):
-    """Fields maker for DB columns
+class Field(FieldBase):
 
-    To expose `foo_table`::
-
-        Edge(foo_table.name, fields(session, foo_table, [
-            'id',
-            'name',
-        ]))
-
-    """
-    primary_key, = list(table.primary_key)
-    columns_map = {}
-    for field_name in field_names:
+    def __init__(self, name, query, **kwargs):
         try:
-            column = getattr(table.c, field_name)
+            column = getattr(query.from_clause.c, name)
         except AttributeError:
-            raise ValueError('Table {} does not have a column named {}'
-                             .format(table, field_name))
-        else:
-            columns_map[field_name] = column
-
-    def query_func(fields_, ids):
-        return _query_fields(conn, primary_key, columns_map, fields_, ids)
-
-    edge_fields = []
-    for field_name in field_names:
-        type_ = translate_type(getattr(table.c, field_name))
-        edge_fields.append(Field(field_name, type_, query_func))
-    return edge_fields
+            raise ValueError('FromClause {} does not have a column named {}'
+                             .format(query.from_clause, name))
+        type_ = _translate_type(column)
+        super(Field, self).__init__(name, type_, query, **kwargs)
 
 
 def _to_one_mapper(pairs, values):
@@ -78,39 +71,42 @@ def _to_many_mapper(pairs, values):
     return [mapping[value] for value in values]
 
 
-def _query_link(conn, from_column, to_column, values, mapper, proc):
-    if not values:
-        return []
-    expr = (
-        sqlalchemy.select([from_column.label('from'),
-                           to_column.label('to')])
-        .where(from_column.in_(values))
-    )
-    expr = proc(expr)
-    pairs = conn.execute(expr).fetchall()
-    return mapper(pairs, values)
+class LinkQuery(object):
 
+    def __init__(self, connection, **kwargs):
+        self.connection = connection
+        to, to_column, to_list, from_column = \
+            kw_only(kwargs, ['to', 'to_column', 'to_list', 'from_column'])
 
-class link(object):
-
-    @classmethod
-    def _decorator(cls, link_dec, mapper, entity, conn, **kw):
-        from_column, to_column = kw_only(kw, ['from_', 'to'])
         if from_column.table is not to_column.table:
             raise ValueError('from_column and to_column should belong to '
                              'the one table')
 
-        def decorator(proc):
-            def func(ids):
-                return _query_link(conn, from_column, to_column,
-                                   ids, mapper, proc)
-            return link_dec(entity, requires=True)(func)
-        return decorator
+        self.to = to
+        self.to_column = to_column
+        self.to_list = to_list
+        self.from_column = from_column
 
-    @classmethod
-    def one(cls, entity, conn, **kw):
-        return cls._decorator(_link.one, _to_one_mapper, entity, conn, **kw)
+    def __call__(self, ids):
+        if not ids:
+            return []
 
-    @classmethod
-    def many(cls, entity, conn, **kw):
-        return cls._decorator(_link.many, _to_many_mapper, entity, conn, **kw)
+        expr = (
+            sqlalchemy.select([self.from_column.label('from'),
+                               self.to_column.label('to')])
+            .where(self.from_column.in_(ids))
+        )
+        pairs = self.connection.execute(expr).fetchall()
+        mapper = _to_many_mapper if self.to_list else _to_one_mapper
+        return mapper(pairs, ids)
+
+
+class Link(LinkBase):
+
+    def __init__(self, name, query, **kwargs):
+        requires, options, doc = \
+            kw_only(kwargs, ['requires'], ['options', 'doc'])
+
+        super(Link, self).__init__(name, query, requires=requires,
+                                   to=query.to, to_list=query.to_list,
+                                   options=options, doc=doc)

@@ -44,8 +44,8 @@ TEST_ENV = Graph([
         Field('d', _(query_fields1)),
         Field('e', _(query_fields2)),
     ]),
-    Link('f', None, 'c', _(query_link1), to_list=True),
-    Link('g', None, 'c', _(query_link2), to_list=True),
+    Link('f', _(query_link1), to='c', requires=None, to_list=True),
+    Link('g', _(query_link2), to='c', requires=None, to_list=True),
 ])
 
 thread_pool = ThreadPoolExecutor(2)

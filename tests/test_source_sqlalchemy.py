@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-from itertools import chain
 from concurrent.futures import ThreadPoolExecutor
 
 from sqlalchemy import create_engine
@@ -10,11 +9,11 @@ from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
 from hiku.types import IntegerType, StringType
-from hiku.graph import Graph, Edge, link
+from hiku.graph import Graph, Edge, Link
 from hiku.engine import Engine
+from hiku.sources import sqlalchemy as sa
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
-from hiku.sources.sqlalchemy import fields as sa_fields, link as sa_link
 
 from .base import TestCase
 
@@ -40,67 +39,54 @@ bar_table = Table(
 )
 
 
-@link.many('foo', requires=False)
 def foo_list():
     return [3, 2, 1]
 
 
-@link.many('bar', requires=False)
 def bar_list():
     return [6, 5, 4]
 
 
-@link.one('bar', requires=False)
 def not_found_one():
     return -1
 
 
-@link.many('bar', requires=False)
 def not_found_list():
     return [6, -1, 4]
 
 
-@link.one('bar', requires=True)
-def direct_link(ids):
-    return ids
+foo_query = sa.FieldsQuery(session, foo_table)
+
+bar_query = sa.FieldsQuery(session, bar_table)
 
 
-@sa_link.many('foo', session, from_=foo_table.c.bar_id, to=foo_table.c.id)
-def to_foo(expr):
-    return expr
+to_foo_query = sa.LinkQuery(session, from_column=foo_table.c.bar_id,
+                            to='foo', to_column=foo_table.c.id, to_list=True)
 
-
-@sa_link.one('bar', session, from_=bar_table.c.id, to=bar_table.c.id)
-def to_bar(expr):
-    return expr
+to_bar_query = sa.LinkQuery(session, from_column=bar_table.c.id,
+                            to='bar', to_column=bar_table.c.id, to_list=False)
 
 
 GRAPH = Graph([
-    Edge(foo_table.name, chain(
-        sa_fields(session, foo_table, [
-            'id',
-            'name',
-            'count',
-            'bar_id',
-        ]),
-        [
-            to_bar('bar', requires='bar_id'),
-        ],
-    )),
-    Edge(bar_table.name, chain(
-        sa_fields(session, bar_table, [
-            'id',
-            'name',
-            'type',
-        ]),
-        [
-            to_foo('foo-s', requires='id'),
-        ],
-    )),
-    foo_list('foo-list'),
-    bar_list('bar-list'),
-    not_found_one('not-found-one'),
-    not_found_list('not-found-list'),
+    Edge(foo_table.name, [
+        sa.Field('id', foo_query),
+        sa.Field('name', foo_query),
+        sa.Field('count', foo_query),
+        sa.Field('bar_id', foo_query),
+        sa.Link('bar', to_bar_query, requires='bar_id'),
+    ]),
+    Edge(bar_table.name, [
+        sa.Field('id', bar_query),
+        sa.Field('name', bar_query),
+        sa.Field('type', bar_query),
+        sa.Link('foo-s', to_foo_query, requires='id'),
+    ]),
+    Link('foo-list', foo_list, to='foo', requires=None, to_list=True),
+    Link('bar-list', bar_list, to='bar', requires=None, to_list=True),
+    Link('not-found-one', not_found_one, to='bar', requires=None,
+         to_list=False),
+    Link('not-found-list', not_found_list, to='bar', requires=None,
+         to_list=True),
 ])
 
 thread_pool = ThreadPoolExecutor(2)
@@ -151,12 +137,12 @@ class TestSourceSQL(TestCase):
 
     def testSameTable(self):
         with self.assertRaisesRegexp(ValueError, 'should belong'):
-            sa_link.many('name', session,
-                         from_=foo_table.c.id, to=bar_table.c.id)
+            sa.LinkQuery(session, from_column=foo_table.c.id,
+                         to='bar', to_column=bar_table.c.id, to_list=True)
 
     def testMissingColumn(self):
         with self.assertRaisesRegexp(ValueError, 'does not have a column'):
-            sa_fields(session, foo_table, ['unknown'])
+            sa.Field('unknown', foo_query)
 
     def testManyToOne(self):
         self.assertExecute(

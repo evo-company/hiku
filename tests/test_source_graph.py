@@ -69,16 +69,16 @@ LOW_ENV = Graph([
         Field('a', query_x),
         Field('b', query_x),
         Field('y_id', query_x),
-        Link('y', 'id', 'y', x_to_y, to_list=False),
+        Link('y', x_to_y, to='y', requires='id', to_list=False),
     ]),
     Edge('y', [
         Field('id', query_y),
         Field('c', query_y),
         Field('d', query_y),
-        Link('xs', 'id', 'x', y_to_x, to_list=True),
+        Link('xs', y_to_x, to='x', requires='id', to_list=True),
     ]),
-    Link('xs', None, 'x', to_x, to_list=True),
-    Link('ys', None, 'y', to_y, to_list=True),
+    Link('xs', to_x, to='x', requires=None, to_list=True),
+    Link('ys', to_y, to='y', requires=None, to_list=True),
 ])
 
 
@@ -124,8 +124,8 @@ HIGH_ENV = Graph([
         # Expr('baz', baz(S.this)),
     ])),
     # TODO: links reuse
-    Link('x1s', None, 'x1', to_x, to_list=True),
-    Link('y1s', None, 'y2', to_y, to_list=True),
+    Link('x1s', to_x, to='x1', requires=None, to_list=True),
+    Link('y1s', to_y, to='y2', requires=None, to_list=True),
 ])
 
 

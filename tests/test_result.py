@@ -21,20 +21,20 @@ class TestDenormalize(TestCase):
                 Field('id', noop),
                 Field('a', noop),
                 Field('b', noop),
-                Link('y1', 'id', 'y', noop, to_list=False),
+                Link('y1', noop, to='y', requires='id', to_list=False),
             ]),
             Edge('y', [
                 Field('id', noop),
                 Field('c', noop),
                 Field('d', noop),
-                Link('xs', 'id', 'x', noop, to_list=True),
+                Link('xs', noop, to='x', requires='id', to_list=True),
             ]),
-            Link('xs', None, 'x', noop, to_list=True),
-            Link('y1', None, 'y', noop, to_list=False),
+            Link('xs', noop, to='x', requires=None, to_list=True),
+            Link('y1', noop, to='y', requires=None, to_list=False),
             Edge('z', [
                 Field('e', noop),
-                Link('y1', None, 'y', noop, to_list=False),
-                Link('xs', None, 'x', noop, to_list=True),
+                Link('y1', noop, to='y', requires=None, to_list=False),
+                Link('xs', noop, to='x', requires=None, to_list=True),
             ]),
         ])
         self.result = Result()

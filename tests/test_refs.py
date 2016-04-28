@@ -40,17 +40,17 @@ ENV = graph.Graph([
         graph.Field('b', noop),
         graph.Field('c', noop),
     ]),
-    graph.Link('x1', None, 'x', noop, to_list=False),
-    graph.Link('xs', None, 'x', noop, to_list=True),
+    graph.Link('x1', noop, to='x', requires=None, to_list=False),
+    graph.Link('xs', noop, to='x', requires=None, to_list=True),
     graph.Edge('y', [
         graph.Field('d', noop),
         graph.Field('e', noop),
         graph.Field('f', noop),
-        graph.Link('x1', None, 'x', noop, to_list=False),
-        graph.Link('xs', None, 'x', noop, to_list=True),
+        graph.Link('x1', noop, to='x', requires=None, to_list=False),
+        graph.Link('xs', noop, to='x', requires=None, to_list=True),
     ]),
-    graph.Link('y1', None, 'y', noop, to_list=False),
-    graph.Link('ys', None, 'y', noop, to_list=True),
+    graph.Link('y1', noop, to='y', requires=None, to_list=False),
+    graph.Link('ys', noop, to='y', requires=None, to_list=True),
 ])
 
 
