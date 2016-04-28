@@ -1,36 +1,10 @@
 from itertools import chain
-from collections import namedtuple, OrderedDict
+from collections import namedtuple
 
 from .edn import loads
 from .nodes import Symbol, Tuple, List, Keyword, Dict
-from .utils import kw_only
 from .compat import text_type, string_types
 from .readers.simple import transform
-
-
-class Expr(object):
-
-    def __init__(self, name, *other, **kwargs):
-        if not len(other):
-            raise TypeError('Missing required argument')
-        elif len(other) == 1:
-            type_, expr = None, other[0]
-        elif len(other) == 2:
-            type_, expr = other
-        else:
-            raise TypeError('More positional arguments ({}) than expected (2)'
-                            .format(len(other)))
-
-        options, doc = kw_only(kwargs, [], ['options', 'doc'])
-
-        node, functions = to_expr(expr)
-
-        self.name = name
-        self.type = type_
-        self.node = node
-        self.functions = functions
-        self.options = OrderedDict((o.name, o) for o in (options or ()))
-        self.doc = doc
 
 
 _Func = namedtuple('__func__', 'expr, args')

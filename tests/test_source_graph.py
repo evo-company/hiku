@@ -3,10 +3,10 @@ from __future__ import unicode_literals
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
-from hiku.expr import define, S, Expr, each
+from hiku.expr import define, S, each
 from hiku.graph import Graph, Edge, Link, Field, Option
 from hiku.engine import Engine
-from hiku.sources.graph import subquery_fields
+from hiku.sources.graph import SubQuery, Expr
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
 
@@ -103,26 +103,31 @@ def buz(x, size):
     return '{x[a]} - {size}'.format(x=x, size=size)
 
 
+sq_x = SubQuery(LOW_ENV, 'x')
+
+sq_y = SubQuery(LOW_ENV, 'y')
+
+
 HIGH_ENV = Graph([
-    Edge('x1', subquery_fields(LOW_ENV, 'x', [
-        Expr('id', S.this.id),
-        Expr('a', S.this.a),
-        Expr('f', S.f1),
-        Expr('foo', foo(S.this, S.this.y)),
-        Expr('bar', bar(S.this)),
+    Edge('x1', [
+        Expr('id', sq_x, S.this.id),
+        Expr('a', sq_x, S.this.a),
+        Expr('f', sq_x, S.f1),
+        Expr('foo', sq_x, foo(S.this, S.this.y)),
+        Expr('bar', sq_x, bar(S.this)),
         # Expr('baz', baz(S.this.y)),
-        Expr('buz', buz(S.this, S.size), options=[Option('size')]),
-        Expr('buz2', buz(S.this, S.size),
+        Expr('buz', sq_x, buz(S.this, S.size), options=[Option('size')]),
+        Expr('buz2', sq_x, buz(S.this, S.size),
              options=[Option('size', default=100)]),
-    ])),
-    Edge('y1', subquery_fields(LOW_ENV, 'y', [
-        Expr('id', S.this.id),
-        Expr('c', S.this.c),
-        Expr('f', S.f2),
-        Expr('foo', each(S.x, S.this.xs, foo(S.x, S.this))),
-        Expr('bar', each(S.x, S.this.xs, bar(S.x))),
+    ]),
+    Edge('y1', [
+        Expr('id', sq_y, S.this.id),
+        Expr('c', sq_y, S.this.c),
+        Expr('f', sq_y, S.f2),
+        Expr('foo', sq_y, each(S.x, S.this.xs, foo(S.x, S.this))),
+        Expr('bar', sq_y, each(S.x, S.this.xs, bar(S.x))),
         # Expr('baz', baz(S.this)),
-    ])),
+    ]),
     # TODO: links reuse
     Link('x1s', to_x, to='x1', requires=None, to_list=True),
     Link('y1s', to_y, to='y2', requires=None, to_list=True),
