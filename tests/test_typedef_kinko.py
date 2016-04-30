@@ -114,11 +114,11 @@ class TestTypeDefKinko(TestCase):
                 ]),
                 Edge('Bar', [
                     Field('b', StringType, noop),
-                    Link('c', noop, to='Foo', requires=None, to_list=False),
+                    Link('c', noop, edge='Foo', requires=None, to_list=False),
                 ]),
                 Edge('Baz', [
                     Field('d', StringType, noop),
-                    Link('e', noop, to='Foo', requires=None, to_list=True),
+                    Link('e', noop, edge='Foo', requires=None, to_list=True),
                 ]),
             ]),
             """
@@ -147,12 +147,12 @@ class TestTypeDefKinko(TestCase):
                 ], doc="Some Foo explanation"),
                 Edge('Bar', [
                     Field('b', OptionType(StringType), noop, doc="Attribute b"),
-                    Link('c', noop, to='Foo', requires=None, to_list=False,
+                    Link('c', noop, edge='Foo', requires=None, to_list=False,
                          doc="Link c to Foo"),
                 ], doc="Some Bar explanation"),
                 Edge('Baz', [
                     Field('d', StringType, noop, doc="Attribute d"),
-                    Link('e', noop, to='Foo', requires=None, to_list=True,
+                    Link('e', noop, edge='Foo', requires=None, to_list=True,
                          doc="Link e to Foo"),
                 ], doc="Some Baz explanation"),
             ]),

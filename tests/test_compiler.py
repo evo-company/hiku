@@ -40,11 +40,11 @@ ENV = Graph([
     ]),
     Edge('y', [
         Field('c', noop),
-        Link('x1', noop, to='x', requires=None, to_list=False),
-        Link('xs', noop, to='x', requires=None, to_list=True),
+        Link('x1', noop, edge='x', requires=None, to_list=False),
+        Link('xs', noop, edge='x', requires=None, to_list=True),
     ]),
-    Link('y1', noop, to='y', requires=None, to_list=False),
-    Link('ys', noop, to='y', requires=None, to_list=True),
+    Link('y1', noop, edge='y', requires=None, to_list=False),
+    Link('ys', noop, edge='y', requires=None, to_list=True),
 ])
 
 

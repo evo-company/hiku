@@ -69,16 +69,16 @@ _GRAPH = Graph([
         Field('a', query_x),
         Field('b', query_x),
         Field('y_id', query_x),
-        Link('y', x_to_y, to='y', requires='id', to_list=False),
+        Link('y', x_to_y, edge='y', requires='id', to_list=False),
     ]),
     Edge('y', [
         Field('id', query_y),
         Field('c', query_y),
         Field('d', query_y),
-        Link('xs', y_to_x, to='x', requires='id', to_list=True),
+        Link('xs', y_to_x, edge='x', requires='id', to_list=True),
     ]),
-    Link('xs', to_x, to='x', requires=None, to_list=True),
-    Link('ys', to_y, to='y', requires=None, to_list=True),
+    Link('xs', to_x, edge='x', requires=None, to_list=True),
+    Link('ys', to_y, edge='y', requires=None, to_list=True),
 ])
 
 
@@ -129,8 +129,8 @@ GRAPH = Graph([
         # Expr('baz', baz(S.this)),
     ]),
     # TODO: links reuse
-    Link('x1s', to_x, to='x1', requires=None, to_list=True),
-    Link('y1s', to_y, to='y2', requires=None, to_list=True),
+    Link('x1s', to_x, edge='x1', requires=None, to_list=True),
+    Link('y1s', to_y, edge='y2', requires=None, to_list=True),
 ])
 
 

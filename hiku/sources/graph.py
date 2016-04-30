@@ -85,7 +85,7 @@ class SubGraph(object):
                   for f in chain.from_iterable(e.functions
                                                for e in graph_fields)}
 
-        this_link = Link(THIS_LINK_NAME, None, to=self.edge, requires=None,
+        this_link = Link(THIS_LINK_NAME, None, edge=self.edge, requires=None,
                          to_list=True)
 
         reqs = merge(f.reqs for f in graph_fields)

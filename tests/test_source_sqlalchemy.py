@@ -60,11 +60,11 @@ foo_query = sa.FieldsQuery(session, foo_table)
 bar_query = sa.FieldsQuery(session, bar_table)
 
 
-to_foo_query = sa.LinkQuery(session, from_column=foo_table.c.bar_id,
-                            to='foo', to_column=foo_table.c.id, to_list=True)
+to_foo_query = sa.LinkQuery(session, edge='foo', from_column=foo_table.c.bar_id,
+                            to_column=foo_table.c.id, to_list=True)
 
-to_bar_query = sa.LinkQuery(session, from_column=bar_table.c.id,
-                            to='bar', to_column=bar_table.c.id, to_list=False)
+to_bar_query = sa.LinkQuery(session, edge='bar', from_column=bar_table.c.id,
+                            to_column=bar_table.c.id, to_list=False)
 
 
 GRAPH = Graph([
@@ -81,11 +81,11 @@ GRAPH = Graph([
         sa.Field('type', bar_query),
         sa.Link('foo-s', to_foo_query, requires='id'),
     ]),
-    Link('foo-list', foo_list, to='foo', requires=None, to_list=True),
-    Link('bar-list', bar_list, to='bar', requires=None, to_list=True),
-    Link('not-found-one', not_found_one, to='bar', requires=None,
+    Link('foo-list', foo_list, edge='foo', requires=None, to_list=True),
+    Link('bar-list', bar_list, edge='bar', requires=None, to_list=True),
+    Link('not-found-one', not_found_one, edge='bar', requires=None,
          to_list=False),
-    Link('not-found-list', not_found_list, to='bar', requires=None,
+    Link('not-found-list', not_found_list, edge='bar', requires=None,
          to_list=True),
 ])
 
@@ -137,8 +137,8 @@ class TestSourceSQL(TestCase):
 
     def testSameTable(self):
         with self.assertRaisesRegexp(ValueError, 'should belong'):
-            sa.LinkQuery(session, from_column=foo_table.c.id,
-                         to='bar', to_column=bar_table.c.id, to_list=True)
+            sa.LinkQuery(session, edge='bar', from_column=foo_table.c.id,
+                         to_column=bar_table.c.id, to_list=True)
 
     def testMissingColumn(self):
         with self.assertRaisesRegexp(ValueError, 'does not have a column'):

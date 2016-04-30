@@ -36,9 +36,9 @@ def _translate(obj):
         return RecordType(rec_fields)
     elif isinstance(obj, Link):
         if obj.to_list:
-            return ListType(TypeRef(obj.entity))
+            return ListType(TypeRef(obj.edge))
         else:
-            return TypeRef(obj.entity)
+            return TypeRef(obj.edge)
     elif isinstance(obj, Field):
         assert obj.type is not None, repr(obj.type)
         return obj.type

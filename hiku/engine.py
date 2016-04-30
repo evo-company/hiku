@@ -67,11 +67,11 @@ def link_reqs(result, edge, link, ids):
 
 
 def link_ref(result, link, ident):
-    return result.ref(link.entity, ident)
+    return result.ref(link.edge, ident)
 
 
 def link_refs(result, link, idents):
-    return [result.ref(link.entity, i) for i in idents]
+    return [result.ref(link.edge, i) for i in idents]
 
 
 def store_links(result, edge, link, ids, query_result):
@@ -186,7 +186,7 @@ class Query(Workflow):
     def process_link(self, edge, graph_link, query_edge, ids, result):
         store_links(self._result, edge, graph_link, ids, result)
         to_ids = link_result_to_ids(ids is not None, graph_link.to_list, result)
-        self.process_edge(self.root.fields[graph_link.entity], query_edge,
+        self.process_edge(self.root.fields[graph_link.edge], query_edge,
                           to_ids)
 
 

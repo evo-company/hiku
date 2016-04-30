@@ -45,13 +45,13 @@ class Edge(object):
 class Link(object):
 
     def __init__(self, name, func, **kwargs):
-        to, requires, to_list, options, doc = \
-            kw_only(kwargs, ['to', 'requires', 'to_list'], ['options', 'doc'])
+        edge, requires, to_list, options, doc = \
+            kw_only(kwargs, ['edge', 'requires', 'to_list'], ['options', 'doc'])
 
         self.name = name
-        self.requires = requires
-        self.entity = to
         self.func = func
+        self.edge = edge
+        self.requires = requires
         self.to_list = to_list
         self.options = OrderedDict((o.name, o) for o in (options or ()))
         self.doc = doc

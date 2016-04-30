@@ -14,9 +14,9 @@ def _graph_to_types(obj):
                           for f in obj.fields.values())
     elif isinstance(obj, graph.Link):
         if obj.to_list:
-            return ListType(TypeRef(obj.entity))
+            return ListType(TypeRef(obj.edge))
         else:
-            return TypeRef(obj.entity)
+            return TypeRef(obj.edge)
     elif isinstance(obj, graph.Field):
         return obj.type or UnknownType()
     else:

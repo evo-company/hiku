@@ -75,25 +75,25 @@ class LinkQuery(object):
 
     def __init__(self, connection, **kwargs):
         self.connection = connection
-        to, to_column, to_list, from_column = \
-            kw_only(kwargs, ['to', 'to_column', 'to_list', 'from_column'])
+        edge, from_column, to_column, to_list = \
+            kw_only(kwargs, ['edge', 'from_column', 'to_column', 'to_list'])
 
         if from_column.table is not to_column.table:
             raise ValueError('from_column and to_column should belong to '
                              'the one table')
 
-        self.to = to
+        self.edge = edge
+        self.from_column = from_column
         self.to_column = to_column
         self.to_list = to_list
-        self.from_column = from_column
 
     def __call__(self, ids):
         if not ids:
             return []
 
         expr = (
-            sqlalchemy.select([self.from_column.label('from'),
-                               self.to_column.label('to')])
+            sqlalchemy.select([self.from_column.label('from_column'),
+                               self.to_column.label('to_column')])
             .where(self.from_column.in_(ids))
         )
         pairs = self.connection.execute(expr).fetchall()
@@ -108,5 +108,5 @@ class Link(LinkBase):
             kw_only(kwargs, ['requires'], ['options', 'doc'])
 
         super(Link, self).__init__(name, query, requires=requires,
-                                   to=query.to, to_list=query.to_list,
+                                   edge=query.edge, to_list=query.to_list,
                                    options=options, doc=doc)

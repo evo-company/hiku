@@ -6,19 +6,19 @@ from .graph import Link as GraphLink
 
 class Ref(object):
 
-    def __init__(self, storage, entity, ident):
+    def __init__(self, storage, edge, ident):
         self.storage = storage
-        self.entity = entity
+        self.edge = edge
         self.ident = ident
 
     def __getitem__(self, key):
-        return self.storage[self.entity].get(self.ident)[key]
+        return self.storage[self.edge].get(self.ident)[key]
 
     def __repr__(self):
-        return '<{}:{}>'.format(self.entity, self.ident)
+        return '<{}:{}>'.format(self.edge, self.ident)
 
     def __eq__(self, other):
-        return self.storage[self.entity].get(self.ident) == other
+        return self.storage[self.edge].get(self.ident) == other
 
 
 class State(defaultdict):
@@ -33,8 +33,8 @@ class Result(State):
         super(Result, self).__init__()
         self.idx = State()
 
-    def ref(self, entity, ident):
-        return Ref(self.idx, entity, ident)
+    def ref(self, edge, ident):
+        return Ref(self.idx, edge, ident)
 
 
 def _denormalize(graph, graph_obj, result, query_obj):
@@ -48,7 +48,7 @@ def _denormalize(graph, graph_obj, result, query_obj):
 
     elif isinstance(query_obj, Link):
         if isinstance(graph_obj, GraphLink):
-            graph_edge = graph.fields[graph_obj.entity]
+            graph_edge = graph.fields[graph_obj.edge]
             if graph_obj.to_list:
                 return [_denormalize(graph, graph_edge, v, query_obj.edge)
                         for v in result]
