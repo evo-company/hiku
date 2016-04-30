@@ -68,7 +68,7 @@ class Expr(Field):
         self.proc = eval(compile(code, '<expr>', 'eval'))
 
 
-class SubQuery(object):
+class SubGraph(object):
     __subquery__ = True
 
     def __init__(self, graph, edge):

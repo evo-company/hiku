@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from hiku.expr import define, S, each
 from hiku.graph import Graph, Edge, Link, Field, Option
 from hiku.engine import Engine
-from hiku.sources.graph import SubQuery, Expr
+from hiku.sources.graph import SubGraph, Expr
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
 
@@ -61,7 +61,7 @@ def y_to_x(ids):
     return [_XS_BY_Y_INDEX[y_id] for y_id in ids]
 
 
-LOW_ENV = Graph([
+_GRAPH = Graph([
     Field('f1', query_f),
     Field('f2', query_f),
     Edge('x', [
@@ -103,29 +103,29 @@ def buz(x, size):
     return '{x[a]} - {size}'.format(x=x, size=size)
 
 
-sq_x = SubQuery(LOW_ENV, 'x')
+sg_x = SubGraph(_GRAPH, 'x')
 
-sq_y = SubQuery(LOW_ENV, 'y')
+sg_y = SubGraph(_GRAPH, 'y')
 
 
-HIGH_ENV = Graph([
+GRAPH = Graph([
     Edge('x1', [
-        Expr('id', sq_x, S.this.id),
-        Expr('a', sq_x, S.this.a),
-        Expr('f', sq_x, S.f1),
-        Expr('foo', sq_x, foo(S.this, S.this.y)),
-        Expr('bar', sq_x, bar(S.this)),
+        Expr('id', sg_x, S.this.id),
+        Expr('a', sg_x, S.this.a),
+        Expr('f', sg_x, S.f1),
+        Expr('foo', sg_x, foo(S.this, S.this.y)),
+        Expr('bar', sg_x, bar(S.this)),
         # Expr('baz', baz(S.this.y)),
-        Expr('buz', sq_x, buz(S.this, S.size), options=[Option('size')]),
-        Expr('buz2', sq_x, buz(S.this, S.size),
+        Expr('buz', sg_x, buz(S.this, S.size), options=[Option('size')]),
+        Expr('buz2', sg_x, buz(S.this, S.size),
              options=[Option('size', default=100)]),
     ]),
     Edge('y1', [
-        Expr('id', sq_y, S.this.id),
-        Expr('c', sq_y, S.this.c),
-        Expr('f', sq_y, S.f2),
-        Expr('foo', sq_y, each(S.x, S.this.xs, foo(S.x, S.this))),
-        Expr('bar', sq_y, each(S.x, S.this.xs, bar(S.x))),
+        Expr('id', sg_y, S.this.id),
+        Expr('c', sg_y, S.this.c),
+        Expr('f', sg_y, S.f2),
+        Expr('foo', sg_y, each(S.x, S.this.xs, foo(S.x, S.this))),
+        Expr('bar', sg_y, each(S.x, S.this.xs, bar(S.x))),
         # Expr('baz', baz(S.this)),
     ]),
     # TODO: links reuse
@@ -140,7 +140,7 @@ class TestSourceGraph(TestCase):
         self.engine = Engine(ThreadsExecutor(ThreadPoolExecutor(2)))
 
     def testField(self):
-        result = self.engine.execute(HIGH_ENV, read('[{:x1s [:a :f]}]'))
+        result = self.engine.execute(GRAPH, read('[{:x1s [:a :f]}]'))
         self.assertResult(result, {'x1s': [
             {'a': 'a1', 'f': 7},
             {'a': 'a2', 'f': 7},
@@ -148,7 +148,7 @@ class TestSourceGraph(TestCase):
         ]})
 
     def testFieldOptions(self):
-        result = self.engine.execute(HIGH_ENV,
+        result = self.engine.execute(GRAPH,
                                      read('[{:x1s [(:buz {:size "100"})]}]'))
         self.assertResult(result, {'x1s': [
             {'buz': 'a1 - 100'},
@@ -157,7 +157,7 @@ class TestSourceGraph(TestCase):
         ]})
 
     def testFieldWithoutOptions(self):
-        result = self.engine.execute(HIGH_ENV,
+        result = self.engine.execute(GRAPH,
                                      read('[{:x1s [:buz]}]'))
         self.assertResult(result, {'x1s': [
             {'buz': 'a1 - None'},
@@ -166,14 +166,14 @@ class TestSourceGraph(TestCase):
         ]})
 
     def testFieldOptionDefaults(self):
-        result = self.engine.execute(HIGH_ENV,
+        result = self.engine.execute(GRAPH,
                                      read('[{:x1s [:buz2]}]'))
         self.assertResult(result, {'x1s': [
             {'buz2': 'a1 - 100'},
             {'buz2': 'a2 - 100'},
             {'buz2': 'a3 - 100'},
         ]})
-        result = self.engine.execute(HIGH_ENV,
+        result = self.engine.execute(GRAPH,
                                      read('[{:x1s [(:buz2 {:size 200})]}]'))
         self.assertResult(result, {'x1s': [
             {'buz2': 'a1 - 200'},
