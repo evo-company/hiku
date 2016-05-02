@@ -111,7 +111,7 @@ class TestSourceSQL(TestCase):
             sa_engine.execute(bar_table.insert(), r)
 
         for r in [
-            {'name': 'foo1', 'count': 5, 'bar_id': 6},
+            {'name': 'foo1', 'count': 5, 'bar_id': None},
             {'name': 'foo2', 'count': 10, 'bar_id': 5},
             {'name': 'foo3', 'count': 15, 'bar_id': 4},
             {'name': 'foo4', 'count': 20, 'bar_id': 6},
@@ -152,8 +152,8 @@ class TestSourceSQL(TestCase):
                  'bar': {'name': 'bar1', 'type': 1}},
                 {'name': 'foo2', 'count': 10, 'bar_id': 5,
                  'bar': {'name': 'bar2', 'type': 2}},
-                {'name': 'foo1', 'count': 5, 'bar_id': 6,
-                 'bar': {'name': 'bar3', 'type': 3}},
+                {'name': 'foo1', 'count': 5, 'bar_id': None,
+                 'bar': None},
             ]}
         )
 
@@ -162,7 +162,6 @@ class TestSourceSQL(TestCase):
             '[{:bar-list [:name :type {:foo-s [:name :count]}]}]',
             {'bar-list': [
                 {'id': 6, 'name': 'bar3', 'type': 3, 'foo-s': [
-                    {'name': 'foo1', 'count': 5},
                     {'name': 'foo4', 'count': 20},
                 ]},
                 {'id': 5, 'name': 'bar2', 'type': 2, 'foo-s': [

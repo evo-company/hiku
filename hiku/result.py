@@ -12,13 +12,13 @@ class Ref(object):
         self.ident = ident
 
     def __getitem__(self, key):
-        return self.storage[self.edge].get(self.ident)[key]
+        return self.storage[self.edge][self.ident][key]
 
     def __repr__(self):
         return '<{}:{}>'.format(self.edge, self.ident)
 
     def __eq__(self, other):
-        return self.storage[self.edge].get(self.ident) == other
+        return self.storage[self.edge][self.ident] == other
 
 
 class State(defaultdict):

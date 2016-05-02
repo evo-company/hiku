@@ -47,32 +47,35 @@ def ref_eq_patcher():
         yield
 
 
+_missing = type('<missing>', (object,), {})
+
+
 def result_match(result, value, path=None):
     path = [] if path is None else path
     if isinstance(value, dict):
         for k, v in value.items():
-            ok, sp, sv = result_match(result[k], v, path + [k])
+            ok, sp, sr, sv = result_match(result[k], v, path + [k])
             if not ok:
-                return ok, sp, sv
+                return ok, sp, sr, sv
     elif isinstance(value, (list, tuple)):
-        pairs = zip_longest(result, value)
+        pairs = zip_longest(result, value, fillvalue=_missing)
         for i, (v1, v2) in enumerate(pairs):
-            ok, sp, sv = result_match(v1, v2, path + [i])
+            ok, sp, sr, sv = result_match(v1, v2, path + [i])
             if not ok:
-                return ok, sp, sv
+                return ok, sp, sr, sv
     elif result != value:
-        return False, path, value
+        return False, path, result, value
 
-    return True, None, None
+    return True, None, None, None
 
 
 class TestCase(unittest.TestCase):
 
     def assertResult(self, result, value):
-        ok, path, subval = result_match(result, value)
+        ok, path, subres, subval = result_match(result, value)
         if not ok:
             path_str = 'result' + ''.join('[{!r}]'.format(v) for v in path)
             msg = ('Result mismatch, first different element '
-                   'path: {}, value: {!r}'
-                   .format(path_str, subval))
+                   'path: {}, value: {!r}, expected: {!r}'
+                   .format(path_str, subres, subval))
             raise self.failureException(msg)

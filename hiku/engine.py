@@ -8,6 +8,9 @@ from .result import Result
 from .executors.queue import Workflow, Queue
 
 
+Nothing = object()
+
+
 class SplitPattern(object):
 
     def __init__(self, edge):
@@ -67,7 +70,7 @@ def link_reqs(result, edge, link, ids):
 
 
 def link_ref(result, link, ident):
-    return result.ref(link.edge, ident)
+    return None if ident is Nothing else result.ref(link.edge, ident)
 
 
 def link_refs(result, link, idents):
@@ -186,8 +189,10 @@ class Query(Workflow):
     def process_link(self, edge, graph_link, query_edge, ids, result):
         store_links(self._result, edge, graph_link, ids, result)
         to_ids = link_result_to_ids(ids is not None, graph_link.to_list, result)
-        self.process_edge(self.root.fields[graph_link.edge], query_edge,
-                          to_ids)
+        to_ids = [i for i in to_ids if i is not Nothing]
+        if to_ids:
+            self.process_edge(self.root.fields[graph_link.edge], query_edge,
+                              to_ids)
 
 
 class Engine(object):

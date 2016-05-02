@@ -7,6 +7,7 @@ import sqlalchemy
 from ..utils import kw_only
 from ..types import StringType, IntegerType
 from ..graph import Field as FieldBase, Link as LinkBase
+from ..engine import Nothing
 
 
 class FieldsQuery(object):
@@ -61,7 +62,7 @@ class Field(FieldBase):
 
 def _to_one_mapper(pairs, values):
     mapping = dict(pairs)
-    return [mapping.get(value) for value in values]
+    return [mapping.get(value, Nothing) for value in values]
 
 
 def _to_many_mapper(pairs, values):
@@ -88,15 +89,16 @@ class LinkQuery(object):
         self.to_list = to_list
 
     def __call__(self, ids):
-        if not ids:
-            return []
-
-        expr = (
-            sqlalchemy.select([self.from_column.label('from_column'),
-                               self.to_column.label('to_column')])
-            .where(self.from_column.in_(ids))
-        )
-        pairs = self.connection.execute(expr).fetchall()
+        filtered_ids = frozenset(filter(None, ids))
+        if filtered_ids:
+            expr = (
+                sqlalchemy.select([self.from_column.label('from_column'),
+                                   self.to_column.label('to_column')])
+                .where(self.from_column.in_(filtered_ids))
+            )
+            pairs = self.connection.execute(expr).fetchall()
+        else:
+            pairs = []
         mapper = _to_many_mapper if self.to_list else _to_one_mapper
         return mapper(pairs, ids)
 
