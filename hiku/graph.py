@@ -6,10 +6,18 @@ from .utils import kw_only
 
 class Option(object):
 
-    def __init__(self, name, type_=None, default=None):
+    def __init__(self, name, *other, **kwargs):
+        if not len(other):
+            type_ = None
+        elif len(other) == 1:
+            type_, = other
+        else:
+            raise TypeError('More positional arguments ({}) than expected (2)'
+                            .format(len(other) + 1))
+
         self.name = name
         self.type = to_instance(type_) if type_ is not None else None
-        self.default = default
+        self.default, = kw_only(kwargs, [], ['default'])
 
 
 class Field(object):
@@ -22,8 +30,8 @@ class Field(object):
         elif len(other) == 2:
             type_, func = other
         else:
-            raise TypeError('More positional arguments ({}) than expected (2)'
-                            .format(len(other)))
+            raise TypeError('More positional arguments ({}) than expected (3)'
+                            .format(len(other) + 1))
 
         options, doc = kw_only(kwargs, [], ['options', 'doc'])
 
