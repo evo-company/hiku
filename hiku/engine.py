@@ -99,6 +99,14 @@ def link_result_to_ids(is_list, to_list, result):
         return [result]
 
 
+def get_options(graph_obj, query_obj):
+    _options = query_obj.options or {}
+    options = {}
+    for opt in graph_obj.options.values():
+        options[opt.name] = _options.get(opt.name, opt.default)
+    return options
+
+
 class Query(Workflow):
 
     def __init__(self, queue, task_set, root):
@@ -159,11 +167,9 @@ class Query(Workflow):
                     self._process_edge_link(edge, _gl, _ql, ids)
                 ))
             else:
-                # TODO: validate query_link.options according to the
-                # graph_link.options
                 if graph_link.options:
-                    fut = self._task_set.submit(graph_link.func,
-                                                query_link.options)
+                    options = get_options(graph_link, query_link)
+                    fut = self._task_set.submit(graph_link.func, options)
                 else:
                     fut = self._task_set.submit(graph_link.func)
                 self._queue.add_callback(fut, (
@@ -173,11 +179,9 @@ class Query(Workflow):
 
     def _process_edge_link(self, edge, graph_link, query_link, ids):
         reqs = link_reqs(self._result, edge, graph_link, ids)
-        # TODO: validate query_link.options according to the
-        # graph_link.options
         if graph_link.options:
-            fut = self._task_set.submit(graph_link.func, reqs,
-                                        query_link.options)
+            options = get_options(graph_link, query_link)
+            fut = self._task_set.submit(graph_link.func, reqs, options)
         else:
             fut = self._task_set.submit(graph_link.func, reqs)
         self._queue.add_callback(fut, (

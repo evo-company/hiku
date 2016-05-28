@@ -46,6 +46,10 @@ TEST_ENV = Graph([
     ]),
     Link('f', _(query_link1), edge='c', requires=None, to_list=True),
     Link('g', _(query_link2), edge='c', requires=None, to_list=True),
+    Link('h', _(query_link1), edge='c', requires=None, to_list=True,
+         options=[Option('foo')]),
+    Link('k', _(query_link1), edge='c', requires=None, to_list=True,
+         options=[Option('foo', default=1)]),
 ])
 
 thread_pool = ThreadPoolExecutor(2)
@@ -119,13 +123,32 @@ class TestEngine(TestCase):
                     query.Field('a', options={'foo': 'bar'}),
                 ])
 
-    @patch.object(TEST_ENV.fields['f'], 'options', {'foo': Option('foo')})
-    def testLinkOptions(self):
+    def testLinkOption(self):
         with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
             ql1.return_value = [1]
             qf1.return_value = [['d1']]
-            result = self.execute('[{(:f {:foo "bar"}) [:d]}]')
-            self.assertResult(result, {'f': [{'d': 'd1'}]})
+            result = self.execute('[{(:h {:foo 5}) [:d]}]')
+            self.assertResult(result, {'h': [{'d': 'd1'}]})
             with reqs_eq_patcher():
-                ql1.assert_called_once_with({'foo': 'bar'})
+                ql1.assert_called_once_with({'foo': 5})
+                qf1.assert_called_once_with([query.Field('d')], [1])
+
+    def testLinkOptionDefault(self):
+        with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
+            ql1.return_value = [1]
+            qf1.return_value = [['d1']]
+            result = self.execute('[{:k [:d]}]')
+            self.assertResult(result, {'k': [{'d': 'd1'}]})
+            with reqs_eq_patcher():
+                ql1.assert_called_once_with({'foo': 1})
+                qf1.assert_called_once_with([query.Field('d')], [1])
+
+    def testLinkOptionUnknown(self):
+        with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
+            ql1.return_value = [1]
+            qf1.return_value = [['d1']]
+            result = self.execute('[{(:k {:foo 2 :bar 3}) [:d]}]')
+            self.assertResult(result, {'k': [{'d': 'd1'}]})
+            with reqs_eq_patcher():
+                ql1.assert_called_once_with({'foo': 2})
                 qf1.assert_called_once_with([query.Field('d')], [1])
