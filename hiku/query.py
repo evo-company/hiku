@@ -6,7 +6,7 @@ def _name_repr(name, options):
     if options is None:
         return ':{}'.format(name)
     else:
-        return '(:{} {})'.format(name, ' '.join((':{} {!r}'.format(k, v)
+        return '(:{} {{{}}})'.format(name, ' '.join((':{} {!r}'.format(k, v)
                                                  for k, v in options.items())))
 
 
