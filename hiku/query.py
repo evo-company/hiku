@@ -6,8 +6,9 @@ def _name_repr(name, options):
     if options is None:
         return ':{}'.format(name)
     else:
-        return '(:{} {{{}}})'.format(name, ' '.join((':{} {!r}'.format(k, v)
-                                                 for k, v in options.items())))
+        options_repr = ' '.join((':{} {!r}'.format(k, v)
+                                 for k, v in options.items()))
+        return '(:{} {{{}}})'.format(name, options_repr)
 
 
 class Field(object):
