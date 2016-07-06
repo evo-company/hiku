@@ -1,6 +1,7 @@
 import json
 import string
 import pkgutil
+import traceback
 
 from ..result import denormalize
 from ..typedef.kinko import dumps as dumps_typedef
@@ -40,9 +41,10 @@ class ConsoleApplication(object):
         'docs_url': '/docs',
     }
 
-    def __init__(self, root, engine):
+    def __init__(self, root, engine, debug=False):
         self.root = root
         self.engine = engine
+        self.debug = debug
         self._console_html = string.Template(_decode(
             pkgutil.get_data('hiku.console', 'assets/console.html')
         ))
@@ -101,10 +103,18 @@ class ConsoleApplication(object):
             return self._error(400, start_response, 'Payload is too big')
 
         pattern = environ['wsgi.input'].read(limit)
-        query = read(_decode(pattern))
-        result = self.engine.execute(self.root, query)
-        result_data = _encode(json.dumps(denormalize(self.root, result, query)))
-        start_response('200 OK', [
+        try:
+            # TODO: implement query validation
+            query = read(_decode(pattern))
+            result = self.engine.execute(self.root, query)
+            result = denormalize(self.root, result, query)
+            status = '200 OK'
+        except Exception:
+            tb = traceback.format_exc() if self.debug else None
+            result = {'traceback': tb}
+            status = '500 Internal Server Error'
+        result_data = _encode(json.dumps(result))
+        start_response(status, [
             ('Content-Type', 'application/json'),
             ('Content-Length', str(len(result_data))),
         ])

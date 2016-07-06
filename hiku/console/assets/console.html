@@ -58,11 +58,18 @@
             var httpRequest = new XMLHttpRequest();
             httpRequest.onreadystatechange = function() {
                 if (httpRequest.readyState === XMLHttpRequest.DONE) {
-                    if (httpRequest.status === 200) {
+                    var status = httpRequest.status;
+                    var cType = httpRequest.getResponseHeader("Content-Type");
+                    if (status === 200) {
                         var result = JSON.parse(httpRequest.responseText);
                         resultView.setValue(JSON.stringify(result, null, "  "));
                     } else {
-                        resultView.setValue('Error');
+                        if (status === 500 && cType === "application/json") {
+                            var data = JSON.parse(httpRequest.responseText);
+                            resultView.setValue(data.traceback || "Error");
+                        } else {
+                            resultView.setValue("Error");
+                        }
                     }
                 }
             };
