@@ -64,3 +64,19 @@ def _merge(edges):
 
 def merge(edges):
     return Edge(_merge(edges))
+
+
+class QueryVisitor(object):
+
+    def visit(self, obj):
+        return obj.accept(self)
+
+    def visit_field(self, obj):
+        pass
+
+    def visit_link(self, obj):
+        self.visit(obj.edge)
+
+    def visit_edge(self, obj):
+        for item in obj.fields.values():
+            self.visit(item)

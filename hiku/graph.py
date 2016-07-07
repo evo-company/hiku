@@ -19,6 +19,9 @@ class Option(object):
         self.type = to_instance(type_) if type_ is not None else None
         self.default, = kw_only(kwargs, [], ['default'])
 
+    def accept(self, visitor):
+        return visitor.visit_option(self)
+
 
 class Field(object):
 
@@ -41,6 +44,9 @@ class Field(object):
         self.options = OrderedDict((o.name, o) for o in (options or ()))
         self.doc = doc
 
+    def accept(self, visitor):
+        return visitor.visit_field(self)
+
 
 class Edge(object):
 
@@ -48,6 +54,9 @@ class Edge(object):
         self.name = name
         self.fields = OrderedDict((f.name, f) for f in fields)
         self.doc, = kw_only(kwargs, [], ['doc'])
+
+    def accept(self, visitor):
+        return visitor.visit_edge(self)
 
 
 class Link(object):
@@ -64,8 +73,32 @@ class Link(object):
         self.options = OrderedDict((o.name, o) for o in (options or ()))
         self.doc = doc
 
+    def accept(self, visitor):
+        return visitor.visit_link(self)
+
 
 class Graph(Edge):
 
     def __init__(self, items):
         super(Graph, self).__init__(None, items)
+
+
+class GraphVisitor(object):
+
+    def visit(self, obj):
+        return obj.accept(self)
+
+    def visit_option(self, obj):
+        pass
+
+    def visit_field(self, obj):
+        for option in obj.options.values():
+            self.visit(option)
+
+    def visit_link(self, obj):
+        for option in obj.options.values():
+            self.visit(option)
+
+    def visit_edge(self, obj):
+        for item in obj.fields.values():
+            self.visit(item)
