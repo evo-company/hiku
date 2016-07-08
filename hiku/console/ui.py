@@ -4,6 +4,7 @@ import pkgutil
 import traceback
 
 from ..result import denormalize
+from ..validator import QueryValidator
 from ..typedef.kinko import dumps as dumps_typedef
 from ..readers.simple import read
 
@@ -106,9 +107,16 @@ class ConsoleApplication(object):
         try:
             # TODO: implement query validation
             query = read(_decode(pattern))
-            result = self.engine.execute(self.root, query)
-            result = denormalize(self.root, result, query)
-            status = '200 OK'
+
+            validator = QueryValidator(self.root)
+            validator.visit(query)
+            if validator.errors.list:
+                result = {'errors': validator.errors.list}
+                status = '400 Bad Request'
+            else:
+                result = self.engine.execute(self.root, query)
+                result = denormalize(self.root, result, query)
+                status = '200 OK'
         except Exception:
             tb = traceback.format_exc() if self.debug else None
             result = {'traceback': tb}

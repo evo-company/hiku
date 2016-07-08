@@ -64,9 +64,16 @@
                         var result = JSON.parse(httpRequest.responseText);
                         resultView.setValue(JSON.stringify(result, null, "  "));
                     } else {
-                        if (status === 500 && cType === "application/json") {
+                        if (status === 400 && cType === "application/json") {
                             var data = JSON.parse(httpRequest.responseText);
-                            resultView.setValue(data.traceback || "Error");
+                            var report = 'Errors:\n';
+                            for (var i=0; i < data.errors.length; i++) {
+                                report = report + '- ' + data.errors[i] + '\n'
+                            }
+                            resultView.setValue(report);
+                        } else if (status === 500 && cType === "application/json") {
+                            var data = JSON.parse(httpRequest.responseText);
+                            resultView.setValue(data.traceback || "Server Error");
                         } else {
                             resultView.setValue("Error");
                         }
