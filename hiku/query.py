@@ -1,5 +1,7 @@
 from itertools import chain
-from collections import defaultdict
+from collections import OrderedDict
+
+from .utils import cached_property
 
 
 def _name_repr(name, options):
@@ -42,28 +44,35 @@ class Link(object):
 class Edge(object):
 
     def __init__(self, fields):
-        self.fields = {f.name: f for f in fields}
+        self.fields = fields
+
+    @cached_property
+    def fields_map(self):
+        return OrderedDict((f.name, f) for f in self.fields)
 
     def __repr__(self):
-        return '[{}]'.format(' '.join(map(repr, self.fields.values())))
+        return '[{}]'.format(' '.join(map(repr, self.fields)))
 
     def accept(self, visitor):
         return visitor.visit_edge(self)
 
 
 def _merge(edges):
-    to_merge = defaultdict(list)
-    for field in chain.from_iterable(e.fields.values() for e in edges):
+    seen = set()
+    to_merge = OrderedDict()
+    for field in chain.from_iterable(e.fields for e in edges):
         if field.__class__ is Link:
-            to_merge[field.name].append(field.edge)
+            to_merge.setdefault(field.name, []).append(field.edge)
         else:
-            yield field
+            if field.name not in seen:
+                seen.add(field.name)
+                yield field
     for name, values in to_merge.items():
-        yield Link(name, Edge(_merge(values)))
+        yield Link(name, Edge(list(_merge(values))))
 
 
 def merge(edges):
-    return Edge(_merge(edges))
+    return Edge(list(_merge(edges)))
 
 
 class QueryVisitor(object):
@@ -78,5 +87,5 @@ class QueryVisitor(object):
         self.visit(obj.edge)
 
     def visit_edge(self, obj):
-        for item in obj.fields.values():
+        for item in obj.fields:
             self.visit(item)

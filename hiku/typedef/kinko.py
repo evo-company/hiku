@@ -29,7 +29,7 @@ def _wrap_with_typedoc(func):
 def _translate(obj):
     if isinstance(obj, Edge):
         rec_fields = []
-        for f in obj.fields.values():
+        for f in obj.fields:
             if isinstance(f, Field) and f.type is None:
                 continue
             rec_fields.append((f.name, _translate(f)))
@@ -48,7 +48,7 @@ def _translate(obj):
 
 def graph_to_types(root):
     types = []
-    for item in root.fields.values():
+    for item in root.fields:
         if isinstance(item, Field) and item.type is None:
             continue
         types.append(TypeDef(item.name, _translate(item)))

@@ -9,17 +9,18 @@ from ..query import Edge, Field
 class GraphQLTransformer(Visitor):
 
     def __init__(self):
-        self._stack = [Edge([])]
+        self._stack = [set()]
 
     @classmethod
     def transform(cls, document):
         visitor = cls()
         visit(document, visitor)
-        return visitor._stack[0]
+        edge = Edge([Field(name) for name in visitor._stack[0]])
+        return edge
 
     def enter_SelectionSet(self, node, key, parent, path, ancestors):
         for field in node.selections:
-            self._stack[-1].fields[field.name.value] = Field(field.name.value)
+            self._stack[-1].add(field.name.value)
 
 
 def read(src):

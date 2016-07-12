@@ -11,7 +11,7 @@ from .executors.queue import Workflow, Queue
 Nothing = object()
 
 
-class SplitPattern(object):
+class SplitPattern(query.QueryVisitor):
 
     def __init__(self, edge):
         self._edge = edge
@@ -20,24 +20,21 @@ class SplitPattern(object):
         self._edges = []
 
     def split(self, pattern):
-        for item in pattern.fields.values():
+        for item in pattern.fields:
             self.visit(item)
         return self._fields, self._links, self._edges
-
-    def visit(self, node):
-        node.accept(self)
 
     def visit_edge(self, node):
         raise ValueError('Unexpected value: {!r}'.format(node))
 
     def visit_field(self, node):
-        self._fields.append((self._edge.fields[node.name], node))
+        self._fields.append((self._edge.fields_map[node.name], node))
 
     def visit_link(self, node):
-        field = self._edge.fields[node.name]
+        field = self._edge.fields_map[node.name]
         if isinstance(field, Link):
             if field.requires:
-                self._fields.append((self._edge.fields[field.requires],
+                self._fields.append((self._edge.fields_map[field.requires],
                                      query.Field(field.requires)))
             self._links.append((field, node))
         elif isinstance(field, Edge):
@@ -102,7 +99,7 @@ def link_result_to_ids(is_list, to_list, result):
 def get_options(graph_obj, query_obj):
     _options = query_obj.options or {}
     options = {}
-    for opt in graph_obj.options.values():
+    for opt in graph_obj.options:
         options[opt.name] = _options.get(opt.name, opt.default)
     return options
 
@@ -123,7 +120,7 @@ class Query(Workflow):
 
         assert not (edge.name and edges), 'Nested edges are not supported yet'
         for link in edges:
-            self.process_edge(edge.fields[link.name], link.edge, None)
+            self.process_edge(edge.fields_map[link.name], link.edge, None)
 
         to_func = {}
         from_func = defaultdict(list)
@@ -195,7 +192,7 @@ class Query(Workflow):
         to_ids = link_result_to_ids(ids is not None, graph_link.to_list, result)
         to_ids = [i for i in to_ids if i is not Nothing]
         if to_ids:
-            self.process_edge(self.root.fields[graph_link.edge], query_edge,
+            self.process_edge(self.root.fields_map[graph_link.edge], query_edge,
                               to_ids)
 
 

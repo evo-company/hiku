@@ -39,16 +39,16 @@ class Result(State):
 
 def _denormalize(graph, graph_obj, result, query_obj):
     if isinstance(query_obj, Edge):
-        return {name: _denormalize(graph, graph_obj.fields[name],
-                                   result[name], value)
-                for name, value in query_obj.fields.items()}
+        return {f.name: _denormalize(graph, graph_obj.fields_map[f.name],
+                                     result[f.name], f)
+                for f in query_obj.fields}
 
     elif isinstance(query_obj, Field):
         return result
 
     elif isinstance(query_obj, Link):
         if isinstance(graph_obj, GraphLink):
-            graph_edge = graph.fields[graph_obj.edge]
+            graph_edge = graph.fields_map[graph_obj.edge]
             if graph_obj.to_list:
                 return [_denormalize(graph, graph_edge, v, query_obj.edge)
                         for v in result]

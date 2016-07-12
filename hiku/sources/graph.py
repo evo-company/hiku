@@ -51,19 +51,18 @@ class Expr(Field):
         types = subquery.types.copy()
         types.update(fn_types(self.functions))
         types.update({opt.name: UnknownType()
-                      for opt in self.options.values()})
+                      for opt in self.options})
 
         node = check(node, types)
 
-        options_set = set(self.options.keys())
+        options_set = set(self.options_map)
         edge = RequirementsExtractor.extract(types, node)
-        edge = query.Edge([f for f in edge.fields.values()
+        edge = query.Edge([f for f in edge.fields
                            if f.name not in options_set])
         self.reqs = edge
 
-        option_names = [opt.name for opt in self.options.values()]
-        self.option_defaults = [(name, self.options[name].default)
-                                for name in option_names]
+        option_names = [opt.name for opt in self.options]
+        self.option_defaults = [(opt.name, opt.default) for opt in self.options]
         code = ExpressionCompiler.compile_lambda_expr(node, option_names)
         self.proc = eval(compile(code, '<expr>', 'eval'))
 
@@ -80,7 +79,7 @@ class SubGraph(object):
         self.types = types
 
     def __call__(self, queue, task_set, edge, fields, ids):
-        graph_fields = [edge.fields[f.name] for f in fields]
+        graph_fields = [edge.fields_map[f.name] for f in fields]
         fn_env = {f.__fn_name__: f.fn
                   for f in chain.from_iterable(e.functions
                                                for e in graph_fields)}
@@ -94,8 +93,8 @@ class SubGraph(object):
                     for name, default in gf.option_defaults]
                    for qf, gf in zip(fields, graph_fields)]
 
-        this_req = reqs.fields['this'].edge
-        other_reqs = query.Edge([r for r in reqs.fields.values()
+        this_req = reqs.fields_map['this'].edge
+        other_reqs = query.Edge([r for r in reqs.fields
                                  if r.name != 'this'])
 
         q = Query(queue, task_set, self.graph)

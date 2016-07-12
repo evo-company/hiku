@@ -11,7 +11,7 @@ from .typedef.types import TypeRef, UnknownType
 def _graph_to_types(obj):
     if isinstance(obj, graph.Edge):
         return RecordType((f.name, _graph_to_types(f))
-                          for f in obj.fields.values())
+                          for f in obj.fields)
     elif isinstance(obj, graph.Link):
         if obj.to_list:
             return ListType(TypeRef(obj.edge))
@@ -24,14 +24,13 @@ def _graph_to_types(obj):
 
 
 def graph_types(obj):
-    return {name: field
-            for name, field in _graph_to_types(obj).fields.items()}
+    return dict(_graph_to_types(obj).fields)
 
 
 def _query_to_types(obj):
     if isinstance(obj, query.Edge):
         return RecordType((f.name, _query_to_types(f))
-                          for f in obj.fields.values())
+                          for f in obj.fields)
     elif isinstance(obj, query.Link):
         return _query_to_types(obj.edge)
     elif isinstance(obj, query.Field):

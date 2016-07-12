@@ -95,7 +95,7 @@ class _ValidateOptions(GraphVisitor):
 
     def visit_link(self, obj):
         super(_ValidateOptions, self).visit_link(obj)
-        unknown = set(self._options).difference(obj.options)
+        unknown = set(self._options).difference(obj.options_map)
         if unknown:
             edge, field = self.for_
             self.errors.report('Unknown options for "{}.{}": {}'.
@@ -127,13 +127,13 @@ class _ValidateOptions(GraphVisitor):
 class QueryValidator(QueryVisitor):
 
     def __init__(self, graph):
-        self.map = graph.fields
+        self.map = graph.fields_map
         self.path = [graph]
         self.errors = Errors()
 
     def visit_field(self, obj):
         edge = self.path[-1]
-        field = edge.fields.get(obj.name)
+        field = edge.fields_map.get(obj.name)
         if field is not None:
             is_field = _AssumeField(edge, self.errors).visit(field)
             if is_field:
@@ -145,7 +145,7 @@ class QueryValidator(QueryVisitor):
 
     def visit_link(self, obj):
         edge = self.path[-1]
-        link = edge.fields.get(obj.name)
+        link = edge.fields_map.get(obj.name)
         if link is not None:
             linked_edge = _LinkedEdge(edge, self.map, self.errors).visit(link)
             if linked_edge is not None:

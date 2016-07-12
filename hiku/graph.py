@@ -1,7 +1,7 @@
 from collections import OrderedDict
 
 from .types import to_instance
-from .utils import kw_only
+from .utils import kw_only, cached_property
 
 
 class Option(object):
@@ -41,8 +41,12 @@ class Field(object):
         self.name = name
         self.type = to_instance(type_) if type_ is not None else None
         self.func = func
-        self.options = OrderedDict((o.name, o) for o in (options or ()))
+        self.options = options or ()
         self.doc = doc
+
+    @cached_property
+    def options_map(self):
+        return OrderedDict((op.name, op) for op in self.options)
 
     def accept(self, visitor):
         return visitor.visit_field(self)
@@ -52,8 +56,12 @@ class Edge(object):
 
     def __init__(self, name, fields, **kwargs):
         self.name = name
-        self.fields = OrderedDict((f.name, f) for f in fields)
+        self.fields = fields
         self.doc, = kw_only(kwargs, [], ['doc'])
+
+    @cached_property
+    def fields_map(self):
+        return OrderedDict((f.name, f) for f in self.fields)
 
     def accept(self, visitor):
         return visitor.visit_edge(self)
@@ -70,8 +78,12 @@ class Link(object):
         self.edge = edge
         self.requires = requires
         self.to_list = to_list
-        self.options = OrderedDict((o.name, o) for o in (options or ()))
+        self.options = options or ()
         self.doc = doc
+
+    @cached_property
+    def options_map(self):
+        return OrderedDict((op.name, op) for op in self.options)
 
     def accept(self, visitor):
         return visitor.visit_link(self)
@@ -92,13 +104,13 @@ class GraphVisitor(object):
         pass
 
     def visit_field(self, obj):
-        for option in obj.options.values():
+        for option in obj.options:
             self.visit(option)
 
     def visit_link(self, obj):
-        for option in obj.options.values():
+        for option in obj.options:
             self.visit(option)
 
     def visit_edge(self, obj):
-        for item in obj.fields.values():
+        for item in obj.fields:
             self.visit(item)

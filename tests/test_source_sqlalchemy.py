@@ -126,10 +126,14 @@ class TestSourceSQL(TestCase):
         session.remove()
 
     def testTypes(self):
-        self.assertIsInstance(GRAPH.fields[foo_table.name].fields['id'].type,
-                              IntegerType)
-        self.assertIsInstance(GRAPH.fields[foo_table.name].fields['name'].type,
-                              StringType)
+        self.assertIsInstance(
+            GRAPH.fields_map[foo_table.name].fields_map['id'].type,
+            IntegerType,
+        )
+        self.assertIsInstance(
+            GRAPH.fields_map[foo_table.name].fields_map['name'].type,
+            StringType,
+        )
 
     def assertExecute(self, src, value):
         result = self.engine.execute(GRAPH, read(src))

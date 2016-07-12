@@ -1,27 +1,25 @@
 from ..edn import Keyword, Dict, Tuple, List
+from ..query import QueryVisitor
 
 
-class Exporter(object):
-
-    def visit(self, obj):
-        return obj.accept(self)
+class Exporter(QueryVisitor):
 
     def visit_field(self, obj):
         f = Keyword(obj.name)
-        if obj.options:
+        if obj.options is not None:
             f = Tuple([f, Dict((Keyword(k), v)
                                for k, v in obj.options.items())])
         return f
 
     def visit_link(self, obj):
         l = Keyword(obj.name)
-        if obj.options:
+        if obj.options is not None:
             l = Tuple([l, Dict((Keyword(k), v)
                                for k, v in obj.options.items())])
         return Dict([(l, self.visit(obj.edge))])
 
     def visit_edge(self, obj):
-        return List(self.visit(f) for f in obj.fields.values())
+        return List(self.visit(f) for f in obj.fields)
 
 
 def export(query):

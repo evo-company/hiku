@@ -1,4 +1,5 @@
 from unittest import TestCase, skip
+from collections import OrderedDict
 
 from hiku import graph
 from hiku.expr import define, S, each, to_expr
@@ -166,8 +167,8 @@ class TestQuery(TestCase):
         )
         self.assertRequires(
             each(S.item, S.ys, foo(S.x1, S.item)),
-            Edge([Link('x1', Edge([Field('a'), Field('c')])),
-                  Link('ys', Edge([Field('d'), Field('f')]))]),
+            Edge([Link('ys', Edge([Field('d'), Field('f')])),
+                  Link('x1', Edge([Field('a'), Field('c')]))]),
         )
         self.assertRequires(
             each(S.item, S.ys, foo(S.item.x1, S.item)),
@@ -218,8 +219,8 @@ class TestQuery(TestCase):
                  [foo(S.item.x1, S.item), bar(S.item)]),
             Edge([
                 Link('ys', Edge([
-                    Field('d'), Field('e'), Field('f'),
-                    Link('x1', Edge([Field('a'), Field('b'), Field('c')])),
+                    Field('d'), Field('f'), Field('e'),
+                    Link('x1', Edge([Field('a'), Field('c'), Field('b')])),
                 ])),
             ]),
         )
@@ -227,12 +228,12 @@ class TestQuery(TestCase):
     def testDict(self):
         self.assertRequires(
             each(S.item, S.ys,
-                 {'foo-value': foo(S.item.x1, S.item),
-                  'bar-value': bar(S.item)}),
+                 OrderedDict([('foo-value', foo(S.item.x1, S.item)),
+                              ('bar-value', bar(S.item))])),
             Edge([
                 Link('ys', Edge([
-                    Field('d'), Field('e'), Field('f'),
-                    Link('x1', Edge([Field('a'), Field('b'), Field('c')])),
+                    Field('d'), Field('f'), Field('e'),
+                    Link('x1', Edge([Field('a'), Field('c'), Field('b')])),
                 ])),
             ]),
         )
