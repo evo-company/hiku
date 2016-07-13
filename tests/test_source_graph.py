@@ -4,7 +4,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 from hiku.expr import define, S, each
-from hiku.graph import Graph, Edge, Link, Field, Option
+from hiku.graph import Graph, Edge, Link, Field, Option, Root
 from hiku.engine import Engine
 from hiku.sources.graph import SubGraph, Expr
 from hiku.readers.simple import read
@@ -62,8 +62,6 @@ def y_to_x(ids):
 
 
 _GRAPH = Graph([
-    Field('f1', query_f),
-    Field('f2', query_f),
     Edge('x', [
         Field('id', query_x),
         Field('a', query_x),
@@ -77,8 +75,12 @@ _GRAPH = Graph([
         Field('d', query_y),
         Link('xs', y_to_x, edge='x', requires='id', to_list=True),
     ]),
-    Link('xs', to_x, edge='x', requires=None, to_list=True),
-    Link('ys', to_y, edge='y', requires=None, to_list=True),
+    Root([
+        Field('f1', query_f),
+        Field('f2', query_f),
+        Link('xs', to_x, edge='x', requires=None, to_list=True),
+        Link('ys', to_y, edge='y', requires=None, to_list=True),
+    ]),
 ])
 
 
@@ -108,6 +110,7 @@ sg_x = SubGraph(_GRAPH, 'x')
 sg_y = SubGraph(_GRAPH, 'y')
 
 
+# TODO: refactor
 GRAPH = Graph([
     Edge('x1', [
         Expr('id', sg_x, S.this.id),
@@ -128,9 +131,30 @@ GRAPH = Graph([
         Expr('bar', sg_y, each(S.x, S.this.xs, bar(S.x))),
         # Expr('baz', baz(S.this)),
     ]),
-    # TODO: links reuse
-    Link('x1s', to_x, edge='x1', requires=None, to_list=True),
-    Link('y1s', to_y, edge='y2', requires=None, to_list=True),
+    Root([
+        Edge('x1', [
+            Expr('id', sg_x, S.this.id),
+            Expr('a', sg_x, S.this.a),
+            Expr('f', sg_x, S.f1),
+            Expr('foo', sg_x, foo(S.this, S.this.y)),
+            Expr('bar', sg_x, bar(S.this)),
+            # Expr('baz', baz(S.this.y)),
+            Expr('buz', sg_x, buz(S.this, S.size), options=[Option('size')]),
+            Expr('buz2', sg_x, buz(S.this, S.size),
+                 options=[Option('size', default=100)]),
+        ]),
+        Edge('y1', [
+            Expr('id', sg_y, S.this.id),
+            Expr('c', sg_y, S.this.c),
+            Expr('f', sg_y, S.f2),
+            Expr('foo', sg_y, each(S.x, S.this.xs, foo(S.x, S.this))),
+            Expr('bar', sg_y, each(S.x, S.this.xs, bar(S.x))),
+            # Expr('baz', baz(S.this)),
+        ]),
+        # TODO: links reuse
+        Link('x1s', to_x, edge='x1', requires=None, to_list=True),
+        Link('y1s', to_y, edge='y2', requires=None, to_list=True),
+    ]),
 ])
 
 

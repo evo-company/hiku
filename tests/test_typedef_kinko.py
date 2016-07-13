@@ -1,7 +1,7 @@
 import difflib
 from textwrap import dedent
 
-from hiku.graph import Graph, Edge, Field, Link
+from hiku.graph import Graph, Edge, Field, Link, Root
 from hiku.typedef.kinko import dumps
 from hiku.types import IntegerType, DictType, StringType, OptionType
 from hiku.types import ListType
@@ -25,9 +25,9 @@ class TestTypeDefKinko(TestCase):
 
     def testField(self):
         self.assertDumps(
-            Graph([
+            Graph([Root([
                 Field('A', StringType, noop),
-            ]),
+            ])]),
             """
             type A String
             """,
@@ -60,9 +60,9 @@ class TestTypeDefKinko(TestCase):
 
     def testListSimple(self):
         self.assertDumps(
-            Graph([
+            Graph([Root([
                 Field('A', ListType(IntegerType), noop),
-            ]),
+            ])]),
             """
             type A
               List Integer
@@ -71,9 +71,9 @@ class TestTypeDefKinko(TestCase):
 
     def testListComplex(self):
         self.assertDumps(
-            Graph([
+            Graph([Root([
                 Field('A', ListType(ListType(IntegerType)), noop),
-            ]),
+            ])]),
             """
             type A
               List
@@ -83,9 +83,9 @@ class TestTypeDefKinko(TestCase):
 
     def testDictSimple(self):
         self.assertDumps(
-            Graph([
+            Graph([Root([
                 Field('A', DictType(StringType, IntegerType), noop),
-            ]),
+            ])]),
             """
             type A
               Dict String Integer
@@ -94,11 +94,11 @@ class TestTypeDefKinko(TestCase):
 
     def testDictComplex(self):
         self.assertDumps(
-            Graph([
+            Graph([Root([
                 Field('A', DictType(StringType,
                                     DictType(IntegerType, IntegerType)),
                       noop),
-            ]),
+            ])]),
             """
             type A
               Dict String

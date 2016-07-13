@@ -98,7 +98,7 @@ class SubGraph(object):
                                  if r.name != 'this'])
 
         q = Query(queue, task_set, self.graph)
-        q.process_link(self.graph, this_link, this_req, None, ids)
-        q.process_edge(self.graph, other_reqs, None)
+        q.process_link(self.graph.root, this_link, this_req, None, ids)
+        q.process_edge(self.graph.root, other_reqs, None)
         return _create_result_proc(q, fn_env, edge, fields, procs,
                                    options, ids)

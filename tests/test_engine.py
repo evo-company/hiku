@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from concurrent.futures import ThreadPoolExecutor
 
 from hiku import query
-from hiku.graph import Graph, Edge, Field, Link, Option
+from hiku.graph import Graph, Edge, Field, Link, Option, Root
 from hiku.engine import Engine
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
@@ -37,19 +37,26 @@ def _patch(func):
     return patch('{}.{}'.format(__name__, func.__name__))
 
 
+# TODO: refactor
 TEST_ENV = Graph([
-    Field('a', _(query_fields1)),
-    Field('b', _(query_fields2)),
     Edge('c', [
         Field('d', _(query_fields1)),
         Field('e', _(query_fields2)),
     ]),
-    Link('f', _(query_link1), edge='c', requires=None, to_list=True),
-    Link('g', _(query_link2), edge='c', requires=None, to_list=True),
-    Link('h', _(query_link1), edge='c', requires=None, to_list=True,
-         options=[Option('foo')]),
-    Link('k', _(query_link1), edge='c', requires=None, to_list=True,
-         options=[Option('foo', default=1)]),
+    Root([
+        Field('a', _(query_fields1)),
+        Field('b', _(query_fields2)),
+        Edge('c', [
+            Field('d', _(query_fields1)),
+            Field('e', _(query_fields2)),
+        ]),
+        Link('f', _(query_link1), edge='c', requires=None, to_list=True),
+        Link('g', _(query_link2), edge='c', requires=None, to_list=True),
+        Link('h', _(query_link1), edge='c', requires=None, to_list=True,
+             options=[Option('foo')]),
+        Link('k', _(query_link1), edge='c', requires=None, to_list=True,
+             options=[Option('foo', default=1)]),
+    ]),
 ])
 
 thread_pool = ThreadPoolExecutor(2)

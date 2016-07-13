@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 import json
 
-from hiku.graph import Graph, Link, Edge, Field
+from hiku.graph import Graph, Link, Edge, Field, Root
 from hiku.result import denormalize, Result
 from hiku.readers.simple import read
 
@@ -16,6 +16,7 @@ def noop():
 class TestDenormalize(TestCase):
 
     def setUp(self):
+        # TODO: refactor
         self.graph = Graph([
             Edge('x', [
                 Field('id', noop),
@@ -29,12 +30,31 @@ class TestDenormalize(TestCase):
                 Field('d', noop),
                 Link('xs', noop, edge='x', requires='id', to_list=True),
             ]),
-            Link('xs', noop, edge='x', requires=None, to_list=True),
-            Link('y1', noop, edge='y', requires=None, to_list=False),
             Edge('z', [
                 Field('e', noop),
                 Link('y1', noop, edge='y', requires=None, to_list=False),
                 Link('xs', noop, edge='x', requires=None, to_list=True),
+            ]),
+            Root([
+                Edge('x', [
+                    Field('id', noop),
+                    Field('a', noop),
+                    Field('b', noop),
+                    Link('y1', noop, edge='y', requires='id', to_list=False),
+                ]),
+                Edge('y', [
+                    Field('id', noop),
+                    Field('c', noop),
+                    Field('d', noop),
+                    Link('xs', noop, edge='x', requires='id', to_list=True),
+                ]),
+                Link('xs', noop, edge='x', requires=None, to_list=True),
+                Link('y1', noop, edge='y', requires=None, to_list=False),
+                Edge('z', [
+                    Field('e', noop),
+                    Link('y1', noop, edge='y', requires=None, to_list=False),
+                    Link('xs', noop, edge='x', requires=None, to_list=True),
+                ]),
             ]),
         ])
         self.result = Result()

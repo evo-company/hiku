@@ -127,8 +127,8 @@ class _ValidateOptions(GraphVisitor):
 class QueryValidator(QueryVisitor):
 
     def __init__(self, graph):
-        self.map = graph.fields_map
-        self.path = [graph]
+        self.map = graph.edges_map
+        self.path = [graph.root]
         self.errors = Errors()
 
     def visit_field(self, obj):

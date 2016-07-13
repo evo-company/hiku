@@ -48,7 +48,7 @@ def _denormalize(graph, graph_obj, result, query_obj):
 
     elif isinstance(query_obj, Link):
         if isinstance(graph_obj, GraphLink):
-            graph_edge = graph.fields_map[graph_obj.edge]
+            graph_edge = graph.edges_map[graph_obj.edge]
             if graph_obj.to_list:
                 return [_denormalize(graph, graph_edge, v, query_obj.edge)
                         for v in result]
@@ -59,4 +59,4 @@ def _denormalize(graph, graph_obj, result, query_obj):
 
 
 def denormalize(graph, result, query):
-    return _denormalize(graph, graph, result, query)
+    return _denormalize(graph, graph.root, result, query)

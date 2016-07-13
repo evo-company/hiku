@@ -1,5 +1,5 @@
 from hiku import query as q
-from hiku.graph import Graph, Edge, Field, Link, Option
+from hiku.graph import Graph, Edge, Field, Link, Option, Root
 from hiku.types import IntegerType
 from hiku.validator import QueryValidator
 
@@ -8,8 +8,8 @@ def _():
     return 1/0
 
 
+# TODO: refactor
 GRAPH = Graph([
-    Field('f1', IntegerType, _),
     Edge('e1', [
         Field('f2', IntegerType, _,
               options=[Option('f2-op1', IntegerType),
@@ -21,7 +21,21 @@ GRAPH = Graph([
     Edge('e2', [
         Field('f3', _),
     ]),
-    Link('l2', _, edge='e2', requires=None, to_list=True),
+    Root([
+        Field('f1', IntegerType, _),
+        Edge('e1', [
+            Field('f2', IntegerType, _,
+                  options=[Option('f2-op1', IntegerType),
+                           Option('f2-op2', IntegerType, default=1)]),
+            Link('l1', _, edge='e2', requires='f2', to_list=True,
+                 options=[Option('l1-op1', IntegerType),
+                          Option('l1-op2', IntegerType, default=1)]),
+        ]),
+        Edge('e2', [
+            Field('f3', _),
+        ]),
+        Link('l2', _, edge='e2', requires=None, to_list=True),
+    ]),
 ])
 
 

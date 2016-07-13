@@ -6,10 +6,11 @@ from unittest import TestCase
 from collections import OrderedDict
 
 import astor
+import pytest
 
 from hiku.expr import define, S, if_, each, to_expr
-from hiku.graph import Graph, Field, Edge, Link
-from hiku.compat import PY3
+from hiku.graph import Graph, Field, Edge, Link, Root
+from hiku.compat import PY3, PY35
 from hiku.checker import check, graph_types, fn_types
 from hiku.compiler import ExpressionCompiler
 
@@ -33,8 +34,8 @@ def noop(*_):
     return 1/0
 
 
+# TODO: refactor
 ENV = Graph([
-    Field('a', noop),
     Edge('x', [
         Field('b', noop),
     ]),
@@ -43,11 +44,24 @@ ENV = Graph([
         Link('x1', noop, edge='x', requires=None, to_list=False),
         Link('xs', noop, edge='x', requires=None, to_list=True),
     ]),
-    Link('y1', noop, edge='y', requires=None, to_list=False),
-    Link('ys', noop, edge='y', requires=None, to_list=True),
+    Root([
+        Field('a', noop),
+        Edge('x', [
+            Field('b', noop),
+        ]),
+        Edge('y', [
+            Field('c', noop),
+            Link('x1', noop, edge='x', requires=None, to_list=False),
+            Link('xs', noop, edge='x', requires=None, to_list=True),
+        ]),
+        Link('y1', noop, edge='y', requires=None, to_list=False),
+        Link('ys', noop, edge='y', requires=None, to_list=True),
+    ])
 ])
 
 
+@pytest.mark.skipif(PY35, reason='Waiting for Astor 0.6 release '
+                                 'with Python 3.5 support')
 class TestCompiler(TestCase):
 
     def assertCompiles(self, dsl_expr, code):

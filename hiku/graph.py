@@ -1,3 +1,4 @@
+from itertools import chain
 from collections import OrderedDict
 
 from .types import to_instance
@@ -89,10 +90,32 @@ class Link(object):
         return visitor.visit_link(self)
 
 
-class Graph(Edge):
+class Root(Edge):
 
     def __init__(self, items):
-        super(Graph, self).__init__(None, items)
+        super(Root, self).__init__(None, items)
+
+
+class Graph(object):
+
+    def __init__(self, items):
+        self.items = items
+
+    @cached_property
+    def root(self):
+        return Root(list(chain.from_iterable(e.fields for e in self.items
+                                             if e.name is None)))
+
+    @cached_property
+    def edges(self):
+        return [e for e in self.items if e.name is not None]
+
+    @cached_property
+    def edges_map(self):
+        return OrderedDict((e.name, e) for e in self.edges)
+
+    def accept(self, visitor):
+        return visitor.visit_graph(self)
 
 
 class GraphVisitor(object):
@@ -113,4 +136,8 @@ class GraphVisitor(object):
 
     def visit_edge(self, obj):
         for item in obj.fields:
+            self.visit(item)
+
+    def visit_graph(self, obj):
+        for item in obj.items:
             self.visit(item)

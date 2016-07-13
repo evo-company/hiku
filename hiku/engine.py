@@ -106,10 +106,10 @@ def get_options(graph_obj, query_obj):
 
 class Query(Workflow):
 
-    def __init__(self, queue, task_set, root):
+    def __init__(self, queue, task_set, graph):
         self._queue = queue
         self._task_set = task_set
-        self.root = root
+        self.graph = graph
         self._result = Result()
 
     def result(self):
@@ -192,7 +192,7 @@ class Query(Workflow):
         to_ids = link_result_to_ids(ids is not None, graph_link.to_list, result)
         to_ids = [i for i in to_ids if i is not Nothing]
         if to_ids:
-            self.process_edge(self.root.fields_map[graph_link.edge], query_edge,
+            self.process_edge(self.graph.edges_map[graph_link.edge], query_edge,
                               to_ids)
 
 
@@ -201,9 +201,9 @@ class Engine(object):
     def __init__(self, executor):
         self.executor = executor
 
-    def execute(self, root, pattern):
+    def execute(self, graph, pattern):
         queue = Queue(self.executor)
         task_set = queue.fork(None)
-        q = Query(queue, task_set, root)
-        q.process_edge(q.root, pattern, None)
+        q = Query(queue, task_set, graph)
+        q.process_edge(q.graph.root, pattern, None)
         return self.executor.process(queue, q)

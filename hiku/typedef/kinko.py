@@ -46,9 +46,11 @@ def _translate(obj):
         raise TypeError(type(obj))
 
 
-def graph_to_types(root):
+def graph_to_types(graph):
     types = []
-    for item in root.fields:
+    for edge in graph.edges:
+        types.append(TypeDef(edge.name, _translate(edge)))
+    for item in graph.root.fields:
         if isinstance(item, Field) and item.type is None:
             continue
         types.append(TypeDef(item.name, _translate(item)))
@@ -150,6 +152,6 @@ class _IndentedPrinter(object):
         self._print_arg(type_.type)
 
 
-def dumps(root):
-    types = graph_to_types(root)
+def dumps(graph):
+    types = graph_to_types(graph)
     return _IndentedPrinter.dumps(types)

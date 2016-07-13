@@ -8,23 +8,29 @@ from .types import RecordType, ListType, DictType, FunctionType
 from .typedef.types import TypeRef, UnknownType
 
 
-def _graph_to_types(obj):
-    if isinstance(obj, graph.Edge):
-        return RecordType((f.name, _graph_to_types(f))
+class _GraphTypes(graph.GraphVisitor):
+
+    def visit_graph(self, obj):
+        types = {edge.name: self.visit(edge) for edge in obj.edges}
+        types.update(self.visit(obj.root).fields)
+        return types
+
+    def visit_edge(self, obj):
+        return RecordType((f.name, self.visit(f))
                           for f in obj.fields)
-    elif isinstance(obj, graph.Link):
+
+    def visit_link(self, obj):
         if obj.to_list:
             return ListType(TypeRef(obj.edge))
         else:
             return TypeRef(obj.edge)
-    elif isinstance(obj, graph.Field):
+
+    def visit_field(self, obj):
         return obj.type or UnknownType()
-    else:
-        raise TypeError(type(obj))
 
 
-def graph_types(obj):
-    return dict(_graph_to_types(obj).fields)
+def graph_types(graph_):
+    return _GraphTypes().visit(graph_)
 
 
 def _query_to_types(obj):

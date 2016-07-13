@@ -9,7 +9,7 @@ from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
 from hiku.types import IntegerType, StringType
-from hiku.graph import Graph, Edge, Link
+from hiku.graph import Graph, Edge, Link, Root
 from hiku.engine import Engine
 from hiku.sources import sqlalchemy as sa
 from hiku.readers.simple import read
@@ -81,12 +81,14 @@ GRAPH = Graph([
         sa.Field('type', bar_query),
         sa.Link('foo-s', to_foo_query, requires='id'),
     ]),
-    Link('foo-list', foo_list, edge='foo', requires=None, to_list=True),
-    Link('bar-list', bar_list, edge='bar', requires=None, to_list=True),
-    Link('not-found-one', not_found_one, edge='bar', requires=None,
-         to_list=False),
-    Link('not-found-list', not_found_list, edge='bar', requires=None,
-         to_list=True),
+    Root([
+        Link('foo-list', foo_list, edge='foo', requires=None, to_list=True),
+        Link('bar-list', bar_list, edge='bar', requires=None, to_list=True),
+        Link('not-found-one', not_found_one, edge='bar', requires=None,
+             to_list=False),
+        Link('not-found-list', not_found_list, edge='bar', requires=None,
+             to_list=True),
+    ]),
 ])
 
 thread_pool = ThreadPoolExecutor(2)
@@ -127,11 +129,11 @@ class TestSourceSQL(TestCase):
 
     def testTypes(self):
         self.assertIsInstance(
-            GRAPH.fields_map[foo_table.name].fields_map['id'].type,
+            GRAPH.edges_map[foo_table.name].fields_map['id'].type,
             IntegerType,
         )
         self.assertIsInstance(
-            GRAPH.fields_map[foo_table.name].fields_map['name'].type,
+            GRAPH.edges_map[foo_table.name].fields_map['name'].type,
             StringType,
         )
 
