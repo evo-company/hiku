@@ -1,7 +1,7 @@
 from hiku import query as q
 from hiku.graph import Graph, Edge, Field, Link, Option, Root
 from hiku.types import IntegerType
-from hiku.validator import QueryValidator
+from hiku.validate.query import QueryValidator
 
 
 def _():

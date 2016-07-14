@@ -1,11 +1,24 @@
+from abc import ABCMeta, abstractmethod
 from itertools import chain
 from collections import OrderedDict
 
 from .types import to_instance
 from .utils import kw_only, cached_property
+from .compat import with_metaclass
 
 
-class Option(object):
+class AbstractNode(with_metaclass(ABCMeta)):
+
+    @abstractmethod
+    def accept(self, visitor):
+        pass
+
+
+class AbstractOption(AbstractNode):
+    pass
+
+
+class Option(AbstractOption):
 
     def __init__(self, name, *other, **kwargs):
         if not len(other):
@@ -24,7 +37,11 @@ class Option(object):
         return visitor.visit_option(self)
 
 
-class Field(object):
+class AbstractField(AbstractNode):
+    pass
+
+
+class Field(AbstractField):
 
     def __init__(self, name, *other, **kwargs):
         if not len(other):
@@ -53,22 +70,11 @@ class Field(object):
         return visitor.visit_field(self)
 
 
-class Edge(object):
-
-    def __init__(self, name, fields, **kwargs):
-        self.name = name
-        self.fields = fields
-        self.doc, = kw_only(kwargs, [], ['doc'])
-
-    @cached_property
-    def fields_map(self):
-        return OrderedDict((f.name, f) for f in self.fields)
-
-    def accept(self, visitor):
-        return visitor.visit_edge(self)
+class AbstractLink(AbstractNode):
+    pass
 
 
-class Link(object):
+class Link(AbstractLink):
 
     def __init__(self, name, func, **kwargs):
         edge, requires, to_list, options, doc = \
@@ -90,13 +96,36 @@ class Link(object):
         return visitor.visit_link(self)
 
 
+class AbstractEdge(AbstractNode):
+    pass
+
+
+class Edge(AbstractEdge):
+
+    def __init__(self, name, fields, **kwargs):
+        self.name = name
+        self.fields = fields
+        self.doc, = kw_only(kwargs, [], ['doc'])
+
+    @cached_property
+    def fields_map(self):
+        return OrderedDict((f.name, f) for f in self.fields)
+
+    def accept(self, visitor):
+        return visitor.visit_edge(self)
+
+
 class Root(Edge):
 
     def __init__(self, items):
         super(Root, self).__init__(None, items)
 
 
-class Graph(object):
+class AbstractGraph(AbstractNode):
+    pass
+
+
+class Graph(AbstractGraph):
 
     def __init__(self, items):
         self.items = items

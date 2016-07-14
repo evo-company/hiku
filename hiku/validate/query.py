@@ -1,18 +1,11 @@
-from .query import QueryVisitor
-from .graph import GraphVisitor
-from .compat import text_type
+from ..query import QueryVisitor
+from ..graph import GraphVisitor
+from ..compat import text_type
+
+from .errors import Errors
 
 
 _undefined = object()
-
-
-class Errors(object):
-
-    def __init__(self):
-        self.list = []
-
-    def report(self, msg):
-        self.list.append(msg)
 
 
 class _AssumeField(GraphVisitor):
