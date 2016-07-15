@@ -4,29 +4,29 @@ from collections import deque
 from . import graph, query
 from .refs import NamedRef, Ref
 from .nodes import NodeTransformer, Symbol, Keyword, Tuple
-from .types import RecordType, ListType, DictType, FunctionType
-from .typedef.types import TypeRef, UnknownType
+from .types import Sequence, SequenceMeta, Record, RecordMeta
+from .types import MappingMeta, Callable
+from .typedef.types import TypeRef, TypeRefMeta, Unknown, UnknownMeta
 
 
 class _GraphTypes(graph.GraphVisitor):
 
     def visit_graph(self, obj):
         types = {edge.name: self.visit(edge) for edge in obj.edges}
-        types.update(self.visit(obj.root).fields)
+        types.update(self.visit(obj.root).__field_types__)
         return types
 
     def visit_edge(self, obj):
-        return RecordType((f.name, self.visit(f))
-                          for f in obj.fields)
+        return Record[[(f.name, self.visit(f)) for f in obj.fields]]
 
     def visit_link(self, obj):
         if obj.to_list:
-            return ListType(TypeRef(obj.edge))
+            return Sequence[TypeRef[obj.edge]]
         else:
-            return TypeRef(obj.edge)
+            return TypeRef[obj.edge]
 
     def visit_field(self, obj):
-        return obj.type or UnknownType()
+        return obj.type or Unknown
 
 
 def graph_types(graph_):
@@ -35,22 +35,21 @@ def graph_types(graph_):
 
 def _query_to_types(obj):
     if isinstance(obj, query.Edge):
-        return RecordType((f.name, _query_to_types(f))
-                          for f in obj.fields)
+        return Record[[(f.name, _query_to_types(f)) for f in obj.fields]]
     elif isinstance(obj, query.Link):
         return _query_to_types(obj.edge)
     elif isinstance(obj, query.Field):
-        return UnknownType()
+        return Unknown
     else:
         raise TypeError(type(obj))
 
 
 def fn_types(functions):
     return {
-        fn.__fn_name__: FunctionType([
-            _query_to_types(r) if r is not None else UnknownType()
+        fn.__fn_name__: Callable[[
+            _query_to_types(r) if r is not None else Unknown
             for r in fn.__requires__
-        ])
+        ]]
         for fn in functions
     }
 
@@ -85,8 +84,8 @@ class Environ(object):
 
 
 def get_type(types, obj):
-    if isinstance(obj, TypeRef):
-        return types[obj.name]
+    if isinstance(obj, TypeRefMeta):
+        return types[obj.__type_name__]
     else:
         return obj
 
@@ -98,18 +97,18 @@ def node_type(types, node):
 def check_type(types, t1, t2):
     t1 = get_type(types, t1)
     t2 = get_type(types, t2)
-    if isinstance(t2, UnknownType):
+    if isinstance(t2, UnknownMeta):
         pass
     else:
         if isinstance(t1, type(t2)):
-            if isinstance(t2, ListType):
-                check_type(types, t1.item_type, t2.item_type)
-            elif isinstance(t2, DictType):
-                check_type(types, t1.key_type, t2.key_type)
-                check_type(types, t1.value_type, t2.value_type)
-            elif isinstance(t2, RecordType):
-                for key, v2 in t2.fields.items():
-                    v1 = t1.fields.get(key)
+            if isinstance(t2, SequenceMeta):
+                check_type(types, t1.__item_type__, t2.__item_type__)
+            elif isinstance(t2, MappingMeta):
+                check_type(types, t1.__key_type__, t2.__key_type__)
+                check_type(types, t1.__value_type__, t2.__value_type__)
+            elif isinstance(t2, RecordMeta):
+                for key, v2 in t2.__field_types__.items():
+                    v1 = t1.__field_types__.get(key)
                     if v1 is None:
                         raise TypeError('Missing field {}'.format(key))
                     v1 = get_type(types, v1)
@@ -132,9 +131,9 @@ class Checker(NodeTransformer):
         assert hasattr(obj, '__ref__'), 'Object does not have a reference'
 
         ref_to = node_type(self.types, obj)
-        check_type(self.types, ref_to, RecordType({name.name: UnknownType()}))
+        check_type(self.types, ref_to, Record[{name.name: Unknown}])
 
-        res = ref_to.fields.get(name.name)
+        res = ref_to.__field_types__.get(name.name)
         assert res is not None, 'Undefined field name: {}'.format(name.name)
         tup = Tuple([sym, obj, name])
         tup.__ref__ = NamedRef(obj.__ref__, name.name, res)
@@ -146,9 +145,9 @@ class Checker(NodeTransformer):
         col = self.visit(col)
         assert hasattr(col, '__ref__'), 'Object does not have a reference'
         col_type = node_type(self.types, col)
-        check_type(self.types, col_type, ListType(RecordType({})))
+        check_type(self.types, col_type, Sequence[Record[{}]])
         var = Symbol(var.name)
-        var.__ref__ = Ref(col.__ref__, col_type.item_type)
+        var.__ref__ = Ref(col.__ref__, col_type.__item_type__)
         with self.env.push({var.name: var.__ref__}):
             expr = self.visit(expr)
         return Tuple([Symbol('each'), var, col, expr])
@@ -158,13 +157,13 @@ class Checker(NodeTransformer):
         assert isinstance(sym, Symbol), type(sym)
         args = [self.visit(val) for val in node.values[1:]]
         fn_type = node_type(self.types, sym)
-        assert len(fn_type.arg_types) == len(args), 'Wrong arguments count'
-        for arg, arg_type in zip(args, fn_type.arg_types):
+        assert len(fn_type.__arg_types__) == len(args), 'Wrong arguments count'
+        for arg, arg_type in zip(args, fn_type.__arg_types__):
             ref = getattr(arg, '__ref__', None)
             if ref is not None:
                 check_type(self.types, node_type(self.types, arg), arg_type)
             else:
-                check_type(self.types, UnknownType(), arg_type)
+                check_type(self.types, Unknown, arg_type)
         return Tuple([sym] + args)
 
     def visit_tuple(self, node):

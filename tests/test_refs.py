@@ -88,7 +88,7 @@ class TestRefToReq(TestCase):
         self.assertReq(x_ref,
                        Edge([Link('x', Edge([]))]))
 
-        a_ref = NamedRef(x_ref, 'a', TYPES['x'].fields['a'])
+        a_ref = NamedRef(x_ref, 'a', TYPES['x'].__field_types__['a'])
         self.assertReq(a_ref,
                        Edge([Link('x', Edge([Field('a')]))]))
 
@@ -101,7 +101,7 @@ class TestRefToReq(TestCase):
         self.assertReq(x_ref,
                        Edge([Link('x1', Edge([]))]))
 
-        b_ref = NamedRef(x_ref, 'b', TYPES['x'].fields['b'])
+        b_ref = NamedRef(x_ref, 'b', TYPES['x'].__field_types__['b'])
         self.assertReq(b_ref,
                        Edge([Link('x1', Edge([Field('b')]))]))
 
@@ -114,7 +114,7 @@ class TestRefToReq(TestCase):
         self.assertReq(x_ref,
                        Edge([Link('xs', Edge([]))]))
 
-        c_ref = NamedRef(x_ref, 'c', TYPES['x'].fields['c'])
+        c_ref = NamedRef(x_ref, 'c', TYPES['x'].__field_types__['c'])
         self.assertReq(c_ref,
                        Edge([Link('xs', Edge([Field('c')]))]))
 

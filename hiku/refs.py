@@ -1,7 +1,17 @@
 from .query import Edge, Link, Field, merge
-from .types import RecordType, ListType, Type, ContainerType
+from .types import GenericMeta, RecordMeta, SequenceMeta, MappingMeta
+from .types import OptionalMeta
 from .nodes import NodeVisitor
-from .typedef.types import UnknownType, TypeRef
+from .typedef.types import TypeRefMeta
+
+
+# TODO: revisit this
+_CONTAINER_TYPES = (
+    OptionalMeta,
+    SequenceMeta,
+    MappingMeta,
+    RecordMeta,
+)
 
 
 class Ref(object):
@@ -19,7 +29,9 @@ class NamedRef(Ref):
 
 
 def get_type(types, type_):
-    return types[type_.name] if isinstance(type_, TypeRef) else type_
+    return (types[type_.__type_name__]
+            if isinstance(type_, TypeRefMeta)
+            else type_)
 
 
 def ref_to_req(types, ref, add_req=None):
@@ -29,7 +41,7 @@ def ref_to_req(types, ref, add_req=None):
 
     ref_type = get_type(types, ref.to)
 
-    if isinstance(ref_type, RecordType):
+    if isinstance(ref_type, RecordMeta):
         if isinstance(ref, NamedRef):
             edge = Edge([]) if add_req is None else add_req
             return ref_to_req(types, ref.backref,
@@ -37,9 +49,9 @@ def ref_to_req(types, ref, add_req=None):
         else:
             return ref_to_req(types, ref.backref, add_req)
 
-    elif isinstance(ref_type, ListType):
-        item_type = get_type(types, ref_type.item_type)
-        if isinstance(item_type, RecordType):
+    elif isinstance(ref_type, SequenceMeta):
+        item_type = get_type(types, ref_type.__item_type__)
+        if isinstance(item_type, RecordMeta):
             assert isinstance(ref, NamedRef), type(ref)
             edge = Edge([]) if add_req is None else add_req
             return ref_to_req(types, ref.backref,
@@ -47,8 +59,8 @@ def ref_to_req(types, ref, add_req=None):
         else:
             raise NotImplementedError
 
-    elif isinstance(ref_type, (Type, UnknownType)):
-        assert not isinstance(ref_type, ContainerType)
+    elif isinstance(ref_type, GenericMeta):
+        assert not isinstance(ref_type, _CONTAINER_TYPES)
         assert isinstance(ref, NamedRef), type(ref)
         assert add_req is None, repr(add_req)
         return ref_to_req(types, ref.backref,
@@ -61,12 +73,12 @@ def ref_to_req(types, ref, add_req=None):
 
 def type_to_query(type_):
     fields = []
-    for f_name, f_type in type_.fields.items():
-        if isinstance(f_type, RecordType):
+    for f_name, f_type in type_.__field_types__.items():
+        if isinstance(f_type, RecordMeta):
             fields.append(Link(f_name, type_to_query(f_type)))
-        elif isinstance(f_type, ListType):
-            if isinstance(f_type.item_type, RecordType):
-                fields.append(Link(f_name, type_to_query(f_type.item_type)))
+        elif isinstance(f_type, SequenceMeta):
+            if isinstance(f_type.__item_type__, RecordMeta):
+                fields.append(Link(f_name, type_to_query(f_type.__item_type__)))
             else:
                 raise NotImplementedError
         else:
@@ -98,8 +110,8 @@ class RequirementsExtractor(NodeVisitor):
         sym, args = node.values[0], node.values[1:]
         sym_ref = getattr(sym, '__ref__', None)
         if sym_ref is not None:
-            for arg, arg_type in zip(args, sym_ref.to.arg_types):
-                if isinstance(arg_type, RecordType):
+            for arg, arg_type in zip(args, sym_ref.to.__arg_types__):
+                if isinstance(arg_type, RecordMeta):
                     self._reqs.append(ref_to_req(self._types, arg.__ref__,
                                                  type_to_query(arg_type)))
                 else:

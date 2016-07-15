@@ -5,7 +5,7 @@ from collections import defaultdict
 import sqlalchemy
 
 from ..utils import kw_only
-from ..types import StringType, IntegerType
+from ..types import String, Integer
 from ..graph import Field as FieldBase, Link as LinkBase
 from ..engine import Nothing
 
@@ -41,9 +41,9 @@ class FieldsQuery(object):
 
 def _translate_type(column):
     if isinstance(column.type, sqlalchemy.Integer):
-        return IntegerType
+        return Integer
     elif isinstance(column.type, sqlalchemy.Unicode):
-        return StringType
+        return String
     else:
         return None
 

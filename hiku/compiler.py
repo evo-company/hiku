@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from collections import Counter
 
-from .types import FunctionType
+from .types import CallableMeta
 from .nodes import Symbol, Keyword
 from .compat import ast as py
 
@@ -109,7 +109,7 @@ class ExpressionCompiler(object):
     def visit_symbol(self, node):
         if node.name in self.env:
             return self._var_load(self.env[node.name])
-        elif isinstance(node.__ref__.to, FunctionType):
+        elif isinstance(node.__ref__.to, CallableMeta):
             return self._env_load(node.name)
         else:
             return self._ctx_load(node.name)

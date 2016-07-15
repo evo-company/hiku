@@ -87,4 +87,4 @@ class TestChecker(TestCase):
     def testEdgeField(self):
         expr = self.check(S.x.a)
         self.assertRef(expr, NamedRef(NamedRef(None, 'x', TYPES['x']),
-                                      'a', TYPES['x'].fields['a']))
+                                      'a', TYPES['x'].__field_types__['a']))

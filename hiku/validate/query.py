@@ -73,9 +73,9 @@ class _TypeValidator(object):
         if not isinstance(self.value, int):
             raise _TypeError('Invalid type')
 
-    def visit_option(self, type_):
+    def visit_optional(self, type_):
         if self.value is not None:
-            self.visit(type_.type)
+            self.visit(type_.__type__)
 
 
 class _ValidateOptions(GraphVisitor):

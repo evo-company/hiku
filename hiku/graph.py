@@ -2,7 +2,6 @@ from abc import ABCMeta, abstractmethod
 from itertools import chain
 from collections import OrderedDict
 
-from .types import to_instance
 from .utils import kw_only, cached_property
 from .compat import with_metaclass
 
@@ -30,7 +29,7 @@ class Option(AbstractOption):
                             .format(len(other) + 1))
 
         self.name = name
-        self.type = to_instance(type_) if type_ is not None else None
+        self.type = type_
         self.default, = kw_only(kwargs, [], ['default'])
 
     def accept(self, visitor):
@@ -57,7 +56,7 @@ class Field(AbstractField):
         options, doc = kw_only(kwargs, [], ['options', 'doc'])
 
         self.name = name
-        self.type = to_instance(type_) if type_ is not None else None
+        self.type = type_
         self.func = func
         self.options = options or ()
         self.doc = doc

@@ -2,9 +2,9 @@ import difflib
 from textwrap import dedent
 
 from hiku.graph import Graph, Edge, Field, Link, Root
+from hiku.types import Sequence, Mapping, Integer, String, Optional
 from hiku.typedef.kinko import dumps
-from hiku.types import IntegerType, DictType, StringType, OptionType
-from hiku.types import ListType
+
 from .base import TestCase
 
 
@@ -26,7 +26,7 @@ class TestTypeDefKinko(TestCase):
     def testField(self):
         self.assertDumps(
             Graph([Root([
-                Field('A', StringType, noop),
+                Field('A', String, noop),
             ])]),
             """
             type A String
@@ -37,12 +37,12 @@ class TestTypeDefKinko(TestCase):
         self.assertDumps(
             Graph([
                 Edge('Foo', [
-                    Field('a', StringType, noop),
-                    Field('c', StringType, noop),
+                    Field('a', String, noop),
+                    Field('c', String, noop),
                 ]),
                 Edge('Bar', [
-                    Field('d', StringType, noop),
-                    Field('b', StringType, noop),
+                    Field('d', String, noop),
+                    Field('b', String, noop),
                 ]),
             ]),
             """
@@ -61,7 +61,7 @@ class TestTypeDefKinko(TestCase):
     def testListSimple(self):
         self.assertDumps(
             Graph([Root([
-                Field('A', ListType(IntegerType), noop),
+                Field('A', Sequence[Integer], noop),
             ])]),
             """
             type A
@@ -72,7 +72,7 @@ class TestTypeDefKinko(TestCase):
     def testListComplex(self):
         self.assertDumps(
             Graph([Root([
-                Field('A', ListType(ListType(IntegerType)), noop),
+                Field('A', Sequence[Sequence[Integer]], noop),
             ])]),
             """
             type A
@@ -84,7 +84,7 @@ class TestTypeDefKinko(TestCase):
     def testDictSimple(self):
         self.assertDumps(
             Graph([Root([
-                Field('A', DictType(StringType, IntegerType), noop),
+                Field('A', Mapping[String, Integer], noop),
             ])]),
             """
             type A
@@ -95,8 +95,7 @@ class TestTypeDefKinko(TestCase):
     def testDictComplex(self):
         self.assertDumps(
             Graph([Root([
-                Field('A', DictType(StringType,
-                                    DictType(IntegerType, IntegerType)),
+                Field('A', Mapping[String, Mapping[Integer, Integer]],
                       noop),
             ])]),
             """
@@ -110,14 +109,14 @@ class TestTypeDefKinko(TestCase):
         self.assertDumps(
             Graph([
                 Edge('Foo', [
-                    Field('a', StringType, noop),
+                    Field('a', String, noop),
                 ]),
                 Edge('Bar', [
-                    Field('b', StringType, noop),
+                    Field('b', String, noop),
                     Link('c', noop, edge='Foo', requires=None, to_list=False),
                 ]),
                 Edge('Baz', [
-                    Field('d', StringType, noop),
+                    Field('d', String, noop),
                     Link('e', noop, edge='Foo', requires=None, to_list=True),
                 ]),
             ]),
@@ -143,15 +142,15 @@ class TestTypeDefKinko(TestCase):
         self.assertDumps(
             Graph([
                 Edge('Foo', [
-                    Field('a', StringType, noop, doc="Attribute a"),
+                    Field('a', String, noop, doc="Attribute a"),
                 ], doc="Some Foo explanation"),
                 Edge('Bar', [
-                    Field('b', OptionType(StringType), noop, doc="Attribute b"),
+                    Field('b', Optional[String], noop, doc="Attribute b"),
                     Link('c', noop, edge='Foo', requires=None, to_list=False,
                          doc="Link c to Foo"),
                 ], doc="Some Bar explanation"),
                 Edge('Baz', [
-                    Field('d', StringType, noop, doc="Attribute d"),
+                    Field('d', String, noop, doc="Attribute d"),
                     Link('e', noop, edge='Foo', requires=None, to_list=True,
                          doc="Link e to Foo"),
                 ], doc="Some Baz explanation"),

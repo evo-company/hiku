@@ -1,87 +1,118 @@
 from collections import OrderedDict
 
+from .compat import with_metaclass
 
-class Type(object):
 
-    def accept(self, visitor):
+class GenericMeta(type):
+
+    def __repr__(cls):
+        return cls.__name__
+
+    def accept(cls, visitor):
         raise NotImplementedError
 
 
-class BooleanType(Type):
+class BooleanMeta(GenericMeta):
 
-    def accept(self, visitor):
-        return visitor.visit_boolean(self)
-
-
-class StringType(Type):
-
-    def accept(self, visitor):
-        return visitor.visit_string(self)
+    def accept(cls, visitor):
+        return visitor.visit_boolean(cls)
 
 
-class IntegerType(Type):
-
-    def accept(self, visitor):
-        return visitor.visit_integer(self)
-
-
-class ContainerType(Type):
+class Boolean(with_metaclass(BooleanMeta, object)):
     pass
 
 
-def to_instance(type_):
-    if isinstance(type_, type):
-        if issubclass(type_, ContainerType):
-            raise TypeError('Type {!r} is not instantiated'.format(type_))
-        else:
-            return type_()
-    else:
+class StringMeta(GenericMeta):
+
+    def accept(cls, visitor):
+        return visitor.visit_string(cls)
+
+
+class String(with_metaclass(StringMeta, object)):
+    pass
+
+
+class IntegerMeta(GenericMeta):
+
+    def accept(cls, visitor):
+        return visitor.visit_integer(cls)
+
+
+class Integer(with_metaclass(IntegerMeta, object)):
+    pass
+
+
+class TypingMeta(GenericMeta):
+
+    def __cls_init__(cls, *args):
+        raise NotImplementedError
+
+    def __getitem__(cls, parameters):
+        type_ = cls.__class__(cls.__name__, cls.__bases__, dict(cls.__dict__))
+        type_.__cls_init__(parameters)
         return type_
 
 
-class OptionType(ContainerType):
+class OptionalMeta(TypingMeta):
 
-    def __init__(self, type_):
-        self.type = to_instance(type_)
+    def __cls_init__(cls, type_):
+        cls.__type__ = type_
 
-    def accept(self, visitor):
-        return visitor.visit_option(self)
-
-
-class ListType(ContainerType):
-
-    def __init__(self, item_type):
-        self.item_type = to_instance(item_type)
-
-    def accept(self, visitor):
-        return visitor.visit_list(self)
+    def accept(cls, visitor):
+        return visitor.visit_optional(cls)
 
 
-class DictType(ContainerType):
-
-    def __init__(self, key_type, value_type):
-        self.key_type = to_instance(key_type)
-        self.value_type = to_instance(value_type)
-
-    def accept(self, visitor):
-        return visitor.visit_dict(self)
+class Optional(with_metaclass(OptionalMeta, object)):
+    pass
 
 
-class RecordType(ContainerType):
+class SequenceMeta(TypingMeta):
 
-    def __init__(self, fields):
-        self.fields = OrderedDict(
-            (k, to_instance(v)) for k, v in OrderedDict(fields).items()
-        )
+    def __cls_init__(cls, item_type):
+        cls.__item_type__ = item_type
 
-    def accept(self, visitor):
-        return visitor.visit_record(self)
+    def accept(cls, visitor):
+        return visitor.visit_sequence(cls)
 
 
-class FunctionType(Type):
+class Sequence(with_metaclass(SequenceMeta, object)):
+    pass
 
-    def __init__(self, arg_types):
-        self.arg_types = arg_types
 
-    def accept(self, visitor):
-        return visitor.visit_function(self)
+class MappingMeta(TypingMeta):
+
+    def __cls_init__(cls, params):
+        cls.__key_type__, cls.__value_type__ = params
+
+    def accept(cls, visitor):
+        return visitor.visit_mapping(cls)
+
+
+class Mapping(with_metaclass(MappingMeta, object)):
+    pass
+
+
+class RecordMeta(TypingMeta):
+
+    def __cls_init__(cls, field_types):
+        cls.__field_types__ = OrderedDict(field_types)
+
+    def accept(cls, visitor):
+        return visitor.visit_record(cls)
+
+
+class Record(with_metaclass(RecordMeta, object)):
+    pass
+
+
+class CallableMeta(TypingMeta):
+
+    def __cls_init__(cls, arg_types):
+        cls.__arg_types__ = arg_types
+
+    def accept(cls, visitor):
+        return visitor.visit_callable(cls)
+
+
+class Callable(with_metaclass(CallableMeta, object)):
+    pass

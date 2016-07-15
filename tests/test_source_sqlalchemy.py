@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
-from hiku.types import IntegerType, StringType
+from hiku.types import IntegerMeta, StringMeta
 from hiku.graph import Graph, Edge, Link, Root
 from hiku.engine import Engine
 from hiku.sources import sqlalchemy as sa
@@ -130,11 +130,11 @@ class TestSourceSQL(TestCase):
     def testTypes(self):
         self.assertIsInstance(
             GRAPH.edges_map[foo_table.name].fields_map['id'].type,
-            IntegerType,
+            IntegerMeta,
         )
         self.assertIsInstance(
             GRAPH.edges_map[foo_table.name].fields_map['name'].type,
-            StringType,
+            StringMeta,
         )
 
     def assertExecute(self, src, value):

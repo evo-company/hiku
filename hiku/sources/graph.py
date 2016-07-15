@@ -9,7 +9,7 @@ from ..utils import kw_only
 from ..engine import Query, store_fields
 from ..checker import check, graph_types, fn_types
 from ..compiler import ExpressionCompiler
-from ..typedef.types import UnknownType
+from ..typedef.types import Unknown
 
 
 THIS_LINK_NAME = '__link_to_this'
@@ -50,8 +50,7 @@ class Expr(Field):
 
         types = subquery.types.copy()
         types.update(fn_types(self.functions))
-        types.update({opt.name: UnknownType()
-                      for opt in self.options})
+        types.update({opt.name: Unknown for opt in self.options})
 
         node = check(node, types)
 

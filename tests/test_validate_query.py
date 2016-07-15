@@ -1,6 +1,6 @@
 from hiku import query as q
 from hiku.graph import Graph, Edge, Field, Link, Option, Root
-from hiku.types import IntegerType
+from hiku.types import Integer
 from hiku.validate.query import QueryValidator
 
 
@@ -11,25 +11,25 @@ def _():
 # TODO: refactor
 GRAPH = Graph([
     Edge('e1', [
-        Field('f2', IntegerType, _,
-              options=[Option('f2-op1', IntegerType),
-                       Option('f2-op2', IntegerType, default=1)]),
+        Field('f2', Integer, _,
+              options=[Option('f2-op1', Integer),
+                       Option('f2-op2', Integer, default=1)]),
         Link('l1', _, edge='e2', requires='f2', to_list=True,
-             options=[Option('l1-op1', IntegerType),
-                      Option('l1-op2', IntegerType, default=1)]),
+             options=[Option('l1-op1', Integer),
+                      Option('l1-op2', Integer, default=1)]),
     ]),
     Edge('e2', [
         Field('f3', _),
     ]),
     Root([
-        Field('f1', IntegerType, _),
+        Field('f1', Integer, _),
         Edge('e1', [
-            Field('f2', IntegerType, _,
-                  options=[Option('f2-op1', IntegerType),
-                           Option('f2-op2', IntegerType, default=1)]),
+            Field('f2', Integer, _,
+                  options=[Option('f2-op1', Integer),
+                           Option('f2-op2', Integer, default=1)]),
             Link('l1', _, edge='e2', requires='f2', to_list=True,
-                 options=[Option('l1-op1', IntegerType),
-                          Option('l1-op2', IntegerType, default=1)]),
+                 options=[Option('l1-op1', Integer),
+                          Option('l1-op2', Integer, default=1)]),
         ]),
         Edge('e2', [
             Field('f3', _),
