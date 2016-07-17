@@ -1,4 +1,4 @@
-from hiku.graph import Graph, Edge, Field, Root, Link, Option
+from hiku.graph import Graph, Edge, Field, Root, Link, Option, MANY
 from hiku.validate.graph import GraphValidator
 
 
@@ -89,8 +89,7 @@ def test_link_missing_edge():
     check_errors(
         Graph([
             Edge('bar', [
-                Link('link', _link_func, edge='missing', requires=None,
-                     to_list=True),
+                Link('link', MANY, _link_func, edge='missing', requires=None),
             ]),
         ]),
         ['Link "bar.link" points to the missing edge "missing"'],
@@ -102,12 +101,12 @@ def test_link_requires_missing_field():
         Graph([
             Edge('foo', []),
             Edge('bar', [
-                Link('link1', _link_func, edge='foo', requires='missing1',
-                     to_list=True),
+                Link('link1', MANY, _link_func, edge='foo',
+                     requires='missing1'),
             ]),
             Root([
-                Link('link2', _link_func, edge='foo', requires='missing2',
-                     to_list=True),
+                Link('link2', MANY, _link_func, edge='foo',
+                     requires='missing2'),
             ]),
         ]),
         ['Link "link2" requires missing field "missing2" in the "root" edge',
@@ -121,7 +120,7 @@ def test_link_contain_invalid_types():
             Edge('foo', []),
             Edge('bar', [
                 Field('id', _fields_func),
-                Link('baz', _link_func, edge='foo', requires='id', to_list=True,
+                Link('baz', MANY, _link_func, edge='foo', requires='id',
                      options=[Option('size'), 1]),
             ]),
         ]),

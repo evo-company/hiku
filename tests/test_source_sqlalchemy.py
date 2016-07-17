@@ -9,7 +9,7 @@ from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
 from hiku.types import IntegerMeta, StringMeta
-from hiku.graph import Graph, Edge, Link, Root
+from hiku.graph import Graph, Edge, Link, Root, MANY, ONE, MAYBE
 from hiku.engine import Engine
 from hiku.sources import sqlalchemy as sa
 from hiku.readers.simple import read
@@ -60,11 +60,13 @@ foo_query = sa.FieldsQuery(session, foo_table)
 bar_query = sa.FieldsQuery(session, bar_table)
 
 
-to_foo_query = sa.LinkQuery(session, edge='foo', from_column=foo_table.c.bar_id,
-                            to_column=foo_table.c.id, to_list=True)
+to_foo_query = sa.LinkQuery(MANY, session, edge='foo',
+                            from_column=foo_table.c.bar_id,
+                            to_column=foo_table.c.id)
 
-to_bar_query = sa.LinkQuery(session, edge='bar', from_column=bar_table.c.id,
-                            to_column=bar_table.c.id, to_list=False)
+to_bar_query = sa.LinkQuery(MAYBE, session, edge='bar',
+                            from_column=bar_table.c.id,
+                            to_column=bar_table.c.id)
 
 
 GRAPH = Graph([
@@ -82,12 +84,10 @@ GRAPH = Graph([
         sa.Link('foo-s', to_foo_query, requires='id'),
     ]),
     Root([
-        Link('foo-list', foo_list, edge='foo', requires=None, to_list=True),
-        Link('bar-list', bar_list, edge='bar', requires=None, to_list=True),
-        Link('not-found-one', not_found_one, edge='bar', requires=None,
-             to_list=False),
-        Link('not-found-list', not_found_list, edge='bar', requires=None,
-             to_list=True),
+        Link('foo-list', MANY, foo_list, edge='foo', requires=None),
+        Link('bar-list', MANY, bar_list, edge='bar', requires=None),
+        Link('not-found-one', ONE, not_found_one, edge='bar', requires=None),
+        Link('not-found-list', MANY, not_found_list, edge='bar', requires=None),
     ]),
 ])
 
@@ -143,8 +143,8 @@ class TestSourceSQL(TestCase):
 
     def testSameTable(self):
         with self.assertRaisesRegexp(ValueError, 'should belong'):
-            sa.LinkQuery(session, edge='bar', from_column=foo_table.c.id,
-                         to_column=bar_table.c.id, to_list=True)
+            sa.LinkQuery(MANY, session, edge='bar', from_column=foo_table.c.id,
+                         to_column=bar_table.c.id)
 
     def testMissingColumn(self):
         with self.assertRaisesRegexp(ValueError, 'does not have a column'):

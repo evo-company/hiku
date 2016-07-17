@@ -1,6 +1,7 @@
 from hiku import graph
 from hiku.expr import define, S, to_expr
 from hiku.refs import NamedRef
+from hiku.graph import MANY, ONE
 from hiku.checker import check, graph_types, fn_types
 
 from .base import TestCase, ref_eq_patcher
@@ -41,8 +42,8 @@ ENV = graph.Graph([
         graph.Field('d', noop),
         graph.Field('e', noop),
         graph.Field('f', noop),
-        graph.Link('x1', noop, edge='x', requires=None, to_list=False),
-        graph.Link('xs', noop, edge='x', requires=None, to_list=True),
+        graph.Link('x1', ONE, noop, edge='x', requires=None),
+        graph.Link('xs', MANY, noop, edge='x', requires=None),
     ]),
     graph.Root([
         graph.Field('f', noop),
@@ -51,17 +52,17 @@ ENV = graph.Graph([
             graph.Field('b', noop),
             graph.Field('c', noop),
         ]),
-        graph.Link('x1', noop, edge='x', requires=None, to_list=False),
-        graph.Link('xs', noop, edge='x', requires=None, to_list=True),
+        graph.Link('x1', ONE, noop, edge='x', requires=None),
+        graph.Link('xs', MANY, noop, edge='x', requires=None),
         graph.Edge('y', [
             graph.Field('d', noop),
             graph.Field('e', noop),
             graph.Field('f', noop),
-            graph.Link('x1', noop, edge='x', requires=None, to_list=False),
-            graph.Link('xs', noop, edge='x', requires=None, to_list=True),
+            graph.Link('x1', ONE, noop, edge='x', requires=None),
+            graph.Link('xs', MANY, noop, edge='x', requires=None),
         ]),
-        graph.Link('y1', noop, edge='y', requires=None, to_list=False),
-        graph.Link('ys', noop, edge='y', requires=None, to_list=True),
+        graph.Link('y1', ONE, noop, edge='y', requires=None),
+        graph.Link('ys', MANY, noop, edge='y', requires=None),
     ]),
 ])
 

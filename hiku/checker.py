@@ -1,18 +1,18 @@
 from contextlib import contextmanager
-from collections import deque
+from collections import deque, OrderedDict
 
 from . import graph, query
 from .refs import NamedRef, Ref
 from .nodes import NodeTransformer, Symbol, Keyword, Tuple
-from .types import Sequence, SequenceMeta, Record, RecordMeta
+from .types import Sequence, SequenceMeta, Record, RecordMeta, Optional
 from .types import MappingMeta, Callable
 from .typedef.types import TypeRef, TypeRefMeta, Unknown, UnknownMeta
 
 
-class _GraphTypes(graph.GraphVisitor):
+class GraphTypes(graph.GraphVisitor):
 
     def visit_graph(self, obj):
-        types = {edge.name: self.visit(edge) for edge in obj.edges}
+        types = OrderedDict((edge.name, self.visit(edge)) for edge in obj.edges)
         types.update(self.visit(obj.root).__field_types__)
         return types
 
@@ -20,17 +20,21 @@ class _GraphTypes(graph.GraphVisitor):
         return Record[[(f.name, self.visit(f)) for f in obj.fields]]
 
     def visit_link(self, obj):
-        if obj.to_list:
+        if obj.type is graph.MAYBE:
+            return Optional[TypeRef[obj.edge]]
+        elif obj.type is graph.ONE:
+            return TypeRef[obj.edge]
+        elif obj.type is graph.MANY:
             return Sequence[TypeRef[obj.edge]]
         else:
-            return TypeRef[obj.edge]
+            raise TypeError(repr(obj.type))
 
     def visit_field(self, obj):
         return obj.type or Unknown
 
 
 def graph_types(graph_):
-    return _GraphTypes().visit(graph_)
+    return GraphTypes().visit(graph_)
 
 
 def _query_to_types(obj):

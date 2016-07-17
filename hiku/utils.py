@@ -1,3 +1,6 @@
+import sys
+
+
 _undefined = object()
 
 
@@ -31,3 +34,9 @@ class cached_property(object):
             return self
         value = obj.__dict__[self.func.__name__] = self.func(obj)
         return value
+
+
+def const(name):
+    t = type(name, (object,), {})
+    t.__module__ = sys._getframe(1).f_globals.get('__name__', '__main__')
+    return t

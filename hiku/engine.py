@@ -3,12 +3,13 @@ from itertools import chain
 from collections import defaultdict
 
 from . import query
-from .graph import Link, Edge
+from .utils import const
+from .graph import Link, Edge, MAYBE, ONE, MANY
 from .result import Result
 from .executors.queue import Workflow, Queue
 
 
-Nothing = object()
+Nothing = const('Nothing')
 
 
 class SplitPattern(query.QueryVisitor):
@@ -66,17 +67,28 @@ def link_reqs(result, edge, link, ids):
         return result[link.requires]
 
 
-def link_ref(result, link, ident):
+def link_ref_maybe(result, link, ident):
     return None if ident is Nothing else result.ref(link.edge, ident)
 
 
-def link_refs(result, link, idents):
+def link_ref_one(result, link, ident):
+    assert ident is not Nothing
+    return result.ref(link.edge, ident)
+
+
+def link_ref_many(result, link, idents):
     return [result.ref(link.edge, i) for i in idents]
 
 
+_LINK_REF_MAKER = {
+    MAYBE: link_ref_maybe,
+    ONE: link_ref_one,
+    MANY: link_ref_many,
+}
+
+
 def store_links(result, edge, link, ids, query_result):
-    field_val = partial(link_refs if link.to_list else link_ref,
-                        result, link)
+    field_val = partial(_LINK_REF_MAKER[link.type], result, link)
     if edge.name is not None:
         if ids is not None:
             for i, res in zip(ids, query_result):
@@ -87,13 +99,24 @@ def store_links(result, edge, link, ids, query_result):
         result[link.name] = field_val(query_result)
 
 
-def link_result_to_ids(is_list, to_list, result):
-    if is_list and to_list:
-        return list(chain.from_iterable(result))
-    elif is_list or to_list:
-        return result
+def link_result_to_ids(is_list, link_type, result):
+    if is_list:
+        if link_type is MAYBE:
+            return [i for i in result if i is not Nothing]
+        elif link_type is ONE:
+            assert all(i is not Nothing for i in result)
+            return result
+        elif link_type is MANY:
+            return list(chain.from_iterable(result))
     else:
-        return [result]
+        if link_type is MAYBE:
+            return [] if result is Nothing else [result]
+        elif link_type is ONE:
+            assert result is not Nothing
+            return [result]
+        elif link_type is MANY:
+            return result
+    raise TypeError(repr([is_list, link_type]))
 
 
 def get_options(graph_obj, query_obj):
@@ -189,8 +212,7 @@ class Query(Workflow):
 
     def process_link(self, edge, graph_link, query_edge, ids, result):
         store_links(self._result, edge, graph_link, ids, result)
-        to_ids = link_result_to_ids(ids is not None, graph_link.to_list, result)
-        to_ids = [i for i in to_ids if i is not Nothing]
+        to_ids = link_result_to_ids(ids is not None, graph_link.type, result)
         if to_ids:
             self.process_edge(self.graph.edges_map[graph_link.edge], query_edge,
                               to_ids)

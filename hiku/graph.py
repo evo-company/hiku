@@ -2,8 +2,13 @@ from abc import ABCMeta, abstractmethod
 from itertools import chain
 from collections import OrderedDict
 
-from .utils import kw_only, cached_property
+from .utils import kw_only, cached_property, const
 from .compat import with_metaclass
+
+
+MAYBE = const('MAYBE')
+ONE = const('ONE')
+MANY = const('MANY')
 
 
 class AbstractNode(with_metaclass(ABCMeta)):
@@ -75,15 +80,15 @@ class AbstractLink(AbstractNode):
 
 class Link(AbstractLink):
 
-    def __init__(self, name, func, **kwargs):
-        edge, requires, to_list, options, doc = \
-            kw_only(kwargs, ['edge', 'requires', 'to_list'], ['options', 'doc'])
+    def __init__(self, name, type_, func, **kwargs):
+        edge, requires, options, doc = \
+            kw_only(kwargs, ['edge', 'requires'], ['options', 'doc'])
 
         self.name = name
+        self.type = type_
         self.func = func
         self.edge = edge
         self.requires = requires
-        self.to_list = to_list
         self.options = options or ()
         self.doc = doc
 

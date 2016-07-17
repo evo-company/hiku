@@ -9,7 +9,7 @@ import astor
 import pytest
 
 from hiku.expr import define, S, if_, each, to_expr
-from hiku.graph import Graph, Field, Edge, Link, Root
+from hiku.graph import Graph, Field, Edge, Link, Root, MANY, ONE
 from hiku.compat import PY3, PY35
 from hiku.checker import check, graph_types, fn_types
 from hiku.compiler import ExpressionCompiler
@@ -41,8 +41,8 @@ ENV = Graph([
     ]),
     Edge('y', [
         Field('c', noop),
-        Link('x1', noop, edge='x', requires=None, to_list=False),
-        Link('xs', noop, edge='x', requires=None, to_list=True),
+        Link('x1', ONE, noop, edge='x', requires=None),
+        Link('xs', MANY, noop, edge='x', requires=None),
     ]),
     Root([
         Field('a', noop),
@@ -51,11 +51,11 @@ ENV = Graph([
         ]),
         Edge('y', [
             Field('c', noop),
-            Link('x1', noop, edge='x', requires=None, to_list=False),
-            Link('xs', noop, edge='x', requires=None, to_list=True),
+            Link('x1', ONE, noop, edge='x', requires=None),
+            Link('xs', MANY, noop, edge='x', requires=None),
         ]),
-        Link('y1', noop, edge='y', requires=None, to_list=False),
-        Link('ys', noop, edge='y', requires=None, to_list=True),
+        Link('y1', ONE, noop, edge='y', requires=None),
+        Link('ys', MANY, noop, edge='y', requires=None),
     ])
 ])
 

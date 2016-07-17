@@ -2,12 +2,12 @@ from __future__ import absolute_import
 
 from contextlib import contextmanager
 
-from ..graph import Edge, Link, Field
-from ..types import TypingMeta, Record, Sequence
-from ..types import OptionalMeta, SequenceMeta, MappingMeta, RecordMeta
-from ..compat import with_metaclass
+from ..types import Record, RecordMeta, OptionalMeta, SequenceMeta, MappingMeta
+from ..types import GenericMeta
+from ..checker import GraphTypes
+from ..typedef.types import Unknown
 
-from .types import TypeDef, TypeRef
+from .types import TypeDef
 
 
 # TODO: revisit this
@@ -19,56 +19,33 @@ _CONTAINER_TYPES = (
 )
 
 
-class TypeDocMeta(TypingMeta):
+class TypeDoc(object):
 
-    def __cls_init__(cls, params):
-        cls.__type__, cls.__type_doc__ = params
+    def __init__(self, type_, doc):
+        self.__type__ = type_
+        self.__type_doc__ = doc
 
-    def accept(cls, visitor):
-        return visitor.visit_typedoc(cls)
-
-
-class TypeDoc(with_metaclass(TypeDocMeta, object)):
-    pass
+    def __getattr__(self, name):
+        return getattr(self.__type, name)
 
 
-def _wrap_with_typedoc(func):
-    def wrapper(obj):
-        type_ = func(obj)
-        return TypeDoc[type_, obj.doc] if obj.doc is not None else type_
-    return wrapper
+class GraphTypesEx(GraphTypes):
 
+    def visit(self, obj):
+        t = super(GraphTypesEx, self).visit(obj)
+        if isinstance(t, GenericMeta) and obj.doc is not None:
+            t = TypeDoc(t, obj.doc)
+        return t
 
-@_wrap_with_typedoc
-def _translate(obj):
-    if isinstance(obj, Edge):
-        rec_fields = []
-        for f in obj.fields:
-            if isinstance(f, Field) and f.type is None:
-                continue
-            rec_fields.append((f.name, _translate(f)))
-        return Record[rec_fields]
-    elif isinstance(obj, Link):
-        if obj.to_list:
-            return Sequence[TypeRef[obj.edge]]
-        else:
-            return TypeRef[obj.edge]
-    elif isinstance(obj, Field):
-        assert obj.type is not None, repr(obj.type)
-        return obj.type
-    else:
-        raise TypeError(type(obj))
+    def visit_graph(self, obj):
+        types_map = super(GraphTypesEx, self).visit_graph(obj)
+        return [TypeDef[n, t] for n, t in types_map.items()
+                if t is not Unknown]
 
-
-def graph_to_types(graph):
-    types = []
-    for edge in graph.edges:
-        types.append(TypeDef[edge.name, _translate(edge)])
-    for item in graph.root.fields:
-        if isinstance(item, Field) and item.type is None:
-            continue
-        types.append(TypeDef[item.name, _translate(item)])
-    return types
+    def visit_edge(self, obj):
+        record = super(GraphTypesEx, self).visit_edge(obj)
+        return Record[[(n, t) for n, t in record.__field_types__.items()
+                       if t is not Unknown]]
 
 
 class _LinePrinter(object):
@@ -113,7 +90,7 @@ class _IndentedPrinter(object):
         self._buffer.append((' ' * self._indent_size * self._indent) + line)
 
     def _print_arg(self, type_):
-        if isinstance(type_, TypeDocMeta):
+        if isinstance(type_, TypeDoc):
             self._docs[len(self._buffer) - 1] = type_.__type_doc__
             type_ = type_.__type__
         if isinstance(type_, _CONTAINER_TYPES):
@@ -167,5 +144,5 @@ class _IndentedPrinter(object):
 
 
 def dumps(graph):
-    types = graph_to_types(graph)
+    types = GraphTypesEx().visit(graph)
     return _IndentedPrinter.dumps(types)

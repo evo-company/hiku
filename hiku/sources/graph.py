@@ -3,7 +3,7 @@ from itertools import chain
 from .. import query
 from ..refs import RequirementsExtractor
 from ..expr import to_expr
-from ..graph import Link, Field
+from ..graph import Link, Field, MANY
 from ..query import merge
 from ..utils import kw_only
 from ..engine import Query, store_fields
@@ -83,8 +83,8 @@ class SubGraph(object):
                   for f in chain.from_iterable(e.functions
                                                for e in graph_fields)}
 
-        this_link = Link(THIS_LINK_NAME, None, edge=self.edge, requires=None,
-                         to_list=True)
+        this_link = Link(THIS_LINK_NAME, MANY, None,
+                         edge=self.edge, requires=None)
 
         reqs = merge(f.reqs for f in graph_fields)
         procs = [f.proc for f in graph_fields]

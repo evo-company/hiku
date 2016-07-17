@@ -6,7 +6,7 @@ import sqlalchemy
 
 from ..utils import kw_only
 from ..types import String, Integer
-from ..graph import Field as FieldBase, Link as LinkBase
+from ..graph import Field as FieldBase, Link as LinkBase, MAYBE, ONE, MANY
 from ..engine import Nothing
 
 
@@ -60,9 +60,14 @@ class Field(FieldBase):
         super(Field, self).__init__(name, type_, query, **kwargs)
 
 
-def _to_one_mapper(pairs, values):
+def _to_maybe_mapper(pairs, values):
     mapping = dict(pairs)
     return [mapping.get(value, Nothing) for value in values]
+
+
+def _to_one_mapper(pairs, values):
+    mapping = dict(pairs)
+    return [mapping[value] for value in values]
 
 
 def _to_many_mapper(pairs, values):
@@ -72,12 +77,20 @@ def _to_many_mapper(pairs, values):
     return [mapping[value] for value in values]
 
 
+_MAPPERS = {
+    MAYBE: _to_maybe_mapper,
+    ONE: _to_one_mapper,
+    MANY: _to_many_mapper,
+}
+
+
 class LinkQuery(object):
 
-    def __init__(self, connection, **kwargs):
+    def __init__(self, type_, connection, **kwargs):
+        self.type = type_
         self.connection = connection
-        edge, from_column, to_column, to_list = \
-            kw_only(kwargs, ['edge', 'from_column', 'to_column', 'to_list'])
+        edge, from_column, to_column = \
+            kw_only(kwargs, ['edge', 'from_column', 'to_column'])
 
         if from_column.table is not to_column.table:
             raise ValueError('from_column and to_column should belong to '
@@ -86,7 +99,6 @@ class LinkQuery(object):
         self.edge = edge
         self.from_column = from_column
         self.to_column = to_column
-        self.to_list = to_list
 
     def __call__(self, ids):
         filtered_ids = frozenset(filter(None, ids))
@@ -99,7 +111,7 @@ class LinkQuery(object):
             pairs = self.connection.execute(expr).fetchall()
         else:
             pairs = []
-        mapper = _to_many_mapper if self.to_list else _to_one_mapper
+        mapper = _MAPPERS[self.type]
         return mapper(pairs, ids)
 
 
@@ -109,6 +121,5 @@ class Link(LinkBase):
         requires, options, doc = \
             kw_only(kwargs, ['requires'], ['options', 'doc'])
 
-        super(Link, self).__init__(name, query, requires=requires,
-                                   edge=query.edge, to_list=query.to_list,
-                                   options=options, doc=doc)
+        super(Link, self).__init__(name, query.type, query, requires=requires,
+                                   edge=query.edge, options=options, doc=doc)
