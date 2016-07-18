@@ -39,10 +39,10 @@ class Expr(Field):
             raise TypeError('More positional arguments ({}) than expected (2)'
                             .format(len(other)))
 
-        options, doc = kw_only(kwargs, [], ['options', 'doc'])
+        options, description = kw_only(kwargs, [], ['options', 'description'])
 
         super(Expr, self).__init__(name, type_, subquery,
-                                   options=options, doc=doc)
+                                   options=options, description=description)
 
         node, functions = to_expr(expr)
 

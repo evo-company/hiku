@@ -118,8 +118,9 @@ class LinkQuery(object):
 class Link(LinkBase):
 
     def __init__(self, name, query, **kwargs):
-        requires, options, doc = \
-            kw_only(kwargs, ['requires'], ['options', 'doc'])
+        requires, options, description = \
+            kw_only(kwargs, ['requires'], ['options', 'description'])
 
         super(Link, self).__init__(name, query.type, query, requires=requires,
-                                   edge=query.edge, options=options, doc=doc)
+                                   edge=query.edge, options=options,
+                                   description=description)

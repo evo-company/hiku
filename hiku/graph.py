@@ -58,13 +58,13 @@ class Field(AbstractField):
             raise TypeError('More positional arguments ({}) than expected (3)'
                             .format(len(other) + 1))
 
-        options, doc = kw_only(kwargs, [], ['options', 'doc'])
+        options, description = kw_only(kwargs, [], ['options', 'description'])
 
         self.name = name
         self.type = type_
         self.func = func
         self.options = options or ()
-        self.doc = doc
+        self.description = description
 
     @cached_property
     def options_map(self):
@@ -81,8 +81,8 @@ class AbstractLink(AbstractNode):
 class Link(AbstractLink):
 
     def __init__(self, name, type_, func, **kwargs):
-        edge, requires, options, doc = \
-            kw_only(kwargs, ['edge', 'requires'], ['options', 'doc'])
+        edge, requires, options, description = \
+            kw_only(kwargs, ['edge', 'requires'], ['options', 'description'])
 
         self.name = name
         self.type = type_
@@ -90,7 +90,7 @@ class Link(AbstractLink):
         self.edge = edge
         self.requires = requires
         self.options = options or ()
-        self.doc = doc
+        self.description = description
 
     @cached_property
     def options_map(self):
@@ -109,7 +109,7 @@ class Edge(AbstractEdge):
     def __init__(self, name, fields, **kwargs):
         self.name = name
         self.fields = fields
-        self.doc, = kw_only(kwargs, [], ['doc'])
+        self.description, = kw_only(kwargs, [], ['description'])
 
     @cached_property
     def fields_map(self):

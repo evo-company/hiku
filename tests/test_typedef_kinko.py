@@ -142,18 +142,19 @@ class TestTypeDefKinko(TestCase):
         self.assertDumps(
             Graph([
                 Edge('Foo', [
-                    Field('a', String, noop, doc="Attribute a"),
-                ], doc="Some Foo explanation"),
+                    Field('a', String, noop, description="Attribute a"),
+                ], description="Some Foo explanation"),
                 Edge('Bar', [
-                    Field('b', Optional[String], noop, doc="Attribute b"),
+                    Field('b', Optional[String], noop,
+                          description="Attribute b"),
                     Link('c', One, noop, edge='Foo', requires=None,
-                         doc="Link c to Foo"),
-                ], doc="Some Bar explanation"),
+                         description="Link c to Foo"),
+                ], description="Some Bar explanation"),
                 Edge('Baz', [
-                    Field('d', String, noop, doc="Attribute d"),
+                    Field('d', String, noop, description="Attribute d"),
                     Link('e', Many, noop, edge='Foo', requires=None,
-                         doc="Link e to Foo"),
-                ], doc="Some Baz explanation"),
+                         description="Link e to Foo"),
+                ], description="Some Baz explanation"),
             ]),
             """
             type Foo  ; Some Foo explanation

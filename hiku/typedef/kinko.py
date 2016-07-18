@@ -21,9 +21,9 @@ _CONTAINER_TYPES = (
 
 class TypeDoc(object):
 
-    def __init__(self, type_, doc):
+    def __init__(self, type_, description):
         self.__type__ = type_
-        self.__type_doc__ = doc
+        self.__type_description__ = description
 
     def __getattr__(self, name):
         return getattr(self.__type, name)
@@ -33,8 +33,8 @@ class GraphTypesEx(GraphTypes):
 
     def visit(self, obj):
         t = super(GraphTypesEx, self).visit(obj)
-        if isinstance(t, GenericMeta) and obj.doc is not None:
-            t = TypeDoc(t, obj.doc)
+        if isinstance(t, GenericMeta) and obj.description is not None:
+            t = TypeDoc(t, obj.description)
         return t
 
     def visit_graph(self, obj):
@@ -75,7 +75,7 @@ class _IndentedPrinter(object):
     def __init__(self):
         self._indent = 0
         self._buffer = []
-        self._docs = {}
+        self._descriptions = {}
 
     @contextmanager
     def _add_indent(self):
@@ -91,7 +91,8 @@ class _IndentedPrinter(object):
 
     def _print_arg(self, type_):
         if isinstance(type_, TypeDoc):
-            self._docs[len(self._buffer) - 1] = type_.__type_doc__
+            self._descriptions[len(self._buffer) - 1] = \
+                type_.__type_description__
             type_ = type_.__type__
         if isinstance(type_, _CONTAINER_TYPES):
             with self._add_indent():
@@ -101,8 +102,8 @@ class _IndentedPrinter(object):
 
     def _iter_lines(self):
         for i, line in enumerate(self._buffer):
-            if i in self._docs:
-                yield line + '  ; {}'.format(self._docs[i])
+            if i in self._descriptions:
+                yield line + '  ; {}'.format(self._descriptions[i])
             else:
                 yield line
 
