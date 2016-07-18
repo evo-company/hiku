@@ -3,13 +3,9 @@ from itertools import chain
 from collections import defaultdict
 
 from . import query
-from .utils import const
-from .graph import Link, Edge, Maybe, One, Many
+from .graph import Link, Edge, Maybe, One, Many, Nothing
 from .result import Result
 from .executors.queue import Workflow, Queue
-
-
-Nothing = const('Nothing')
 
 
 class SplitPattern(query.QueryVisitor):

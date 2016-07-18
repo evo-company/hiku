@@ -10,6 +10,8 @@ Maybe = const('Maybe')
 One = const('One')
 Many = const('Many')
 
+Nothing = const('Nothing')
+
 
 class AbstractNode(with_metaclass(ABCMeta)):
 

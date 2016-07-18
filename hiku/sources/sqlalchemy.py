@@ -6,8 +6,8 @@ import sqlalchemy
 
 from ..utils import kw_only
 from ..types import String, Integer
-from ..graph import Field as FieldBase, Link as LinkBase, Maybe, One, Many
-from ..engine import Nothing
+from ..graph import Field as FieldBase, Link as LinkBase
+from ..graph import Nothing, Maybe, One, Many
 
 
 class FieldsQuery(object):
