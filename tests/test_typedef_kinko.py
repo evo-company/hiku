@@ -1,7 +1,7 @@
 import difflib
 from textwrap import dedent
 
-from hiku.graph import Graph, Edge, Field, Link, Root, MANY, ONE
+from hiku.graph import Graph, Edge, Field, Link, Root, Many, One
 from hiku.types import Sequence, Mapping, Integer, String, Optional
 from hiku.typedef.kinko import dumps
 
@@ -113,11 +113,11 @@ class TestTypeDefKinko(TestCase):
                 ]),
                 Edge('Bar', [
                     Field('b', String, noop),
-                    Link('c', ONE, noop, edge='Foo', requires=None),
+                    Link('c', One, noop, edge='Foo', requires=None),
                 ]),
                 Edge('Baz', [
                     Field('d', String, noop),
-                    Link('e', MANY, noop, edge='Foo', requires=None),
+                    Link('e', Many, noop, edge='Foo', requires=None),
                 ]),
             ]),
             """
@@ -146,12 +146,12 @@ class TestTypeDefKinko(TestCase):
                 ], doc="Some Foo explanation"),
                 Edge('Bar', [
                     Field('b', Optional[String], noop, doc="Attribute b"),
-                    Link('c', ONE, noop, edge='Foo', requires=None,
+                    Link('c', One, noop, edge='Foo', requires=None,
                          doc="Link c to Foo"),
                 ], doc="Some Bar explanation"),
                 Edge('Baz', [
                     Field('d', String, noop, doc="Attribute d"),
-                    Link('e', MANY, noop, edge='Foo', requires=None,
+                    Link('e', Many, noop, edge='Foo', requires=None,
                          doc="Link e to Foo"),
                 ], doc="Some Baz explanation"),
             ]),

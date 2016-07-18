@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from . import query
 from .utils import const
-from .graph import Link, Edge, MAYBE, ONE, MANY
+from .graph import Link, Edge, Maybe, One, Many
 from .result import Result
 from .executors.queue import Workflow, Queue
 
@@ -81,9 +81,9 @@ def link_ref_many(result, link, idents):
 
 
 _LINK_REF_MAKER = {
-    MAYBE: link_ref_maybe,
-    ONE: link_ref_one,
-    MANY: link_ref_many,
+    Maybe: link_ref_maybe,
+    One: link_ref_one,
+    Many: link_ref_many,
 }
 
 
@@ -101,20 +101,20 @@ def store_links(result, edge, link, ids, query_result):
 
 def link_result_to_ids(is_list, link_type, result):
     if is_list:
-        if link_type is MAYBE:
+        if link_type is Maybe:
             return [i for i in result if i is not Nothing]
-        elif link_type is ONE:
+        elif link_type is One:
             assert all(i is not Nothing for i in result)
             return result
-        elif link_type is MANY:
+        elif link_type is Many:
             return list(chain.from_iterable(result))
     else:
-        if link_type is MAYBE:
+        if link_type is Maybe:
             return [] if result is Nothing else [result]
-        elif link_type is ONE:
+        elif link_type is One:
             assert result is not Nothing
             return [result]
-        elif link_type is MANY:
+        elif link_type is Many:
             return result
     raise TypeError(repr([is_list, link_type]))
 

@@ -6,7 +6,7 @@ import sqlalchemy
 
 from ..utils import kw_only
 from ..types import String, Integer
-from ..graph import Field as FieldBase, Link as LinkBase, MAYBE, ONE, MANY
+from ..graph import Field as FieldBase, Link as LinkBase, Maybe, One, Many
 from ..engine import Nothing
 
 
@@ -78,9 +78,9 @@ def _to_many_mapper(pairs, values):
 
 
 _MAPPERS = {
-    MAYBE: _to_maybe_mapper,
-    ONE: _to_one_mapper,
-    MANY: _to_many_mapper,
+    Maybe: _to_maybe_mapper,
+    One: _to_one_mapper,
+    Many: _to_many_mapper,
 }
 
 

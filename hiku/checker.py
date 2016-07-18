@@ -20,11 +20,11 @@ class GraphTypes(graph.GraphVisitor):
         return Record[[(f.name, self.visit(f)) for f in obj.fields]]
 
     def visit_link(self, obj):
-        if obj.type is graph.MAYBE:
+        if obj.type is graph.Maybe:
             return Optional[TypeRef[obj.edge]]
-        elif obj.type is graph.ONE:
+        elif obj.type is graph.One:
             return TypeRef[obj.edge]
-        elif obj.type is graph.MANY:
+        elif obj.type is graph.Many:
             return Sequence[TypeRef[obj.edge]]
         else:
             raise TypeError(repr(obj.type))

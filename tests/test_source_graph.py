@@ -4,7 +4,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 from hiku.expr import define, S, each
-from hiku.graph import Graph, Edge, Link, Field, Option, Root, MANY, ONE
+from hiku.graph import Graph, Edge, Link, Field, Option, Root, Many, One
 from hiku.engine import Engine
 from hiku.sources.graph import SubGraph, Expr
 from hiku.readers.simple import read
@@ -67,19 +67,19 @@ _GRAPH = Graph([
         Field('a', query_x),
         Field('b', query_x),
         Field('y_id', query_x),
-        Link('y', ONE, x_to_y, edge='y', requires='id'),
+        Link('y', One, x_to_y, edge='y', requires='id'),
     ]),
     Edge('y', [
         Field('id', query_y),
         Field('c', query_y),
         Field('d', query_y),
-        Link('xs', MANY, y_to_x, edge='x', requires='id'),
+        Link('xs', Many, y_to_x, edge='x', requires='id'),
     ]),
     Root([
         Field('f1', query_f),
         Field('f2', query_f),
-        Link('xs', MANY, to_x, edge='x', requires=None),
-        Link('ys', MANY, to_y, edge='y', requires=None),
+        Link('xs', Many, to_x, edge='x', requires=None),
+        Link('ys', Many, to_y, edge='y', requires=None),
     ]),
 ])
 
@@ -152,8 +152,8 @@ GRAPH = Graph([
             # Expr('baz', baz(S.this)),
         ]),
         # TODO: links reuse
-        Link('x1s', MANY, to_x, edge='x1', requires=None),
-        Link('y1s', MANY, to_y, edge='y2', requires=None),
+        Link('x1s', Many, to_x, edge='x1', requires=None),
+        Link('y1s', Many, to_y, edge='y2', requires=None),
     ]),
 ])
 

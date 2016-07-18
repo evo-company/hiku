@@ -1,5 +1,5 @@
 from hiku import query as q
-from hiku.graph import Graph, Edge, Field, Link, Option, Root, MANY
+from hiku.graph import Graph, Edge, Field, Link, Option, Root, Many
 from hiku.types import Integer
 from hiku.validate.query import QueryValidator
 
@@ -14,7 +14,7 @@ GRAPH = Graph([
         Field('f2', Integer, _,
               options=[Option('f2-op1', Integer),
                        Option('f2-op2', Integer, default=1)]),
-        Link('l1', MANY, _, edge='e2', requires='f2',
+        Link('l1', Many, _, edge='e2', requires='f2',
              options=[Option('l1-op1', Integer),
                       Option('l1-op2', Integer, default=1)]),
     ]),
@@ -27,14 +27,14 @@ GRAPH = Graph([
             Field('f2', Integer, _,
                   options=[Option('f2-op1', Integer),
                            Option('f2-op2', Integer, default=1)]),
-            Link('l1', MANY, _, edge='e2', requires='f2',
+            Link('l1', Many, _, edge='e2', requires='f2',
                  options=[Option('l1-op1', Integer),
                           Option('l1-op2', Integer, default=1)]),
         ]),
         Edge('e2', [
             Field('f3', _),
         ]),
-        Link('l2', MANY, _, edge='e2', requires=None),
+        Link('l2', Many, _, edge='e2', requires=None),
     ]),
 ])
 

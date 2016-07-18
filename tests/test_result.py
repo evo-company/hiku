@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 import json
 
-from hiku.graph import Graph, Link, Edge, Field, Root, MANY, ONE
+from hiku.graph import Graph, Link, Edge, Field, Root, Many, One
 from hiku.result import denormalize, Result
 from hiku.readers.simple import read
 
@@ -22,38 +22,38 @@ class TestDenormalize(TestCase):
                 Field('id', noop),
                 Field('a', noop),
                 Field('b', noop),
-                Link('y1', ONE, noop, edge='y', requires='id'),
+                Link('y1', One, noop, edge='y', requires='id'),
             ]),
             Edge('y', [
                 Field('id', noop),
                 Field('c', noop),
                 Field('d', noop),
-                Link('xs', MANY, noop, edge='x', requires='id'),
+                Link('xs', Many, noop, edge='x', requires='id'),
             ]),
             Edge('z', [
                 Field('e', noop),
-                Link('y1', ONE, noop, edge='y', requires=None),
-                Link('xs', MANY, noop, edge='x', requires=None),
+                Link('y1', One, noop, edge='y', requires=None),
+                Link('xs', Many, noop, edge='x', requires=None),
             ]),
             Root([
                 Edge('x', [
                     Field('id', noop),
                     Field('a', noop),
                     Field('b', noop),
-                    Link('y1', ONE, noop, edge='y', requires='id'),
+                    Link('y1', One, noop, edge='y', requires='id'),
                 ]),
                 Edge('y', [
                     Field('id', noop),
                     Field('c', noop),
                     Field('d', noop),
-                    Link('xs', MANY, noop, edge='x', requires='id'),
+                    Link('xs', Many, noop, edge='x', requires='id'),
                 ]),
-                Link('xs', MANY, noop, edge='x', requires=None),
-                Link('y1', ONE, noop, edge='y', requires=None),
+                Link('xs', Many, noop, edge='x', requires=None),
+                Link('y1', One, noop, edge='y', requires=None),
                 Edge('z', [
                     Field('e', noop),
-                    Link('y1', ONE, noop, edge='y', requires=None),
-                    Link('xs', MANY, noop, edge='x', requires=None),
+                    Link('y1', One, noop, edge='y', requires=None),
+                    Link('xs', Many, noop, edge='x', requires=None),
                 ]),
             ]),
         ])

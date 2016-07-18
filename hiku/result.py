@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from .query import Edge, Field, Link
-from .graph import Link as GraphLink, MANY
+from .graph import Link as GraphLink, Many
 
 
 class Ref(object):
@@ -49,7 +49,7 @@ def _denormalize(graph, graph_obj, result, query_obj):
     elif isinstance(query_obj, Link):
         if isinstance(graph_obj, GraphLink):
             graph_edge = graph.edges_map[graph_obj.edge]
-            if graph_obj.type is MANY:
+            if graph_obj.type is Many:
                 return [_denormalize(graph, graph_edge, v, query_obj.edge)
                         for v in result]
             else:

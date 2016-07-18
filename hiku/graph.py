@@ -6,9 +6,9 @@ from .utils import kw_only, cached_property, const
 from .compat import with_metaclass
 
 
-MAYBE = const('MAYBE')
-ONE = const('ONE')
-MANY = const('MANY')
+Maybe = const('Maybe')
+One = const('One')
+Many = const('Many')
 
 
 class AbstractNode(with_metaclass(ABCMeta)):

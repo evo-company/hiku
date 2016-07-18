@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from concurrent.futures import ThreadPoolExecutor
 
 from hiku import query
-from hiku.graph import Graph, Edge, Field, Link, Option, Root, MANY
+from hiku.graph import Graph, Edge, Field, Link, Option, Root, Many
 from hiku.engine import Engine
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
@@ -50,11 +50,11 @@ TEST_ENV = Graph([
             Field('d', _(query_fields1)),
             Field('e', _(query_fields2)),
         ]),
-        Link('f', MANY, _(query_link1), edge='c', requires=None),
-        Link('g', MANY, _(query_link2), edge='c', requires=None),
-        Link('h', MANY, _(query_link1), edge='c', requires=None,
+        Link('f', Many, _(query_link1), edge='c', requires=None),
+        Link('g', Many, _(query_link2), edge='c', requires=None),
+        Link('h', Many, _(query_link1), edge='c', requires=None,
              options=[Option('foo')]),
-        Link('k', MANY, _(query_link1), edge='c', requires=None,
+        Link('k', Many, _(query_link1), edge='c', requires=None,
              options=[Option('foo', default=1)]),
     ]),
 ])
