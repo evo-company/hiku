@@ -4,9 +4,9 @@ import pkgutil
 import traceback
 
 from ..result import denormalize
-from ..validator import QueryValidator
 from ..typedef.kinko import dumps as dumps_typedef
 from ..readers.simple import read
+from ..validate.query import QueryValidator
 
 
 ERROR_CODES = {
