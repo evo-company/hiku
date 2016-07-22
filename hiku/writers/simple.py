@@ -29,5 +29,5 @@ def _transform_idx(idx):
 
 def dumps(result, ensure_ascii=True):
     data = _transform(result)
-    data.update(_transform_idx(result.idx))
+    data.update(_transform_idx(result.index))
     return _dumps(data, default=default, ensure_ascii=ensure_ascii)

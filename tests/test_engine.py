@@ -97,7 +97,7 @@ class TestEngine(TestCase):
             qf2.return_value = [['e1']]
             result = self.execute('[{:f [:d :e]}]')
             self.assertResult(result, {'f': [{'d': 'd1', 'e': 'e1'}]})
-            self.assertEqual(result.idx, {'c': {1: {'d': 'd1', 'e': 'e1'}}})
+            self.assertEqual(result.index, {'c': {1: {'d': 'd1', 'e': 'e1'}}})
             with reqs_eq_patcher():
                 ql1.assert_called_once_with()
                 qf1.assert_called_once_with([query.Field('d')], [1])
@@ -112,8 +112,8 @@ class TestEngine(TestCase):
             qf2.return_value = [['e1']]
             result = self.execute('[{:f [:d]} {:g [:e]}]')
             self.assertResult(result, {'f': [{'d': 'd1'}], 'g': [{'e': 'e1'}]})
-            self.assertEqual(result.idx, {'c': {1: {'d': 'd1'},
-                                                2: {'e': 'e1'}}})
+            self.assertEqual(result.index, {'c': {1: {'d': 'd1'},
+                                                  2: {'e': 'e1'}}})
             with reqs_eq_patcher():
                 ql1.assert_called_once_with()
                 qf1.assert_called_once_with([query.Field('d')], [1])

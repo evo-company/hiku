@@ -46,7 +46,7 @@ def store_fields(result, edge, fields, ids, query_result):
     if edge.name is not None:
         if ids is not None:
             for i, row in zip(ids, query_result):
-                result.idx[edge.name][i].update(zip(names, row))
+                result.index[edge.name][i].update(zip(names, row))
         else:
             result[edge.name].update(zip(names, query_result))
     else:
@@ -56,7 +56,7 @@ def store_fields(result, edge, fields, ids, query_result):
 def link_reqs(result, edge, link, ids):
     if edge.name is not None:
         if ids is not None:
-            return [result.idx[edge.name][i][link.requires] for i in ids]
+            return [result.index[edge.name][i][link.requires] for i in ids]
         else:
             return result[edge.name][link.requires]
     else:
@@ -88,7 +88,7 @@ def store_links(result, edge, link, ids, query_result):
     if edge.name is not None:
         if ids is not None:
             for i, res in zip(ids, query_result):
-                result.idx[edge.name][i][link.name] = field_val(res)
+                result.index[edge.name][i][link.name] = field_val(res)
         else:
             result[edge.name][link.name] = field_val(query_result)
     else:

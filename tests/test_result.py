@@ -58,17 +58,17 @@ class TestDenormalize(TestCase):
             ]),
         ])
         self.result = Result()
-        self.result.idx['x'][1] = {
+        self.result.index['x'][1] = {
             'a': 1,
             'b': 2,
             'y1': self.result.ref('y', 3),
         }
-        self.result.idx['x'][2] = {
+        self.result.index['x'][2] = {
             'a': 3,
             'b': 4,
             'y1': self.result.ref('y', 3),
         }
-        self.result.idx['y'][3] = {
+        self.result.index['y'][3] = {
             'c': 3,
             'd': 4,
             'xs': [
