@@ -69,13 +69,17 @@ def result_match(result, value, path=None):
     return True, None, None, None
 
 
+def check_result(result, value):
+    ok, path, subres, subval = result_match(result, value)
+    if not ok:
+        path_str = 'result' + ''.join('[{!r}]'.format(v) for v in path)
+        msg = ('Result mismatch, first different element '
+               'path: {}, value: {!r}, expected: {!r}'
+               .format(path_str, subres, subval))
+        raise AssertionError(msg)
+
+
 class TestCase(unittest.TestCase):
 
     def assertResult(self, result, value):
-        ok, path, subres, subval = result_match(result, value)
-        if not ok:
-            path_str = 'result' + ''.join('[{!r}]'.format(v) for v in path)
-            msg = ('Result mismatch, first different element '
-                   'path: {}, value: {!r}, expected: {!r}'
-                   .format(path_str, subres, subval))
-            raise self.failureException(msg)
+        check_result(result, value)

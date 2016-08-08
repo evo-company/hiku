@@ -4,11 +4,12 @@ from concurrent.futures import ThreadPoolExecutor
 
 from hiku import query
 from hiku.graph import Graph, Edge, Field, Link, Option, Root, Many
+from hiku.types import Record, Sequence, Integer, Optional
 from hiku.engine import Engine
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
 
-from .base import TestCase, patch, reqs_eq_patcher
+from .base import patch, reqs_eq_patcher, check_result
 
 
 def query_fields1(*args, **kwargs):
@@ -16,6 +17,10 @@ def query_fields1(*args, **kwargs):
 
 
 def query_fields2(*args, **kwargs):
+    pass
+
+
+def query_fields3(*args, **kwargs):
     pass
 
 
@@ -34,7 +39,7 @@ def _(func):
 
 
 def _patch(func):
-    return patch('{}.{}'.format(__name__, func.__name__))
+    return patch('{}.{}'.format(__name__, getattr(func, '__name__')))
 
 
 # TODO: refactor
@@ -42,6 +47,12 @@ TEST_ENV = Graph([
     Edge('c', [
         Field('d', _(query_fields1)),
         Field('e', _(query_fields2)),
+        Field('struct_maybe', Optional[Record[{'f1': Integer}]],
+              _(query_fields1)),
+        Field('struct_one', Record[{'f2': Integer}],
+              _(query_fields2)),
+        Field('struct_many', Sequence[Record[{'f3': Integer}]],
+              _(query_fields3)),
     ]),
     Root([
         Field('a', _(query_fields1)),
@@ -62,100 +73,152 @@ TEST_ENV = Graph([
 thread_pool = ThreadPoolExecutor(2)
 
 
-class TestEngine(TestCase):
+def execute(query_):
+    engine = Engine(ThreadsExecutor(thread_pool))
+    return engine.execute(TEST_ENV, read(query_))
 
-    def setUp(self):
-        self.engine = Engine(ThreadsExecutor(thread_pool))
 
-    def execute(self, query):
-        return self.engine.execute(TEST_ENV, read(query))
+def test_root_fields():
+    with _patch(query_fields1) as qf1, _patch(query_fields2) as qf2:
+        qf1.return_value = ['a1']
+        qf2.return_value = ['b1']
+        check_result(execute('[:a :b]'), {'a': 'a1', 'b': 'b1'})
+        with reqs_eq_patcher():
+            qf1.assert_called_once_with([query.Field('a')])
+            qf2.assert_called_once_with([query.Field('b')])
 
-    def testFields(self):
-        with _patch(query_fields1) as qf1, _patch(query_fields2) as qf2:
-            qf1.return_value = ['a1']
-            qf2.return_value = ['b1']
-            self.assertResult(self.execute('[:a :b]'), {'a': 'a1', 'b': 'b1'})
-            with reqs_eq_patcher():
-                qf1.assert_called_once_with([query.Field('a')])
-                qf2.assert_called_once_with([query.Field('b')])
 
-    def testEdgeFields(self):
-        with _patch(query_fields1) as qf1, _patch(query_fields2) as qf2:
-            qf1.return_value = ['d1']
-            qf2.return_value = ['e1']
-            self.assertResult(self.execute('[{:c [:d :e]}]'),
-                              {'c': {'d': 'd1', 'e': 'e1'}})
-            with reqs_eq_patcher():
-                qf1.assert_called_once_with([query.Field('d')])
-                qf2.assert_called_once_with([query.Field('e')])
+def test_root_edge_fields():
+    with _patch(query_fields1) as qf1, _patch(query_fields2) as qf2:
+        qf1.return_value = ['d1']
+        qf2.return_value = ['e1']
+        check_result(execute('[{:c [:d :e]}]'),
+                     {'c': {'d': 'd1', 'e': 'e1'}})
+        with reqs_eq_patcher():
+            qf1.assert_called_once_with([query.Field('d')])
+            qf2.assert_called_once_with([query.Field('e')])
 
-    def testLinkFields(self):
-        with _patch(query_fields1) as qf1, _patch(query_fields2) as qf2,\
-                _patch(query_link1) as ql1:
-            ql1.return_value = [1]
-            qf1.return_value = [['d1']]
-            qf2.return_value = [['e1']]
-            result = self.execute('[{:f [:d :e]}]')
-            self.assertResult(result, {'f': [{'d': 'd1', 'e': 'e1'}]})
-            self.assertEqual(result.index, {'c': {1: {'d': 'd1', 'e': 'e1'}}})
-            with reqs_eq_patcher():
-                ql1.assert_called_once_with()
-                qf1.assert_called_once_with([query.Field('d')], [1])
-                qf2.assert_called_once_with([query.Field('e')], [1])
 
-    def testLinks(self):
-        with _patch(query_fields1) as qf1, _patch(query_fields2) as qf2,\
-                _patch(query_link1) as ql1, _patch(query_link2) as ql2:
-            ql1.return_value = [1]
-            qf1.return_value = [['d1']]
-            ql2.return_value = [2]
-            qf2.return_value = [['e1']]
-            result = self.execute('[{:f [:d]} {:g [:e]}]')
-            self.assertResult(result, {'f': [{'d': 'd1'}], 'g': [{'e': 'e1'}]})
-            self.assertEqual(result.index, {'c': {1: {'d': 'd1'},
-                                                  2: {'e': 'e1'}}})
-            with reqs_eq_patcher():
-                ql1.assert_called_once_with()
-                qf1.assert_called_once_with([query.Field('d')], [1])
-                ql2.assert_called_once_with()
-                qf2.assert_called_once_with([query.Field('e')], [2])
+def test_edge_fields():
+    with \
+            _patch(query_fields1) as qf1,\
+            _patch(query_fields2) as qf2,\
+            _patch(query_link1) as ql1:
 
-    def testFieldOptions(self):
-        with _patch(query_fields1) as qf1:
-            qf1.return_value = ['a1']
-            result = self.execute('[(:a {:foo "bar"})]')
-            self.assertResult(result, {'a': 'a1'})
-            with reqs_eq_patcher():
-                qf1.assert_called_once_with([
-                    query.Field('a', options={'foo': 'bar'}),
-                ])
+        ql1.return_value = [1]
+        qf1.return_value = [['d1']]
+        qf2.return_value = [['e1']]
+        result = execute('[{:f [:d :e]}]')
+        check_result(result, {'f': [{'d': 'd1', 'e': 'e1'}]})
+        assert result.index == {'c': {1: {'d': 'd1', 'e': 'e1'}}}
+        with reqs_eq_patcher():
+            ql1.assert_called_once_with()
+            qf1.assert_called_once_with([query.Field('d')], [1])
+            qf2.assert_called_once_with([query.Field('e')], [1])
 
-    def testLinkOption(self):
-        with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
-            ql1.return_value = [1]
-            qf1.return_value = [['d1']]
-            result = self.execute('[{(:h {:foo 5}) [:d]}]')
-            self.assertResult(result, {'h': [{'d': 'd1'}]})
-            with reqs_eq_patcher():
-                ql1.assert_called_once_with({'foo': 5})
-                qf1.assert_called_once_with([query.Field('d')], [1])
 
-    def testLinkOptionDefault(self):
-        with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
-            ql1.return_value = [1]
-            qf1.return_value = [['d1']]
-            result = self.execute('[{:k [:d]}]')
-            self.assertResult(result, {'k': [{'d': 'd1'}]})
-            with reqs_eq_patcher():
-                ql1.assert_called_once_with({'foo': 1})
-                qf1.assert_called_once_with([query.Field('d')], [1])
+def test_edge_complex_fields():
+    with \
+            _patch(query_link1) as ql1,\
+            _patch(query_fields1) as qf1,\
+            _patch(query_fields2) as qf2,\
+            _patch(query_fields3) as qf3:
 
-    def testLinkOptionUnknown(self):
-        with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
-            ql1.return_value = [1]
-            qf1.return_value = [['d1']]
-            result = self.execute('[{(:k {:foo 2 :bar 3}) [:d]}]')
-            self.assertResult(result, {'k': [{'d': 'd1'}]})
-            with reqs_eq_patcher():
-                ql1.assert_called_once_with({'foo': 2})
-                qf1.assert_called_once_with([query.Field('d')], [1])
+        ql1.return_value = [1]
+        qf1.return_value = [[{'f1': 'f1val'}]]
+        qf2.return_value = [[{'f2': 'f2val'}]]
+        qf3.return_value = [[[{'f3': 'f3val'}]]]
+
+        check_result(
+            execute(
+                '[{:f [{:struct_maybe [:f1]} '
+                '      {:struct_one [:f2]} '
+                '      {:struct_many [:f3]}]}]'
+            ),
+            {'f': [{'struct_maybe': {'f1': 'f1val'},
+                    'struct_one': {'f2': 'f2val'},
+                    'struct_many': [{'f3': 'f3val'}]}]},
+        )
+
+        with reqs_eq_patcher():
+            ql1.assert_called_once_with()
+            qf1.assert_called_once_with([
+                query.Link('struct_maybe',
+                           query.Edge([query.Field('f1')]))],
+                [1],
+            )
+            qf2.assert_called_once_with([
+                query.Link('struct_one',
+                           query.Edge([query.Field('f2')]))],
+                [1],
+            )
+            qf3.assert_called_once_with([
+                query.Link('struct_many',
+                           query.Edge([query.Field('f3')]))],
+                [1],
+            )
+
+
+def test_links():
+    with \
+            _patch(query_fields1) as qf1,\
+            _patch(query_fields2) as qf2,\
+            _patch(query_link1) as ql1,\
+            _patch(query_link2) as ql2:
+
+        ql1.return_value = [1]
+        qf1.return_value = [['d1']]
+        ql2.return_value = [2]
+        qf2.return_value = [['e1']]
+        result = execute('[{:f [:d]} {:g [:e]}]')
+        check_result(result, {'f': [{'d': 'd1'}], 'g': [{'e': 'e1'}]})
+        assert result.index == {'c': {1: {'d': 'd1'}, 2: {'e': 'e1'}}}
+        with reqs_eq_patcher():
+            ql1.assert_called_once_with()
+            qf1.assert_called_once_with([query.Field('d')], [1])
+            ql2.assert_called_once_with()
+            qf2.assert_called_once_with([query.Field('e')], [2])
+
+
+def test_field_options():
+    with _patch(query_fields1) as qf1:
+        qf1.return_value = ['a1']
+        result = execute('[(:a {:foo "bar"})]')
+        check_result(result, {'a': 'a1'})
+        with reqs_eq_patcher():
+            qf1.assert_called_once_with([
+                query.Field('a', options={'foo': 'bar'}),
+            ])
+
+
+def test_link_option():
+    with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
+        ql1.return_value = [1]
+        qf1.return_value = [['d1']]
+        result = execute('[{(:h {:foo 5}) [:d]}]')
+        check_result(result, {'h': [{'d': 'd1'}]})
+        with reqs_eq_patcher():
+            ql1.assert_called_once_with({'foo': 5})
+            qf1.assert_called_once_with([query.Field('d')], [1])
+
+
+def test_link_option_default():
+    with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
+        ql1.return_value = [1]
+        qf1.return_value = [['d1']]
+        result = execute('[{:k [:d]}]')
+        check_result(result, {'k': [{'d': 'd1'}]})
+        with reqs_eq_patcher():
+            ql1.assert_called_once_with({'foo': 1})
+            qf1.assert_called_once_with([query.Field('d')], [1])
+
+
+def test_link_option_unknown():
+    with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
+        ql1.return_value = [1]
+        qf1.return_value = [['d1']]
+        result = execute('[{(:k {:foo 2 :bar 3}) [:d]}]')
+        check_result(result, {'k': [{'d': 'd1'}]})
+        with reqs_eq_patcher():
+            ql1.assert_called_once_with({'foo': 2})
+            qf1.assert_called_once_with([query.Field('d')], [1])

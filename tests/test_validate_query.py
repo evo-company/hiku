@@ -102,7 +102,7 @@ def test_link():
 
 def test_non_link():
     check_errors(q.Edge([q.Link('f1', q.Edge([]))]), [
-        'Trying to query "root.f1" field as edge',
+        'Trying to query "root.f1" simple field as edge',
     ])
 
 

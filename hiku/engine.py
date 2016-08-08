@@ -3,7 +3,7 @@ from itertools import chain
 from collections import defaultdict
 
 from . import query
-from .graph import Link, Edge, Maybe, One, Many, Nothing
+from .graph import Link, Edge, Maybe, One, Many, Nothing, Field
 from .result import Result
 from .executors.queue import Workflow, Queue
 
@@ -28,17 +28,18 @@ class SplitPattern(query.QueryVisitor):
         self._fields.append((self._edge.fields_map[node.name], node))
 
     def visit_link(self, node):
-        field = self._edge.fields_map[node.name]
-        if isinstance(field, Link):
-            if field.requires:
-                self._fields.append((self._edge.fields_map[field.requires],
-                                     query.Field(field.requires)))
-            self._links.append((field, node))
-        elif isinstance(field, Edge):
+        obj = self._edge.fields_map[node.name]
+        if isinstance(obj, Link):
+            if obj.requires:
+                self._fields.append((self._edge.fields_map[obj.requires],
+                                     query.Field(obj.requires)))
+            self._links.append((obj, node))
+        elif isinstance(obj, Edge):
             self._edges.append(node)
         else:
-            raise ValueError('Unexpected edge member: {!r} ({})'
-                             .format(field, node.name))
+            assert isinstance(obj, Field), type(obj)
+            # `node` here is a link, but this link is treated as a complex field
+            self._fields.append((obj, node))
 
 
 def store_fields(result, edge, fields, ids, query_result):

@@ -1,3 +1,4 @@
+from abc import abstractmethod, ABCMeta
 from collections import OrderedDict
 
 from .compat import with_metaclass
@@ -116,3 +117,75 @@ class CallableMeta(TypingMeta):
 
 class Callable(with_metaclass(CallableMeta, object)):
     pass
+
+
+class AbstractTypeVisitor(with_metaclass(ABCMeta, object)):
+
+    @abstractmethod
+    def visit(self, obj):
+        pass
+
+    @abstractmethod
+    def visit_boolean(self, obj):
+        pass
+
+    @abstractmethod
+    def visit_string(self, obj):
+        pass
+
+    @abstractmethod
+    def visit_integer(self, obj):
+        pass
+
+    @abstractmethod
+    def visit_optional(self, obj):
+        pass
+
+    @abstractmethod
+    def visit_sequence(self, obj):
+        pass
+
+    @abstractmethod
+    def visit_mapping(self, obj):
+        pass
+
+    @abstractmethod
+    def visit_record(self, obj):
+        pass
+
+    @abstractmethod
+    def visit_callable(self, obj):
+        pass
+
+
+class TypeVisitor(AbstractTypeVisitor):
+
+    def visit(self, obj):
+        return obj.accept(self)
+
+    def visit_boolean(self, obj):
+        pass
+
+    def visit_string(self, obj):
+        pass
+
+    def visit_integer(self, obj):
+        pass
+
+    def visit_optional(self, obj):
+        self.visit(obj.__type__)
+
+    def visit_sequence(self, obj):
+        self.visit(obj.__item_type__)
+
+    def visit_mapping(self, obj):
+        self.visit(obj.__key_type__)
+        self.visit(obj.__value_type__)
+
+    def visit_record(self, obj):
+        for value_type in obj.__field_types__.values():
+            self.visit(value_type)
+
+    def visit_callable(self, obj):
+        for arg_type in obj.__arg_types__:
+            self.visit(arg_type)
