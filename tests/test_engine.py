@@ -66,7 +66,7 @@ GRAPH = Graph([
         Link('jessie', Many, _(query_link2), edge='tergate', requires=None),
         # with options
         Link('doubled', Many, _(query_link1), edge='tergate', requires=None,
-             options=[Option('empower', default="deedily_reaving")]),
+             options=[Option('empower', default='deedily_reaving')]),
     ]),
 ])
 
@@ -137,9 +137,11 @@ def test_edge_complex_fields():
 
         check_result(
             execute(
-                '[{:subaru [{:eches [:gone]} '
-                '           {:lappin [:sodden]} '
-                '           {:ant [:circlet]}]}]'
+                """
+                [{:subaru [{:eches [:gone]}
+                           {:lappin [:sodden]}
+                           {:ant [:circlet]}]}]
+                """
             ),
             {'subaru': [{'eches': {'gone': 'marshes_welted'},
                          'lappin': {'sodden': 'colline_inlined'},
@@ -225,9 +227,13 @@ def test_link_option_unknown():
     with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
         ql1.return_value = [1]
         qf1.return_value = [['tarweed_tolled']]
-        result = execute('[{(:doubled {:empower "hanna_gourds" '
-                         '             :varying "dread_linty"}) '
-                         '  [:arion]}]')
+        result = execute(
+            """
+            [{(:doubled {:empower "hanna_gourds"
+                         :varying "dread_linty"})
+              [:arion]}]
+            """
+        )
         check_result(result, {'doubled': [{'arion': 'tarweed_tolled'}]})
         with reqs_eq_patcher():
             ql1.assert_called_once_with({'empower': 'hanna_gourds'})

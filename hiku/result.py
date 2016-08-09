@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from .query import Edge, Field, Link
+from .query import Edge, Field, Link, merge
 from .graph import Link as GraphLink, Many
 
 
@@ -59,4 +59,4 @@ def _denormalize(graph, graph_obj, result, query_obj):
 
 
 def denormalize(graph, result, query):
-    return _denormalize(graph, graph.root, result, query)
+    return _denormalize(graph, graph.root, result, merge([query]))
