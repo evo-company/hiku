@@ -1,6 +1,8 @@
+import pytest
+
 from hiku import query as q
 from hiku.graph import Graph, Edge, Field, Link, Option, Root, Many
-from hiku.types import Integer
+from hiku.types import Integer, Record, Sequence, Optional
 from hiku.validate.query import QueryValidator
 
 
@@ -23,6 +25,9 @@ GRAPH = Graph([
     ]),
     Root([
         Field('f1', Integer, _),
+        Field('f1-maybe', Optional[Record[{'attr': Integer}]], _),
+        Field('f1-one', Record[{'attr': Integer}], _),
+        Field('f1-many', Sequence[Record[{'attr': Integer}]], _),
         Edge('e1', [
             Field('f2', Integer, _,
                   options=[Option('f2-op1', Integer),
@@ -58,6 +63,19 @@ def test_field():
     check_errors(q.Edge([q.Link('l2', q.Edge([q.Field('invalid')]))]), [
         'Field "invalid" is not implemented in the "e2" edge',
     ])
+    # simple field as edge
+    check_errors(q.Edge([q.Link('f1', q.Edge([]))]), [
+        'Trying to query "root.f1" simple field as edge',
+    ])
+
+
+@pytest.mark.parametrize('field_name', ['f1-maybe', 'f1-one', 'f1-many'])
+def test_field_complex(field_name):
+    check_errors(q.Edge([q.Link(field_name, q.Edge([]))]), [])
+    check_errors(q.Edge([q.Link(field_name, q.Edge([q.Field('invalid')]))]), [
+        'Unknown field name',
+    ])
+    check_errors(q.Edge([q.Link(field_name, q.Edge([q.Field('attr')]))]), [])
 
 
 def test_non_field():
@@ -97,12 +115,6 @@ def test_link():
     # link in the linked edge
     check_errors(q.Edge([q.Link('l2', q.Edge([l]))]), [
         'Link "invalid" is not implemented in the "e2" edge',
-    ])
-
-
-def test_non_link():
-    check_errors(q.Edge([q.Link('f1', q.Edge([]))]), [
-        'Trying to query "root.f1" simple field as edge',
     ])
 
 
