@@ -84,6 +84,10 @@ class TestCompiler(TestCase):
                                                    second.splitlines()))))
             raise self.failureException(msg)
 
+        # test eval
+        lambda_expr = ExpressionCompiler.compile_lambda_expr(expr)
+        eval(compile(lambda_expr, '<expr>', 'eval'))
+
     def testTuple(self):
         self.assertCompiles(
             foo(S.a),
@@ -105,6 +109,12 @@ class TestCompiler(TestCase):
             if_(1, foo(S.a), bar(S.a)),
             """
             (env['foo'](ctx['a']) if 1 else env['bar'](ctx['a']))
+            """
+        )
+        self.assertCompiles(
+            if_(1, foo(S.a), 'nothing'),
+            """
+            (env['foo'](ctx['a']) if 1 else 'nothing')
             """
         )
 

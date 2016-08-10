@@ -3,7 +3,7 @@ from collections import Counter
 
 from .types import CallableMeta
 from .nodes import Symbol, Keyword
-from .compat import ast as py
+from .compat import ast as py, text_type
 
 
 class Environ(object):
@@ -42,8 +42,9 @@ class ExpressionCompiler(object):
 
     @classmethod
     def compile_lambda_expr(cls, node, args=None):
+        args = args or []
         compiler = cls()
-        with compiler.env.push(['this'] + (args or [])):
+        with compiler.env.push(['this'] + args):
             body = compiler.visit(node)
         py_args = [py.arg('this'), py.arg(cls.env_var), py.arg(cls.ctx_var)]
         py_args += [py.arg(name) for name in args]
@@ -69,7 +70,12 @@ class ExpressionCompiler(object):
             return self.generic_visit(node)
 
     def generic_visit(self, node):
-        return node
+        if isinstance(node, int):
+            return py.Num(node)
+        elif isinstance(node, text_type):
+            return py.Str(node)
+        else:
+            raise NotImplementedError(type(node))
 
     def visit_get_expr(self, node):
         _, obj, name = node.values
