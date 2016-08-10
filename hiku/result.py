@@ -1,7 +1,8 @@
 from collections import defaultdict
 
+from .types import RecordMeta, OptionalMeta, SequenceMeta
 from .query import Edge, Field, Link, merge
-from .graph import Link as GraphLink, Many
+from .graph import Link as GraphLink, Field as GraphField, Many
 
 
 class Ref(object):
@@ -37,6 +38,10 @@ class Result(State):
         return Ref(self.index, edge, ident)
 
 
+def _filter_fields(result, edge):
+    return {f.name: result[f.name] for f in edge.fields}
+
+
 def _denormalize(graph, graph_obj, result, query_obj):
     if isinstance(query_obj, Edge):
         return {f.name: _denormalize(graph, graph_obj.fields_map[f.name],
@@ -47,13 +52,25 @@ def _denormalize(graph, graph_obj, result, query_obj):
         return result
 
     elif isinstance(query_obj, Link):
-        if isinstance(graph_obj, GraphLink):
+        if isinstance(graph_obj, GraphField):
+            type_ = graph_obj.type
+            if isinstance(type_, SequenceMeta):
+                return [_filter_fields(item, query_obj.edge) for item in result]
+            elif isinstance(type_, OptionalMeta):
+                return (_filter_fields(result, query_obj.edge)
+                        if result is not None else None)
+            else:
+                assert isinstance(type_, RecordMeta), repr(type_)
+                return _filter_fields(result, query_obj.edge)
+
+        elif isinstance(graph_obj, GraphLink):
             graph_edge = graph.edges_map[graph_obj.edge]
             if graph_obj.type is Many:
                 return [_denormalize(graph, graph_edge, v, query_obj.edge)
                         for v in result]
             else:
                 return _denormalize(graph, graph_edge, result, query_obj.edge)
+
         else:
             return _denormalize(graph, graph_obj, result, query_obj.edge)
 

@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import json
 
+from hiku.types import Record, String, Optional, Sequence
 from hiku.graph import Graph, Link, Edge, Field, Root, Many, One
 from hiku.result import denormalize, Result
 from hiku.readers.simple import read
@@ -24,23 +25,41 @@ GRAPH = Graph([
         Link('bahut', One, _, edge='cosies', requires=None),
         Link('paramo', Many, _, edge='cosies', requires=None),
     ]),
+    Edge('saunas', [
+        Field('went', Optional[Record[{'changer': String}]], _),
+        Field('atelier', Record[{'litas': String}], _),
+        Field('matwork', Sequence[Record[{'bashaw': String}]], _),
+    ]),
     Root([
         Field('slotted', _),
+        Field('tatler', Optional[Record[{'orudis': String}]], _),
+        Field('coom', Record[{'yappers': String}], _),
+        Field('barbary', Sequence[Record[{'betty': String}]], _),
         Edge('flossy', [
             Field('demoing', _),
+            Field('anoxic', Optional[Record[{'peeps': String}]], _),
+            Field('seggen', Record[{'pensive': String}], _),
+            Field('necker', Sequence[Record[{'carney': String}]], _),
             Link('daur', One, _, edge='cosies', requires=None),
             Link('peafowl', Many, _, edge='cosies', requires=None),
         ]),
         Link('zareeba', One, _, edge='cosies', requires=None),
         Link('crowdie', Many, _, edge='cosies', requires=None),
+        Link('moujik', One, _, edge='saunas', requires=None),
     ]),
 ])
 
 RESULT = Result()
 RESULT.update({
     'slotted': 'quoy_ushered',
+    'tatler': {'orudis': 'fhp_musterd'},
+    'coom': {'yappers': 'idaho_golok'},
+    'barbary': [{'betty': 'japheth_ophir'}],
     'flossy': {
         'demoing': 'judaea_bhutani',
+        'anoxic': {'peeps': 'peterel_repave'},
+        'seggen': {'pensive': 'quebec_junkman'},
+        'necker': [{'carney': 'calla_pedway'}],
         'daur': RESULT.ref('cosies', 1),
         'peafowl': [RESULT.ref('cosies', 3),
                     RESULT.ref('cosies', 2)],
@@ -48,6 +67,7 @@ RESULT.update({
     'zareeba': RESULT.ref('cosies', 2),
     'crowdie': [RESULT.ref('cosies', 1),
                 RESULT.ref('cosies', 3)],
+    'moujik': RESULT.ref('saunas', 7),
 })
 RESULT.index.update({
     'cosies': {
@@ -89,7 +109,15 @@ RESULT.index.update({
             'bahut': RESULT.ref('cosies', 3),
             'paramo': [RESULT.ref('cosies', 1), RESULT.ref('cosies', 2)],
         },
-    }
+    },
+    'saunas': {
+        7: {
+            'went': {'changer': 'cheerly_jpg'},
+            'atelier': {'litas': 'facula_keck'},
+            'matwork': [{'bashaw': 'bukhoro_zins'},
+                        {'bashaw': 'worms_gemman'}],
+        }
+    },
 })
 
 
@@ -105,7 +133,20 @@ def test_root_fields():
 
 
 def test_root_fields_complex():
-    pass  # TODO
+    check_result('[{:tatler []}]',
+                 {'tatler': {}})
+    check_result('[{:tatler [:orudis]}]',
+                 {'tatler': {'orudis': 'fhp_musterd'}})
+
+    check_result('[{:coom []}]',
+                 {'coom': {}})
+    check_result('[{:coom [:yappers]}]',
+                 {'coom': {'yappers': 'idaho_golok'}})
+
+    check_result('[{:barbary []}]',
+                 {'barbary': [{}]})
+    check_result('[{:barbary [:betty]}]',
+                 {'barbary': [{'betty': 'japheth_ophir'}]})
 
 
 def test_root_edge_fields():
@@ -114,7 +155,20 @@ def test_root_edge_fields():
 
 
 def test_root_edge_fields_complex():
-    pass  # TODO
+    check_result('[{:flossy [{:anoxic []}]}]',
+                 {'flossy': {'anoxic': {}}})
+    check_result('[{:flossy [{:anoxic [:peeps]}]}]',
+                 {'flossy': {'anoxic': {'peeps': 'peterel_repave'}}})
+
+    check_result('[{:flossy [{:seggen []}]}]',
+                 {'flossy': {'seggen': {}}})
+    check_result('[{:flossy [{:seggen [:pensive]}]}]',
+                 {'flossy': {'seggen': {'pensive': 'quebec_junkman'}}})
+
+    check_result('[{:flossy [{:necker []}]}]',
+                 {'flossy': {'necker': [{}]}})
+    check_result('[{:flossy [{:necker [:carney]}]}]',
+                 {'flossy': {'necker': [{'carney': 'calla_pedway'}]}})
 
 
 def test_edge_fields():
@@ -125,7 +179,21 @@ def test_edge_fields():
 
 
 def test_edge_fields_complex():
-    pass  # TODO
+    check_result('[{:moujik [{:went []}]}]',
+                 {'moujik': {'went': {}}})
+    check_result('[{:moujik [{:went [:changer]}]}]',
+                 {'moujik': {'went': {'changer': 'cheerly_jpg'}}})
+
+    check_result('[{:moujik [{:atelier []}]}]',
+                 {'moujik': {'atelier': {}}})
+    check_result('[{:moujik [{:atelier [:litas]}]}]',
+                 {'moujik': {'atelier': {'litas': 'facula_keck'}}})
+
+    check_result('[{:moujik [{:matwork []}]}]',
+                 {'moujik': {'matwork': [{}, {}]}})
+    check_result('[{:moujik [{:matwork [:bashaw]}]}]',
+                 {'moujik': {'matwork': [{'bashaw': 'bukhoro_zins'},
+                                         {'bashaw': 'worms_gemman'}]}})
 
 
 def test_root_edge_links():
