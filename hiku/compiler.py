@@ -88,6 +88,23 @@ class ExpressionCompiler(object):
         test_expr, then_expr, else_expr = args
         return py.IfExp(test_expr, then_expr, else_expr)
 
+    def visit_if_some_expr(self, node):
+        _, bind, then_, else_ = node.values
+        bind_sym, bind_expr = bind.values
+        with self.env.push([bind_sym.name]):
+            none = py.Name('None', py.Load())
+            load_bind_sym = py.Name(self.env[bind_sym.name], py.Load())
+            test = py.Compare(load_bind_sym, [py.IsNot()], [none])
+            store_bind_sym = py.Name(self.env[bind_sym.name], py.Store())
+            comp = py.comprehension(
+                store_bind_sym,
+                py.Tuple([self.visit(bind_expr)], py.Load()),
+                [],
+            )
+            expr = py.IfExp(test, self.visit(then_), self.visit(else_))
+        gen = py.GeneratorExp(expr, [comp])
+        return py.Call(py.Name('next', py.Load()), [gen], [], None, None)
+
     def visit_each_expr(self, node):
         sym, var, col, body = node.values
         assert isinstance(var, Symbol)
@@ -105,6 +122,8 @@ class ExpressionCompiler(object):
             return self.visit_get_expr(node)
         elif sym.name == 'if':
             return self.visit_if_expr(node)
+        elif sym.name == 'if_some':
+            return self.visit_if_some_expr(node)
         elif sym.name == 'each':
             return self.visit_each_expr(node)
         else:

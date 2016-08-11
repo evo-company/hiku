@@ -8,7 +8,8 @@ from collections import OrderedDict
 import astor
 import pytest
 
-from hiku.expr import define, S, if_, each, to_expr
+from hiku.expr import define, S, if_, each, to_expr, if_some
+from hiku.types import Optional, String
 from hiku.graph import Graph, Field, Edge, Link, Root, Many, One
 from hiku.compat import PY3, PY35
 from hiku.checker import check, graph_types, fn_types
@@ -46,6 +47,7 @@ ENV = Graph([
     ]),
     Root([
         Field('a', noop),
+        Field('nitrox', Optional[String], noop),
         Edge('x', [
             Field('b', noop),
         ]),
@@ -116,6 +118,13 @@ class TestCompiler(TestCase):
             """
             (env['foo'](ctx['a']) if 1 else 'nothing')
             """
+        )
+
+    def testIfSomeExpr(self):
+        self.assertCompiles(
+            if_some([S.x, S.nitrox], S.x, 'nothing'),
+            "next(((x if (x is not None) else 'nothing') for x in "
+            "(ctx['nitrox'],)))"
         )
 
     def testEachExpr(self):

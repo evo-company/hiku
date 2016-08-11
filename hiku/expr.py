@@ -82,3 +82,8 @@ def each(var, col, expr):
 @define(None, None, None, _name='if')
 def if_(test, then, else_):
     pass
+
+
+@define(None, None, None, _name='if_some')
+def if_some(bind, then, else_):
+    pass

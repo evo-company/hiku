@@ -3,9 +3,9 @@ from collections import deque, OrderedDict
 
 from . import graph, query
 from .refs import NamedRef, Ref
-from .nodes import NodeTransformer, Symbol, Keyword, Tuple
+from .nodes import NodeTransformer, Symbol, Keyword, Tuple, List
 from .types import Sequence, SequenceMeta, Record, RecordMeta, Optional
-from .types import MappingMeta, Callable
+from .types import MappingMeta, Callable, OptionalMeta
 from .typedef.types import TypeRef, TypeRefMeta, Unknown, UnknownMeta
 
 
@@ -156,6 +156,27 @@ class Checker(NodeTransformer):
             expr = self.visit(expr)
         return Tuple([Symbol('each'), var, col, expr])
 
+    def visit_if_some_expr(self, node):
+        bind, then, else_ = node.values[1:]
+        assert isinstance(bind, List) and len(bind.values) == 2, repr(bind)
+        bind_sym, bind_expr = bind.values
+        assert isinstance(bind_sym, Symbol), repr(bind_sym)
+        bind_expr = self.visit(bind_expr)
+        assert hasattr(bind_expr, '__ref__'), 'Object does not have a reference'
+        bind_type = node_type(self.types, bind_expr)
+        if isinstance(bind_type, OptionalMeta):
+            bind_expr_ref = Ref(bind_expr.__ref__, bind_type.__type__)
+        else:
+            # TODO: warn about unnecessary check
+            bind_expr_ref = bind_expr.__ref__
+        bind_sym = Symbol(bind_sym.name)
+        bind_sym.__ref__ = bind_expr_ref
+        with self.env.push({bind_sym.name: bind_sym.__ref__}):
+            then = self.visit(then)
+        else_ = self.visit(else_)
+        return Tuple([Symbol('if_some'), List([bind_sym, bind_expr]),
+                      then, else_])
+
     def visit_tuple_generic(self, node):
         sym = self.visit(node.values[0])
         assert isinstance(sym, Symbol), type(sym)
@@ -176,6 +197,8 @@ class Checker(NodeTransformer):
             return self.visit_get_expr(node)
         elif sym.name == 'each':
             return self.visit_each_expr(node)
+        elif sym.name == 'if_some':
+            return self.visit_if_some_expr(node)
         else:
             return self.visit_tuple_generic(node)
 
