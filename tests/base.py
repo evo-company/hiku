@@ -10,6 +10,7 @@ except ImportError:
     from itertools import izip_longest as zip_longest
 
 from hiku.refs import Ref
+from hiku.types import GenericMeta
 from hiku.query import Field, Link, Edge
 
 patch = _patch
@@ -44,6 +45,15 @@ _ref_patch = patch.multiple(Ref, __eq__=_eq, __ne__=_ne)
 @contextmanager
 def ref_eq_patcher():
     with _ref_patch:
+        yield
+
+
+_type_patch = patch.multiple(GenericMeta, __eq__=_eq, __ne__=_ne)
+
+
+@contextmanager
+def type_eq_patcher():
+    with _type_patch:
         yield
 
 
