@@ -1,7 +1,7 @@
-from unittest import TestCase, skip
+from unittest import skip
 from collections import OrderedDict
 
-from hiku import graph
+from hiku import graph as g
 from hiku.expr import define, S, each, to_expr
 from hiku.refs import Ref, NamedRef, ref_to_req, RequirementsExtractor
 from hiku.graph import Many, One
@@ -11,245 +11,264 @@ from hiku.checker import check, graph_types, fn_types
 from .base import reqs_eq_patcher
 
 
-@define('[[:a :c] [:d :f]]')
-def foo(x, y):
-    pass
+def _(*args, **kwargs):
+    raise NotImplementedError
 
 
-@define('[[:e {:x1 [:b]}]]')
-def bar(y):
-    pass
-
-
-@define('[[:e {:xs [:b]}]]')
-def baz(y):
-    pass
-
-
-@define('[[:a :c] nil [:d :f] nil]')
-def buz(x, m, y, n):
-    pass
-
-
-def noop(*_):
-    return 1/0
-
-
-# TODO: refactor
-ENV = graph.Graph([
-    graph.Edge('x', [
-        graph.Field('a', noop),
-        graph.Field('b', noop),
-        graph.Field('c', noop),
+GRAPH = g.Graph([
+    g.Edge('patens', [
+        g.Field('clacks', _),
+        g.Field('panicle', _),
+        g.Link('apatite', One, _, edge='sais', requires=None),
+        g.Link('jakies', Many, _, edge='sais', requires=None),
     ]),
-    graph.Edge('y', [
-        graph.Field('d', noop),
-        graph.Field('e', noop),
-        graph.Field('f', noop),
-        graph.Link('x1', One, noop, edge='x', requires=None),
-        graph.Link('xs', Many, noop, edge='x', requires=None),
+    g.Edge('sais', [
+        g.Field('oloroso', _),
+        g.Field('gashes', _),
     ]),
-    graph.Root([
-        graph.Field('f', noop),
-        graph.Edge('x', [
-            graph.Field('a', noop),
-            graph.Field('b', noop),
-            graph.Field('c', noop),
+    g.Root([
+        g.Field('sailed', _),
+        g.Edge('malatya', [
+            g.Field('bartok', _),
+            g.Field('rotifer', _),
+            g.Link('teling', One, _, edge='patens', requires=None),
+            g.Link('wandy', Many, _, edge='patens', requires=None),
         ]),
-        graph.Link('x1', One, noop, edge='x', requires=None),
-        graph.Link('xs', Many, noop, edge='x', requires=None),
-        graph.Edge('y', [
-            graph.Field('d', noop),
-            graph.Field('e', noop),
-            graph.Field('f', noop),
-            graph.Link('x1', One, noop, edge='x', requires=None),
-            graph.Link('xs', Many, noop, edge='x', requires=None),
-        ]),
-        graph.Link('y1', One, noop, edge='y', requires=None),
-        graph.Link('ys', Many, noop, edge='y', requires=None),
+        g.Link('weigh', One, _, edge='patens', requires=None),
+        g.Link('comped', Many, _, edge='patens', requires=None),
     ]),
 ])
 
 
-TYPES = graph_types(ENV)
+TYPES = graph_types(GRAPH)
 
 
-class TestRefToReq(TestCase):
-
-    def assertReq(self, ref, req, add_req=None):
-        with reqs_eq_patcher():
-            self.assertEqual(ref_to_req(TYPES, ref, add_req), req)
-
-    def testField(self):
-        self.assertReq(NamedRef(None, 'f', TYPES['f']),
-                       Edge([Field('f')]))
-
-    def testEdgeField(self):
-        x_ref = NamedRef(None, 'x', TYPES['x'])
-        self.assertReq(x_ref,
-                       Edge([Link('x', Edge([]))]))
-
-        a_ref = NamedRef(x_ref, 'a', TYPES['x'].__field_types__['a'])
-        self.assertReq(a_ref,
-                       Edge([Link('x', Edge([Field('a')]))]))
-
-    def testLinkOneEdgeField(self):
-        x1_ref = NamedRef(None, 'x1', TYPES['x1'])
-        self.assertReq(x1_ref,
-                       Edge([Link('x1', Edge([]))]))
-
-        x_ref = Ref(x1_ref, TYPES['x'])
-        self.assertReq(x_ref,
-                       Edge([Link('x1', Edge([]))]))
-
-        b_ref = NamedRef(x_ref, 'b', TYPES['x'].__field_types__['b'])
-        self.assertReq(b_ref,
-                       Edge([Link('x1', Edge([Field('b')]))]))
-
-    def testLinkListEdgeField(self):
-        xs_ref = NamedRef(None, 'xs', TYPES['xs'])
-        self.assertReq(xs_ref,
-                       Edge([Link('xs', Edge([]))]))
-
-        x_ref = Ref(xs_ref, TYPES['x'])
-        self.assertReq(x_ref,
-                       Edge([Link('xs', Edge([]))]))
-
-        c_ref = NamedRef(x_ref, 'c', TYPES['x'].__field_types__['c'])
-        self.assertReq(c_ref,
-                       Edge([Link('xs', Edge([Field('c')]))]))
-
-    def testAddReq(self):
-        self.assertReq(NamedRef(None, 'xs', TYPES['xs']),
-                       Edge([Link('xs', Edge([Field('a'), Field('c')]))]),
-                       add_req=Edge([Field('a'), Field('c')]))
+def check_req(ref, req, add_req=None):
+    with reqs_eq_patcher():
+        assert ref_to_req(TYPES, ref, add_req) == req
 
 
-class TestQuery(TestCase):
+def check_query(dsl_expr, query):
+    expr, functions = to_expr(dsl_expr)
+    types = TYPES.copy()
+    types.update(fn_types(functions))
+    expr = check(expr, types)
+    expr_reqs = RequirementsExtractor.extract(types, expr)
+    with reqs_eq_patcher():
+        assert expr_reqs == query
 
-    def assertRequires(self, dsl_expr, reqs):
-        expr, functions = to_expr(dsl_expr)
-        types = graph_types(ENV)
-        types.update(fn_types(functions))
-        expr = check(expr, types)
-        expr_reqs = RequirementsExtractor.extract(types, expr)
-        with reqs_eq_patcher():
-            self.assertEqual(expr_reqs, reqs)
 
-    def testField(self):
-        self.assertRequires(S.f, Edge([Field('f')]))
+def test_ref_root_field():
+    check_req(NamedRef(None, 'sailed', TYPES['sailed']),
+              Edge([Field('sailed')]))
 
-    def testLinkField(self):
-        self.assertRequires(
-            S.x1.a,
-            Edge([Link('x1', Edge([Field('a')]))]),
-        )
 
-    def testEdgeLinkField(self):
-        self.assertRequires(
-            S.y.x1.b,
-            Edge([Link('y', Edge([Link('x1', Edge([Field('b')]))]))]),
-        )
+def test_ref_root_edge_field():
+    malatya_ref = NamedRef(None, 'malatya', TYPES['malatya'])
+    check_req(malatya_ref,
+              Edge([Link('malatya', Edge([]))]))
 
-    def testEachLinkField(self):
-        self.assertRequires(
-            each(S.item, S.xs, S.item.a),
-            Edge([Link('xs', Edge([Field('a')]))]),
-        )
+    bartok_ref = NamedRef(malatya_ref, 'bartok',
+                          TYPES['malatya'].__field_types__['bartok'])
+    check_req(bartok_ref,
+              Edge([Link('malatya', Edge([Field('bartok')]))]))
 
-    def testEdgeEachLinkField(self):
-        self.assertRequires(
-            each(S.item, S.y.xs, S.item.b),
-            Edge([Link('y', Edge([Link('xs', Edge([Field('b')]))]))]),
-        )
 
-    def testTupleWithEdges(self):
-        self.assertRequires(
-            foo(S.x, S.y),
-            Edge([Link('x', Edge([Field('a'), Field('c')])),
-                  Link('y', Edge([Field('d'), Field('f')]))]),
-        )
+def test_ref_link_one_edge_field():
+    weigh_ref = NamedRef(None, 'weigh', TYPES['weigh'])
+    check_req(weigh_ref,
+              Edge([Link('weigh', Edge([]))]))
 
-    def testTupleWithLinks(self):
-        self.assertRequires(
-            foo(S.x1, S.y1),
-            Edge([Link('x1', Edge([Field('a'), Field('c')])),
-                  Link('y1', Edge([Field('d'), Field('f')]))]),
-        )
-        self.assertRequires(
-            each(S.item, S.xs, foo(S.item, S.y1)),
-            Edge([Link('xs', Edge([Field('a'), Field('c')])),
-                  Link('y1', Edge([Field('d'), Field('f')]))]),
-        )
-        self.assertRequires(
-            each(S.item, S.ys, foo(S.x1, S.item)),
-            Edge([Link('ys', Edge([Field('d'), Field('f')])),
-                  Link('x1', Edge([Field('a'), Field('c')]))]),
-        )
-        self.assertRequires(
-            each(S.item, S.ys, foo(S.item.x1, S.item)),
-            Edge([Link('ys', Edge([Field('d'), Field('f'),
-                                   Link('x1', Edge([Field('a'),
-                                                    Field('c')]))]))]),
-        )
+    patens_ref = Ref(weigh_ref, TYPES['patens'])
+    check_req(patens_ref,
+              Edge([Link('weigh', Edge([]))]))
 
-    def testTupleWithNestedLinkToOne(self):
-        self.assertRequires(
-            bar(S.y),
-            Edge([Link('y',
-                       Edge([Field('e'),
-                             Link('x1', Edge([Field('b')]))]))]),
-        )
-        self.assertRequires(
-            each(S.item, S.ys, bar(S.item)),
-            Edge([Link('ys',
-                       Edge([Field('e'),
-                             Link('x1', Edge([Field('b')]))]))]),
-        )
+    clacks_ref = NamedRef(patens_ref, 'clacks',
+                          TYPES['patens'].__field_types__['clacks'])
+    check_req(clacks_ref,
+              Edge([Link('weigh', Edge([Field('clacks')]))]))
 
-    @skip('fn_types() lacks information about links (single or list)')
-    def testTupleWithNestedLinkToMany(self):
-        self.assertRequires(
-            baz(S.y),  # [[:e {:xs [:b]}]]
-            Edge([Link('y',
-                       Edge([Field('e'),
-                             Link('xs', Edge([Field('b')]))]))]),
-        )
-        self.assertRequires(
-            each(S.item, S.ys, baz(S.item)),
-            Edge([Link('ys',
-                       Edge([Field('e'),
-                             Link('xs', Edge([Field('b')]))]))]),
-        )
 
-    def testTupleWithSimpleArgs(self):
-        self.assertRequires(
-            buz(S.x, 1, S.y, 2),
-            Edge([Link('x', Edge([Field('a'), Field('c')])),
-                  Link('y', Edge([Field('d'), Field('f')]))]),
-        )
+def test_ref_link_many_edge_field():
+    comped_ref = NamedRef(None, 'comped', TYPES['comped'])
+    check_req(comped_ref,
+              Edge([Link('comped', Edge([]))]))
 
-    def testList(self):
-        self.assertRequires(
-            each(S.item, S.ys,
-                 [foo(S.item.x1, S.item), bar(S.item)]),
-            Edge([
-                Link('ys', Edge([
-                    Field('d'), Field('f'), Field('e'),
-                    Link('x1', Edge([Field('a'), Field('c'), Field('b')])),
-                ])),
-            ]),
-        )
+    patens_ref = Ref(comped_ref, TYPES['patens'])
+    check_req(patens_ref,
+              Edge([Link('comped', Edge([]))]))
 
-    def testDict(self):
-        self.assertRequires(
-            each(S.item, S.ys,
-                 OrderedDict([('foo-value', foo(S.item.x1, S.item)),
-                              ('bar-value', bar(S.item))])),
-            Edge([
-                Link('ys', Edge([
-                    Field('d'), Field('f'), Field('e'),
-                    Link('x1', Edge([Field('a'), Field('c'), Field('b')])),
-                ])),
-            ]),
-        )
+    clacks_ref = NamedRef(patens_ref, 'clacks',
+                          TYPES['patens'].__field_types__['clacks'])
+    check_req(clacks_ref,
+              Edge([Link('comped', Edge([Field('clacks')]))]))
+
+
+def test_ref_add_req():
+    check_req(NamedRef(None, 'comped', TYPES['comped']),
+              Edge([Link('comped', Edge([Field('clacks'),
+                                         Field('panicle')]))]),
+              add_req=Edge([Field('clacks'), Field('panicle')]))
+
+
+def test_query_root_field():
+    check_query(S.sailed, Edge([Field('sailed')]))
+
+
+def test_query_edge_field():
+    check_query(
+        S.weigh.clacks,
+        Edge([Link('weigh', Edge([Field('clacks')]))]),
+    )
+
+
+def test_query_root_edge_link_field():
+    check_query(
+        S.malatya.teling.clacks,
+        Edge([Link('malatya',
+                   Edge([Link('teling', Edge([Field('clacks')]))]))]),
+    )
+
+
+def test_query_each_edge_field():
+    check_query(
+        each(S.item, S.comped, S.item.clacks),
+        Edge([Link('comped', Edge([Field('clacks')]))]),
+    )
+
+
+def test_query_each_root_edge_link_field():
+    check_query(
+        each(S.item, S.malatya.wandy, S.item.clacks),
+        Edge([Link('malatya', Edge([Link('wandy', Edge([Field('clacks')]))]))]),
+    )
+
+
+def test_query_tuple_with_edge():
+
+    @define('[[:clacks :panicle]]')
+    def foo():
+        pass
+
+    @define('[[:oloroso :gashes]]')
+    def bar():
+        pass
+
+    sais_part = Edge([Field('oloroso'), Field('gashes')])
+
+    # 1
+    check_query(
+        foo(S.weigh),
+        Edge([Link('weigh', Edge([Field('clacks'), Field('panicle')]))]),
+    )
+    # M
+    check_query(
+        each(S.x, S.comped, foo(S.x)),
+        Edge([Link('comped', Edge([Field('clacks'), Field('panicle')]))]),
+    )
+    # 1:1
+    check_query(
+        bar(S.weigh.apatite),
+        Edge([Link('weigh', Edge([Link('apatite', Edge([Field('oloroso'),
+                                                        Field('gashes')]))]))]),
+    )
+    # 1:M
+    check_query(
+        each(S.x, S.weigh.jakies, bar(S.x)),
+        Edge([Link('weigh', Edge([Link('jakies', sais_part)]))]),
+    )
+    # M:1
+    check_query(
+        each(S.x, S.comped, bar(S.x.apatite)),
+        Edge([Link('comped', Edge([Link('apatite', sais_part)]))]),
+    )
+    # M:M
+    check_query(
+        each(S.x, S.comped, each(S.y, S.x.jakies, bar(S.y))),
+        Edge([Link('comped', Edge([Link('jakies', sais_part)]))]),
+    )
+
+
+def test_query_tuple_with_nested_one_edge():
+
+    @define('[[:clacks {:apatite [:oloroso :gashes]}]]')
+    def foo():
+        pass
+
+    sais_part = Edge([Field('oloroso'), Field('gashes')])
+
+    check_query(
+        foo(S.weigh),
+        Edge([Link('weigh', Edge([Field('clacks'),
+                                  Link('apatite', sais_part)]))]),
+    )
+    check_query(
+        each(S.x, S.comped, foo(S.x)),
+        Edge([Link('comped', Edge([Field('clacks'),
+                                   Link('apatite', sais_part)]))]),
+    )
+
+
+@skip('fn_types() lacks information about links (one or many)')
+def test_query_tuple_with_nested_many_edge():
+
+    @define('[[:panicle {:jakies [:oloroso :gashes]}]]')
+    def foo():
+        pass
+
+    sais_part = Edge([Field('oloroso'), Field('gashes')])
+
+    check_query(
+        foo(S.weigh),
+        Edge([Link('weigh', Edge([Field('panicle'),
+                                  Link('jakies', sais_part)]))]),
+    )
+    check_query(
+        each(S.x, S.comped, foo(S.x)),
+        Edge([Link('comped', Edge([Field('panicle'),
+                                   Link('jakies', sais_part)]))]),
+    )
+
+
+def test_query_tuple_with_simple_args():
+
+    @define('[[:clacks :panicle] nil [:oloroso :gashes] nil]')
+    def foo():
+        pass
+
+    check_query(
+        foo(S.weigh, 1, S.weigh.apatite, 2),
+        Edge([Link('weigh',
+                   Edge([Field('clacks'),
+                         Field('panicle'),
+                         Link('apatite',
+                              Edge([Field('oloroso'),
+                                    Field('gashes')]))]))]),
+    )
+
+
+def test_query_list():
+
+    @define('[[:clacks :panicle]]')
+    def foo():
+        pass
+
+    check_query(
+        each(S.x, S.comped, [foo(S.weigh), foo(S.x)]),
+        Edge([Link('comped', Edge([Field('clacks'), Field('panicle')])),
+              Link('weigh', Edge([Field('clacks'), Field('panicle')]))]),
+    )
+
+
+def test_query_dict():
+
+    @define('[[:clacks :panicle]]')
+    def foo():
+        pass
+
+    check_query(
+        each(S.x, S.comped,
+             {'a': foo(S.weigh), 'b': foo(S.x)}),
+        Edge([Link('comped', Edge([Field('clacks'), Field('panicle')])),
+              Link('weigh', Edge([Field('clacks'), Field('panicle')]))]),
+    )
