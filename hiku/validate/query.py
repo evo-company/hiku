@@ -114,7 +114,7 @@ class _ValidateOptions(GraphVisitor):
             edge, field = self.for_
             self.errors.report('Required option "{}.{}:{}" is not specified'
                                .format(edge, field, obj.name))
-        else:
+        elif obj.type is not None:
             try:
                 _OptionTypeValidator(value).visit(obj.type)
             except _TypeError:

@@ -10,36 +10,34 @@ def _():
     return 1/0
 
 
-# TODO: refactor
 GRAPH = Graph([
-    Edge('e1', [
-        Field('f2', Integer, _,
-              options=[Option('f2-op1', Integer),
-                       Option('f2-op2', Integer, default=1)]),
-        Link('l1', Many, _, edge='e2', requires='f2',
-             options=[Option('l1-op1', Integer),
-                      Option('l1-op2', Integer, default=1)]),
-    ]),
-    Edge('e2', [
-        Field('f3', _),
-    ]),
+    Edge('hooted', []),
     Root([
-        Field('f1', Integer, _),
-        Field('f1-maybe', Optional[Record[{'attr': Integer}]], _),
-        Field('f1-one', Record[{'attr': Integer}], _),
-        Field('f1-many', Sequence[Record[{'attr': Integer}]], _),
-        Edge('e1', [
-            Field('f2', Integer, _,
-                  options=[Option('f2-op1', Integer),
-                           Option('f2-op2', Integer, default=1)]),
-            Link('l1', Many, _, edge='e2', requires='f2',
-                 options=[Option('l1-op1', Integer),
-                          Option('l1-op2', Integer, default=1)]),
-        ]),
-        Edge('e2', [
-            Field('f3', _),
-        ]),
-        Link('l2', Many, _, edge='e2', requires=None),
+        Edge('decants', []),
+
+        # simple
+        Field('robby', _),
+        # complex
+        Field('wounded', Optional[Record[{'attr': Integer}]], _),
+        Field('annuals', Record[{'attr': Integer}], _),
+        Field('hialeah', Sequence[Record[{'attr': Integer}]], _),
+        # with options
+        Field('motown', _, options=[Option('prine')]),
+        Field('nyerere', _, options=[Option('epaule', default=1)]),
+        Field('wreche', _, options=[Option('cierra', Integer)]),
+        Field('hunter', _, options=[Option('fried', Integer, default=1)]),
+
+        # simple
+        Link('amyls', Many, _, edge='hooted', requires=None),
+        # with options
+        Link('ferrous', Many, _, edge='hooted', requires=None,
+             options=[Option('cantab')]),
+        Link('knesset', Many, _, edge='hooted', requires=None,
+             options=[Option('ceases', default=1)]),
+        Link('pouria', Many, _, edge='hooted', requires=None,
+             options=[Option('flunk', Integer)]),
+        Link('secants', Many, _, edge='hooted', requires=None,
+             options=[Option('monadic', Integer, default=1)]),
     ]),
 ])
 
@@ -56,20 +54,20 @@ def test_field():
         'Field "invalid" is not implemented in the "root" edge',
     ])
     # field in the global edge
-    check_errors(q.Edge([q.Link('e1', q.Edge([q.Field('invalid')]))]), [
-        'Field "invalid" is not implemented in the "e1" edge',
+    check_errors(q.Edge([q.Link('decants', q.Edge([q.Field('invalid')]))]), [
+        'Field "invalid" is not implemented in the "decants" edge',
     ])
     # field in the linked edge
-    check_errors(q.Edge([q.Link('l2', q.Edge([q.Field('invalid')]))]), [
-        'Field "invalid" is not implemented in the "e2" edge',
+    check_errors(q.Edge([q.Link('amyls', q.Edge([q.Field('invalid')]))]), [
+        'Field "invalid" is not implemented in the "hooted" edge',
     ])
     # simple field as edge
-    check_errors(q.Edge([q.Link('f1', q.Edge([]))]), [
-        'Trying to query "root.f1" simple field as edge',
+    check_errors(q.Edge([q.Link('robby', q.Edge([]))]), [
+        'Trying to query "root.robby" simple field as edge',
     ])
 
 
-@pytest.mark.parametrize('field_name', ['f1-maybe', 'f1-one', 'f1-many'])
+@pytest.mark.parametrize('field_name', ['wounded', 'annuals', 'hialeah'])
 def test_field_complex(field_name):
     check_errors(q.Edge([q.Link(field_name, q.Edge([]))]), [])
     check_errors(q.Edge([q.Link(field_name, q.Edge([q.Field('invalid')]))]), [
@@ -79,26 +77,60 @@ def test_field_complex(field_name):
 
 
 def test_non_field():
-    check_errors(q.Edge([q.Field('l2')]), [
-        'Trying to query "root.l2" link as it was a field',
+    check_errors(q.Edge([q.Field('amyls')]), [
+        'Trying to query "root.amyls" link as it was a field',
     ])
-    check_errors(q.Edge([q.Field('e2')]), [
-        'Trying to query "e2" edge as it was a field',
+    check_errors(q.Edge([q.Field('decants')]), [
+        'Trying to query "decants" edge as it was a field',
     ])
 
 
 def test_field_options():
-    def mk(**kwargs):
-        return q.Edge([q.Link('e1', q.Edge([q.Field('f2', **kwargs)]))])
+    def mk(field_name, **kwargs):
+        return q.Edge([q.Field(field_name, **kwargs)])
 
-    check_errors(mk(), [
-        'Required option "e1.f2:f2-op1" is not specified',
+    check_errors(mk('motown'), [
+        'Required option "root.motown:prine" is not specified',
     ])
-    check_errors(mk(options={'f2-op1': 1, 'invalid': 2}), [
-        'Unknown options for "e1.f2": invalid',
+    check_errors(mk('motown', options={}), [
+        'Required option "root.motown:prine" is not specified',
     ])
-    check_errors(mk(options={'f2-op1': '1'}), [
-        'Invalid type "str" for option "e1.f2:f2-op1" provided',
+    check_errors(mk('motown', options={'prine': 1}), [])
+    check_errors(mk('motown', options={'prine': '1'}), [])
+    check_errors(mk('motown', options={'prine': 1, 'invalid': 1}), [
+        'Unknown options for "root.motown": invalid',
+    ])
+
+    check_errors(mk('nyerere'), [])
+    check_errors(mk('nyerere', options={}), [])
+    check_errors(mk('nyerere', options={'epaule': 1}), [])
+    check_errors(mk('nyerere', options={'epaule': '1'}), [])
+    check_errors(mk('nyerere', options={'epaule': 1, 'invalid': 1}), [
+        'Unknown options for "root.nyerere": invalid',
+    ])
+
+    check_errors(mk('wreche'), [
+        'Required option "root.wreche:cierra" is not specified',
+    ])
+    check_errors(mk('wreche', options={}), [
+        'Required option "root.wreche:cierra" is not specified',
+    ])
+    check_errors(mk('wreche', options={'cierra': 1}), [])
+    check_errors(mk('wreche', options={'cierra': '1'}), [
+        'Invalid type "str" for option "root.wreche:cierra" provided',
+    ])
+    check_errors(mk('wreche', options={'cierra': 1, 'invalid': 1}), [
+        'Unknown options for "root.wreche": invalid',
+    ])
+
+    check_errors(mk('hunter'), [])
+    check_errors(mk('hunter', options={}), [])
+    check_errors(mk('hunter', options={'fried': 1}), [])
+    check_errors(mk('hunter', options={'fried': '1'}), [
+        'Invalid type "str" for option "root.hunter:fried" provided',
+    ])
+    check_errors(mk('hunter', options={'fried': 1, 'invalid': 1}), [
+        'Unknown options for "root.hunter": invalid',
     ])
 
 
@@ -109,26 +141,59 @@ def test_link():
         'Link "invalid" is not implemented in the "root" edge',
     ])
     # link in the global edge
-    check_errors(q.Edge([q.Link('e1', q.Edge([l]))]), [
-        'Link "invalid" is not implemented in the "e1" edge',
+    check_errors(q.Edge([q.Link('decants', q.Edge([l]))]), [
+        'Link "invalid" is not implemented in the "decants" edge',
     ])
     # link in the linked edge
-    check_errors(q.Edge([q.Link('l2', q.Edge([l]))]), [
-        'Link "invalid" is not implemented in the "e2" edge',
+    check_errors(q.Edge([q.Link('amyls', q.Edge([l]))]), [
+        'Link "invalid" is not implemented in the "hooted" edge',
     ])
 
 
 def test_link_options():
-    def mk(**kwargs):
-        return q.Edge([q.Link('e1', q.Edge([q.Link('l1', q.Edge([]),
-                                                   **kwargs)]))])
+    def mk(link_name, **kwargs):
+        return q.Edge([q.Link(link_name, q.Edge([]), **kwargs)])
 
-    check_errors(mk(), [
-        'Required option "e1.l1:l1-op1" is not specified',
+    check_errors(mk('ferrous'), [
+        'Required option "root.ferrous:cantab" is not specified',
     ])
-    check_errors(mk(options={'l1-op1': 1, 'invalid': 2}), [
-        'Unknown options for "e1.l1": invalid',
+    check_errors(mk('ferrous', options={}), [
+        'Required option "root.ferrous:cantab" is not specified',
     ])
-    check_errors(mk(options={'l1-op1': '1'}), [
-        'Invalid type "str" for option "e1.l1:l1-op1" provided',
+    check_errors(mk('ferrous', options={'cantab': 1}), [])
+    check_errors(mk('ferrous', options={'cantab': '1'}), [])
+    check_errors(mk('ferrous', options={'cantab': 1, 'invalid': 1}), [
+        'Unknown options for "root.ferrous": invalid',
+    ])
+
+    check_errors(mk('knesset'), [])
+    check_errors(mk('knesset', options={}), [])
+    check_errors(mk('knesset', options={'ceases': 1}), [])
+    check_errors(mk('knesset', options={'ceases': '1'}), [])
+    check_errors(mk('knesset', options={'ceases': 1, 'invalid': 1}), [
+        'Unknown options for "root.knesset": invalid',
+    ])
+
+    check_errors(mk('pouria'), [
+        'Required option "root.pouria:flunk" is not specified',
+    ])
+    check_errors(mk('pouria', options={}), [
+        'Required option "root.pouria:flunk" is not specified',
+    ])
+    check_errors(mk('pouria', options={'flunk': 1}), [])
+    check_errors(mk('pouria', options={'flunk': '1'}), [
+        'Invalid type "str" for option "root.pouria:flunk" provided',
+    ])
+    check_errors(mk('pouria', options={'flunk': 1, 'invalid': 1}), [
+        'Unknown options for "root.pouria": invalid',
+    ])
+
+    check_errors(mk('secants'), [])
+    check_errors(mk('secants', options={}), [])
+    check_errors(mk('secants', options={'monadic': 1}), [])
+    check_errors(mk('secants', options={'monadic': '1'}), [
+        'Invalid type "str" for option "root.secants:monadic" provided',
+    ])
+    check_errors(mk('secants', options={'monadic': 1, 'invalid': 1}), [
+        'Unknown options for "root.secants": invalid',
     ])
