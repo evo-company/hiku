@@ -40,6 +40,8 @@ def ref_to_req(types, ref, add_req=None):
         return add_req
 
     ref_type = get_type(types, ref.to)
+    if isinstance(ref_type, OptionalMeta):
+        ref_type = get_type(types, ref_type.__type__)
 
     if isinstance(ref_type, RecordMeta):
         if isinstance(ref, NamedRef):

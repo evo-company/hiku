@@ -1,10 +1,9 @@
 from unittest import skip
-from collections import OrderedDict
 
 from hiku import graph as g
-from hiku.expr import define, S, each, to_expr
+from hiku.expr import define, S, each, to_expr, if_some
 from hiku.refs import Ref, NamedRef, ref_to_req, RequirementsExtractor
-from hiku.graph import Many, One
+from hiku.graph import Many, One, Maybe
 from hiku.query import Edge, Field, Link
 from hiku.checker import check, graph_types, fn_types
 
@@ -34,6 +33,7 @@ GRAPH = g.Graph([
             g.Link('teling', One, _, edge='patens', requires=None),
             g.Link('wandy', Many, _, edge='patens', requires=None),
         ]),
+        g.Link('civics', Maybe, _, edge='patens', requires=None),
         g.Link('weigh', One, _, edge='patens', requires=None),
         g.Link('comped', Many, _, edge='patens', requires=None),
     ]),
@@ -65,43 +65,48 @@ def test_ref_root_field():
 
 def test_ref_root_edge_field():
     malatya_ref = NamedRef(None, 'malatya', TYPES['malatya'])
-    check_req(malatya_ref,
-              Edge([Link('malatya', Edge([]))]))
+    check_req(malatya_ref, Edge([Link('malatya', Edge([]))]))
 
     bartok_ref = NamedRef(malatya_ref, 'bartok',
                           TYPES['malatya'].__field_types__['bartok'])
-    check_req(bartok_ref,
-              Edge([Link('malatya', Edge([Field('bartok')]))]))
+    check_req(bartok_ref, Edge([Link('malatya', Edge([Field('bartok')]))]))
 
 
 def test_ref_link_one_edge_field():
     weigh_ref = NamedRef(None, 'weigh', TYPES['weigh'])
-    check_req(weigh_ref,
-              Edge([Link('weigh', Edge([]))]))
+    check_req(weigh_ref, Edge([Link('weigh', Edge([]))]))
 
     patens_ref = Ref(weigh_ref, TYPES['patens'])
-    check_req(patens_ref,
-              Edge([Link('weigh', Edge([]))]))
+    check_req(patens_ref, Edge([Link('weigh', Edge([]))]))
 
     clacks_ref = NamedRef(patens_ref, 'clacks',
                           TYPES['patens'].__field_types__['clacks'])
-    check_req(clacks_ref,
-              Edge([Link('weigh', Edge([Field('clacks')]))]))
+    check_req(clacks_ref, Edge([Link('weigh', Edge([Field('clacks')]))]))
 
 
 def test_ref_link_many_edge_field():
     comped_ref = NamedRef(None, 'comped', TYPES['comped'])
-    check_req(comped_ref,
-              Edge([Link('comped', Edge([]))]))
+    check_req(comped_ref, Edge([Link('comped', Edge([]))]))
 
     patens_ref = Ref(comped_ref, TYPES['patens'])
-    check_req(patens_ref,
-              Edge([Link('comped', Edge([]))]))
+    check_req(patens_ref, Edge([Link('comped', Edge([]))]))
 
     clacks_ref = NamedRef(patens_ref, 'clacks',
                           TYPES['patens'].__field_types__['clacks'])
-    check_req(clacks_ref,
-              Edge([Link('comped', Edge([Field('clacks')]))]))
+    check_req(clacks_ref, Edge([Link('comped', Edge([Field('clacks')]))]))
+
+
+def test_ref_link_maybe_edge_field():
+    print(TYPES['civics'])
+    civics_ref = NamedRef(None, 'civics', TYPES['civics'])
+    check_req(civics_ref, Edge([Link('civics', Edge([]))]))
+
+    patens_ref = Ref(civics_ref, TYPES['patens'])
+    check_req(patens_ref, Edge([Link('civics', Edge([]))]))
+
+    clacks_ref = NamedRef(patens_ref, 'clacks',
+                          TYPES['patens'].__field_types__['clacks'])
+    check_req(clacks_ref, Edge([Link('civics', Edge([Field('clacks')]))]))
 
 
 def test_ref_add_req():
@@ -271,4 +276,11 @@ def test_query_dict():
              {'a': foo(S.weigh), 'b': foo(S.x)}),
         Edge([Link('comped', Edge([Field('clacks'), Field('panicle')])),
               Link('weigh', Edge([Field('clacks'), Field('panicle')]))]),
+    )
+
+
+def test_query_optional():
+    check_query(
+        if_some([S.x, S.civics], S.x.clacks, 'false'),
+        Edge([Link('civics', Edge([Field('clacks')]))]),
     )
