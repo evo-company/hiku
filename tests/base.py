@@ -3,10 +3,10 @@ from contextlib import contextmanager
 try:
     from itertools import zip_longest
     from unittest.mock import patch as _patch, Mock as _Mock
-    from unittest.mock import call as _call
+    from unittest.mock import call as _call, ANY as _ANY
 except ImportError:
     from mock import patch as _patch, Mock as _Mock
-    from mock import call as _call
+    from mock import call as _call, ANY as _ANY
     from itertools import izip_longest as zip_longest
 
 from hiku.refs import Ref
@@ -16,6 +16,7 @@ from hiku.query import Field, Link, Edge
 patch = _patch
 Mock = _Mock
 call = _call
+ANY = _ANY
 
 
 def _ne(self, other):

@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 from concurrent.futures import ThreadPoolExecutor
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
@@ -18,8 +17,9 @@ from hiku.executors.threads import ThreadsExecutor
 from .base import TestCase
 
 
+SA_ENGINE = 'sa-engine'
+
 metadata = MetaData()
-session = scoped_session(sessionmaker())
 
 foo_table = Table(
     'foo',
@@ -55,16 +55,16 @@ def not_found_list():
     return [6, -1, 4]
 
 
-foo_query = sa.FieldsQuery(session, foo_table)
+foo_query = sa.FieldsQuery(SA_ENGINE, foo_table)
 
-bar_query = sa.FieldsQuery(session, bar_table)
+bar_query = sa.FieldsQuery(SA_ENGINE, bar_table)
 
 
-to_foo_query = sa.LinkQuery(Many, session, edge='foo',
+to_foo_query = sa.LinkQuery(Many, SA_ENGINE, edge='foo',
                             from_column=foo_table.c.bar_id,
                             to_column=foo_table.c.id)
 
-to_bar_query = sa.LinkQuery(Maybe, session, edge='bar',
+to_bar_query = sa.LinkQuery(Maybe, SA_ENGINE, edge='bar',
                             from_column=bar_table.c.id,
                             to_column=bar_table.c.id)
 
@@ -97,20 +97,19 @@ thread_pool = ThreadPoolExecutor(2)
 class TestSourceSQL(TestCase):
 
     def setUp(self):
-        sa_engine = create_engine(
+        self.sa_engine = create_engine(
             'sqlite://',
             connect_args={'check_same_thread': False},
             poolclass=StaticPool,
         )
-        metadata.create_all(sa_engine)
-        session.configure(bind=sa_engine)
+        metadata.create_all(self.sa_engine)
 
         for r in [
             {'id': 4, 'name': 'bar1', 'type': 1},
             {'id': 5, 'name': 'bar2', 'type': 2},
             {'id': 6, 'name': 'bar3', 'type': 3},
         ]:
-            sa_engine.execute(bar_table.insert(), r)
+            self.sa_engine.execute(bar_table.insert(), r)
 
         for r in [
             {'name': 'foo1', 'count': 5, 'bar_id': None},
@@ -120,12 +119,9 @@ class TestSourceSQL(TestCase):
             {'name': 'foo5', 'count': 25, 'bar_id': 5},
             {'name': 'foo6', 'count': 30, 'bar_id': 4},
         ]:
-            sa_engine.execute(foo_table.insert(), r)
+            self.sa_engine.execute(foo_table.insert(), r)
 
         self.engine = Engine(ThreadsExecutor(thread_pool))
-
-    def tearDown(self):
-        session.remove()
 
     def testTypes(self):
         self.assertIsInstance(
@@ -138,12 +134,14 @@ class TestSourceSQL(TestCase):
         )
 
     def assertExecute(self, src, value):
-        result = self.engine.execute(GRAPH, read(src))
+        result = self.engine.execute(GRAPH, read(src),
+                                     {SA_ENGINE: self.sa_engine})
         self.assertResult(result, value)
 
     def testSameTable(self):
         with self.assertRaisesRegexp(ValueError, 'should belong'):
-            sa.LinkQuery(Many, session, edge='bar', from_column=foo_table.c.id,
+            sa.LinkQuery(Many, SA_ENGINE, edge='bar',
+                         from_column=foo_table.c.id,
                          to_column=bar_table.c.id)
 
     def testMissingColumn(self):

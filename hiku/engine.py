@@ -126,11 +126,18 @@ def get_options(graph_obj, query_obj):
 
 class Query(Workflow):
 
-    def __init__(self, queue, task_set, graph):
+    def __init__(self, queue, task_set, graph, ctx):
         self._queue = queue
         self._task_set = task_set
         self.graph = graph
+        self._ctx = ctx
         self._result = Result()
+
+    def _submit(self, func, *args, **kwargs):
+        if _do_pass_context(func):
+            return self._task_set.submit(func, self._ctx, *args, **kwargs)
+        else:
+            return self._task_set.submit(func, *args, **kwargs)
 
     def result(self):
         return self._result
@@ -151,13 +158,14 @@ class Query(Workflow):
         # schedule fields resolve
         to_fut = {}
         for func, func_fields in from_func.items():
-            if getattr(func, '__subquery__', None):
+            if _is_subquery(func):
                 task_set = self._queue.fork(self._task_set)
                 if ids is not None:
-                    result_proc = func(self._queue, task_set, edge, func_fields,
-                                       ids)
+                    result_proc = func(self._queue, self._ctx, task_set,
+                                       edge, func_fields, ids)
                 else:
-                    result_proc = func(self._queue, task_set, edge, func_fields)
+                    result_proc = func(self._queue, self._ctx, task_set,
+                                       edge, func_fields)
                 to_fut[func] = task_set
                 self._queue.add_callback(task_set, (
                     lambda:
@@ -165,9 +173,9 @@ class Query(Workflow):
                 ))
             else:
                 if ids is not None:
-                    fut = self._task_set.submit(func, func_fields, ids)
+                    fut = self._submit(func, func_fields, ids)
                 else:
-                    fut = self._task_set.submit(func, func_fields)
+                    fut = self._submit(func, func_fields)
                 to_fut[func] = fut
                 self._queue.add_callback(fut, (
                     lambda _fut=fut, _func_fields=func_fields:
@@ -186,9 +194,9 @@ class Query(Workflow):
             else:
                 if graph_link.options:
                     options = get_options(graph_link, query_link)
-                    fut = self._task_set.submit(graph_link.func, options)
+                    fut = self._submit(graph_link.func, options)
                 else:
-                    fut = self._task_set.submit(graph_link.func)
+                    fut = self._submit(graph_link.func)
                 self._queue.add_callback(fut, (
                     lambda _fut=fut, _gl=graph_link, _qe=query_link.edge:
                     self.process_link(edge, _gl, _qe, ids, _fut.result())
@@ -198,9 +206,9 @@ class Query(Workflow):
         reqs = link_reqs(self._result, edge, graph_link, ids)
         if graph_link.options:
             options = get_options(graph_link, query_link)
-            fut = self._task_set.submit(graph_link.func, reqs, options)
+            fut = self._submit(graph_link.func, reqs, options)
         else:
-            fut = self._task_set.submit(graph_link.func, reqs)
+            fut = self._submit(graph_link.func, reqs)
         self._queue.add_callback(fut, (
             lambda:
             self.process_link(edge, graph_link, query_link.edge, ids,
@@ -215,14 +223,45 @@ class Query(Workflow):
                               to_ids)
 
 
+def pass_context(func):
+    func.__pass_context__ = True
+    return func
+
+
+def _do_pass_context(func):
+    return getattr(func, '__pass_context__', False)
+
+
+def subquery(func):
+    func.__subquery__ = True
+    return func
+
+
+def _is_subquery(func):
+    return getattr(func, '__subquery__', False)
+
+
+class Context(object):
+
+    def __init__(self, mapping):
+        self.__mapping = mapping
+
+    def __getitem__(self, item):
+        try:
+            return self.__mapping[item]
+        except KeyError:
+            raise KeyError('Context variable {!r} is not specified '
+                           'in the query context'.format(item))
+
+
 class Engine(object):
 
     def __init__(self, executor):
         self.executor = executor
 
-    def execute(self, graph, pattern):
+    def execute(self, graph, pattern, ctx=None):
         queue = Queue(self.executor)
         task_set = queue.fork(None)
-        q = Query(queue, task_set, graph)
+        q = Query(queue, task_set, graph, Context(ctx or {}))
         q.process_edge(q.graph.root, pattern, None)
         return self.executor.process(queue, q)

@@ -6,7 +6,7 @@ from ..expr import to_expr
 from ..graph import Link, Field, Many
 from ..query import merge
 from ..utils import kw_only
-from ..engine import Query, store_fields
+from ..engine import Query, store_fields, subquery
 from ..checker import check, graph_types, fn_types
 from ..compiler import ExpressionCompiler
 from ..typedef.types import Unknown
@@ -66,8 +66,8 @@ class Expr(Field):
         self.proc = eval(compile(code, '<expr>', 'eval'))
 
 
+@subquery
 class SubGraph(object):
-    __subquery__ = True
 
     def __init__(self, graph, edge):
         self.graph = graph
@@ -77,7 +77,7 @@ class SubGraph(object):
         types['this'] = types[edge]  # make an alias
         self.types = types
 
-    def __call__(self, queue, task_set, edge, fields, ids):
+    def __call__(self, queue, ctx, task_set, edge, fields, ids):
         graph_fields = [edge.fields_map[f.name] for f in fields]
         fn_env = {f.__fn_name__: f.fn
                   for f in chain.from_iterable(e.functions
@@ -96,7 +96,7 @@ class SubGraph(object):
         other_reqs = query.Edge([r for r in reqs.fields
                                  if r.name != 'this'])
 
-        q = Query(queue, task_set, self.graph)
+        q = Query(queue, task_set, self.graph, ctx)
         q.process_link(self.graph.root, this_link, this_req, None, ids)
         q.process_edge(self.graph.root, other_reqs, None)
         return _create_result_proc(q, fn_env, edge, fields, procs,

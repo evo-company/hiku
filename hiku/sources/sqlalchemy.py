@@ -8,12 +8,14 @@ from ..utils import kw_only
 from ..types import String, Integer
 from ..graph import Field as FieldBase, Link as LinkBase
 from ..graph import Nothing, Maybe, One, Many
+from ..engine import pass_context
 
 
+@pass_context
 class FieldsQuery(object):
 
-    def __init__(self, connection, from_clause, primary_key=None):
-        self.connection = connection
+    def __init__(self, connectable_ctx_var, from_clause, primary_key=None):
+        self.connectable_ctx_var = connectable_ctx_var
         self.from_clause = from_clause
         if primary_key is not None:
             self.primary_key = primary_key
@@ -21,7 +23,7 @@ class FieldsQuery(object):
             # currently only one column supported
             self.primary_key, = from_clause.primary_key
 
-    def __call__(self, fields_, ids):
+    def __call__(self, ctx, fields_, ids):
         if not ids:
             return []
 
@@ -31,7 +33,9 @@ class FieldsQuery(object):
             .select_from(self.from_clause)
             .where(self.primary_key.in_(ids))
         )
-        rows = self.connection.execute(expr).fetchall()
+        connectable = ctx[self.connectable_ctx_var]
+        with connectable.connect() as connection:
+            rows = connection.execute(expr).fetchall()
         rows_map = {row[self.primary_key]: [row[c] for c in columns]
                     for row in rows}
 
@@ -84,11 +88,12 @@ _MAPPERS = {
 }
 
 
+@pass_context
 class LinkQuery(object):
 
-    def __init__(self, type_, connection, **kwargs):
+    def __init__(self, type_, connectable_ctx_var, **kwargs):
         self.type = type_
-        self.connection = connection
+        self.connectable_ctx_var = connectable_ctx_var
         edge, from_column, to_column = \
             kw_only(kwargs, ['edge', 'from_column', 'to_column'])
 
@@ -100,7 +105,7 @@ class LinkQuery(object):
         self.from_column = from_column
         self.to_column = to_column
 
-    def __call__(self, ids):
+    def __call__(self, ctx, ids):
         filtered_ids = frozenset(filter(None, ids))
         if filtered_ids:
             expr = (
@@ -108,7 +113,9 @@ class LinkQuery(object):
                                    self.to_column.label('to_column')])
                 .where(self.from_column.in_(filtered_ids))
             )
-            pairs = self.connection.execute(expr).fetchall()
+            connectable = ctx[self.connectable_ctx_var]
+            with connectable.connect() as connection:
+                pairs = connection.execute(expr).fetchall()
         else:
             pairs = []
         mapper = _MAPPERS[self.type]

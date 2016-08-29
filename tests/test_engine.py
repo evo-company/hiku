@@ -2,14 +2,16 @@ from __future__ import unicode_literals
 
 from concurrent.futures import ThreadPoolExecutor
 
+import pytest
+
 from hiku import query
 from hiku.graph import Graph, Edge, Field, Link, Option, Root, Many
 from hiku.types import Record, Sequence, Integer, Optional
-from hiku.engine import Engine
+from hiku.engine import Engine, pass_context, Context
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
 
-from .base import patch, reqs_eq_patcher, check_result
+from .base import patch, reqs_eq_patcher, check_result, ANY
 
 
 def query_fields1(*args, **kwargs):
@@ -32,50 +34,45 @@ def query_link2(*args, **kwargs):
     pass
 
 
-def _(func):
-    def wrapper(*args, **kwargs):
-        return globals()[func.__name__](*args, **kwargs)
-    return wrapper
-
-
 def _patch(func):
     return patch('{}.{}'.format(__name__, getattr(func, '__name__')))
 
 
-GRAPH = Graph([
-    Edge('tergate', [
-        # simple fields
-        Field('arion', _(query_fields1)),
-        Field('bhaga', _(query_fields2)),
-        # complex fields
-        Field('eches', Optional[Record[{'gone': Integer}]],
-              _(query_fields1)),
-        Field('lappin', Record[{'sodden': Integer}],
-              _(query_fields2)),
-        Field('ant', Sequence[Record[{'circlet': Integer}]],
-              _(query_fields3)),
-    ]),
-    Root([
-        Field('indice', _(query_fields1)),
-        Field('unmined', _(query_fields2)),
-        Edge('kameron', [
-            Field('buran', _(query_fields1)),
-            Field('updated', _(query_fields2)),
+def get_graph():
+    return Graph([
+        Edge('tergate', [
+            # simple fields
+            Field('arion', query_fields1),
+            Field('bhaga', query_fields2),
+            # complex fields
+            Field('eches', Optional[Record[{'gone': Integer}]],
+                  query_fields1),
+            Field('lappin', Record[{'sodden': Integer}],
+                  query_fields2),
+            Field('ant', Sequence[Record[{'circlet': Integer}]],
+                  query_fields3),
         ]),
-        Link('subaru', Many, _(query_link1), edge='tergate', requires=None),
-        Link('jessie', Many, _(query_link2), edge='tergate', requires=None),
-        # with options
-        Link('doubled', Many, _(query_link1), edge='tergate', requires=None,
-             options=[Option('empower', default='deedily_reaving')]),
-    ]),
-])
+        Root([
+            Field('indice', query_fields1),
+            Field('unmined', query_fields2),
+            Edge('kameron', [
+                Field('buran', query_fields1),
+                Field('updated', query_fields2),
+            ]),
+            Link('subaru', Many, query_link1, edge='tergate', requires=None),
+            Link('jessie', Many, query_link2, edge='tergate', requires=None),
+            # with options
+            Link('doubled', Many, query_link1, edge='tergate', requires=None,
+                 options=[Option('empower', default='deedily_reaving')]),
+        ]),
+    ])
 
 thread_pool = ThreadPoolExecutor(2)
 
 
-def execute(query_):
+def execute(query_, ctx=None):
     engine = Engine(ThreadsExecutor(thread_pool))
-    return engine.execute(GRAPH, read(query_))
+    return engine.execute(get_graph(), read(query_), ctx=ctx)
 
 
 def test_root_fields():
@@ -238,3 +235,36 @@ def test_link_option_unknown():
         with reqs_eq_patcher():
             ql1.assert_called_once_with({'empower': 'hanna_gourds'})
             qf1.assert_called_once_with([query.Field('arion')], [1])
+
+
+def test_pass_context_field():
+    with _patch(query_fields1) as qf1:
+        qf1.return_value = ['boiardo_sansei']
+        pass_context(qf1)
+        check_result(execute('[:indice]', {'vetch': 'ringed_shadier'}),
+                     {'indice': 'boiardo_sansei'})
+        with reqs_eq_patcher():
+            qf1.assert_called_once_with(ANY, [query.Field('indice')])
+            ctx = qf1.call_args[0][0]
+            assert isinstance(ctx, Context)
+            assert ctx['vetch'] == 'ringed_shadier'
+            with pytest.raises(KeyError):
+                _ = ctx['invalid']  # noqa
+
+
+def test_pass_context_link():
+    with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
+        ql1.return_value = [1]
+        pass_context(ql1)
+        qf1.return_value = [['boners_friezes']]
+        result = execute('[{:subaru [:arion]}]', {'fibs': 'dossil_feuded'})
+        check_result(result, {'subaru': [{'arion': 'boners_friezes'}]})
+        assert result.index == {'tergate': {1: {'arion': 'boners_friezes'}}}
+        with reqs_eq_patcher():
+            ql1.assert_called_once_with(ANY)
+            qf1.assert_called_once_with([query.Field('arion')], [1])
+            ctx = ql1.call_args[0][0]
+            assert isinstance(ctx, Context)
+            assert ctx['fibs'] == 'dossil_feuded'
+            with pytest.raises(KeyError):
+                _ = ctx['invalid']  # noqa
