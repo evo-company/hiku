@@ -42,9 +42,10 @@ class ConsoleApplication(object):
         'docs_url': '/docs',
     }
 
-    def __init__(self, root, engine, debug=False):
+    def __init__(self, root, engine, ctx=None, debug=False):
         self.root = root
         self.engine = engine
+        self.ctx = ctx
         self.debug = debug
         self._console_html = string.Template(_decode(
             pkgutil.get_data('hiku.console', 'assets/console.html')
@@ -114,7 +115,7 @@ class ConsoleApplication(object):
                 result = {'errors': validator.errors.list}
                 status = '400 Bad Request'
             else:
-                result = self.engine.execute(self.root, query)
+                result = self.engine.execute(self.root, query, ctx=self.ctx)
                 result = denormalize(self.root, result, query)
                 status = '200 OK'
         except Exception:
