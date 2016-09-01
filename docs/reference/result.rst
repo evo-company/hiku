@@ -1,0 +1,2 @@
+.. automodule:: hiku.result
+   :members:

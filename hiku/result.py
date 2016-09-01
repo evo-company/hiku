@@ -1,3 +1,22 @@
+"""
+hiku.result
+===========
+
+Throughout documentation all query result examples are showed as **denormalized
+hierarchical** `JSON`-like value, but this is not how `Hiku` stores results
+internally.
+
+Internally, `Hiku` stores results in the **fully normalized** way. So
+result in `Hiku` is also a graph-like structure with references between
+objects. This approach has lots of advantages:
+
+* normalization helps to heavily reduce serialized result size when we need
+  to transfer it (avoids data duplication);
+* it reduces internal memory usage and simplifies work with data internally;
+* gives ability to cache, precisely and effortlessly update local state
+  on the client;
+"""
+
 from collections import defaultdict
 
 from .types import RecordMeta, OptionalMeta, SequenceMeta
