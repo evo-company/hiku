@@ -248,7 +248,7 @@ class AbstractGraph(AbstractNode):
 
 
 class Graph(AbstractGraph):
-    """Collection of edges - definition of the graph
+    """Collection of edges - definition of the graph
 
     *class* ``hiku.graph.Graph(items)``
 
