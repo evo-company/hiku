@@ -156,6 +156,8 @@ Linking Edge to Edge
 
 Let's extend our data with one more entity - ``actor``:
 
+.. _introduction-data:
+
 .. code-block:: python
 
   data = {
