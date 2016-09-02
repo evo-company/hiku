@@ -1,5 +1,5 @@
-Graph definition
-================
+Introduction
+============
 
 Prerequisites
 ~~~~~~~~~~~~~
@@ -11,7 +11,7 @@ will need to setup an environment:
 
   $ pip install hiku
 
-And let's create a Python module for our playground (for example ``sandbox.py``):
+And let's create a Python module for our playground (for example `sandbox.py`):
 
 .. code-block:: python
 
@@ -38,9 +38,10 @@ And let's create a Python module for our playground (for example ``sandbox.py``)
       http_server = make_server('localhost', 5000, app)
       http_server.serve_forever()
 
-This is the simplest Graph_ with only one Field_ in the Root_ edge. You can try
-to query this field using special web console, which will start when we
-will try to run our module:
+This is the simplest :py:class:`~hiku.graph.Graph` with only one
+:py:class:`~hiku.graph.Field` in the :py:class:`~hiku.graph.Root` edge. You can
+try to query this field using special web console, which will start when
+we will try to run our module:
 
 .. code-block:: shell
 
@@ -61,10 +62,10 @@ You should get this result:
   }
 
 In the reference documentation you can learn about
-Field_ class and it's arguments. As you can see, we are using
-lambda-function as ``func`` argument and ignoring first positional
+:py:class:`~hiku.graph.Field` class and it's arguments. As you can see, we
+are using lambda-function as ``func`` argument and ignoring first positional
 argument. This argument is a ``fields`` argument of type
-``Sequence[hiku.qeury.Field]``. It is ignored because this function
+``Sequence[hiku.query.Field]``. It is ignored because this function
 is used only to resolve one fields value.
 
 Introducing Edge and Link
@@ -78,12 +79,17 @@ First of all lets define our data:
   data = {
       'character': {
           1: dict(name='James T. Kirk', species='Human'),
-          2: dict(name='Spock',         species='Vulcan/Human'),
+          2: dict(name='Spock', species='Vulcan/Human'),
           3: dict(name='Leonard McCoy', species='Human'),
       },
   }
 
-Then lets extend our graph with one Edge_ and one Link_:
+.. note:: For simplicity we will use in-memory data structures to store our data.
+  How to load data from more sophisticated sources like databases will be
+  explained in the next chapters.
+
+Then lets extend our graph with one :py:class:`~hiku.graph.Edge` and one
+:py:class:`~hiku.graph.Link`:
 
 .. code-block:: python
 
@@ -135,7 +141,7 @@ And get this result:
   }
 
 ``get_character_data`` function is used to resolve values for two
-fields in the `character` edge. As you can see
+fields in the ``character`` edge. As you can see
 it returns basically a list of lists with values in the same order as
 it was requested in arguments (order of ids and fields should be
 preserved).
@@ -148,27 +154,27 @@ data together).
 Linking Edge to Edge
 ~~~~~~~~~~~~~~~~~~~~
 
-Let's extend our data with one more entity - `actor`:
+Let's extend our data with one more entity - ``actor``:
 
 .. code-block:: python
 
   data = {
       'character': {
           1: dict(id=1, name='James T. Kirk', species='Human'),
-          2: dict(id=2, name='Spock',         species='Vulcan/Human'),
+          2: dict(id=2, name='Spock', species='Vulcan/Human'),
           3: dict(id=3, name='Leonard McCoy', species='Human'),
       },
       'actor': {
-          1: dict(id=1, name='William Shatner', character_id=1),
-          2: dict(id=2, name='Leonard Nimoy',   character_id=2),
-          3: dict(id=3, name='DeForest Kelley', character_id=3),
-          4: dict(id=4, name='Chris Pine',      character_id=1),
-          5: dict(id=5, name='Zachary Quinto',  character_id=2),
-          6: dict(id=6, name='Karl Urban',      character_id=3),
+          1: dict(id=1, character_id=1, name='William Shatner'),
+          2: dict(id=2, character_id=2, name='Leonard Nimoy'),
+          3: dict(id=3, character_id=3, name='DeForest Kelley'),
+          4: dict(id=4, character_id=1, name='Chris Pine'),
+          5: dict(id=5, character_id=2, name='Zachary Quinto'),
+          6: dict(id=6, character_id=3, name='Karl Urban'),
       },
   }
 
-And actor will have a reference to the played character - `character_id`.
+And actor will have a reference to the played character - ``character_id``.
 
 .. code-block:: python
 
@@ -203,17 +209,17 @@ And actor will have a reference to the played character - `character_id`.
       return [mapping[id_] for id_ in ids]
 
   graph = Graph([
-      Edge('character', [
-          Field('id', get_character_data),
+      Edge('character', [  # 1
+          Field('id', get_character_data),  # 2
           Field('name', get_character_data),
           Field('species', get_character_data),
-          Link('actors', Many, actors_link,
+          Link('actors', Many, actors_link,  # 3
                edge='actor', requires='id'),
       ]),
-      Edge('actor', [
+      Edge('actor', [  # 4
           Field('id', get_actor_data),
           Field('name', get_actor_data),
-          Link('character', One, character_link,
+          Link('character', One, character_link,  # 5
                edge='character', requires='id'),
       ]),
       Root([
@@ -223,10 +229,11 @@ And actor will have a reference to the played character - `character_id`.
       ]),
   ])
 
-``actors`` Link_, defined in the ``character`` edge, requires ``id`` field to
-map `characters` to `actors`. That's why ``id`` field was added to the
-``character`` edge. The same work should be done in the ``actor`` edge to
-implement backward ``character`` link.
+Here ``actors`` :py:class:`~hiku.graph.Link` :sup:`[3]`, defined in the
+``character`` edge :sup:`[1]`, requires ``id`` field :sup:`[2]` to map characters
+to actors. That's why ``id`` field :sup:`[2]` was added to the ``character`` edge
+:sup:`[1]`. The same work should be done in the ``actor`` edge :sup:`[4]` to
+implement backward ``character`` link :sup:`[5]`.
 
 Now we can include linked edge fields in our query:
 
@@ -299,9 +306,3 @@ Conclusions
 
 1. Now you know how to describe data as graph;
 2. You can present in graph any data from any source.
-
-.. _Graph: ../Reference:-graph#graph
-.. _Edge: ../Reference:-graph#edge
-.. _Root: ../Reference:-graph#rootedge
-.. _Field: ../Reference:-graph#field
-.. _Link: ../Reference:-graph#link
