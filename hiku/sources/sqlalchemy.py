@@ -14,8 +14,8 @@ from ..engine import pass_context
 @pass_context
 class FieldsQuery(object):
 
-    def __init__(self, connectable_ctx_var, from_clause, primary_key=None):
-        self.connectable_ctx_var = connectable_ctx_var
+    def __init__(self, sa_engine_ctx_var, from_clause, primary_key=None):
+        self.sa_engine_ctx_var = sa_engine_ctx_var
         self.from_clause = from_clause
         if primary_key is not None:
             self.primary_key = primary_key
@@ -23,24 +23,34 @@ class FieldsQuery(object):
             # currently only one column supported
             self.primary_key, = from_clause.primary_key
 
-    def __call__(self, ctx, fields_, ids):
-        if not ids:
-            return []
-
+    def __select_expr__(self, fields_, ids):
         columns = [getattr(self.from_clause.c, f.name) for f in fields_]
         expr = (
             sqlalchemy.select([self.primary_key] + columns)
             .select_from(self.from_clause)
             .where(self.primary_key.in_(ids))
         )
-        connectable = ctx[self.connectable_ctx_var]
-        with connectable.connect() as connection:
-            rows = connection.execute(expr).fetchall()
-        rows_map = {row[self.primary_key]: [row[c] for c in columns]
-                    for row in rows}
 
-        nulls = [None for _ in fields_]
-        return [rows_map.get(id_, nulls) for id_ in ids]
+        def result_proc(rows):
+            rows_map = {row[self.primary_key]: [row[c] for c in columns]
+                        for row in rows}
+
+            nulls = [None for _ in fields_]
+            return [rows_map.get(id_, nulls) for id_ in ids]
+
+        return expr, result_proc
+
+    def __call__(self, ctx, fields_, ids):
+        if not ids:
+            return []
+
+        expr, result_proc = self.__select_expr__(fields_, ids)
+
+        sa_engine = ctx[self.sa_engine_ctx_var]
+        with sa_engine.connect() as connection:
+            rows = connection.execute(expr).fetchall()
+
+        return result_proc(rows)
 
 
 def _translate_type(column):
@@ -91,9 +101,9 @@ _MAPPERS = {
 @pass_context
 class LinkQuery(object):
 
-    def __init__(self, type_, connectable_ctx_var, **kwargs):
+    def __init__(self, type_, sa_engine_ctx_var, **kwargs):
         self.type = type_
-        self.connectable_ctx_var = connectable_ctx_var
+        self.sa_engine_ctx_var = sa_engine_ctx_var
         edge, from_column, to_column = \
             kw_only(kwargs, ['edge', 'from_column', 'to_column'])
 
@@ -105,7 +115,7 @@ class LinkQuery(object):
         self.from_column = from_column
         self.to_column = to_column
 
-    def __call__(self, ctx, ids):
+    def __select_expr__(self, ids):
         filtered_ids = frozenset(filter(None, ids))
         if filtered_ids:
             expr = (
@@ -113,13 +123,24 @@ class LinkQuery(object):
                                    self.to_column.label('to_column')])
                 .where(self.from_column.in_(filtered_ids))
             )
-            connectable = ctx[self.connectable_ctx_var]
-            with connectable.connect() as connection:
-                pairs = connection.execute(expr).fetchall()
         else:
+            expr = None
+
+        def result_proc(pairs):
+            mapper = _MAPPERS[self.type]
+            return mapper(pairs, ids)
+
+        return expr, result_proc
+
+    def __call__(self, ctx, ids):
+        expr, result_proc = self.__select_expr__(ids)
+        if expr is None:
             pairs = []
-        mapper = _MAPPERS[self.type]
-        return mapper(pairs, ids)
+        else:
+            sa_engine = ctx[self.sa_engine_ctx_var]
+            with sa_engine.connect() as connection:
+                pairs = connection.execute(expr).fetchall()
+        return result_proc(pairs)
 
 
 class Link(LinkBase):

@@ -1,0 +1,27 @@
+- !Image
+  name: env
+  from: !DockerImage alpine:3.4
+  repository: reg.local/hiku/env35
+  provision-with: !AnsibleTasks
+    - raw: apk add --no-cache python3 libpq
+    - raw: apk add --no-cache --virtual .build-deps python3-dev postgresql-dev musl-dev gcc
+    - pip: name={{item}} executable=pip3 extra_args='--no-cache-dir'
+      with_items:
+        - pytest==3.0.2
+        - sqlalchemy==1.0.15
+        - psycopg2==2.6.2
+        - aiopg==0.10.0
+    - raw: apk del .build-deps
+
+- !Service
+  name: postgres
+  image: !DockerImage onjin/alpine-postgres:9.5
+
+- !ShellCommand
+  name: test
+  requires:
+    - postgres
+  params:
+    - !Argument {name: tests, default: tests3}
+  image: env
+  shell: py.test -q --tb=native {{tests}}

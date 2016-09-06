@@ -2,13 +2,21 @@ import json
 from io import BytesIO
 from wsgiref.util import setup_testing_defaults
 
+from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
+
 from hiku.engine import Engine
+from hiku.sources import sqlalchemy as sa
 from hiku.console.ui import ConsoleApplication
 from hiku.executors.sync import SyncExecutor
 
-from .test_source_sqlalchemy import GRAPH, SA_ENGINE, TestSourceSQL
+from .test_source_sqlalchemy import SA_ENGINE, SyncQueries, setup_db
+from .test_source_sqlalchemy import get_queries, get_graph
+
 
 engine = Engine(SyncExecutor())
+
+GRAPH = get_graph(sa, get_queries(sa, SA_ENGINE, SyncQueries))
 
 
 def request(app, method, path_info, script_name='', payload=None):
@@ -44,10 +52,14 @@ def test_docs():
 
 
 def test_query():
-    test = TestSourceSQL(methodName='testManyToOne')
-    test.setUp()
+    sa_engine = create_engine(
+        'sqlite://',
+        connect_args={'check_same_thread': False},
+        poolclass=StaticPool,
+    )
+    setup_db(sa_engine)
 
-    app = ConsoleApplication(GRAPH, engine, {SA_ENGINE: test.sa_engine},
+    app = ConsoleApplication(GRAPH, engine, {SA_ENGINE: sa_engine},
                              debug=True)
     query = b'[{:bar-list [:name :type {:foo-s [:name :count]}]}]'
 

@@ -1,4 +1,4 @@
-from asyncio import wait, FIRST_COMPLETED
+from asyncio import wait, FIRST_COMPLETED, coroutine
 
 
 class AsyncIOExecutor(object):
@@ -9,6 +9,7 @@ class AsyncIOExecutor(object):
     def submit(self, fn, *args, **kwargs):
         return self._loop.create_task(fn(*args, **kwargs))
 
+    @coroutine
     def process(self, queue, workflow):
         while queue.__futures__:
             done, _ = yield from wait(queue.__futures__,
