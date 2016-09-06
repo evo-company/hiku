@@ -1,9 +1,13 @@
+from functools import wraps
 from itertools import chain
 from collections import namedtuple
 
 from .edn import loads
+from .query import Edge, Link, Field
+from .types import Record, Callable
 from .nodes import Symbol, Tuple, List, Keyword, Dict
 from .compat import text_type, string_types
+from .typedef.types import Unknown
 from .readers.simple import transform
 
 
@@ -33,7 +37,7 @@ def _to_expr(obj, fn_reg):
         return obj.obj
     elif isinstance(obj, _Func):
         fn_reg.add(obj.expr)
-        return Tuple([Symbol(obj.expr.__fn_name__)] +
+        return Tuple([Symbol(obj.expr.__def_name__)] +
                      [_to_expr(arg, fn_reg) for arg in obj.args])
     elif isinstance(obj, list):
         return List(_to_expr(v, fn_reg) for v in obj)
@@ -51,39 +55,53 @@ def to_expr(obj):
     return node, tuple(functions)
 
 
+def _query_to_types(obj):
+    if isinstance(obj, Edge):
+        return Record[[(f.name, _query_to_types(f)) for f in obj.fields]]
+    elif isinstance(obj, Link):
+        return _query_to_types(obj.edge)
+    elif isinstance(obj, Field):
+        return Unknown
+    else:
+        raise TypeError(type(obj))
+
+
 def define(*requires, **kwargs):
     def decorator(fn):
-        name = kwargs.pop('_name', None)
-        name = name or '{}/{}_{}'.format(fn.__module__, fn.__name__, id(fn))
-        assert not kwargs, 'Unknown keyword arguments: {!r}'.format(kwargs)
+        _name = kwargs.pop('_name', None)
+        assert not kwargs, repr(kwargs)
 
+        name = _name or '{}/{}_{}'.format(fn.__module__, fn.__name__, id(fn))
+
+        @wraps(fn)
         def expr(*args):
             return _Func(expr, args)
 
-        expr.fn = fn
-        expr.__fn_name__ = name
+        expr.__def_name__ = name
+        expr.__def_body__ = fn
 
         if len(requires) == 1 and isinstance(requires[0], string_types):
             reqs_list = loads(text_type(requires[0]))
-            expr.__requires__ = [transform(reqs) if reqs is not None else None
-                                 for reqs in reqs_list]
+            expr.__def_type__ = Callable[[(_query_to_types(transform(r))
+                                           if r is not None else Unknown)
+                                          for r in reqs_list]]
         else:
-            expr.__requires__ = requires
+            expr.__def_type__ = Callable[requires]
 
         return expr
     return decorator
 
 
-@define(None, None, None, _name='each')
+@define(Unknown, Unknown, Unknown, _name='each')
 def each(var, col, expr):
     pass
 
 
-@define(None, None, None, _name='if')
+@define(Unknown, Unknown, Unknown, _name='if')
 def if_(test, then, else_):
     pass
 
 
-@define(None, None, None, _name='if_some')
+@define(Unknown, Unknown, Unknown, _name='if_some')
 def if_some(bind, then, else_):
     pass

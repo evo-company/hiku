@@ -79,7 +79,7 @@ class SubGraph(object):
 
     def __call__(self, queue, ctx, task_set, edge, fields, ids):
         graph_fields = [edge.fields_map[f.name] for f in fields]
-        fn_env = {f.__fn_name__: f.fn
+        fn_env = {f.__def_name__: f.__def_body__
                   for f in chain.from_iterable(e.functions
                                                for e in graph_fields)}
 

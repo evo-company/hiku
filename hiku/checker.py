@@ -1,11 +1,11 @@
 from contextlib import contextmanager
 from collections import deque, OrderedDict
 
-from . import graph, query
+from . import graph
 from .refs import NamedRef, Ref
 from .nodes import NodeTransformer, Symbol, Keyword, Tuple, List
 from .types import Sequence, SequenceMeta, Record, RecordMeta, Optional
-from .types import MappingMeta, Callable, OptionalMeta
+from .types import MappingMeta, OptionalMeta
 from .typedef.types import TypeRef, TypeRefMeta, Unknown, UnknownMeta
 
 
@@ -37,25 +37,8 @@ def graph_types(graph_):
     return GraphTypes().visit(graph_)
 
 
-def _query_to_types(obj):
-    if isinstance(obj, query.Edge):
-        return Record[[(f.name, _query_to_types(f)) for f in obj.fields]]
-    elif isinstance(obj, query.Link):
-        return _query_to_types(obj.edge)
-    elif isinstance(obj, query.Field):
-        return Unknown
-    else:
-        raise TypeError(type(obj))
-
-
 def fn_types(functions):
-    return {
-        fn.__fn_name__: Callable[[
-            _query_to_types(r) if r is not None else Unknown
-            for r in fn.__requires__
-        ]]
-        for fn in functions
-    }
+    return {fn.__def_name__: fn.__def_type__ for fn in functions}
 
 
 class Environ(object):

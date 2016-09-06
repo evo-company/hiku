@@ -1,11 +1,14 @@
 from unittest import skip
+from collections import OrderedDict
 
 from hiku import graph as g
 from hiku.expr import define, S, each, to_expr, if_some
 from hiku.refs import Ref, NamedRef, ref_to_req, RequirementsExtractor
 from hiku.graph import Many, One, Maybe
 from hiku.query import Edge, Field, Link
+from hiku.types import Record
 from hiku.checker import check, graph_types, fn_types
+from hiku.typedef.types import Unknown
 
 from .base import reqs_eq_patcher
 
@@ -151,11 +154,11 @@ def test_query_each_root_edge_link_field():
 
 def test_query_tuple_with_edge():
 
-    @define('[[:clacks :panicle]]')
+    @define(Record[OrderedDict([('clacks', Unknown), ('panicle', Unknown)])])
     def foo():
         pass
 
-    @define('[[:oloroso :gashes]]')
+    @define(Record[OrderedDict([('oloroso', Unknown), ('gashes', Unknown)])])
     def bar():
         pass
 
