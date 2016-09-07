@@ -9,24 +9,25 @@ import astor
 import pytest
 
 from hiku.expr import define, S, if_, each, to_expr, if_some
-from hiku.types import Optional, String
+from hiku.types import Optional, String, Record
 from hiku.graph import Graph, Field, Edge, Link, Root, Many, One
 from hiku.compat import PY3, PY35
 from hiku.checker import check, graph_types, fn_types
 from hiku.compiler import ExpressionCompiler
+from hiku.typedef.types import Unknown
 
 
-@define('[nil]', _name='foo')
+@define(Unknown, _name='foo')
 def foo(value):
     pass
 
 
-@define('[nil]', _name='bar')
+@define(Unknown, _name='bar')
 def bar(value):
     pass
 
 
-@define('[nil [:c]]', _name='baz')
+@define(Unknown, Record[{'c': Unknown}], _name='baz')
 def baz(a, y):
     pass
 

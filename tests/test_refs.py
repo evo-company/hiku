@@ -1,5 +1,4 @@
 from unittest import skip
-from collections import OrderedDict
 
 from hiku import graph as g
 from hiku.expr import define, S, each, to_expr, if_some
@@ -154,11 +153,11 @@ def test_query_each_root_edge_link_field():
 
 def test_query_tuple_with_edge():
 
-    @define(Record[OrderedDict([('clacks', Unknown), ('panicle', Unknown)])])
+    @define(Record[{'clacks': Unknown, 'panicle': Unknown}])
     def foo():
         pass
 
-    @define(Record[OrderedDict([('oloroso', Unknown), ('gashes', Unknown)])])
+    @define(Record[{'oloroso': Unknown, 'gashes': Unknown}])
     def bar():
         pass
 
@@ -199,7 +198,9 @@ def test_query_tuple_with_edge():
 
 def test_query_tuple_with_nested_one_edge():
 
-    @define('[[:clacks {:apatite [:oloroso :gashes]}]]')
+    @define(Record[{'clacks': Unknown,
+                    'apatite': Record[{'oloroso': Unknown,
+                                       'gashes': Unknown}]}])
     def foo():
         pass
 
@@ -220,7 +221,9 @@ def test_query_tuple_with_nested_one_edge():
 @skip('fn_types() lacks information about links (one or many)')
 def test_query_tuple_with_nested_many_edge():
 
-    @define('[[:panicle {:jakies [:oloroso :gashes]}]]')
+    @define(Record[{'panicle': Unknown,
+                    'jakies': Record[{'oloroso': Unknown,
+                                      'gashes': Unknown}]}])
     def foo():
         pass
 
@@ -240,7 +243,10 @@ def test_query_tuple_with_nested_many_edge():
 
 def test_query_tuple_with_simple_args():
 
-    @define('[[:clacks :panicle] nil [:oloroso :gashes] nil]')
+    @define(Record[{'clacks': Unknown, 'panicle': Unknown}],
+            Unknown,
+            Record[{'oloroso': Unknown, 'gashes': Unknown}],
+            Unknown)
     def foo():
         pass
 
@@ -257,7 +263,7 @@ def test_query_tuple_with_simple_args():
 
 def test_query_list():
 
-    @define('[[:clacks :panicle]]')
+    @define(Record[{'clacks': Unknown, 'panicle': Unknown}])
     def foo():
         pass
 
@@ -270,7 +276,7 @@ def test_query_list():
 
 def test_query_dict():
 
-    @define('[[:clacks :panicle]]')
+    @define(Record[{'clacks': Unknown, 'panicle': Unknown}])
     def foo():
         pass
 

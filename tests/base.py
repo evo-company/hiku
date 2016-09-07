@@ -29,9 +29,15 @@ def _eq(self, other):
     return self.__dict__ == other.__dict__
 
 
+def _edge_eq(self, other):
+    if type(self) is not type(other):
+        return False
+    return self.fields_map == dict(other.fields_map)
+
+
 _field_patch = patch.multiple(Field, __eq__=_eq, __ne__=_ne)
 _link_patch = patch.multiple(Link, __eq__=_eq, __ne__=_ne)
-_edge_patch = patch.multiple(Edge, __eq__=_eq, __ne__=_ne)
+_edge_patch = patch.multiple(Edge, __eq__=_edge_eq, __ne__=_ne)
 
 
 @contextmanager

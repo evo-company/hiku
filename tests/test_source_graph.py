@@ -5,8 +5,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 from hiku.expr import define, S, each
 from hiku.graph import Graph, Edge, Link, Field, Option, Root, Many, One
+from hiku.types import Record, Sequence
 from hiku.engine import Engine
 from hiku.sources.graph import SubGraph, Expr
+from hiku.typedef.types import Unknown
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
 
@@ -46,11 +48,11 @@ def query_y(fields, ids):
 
 
 def to_x():
-    return [1, 2, 3]
+    return [1, 3, 2]
 
 
 def to_y():
-    return [6, 5, 4]
+    return [6, 4, 5]
 
 
 def x_to_y(ids):
@@ -78,29 +80,27 @@ _GRAPH = Graph([
     Root([
         Field('f1', query_f),
         Field('f2', query_f),
-        Link('xs', Many, to_x, edge='x', requires=None),
-        Link('ys', Many, to_y, edge='y', requires=None),
     ]),
 ])
 
 
-@define('[[:b] [:d]]')
+@define(Record[{'b': Unknown}], Record[{'d': Unknown}])
 def foo(x, y):
     return '{x[y]} {y[d]}'.format(x=x, y=y).upper()
 
 
-@define('[[:b {:y [:d]}]]')
+@define(Record[{'b': Unknown, 'y': Record[{'d': Unknown}]}])
 def bar(x):
     return '{x[b]} {x[y][d]}'.format(x=x).upper()
 
 
-@define('[[:d {:xs [:b]}]]')
+@define(Record[{'d': Unknown, 'xs': Sequence[Record[{'b': Unknown}]]}])
 def baz(y):
     xs = ', '.join('{x[b]}'.format(x=x) for x in y['xs'])
     return '{y[d]} [{xs}]'.format(y=y, xs=xs).upper()
 
 
-@define('[[:a] nil]')
+@define(Record[{'a': Unknown}], Unknown)
 def buz(x, size):
     return '{x[a]} - {size}'.format(x=x, size=size)
 
@@ -118,7 +118,7 @@ GRAPH = Graph([
         Expr('f', sg_x, S.f1),
         Expr('foo', sg_x, foo(S.this, S.this.y)),
         Expr('bar', sg_x, bar(S.this)),
-        # Expr('baz', baz(S.this.y)),
+        Expr('baz', sg_x, baz(S.this.y)),
         Expr('buz', sg_x, buz(S.this, S.size), options=[Option('size')]),
         Expr('buz2', sg_x, buz(S.this, S.size),
              options=[Option('size', default=100)]),
@@ -129,31 +129,11 @@ GRAPH = Graph([
         Expr('f', sg_y, S.f2),
         Expr('foo', sg_y, each(S.x, S.this.xs, foo(S.x, S.this))),
         Expr('bar', sg_y, each(S.x, S.this.xs, bar(S.x))),
-        # Expr('baz', baz(S.this)),
+        Expr('baz', sg_y, baz(S.this)),
     ]),
     Root([
-        Edge('x1', [
-            Expr('id', sg_x, S.this.id),
-            Expr('a', sg_x, S.this.a),
-            Expr('f', sg_x, S.f1),
-            Expr('foo', sg_x, foo(S.this, S.this.y)),
-            Expr('bar', sg_x, bar(S.this)),
-            # Expr('baz', baz(S.this.y)),
-            Expr('buz', sg_x, buz(S.this, S.size), options=[Option('size')]),
-            Expr('buz2', sg_x, buz(S.this, S.size),
-                 options=[Option('size', default=100)]),
-        ]),
-        Edge('y1', [
-            Expr('id', sg_y, S.this.id),
-            Expr('c', sg_y, S.this.c),
-            Expr('f', sg_y, S.f2),
-            Expr('foo', sg_y, each(S.x, S.this.xs, foo(S.x, S.this))),
-            Expr('bar', sg_y, each(S.x, S.this.xs, bar(S.x))),
-            # Expr('baz', baz(S.this)),
-        ]),
-        # TODO: links reuse
         Link('x1s', Many, to_x, edge='x1', requires=None),
-        Link('y1s', Many, to_y, edge='y2', requires=None),
+        Link('y1s', Many, to_y, edge='y1', requires=None),
     ]),
 ])
 
@@ -167,8 +147,8 @@ class TestSourceGraph(TestCase):
         result = self.engine.execute(GRAPH, read('[{:x1s [:a :f]}]'))
         self.assertResult(result, {'x1s': [
             {'a': 'a1', 'f': 7},
-            {'a': 'a2', 'f': 7},
             {'a': 'a3', 'f': 7},
+            {'a': 'a2', 'f': 7},
         ]})
 
     def testFieldOptions(self):
@@ -176,8 +156,8 @@ class TestSourceGraph(TestCase):
                                      read('[{:x1s [(:buz {:size "100"})]}]'))
         self.assertResult(result, {'x1s': [
             {'buz': 'a1 - 100'},
-            {'buz': 'a2 - 100'},
             {'buz': 'a3 - 100'},
+            {'buz': 'a2 - 100'},
         ]})
 
     def testFieldWithoutOptions(self):
@@ -185,8 +165,8 @@ class TestSourceGraph(TestCase):
                                      read('[{:x1s [:buz]}]'))
         self.assertResult(result, {'x1s': [
             {'buz': 'a1 - None'},
-            {'buz': 'a2 - None'},
             {'buz': 'a3 - None'},
+            {'buz': 'a2 - None'},
         ]})
 
     def testFieldOptionDefaults(self):
@@ -194,13 +174,27 @@ class TestSourceGraph(TestCase):
                                      read('[{:x1s [:buz2]}]'))
         self.assertResult(result, {'x1s': [
             {'buz2': 'a1 - 100'},
-            {'buz2': 'a2 - 100'},
             {'buz2': 'a3 - 100'},
+            {'buz2': 'a2 - 100'},
         ]})
         result = self.engine.execute(GRAPH,
                                      read('[{:x1s [(:buz2 {:size 200})]}]'))
         self.assertResult(result, {'x1s': [
             {'buz2': 'a1 - 200'},
-            {'buz2': 'a2 - 200'},
             {'buz2': 'a3 - 200'},
+            {'buz2': 'a2 - 200'},
+        ]})
+
+    def testSequenceInArgType(self):
+        result = self.engine.execute(GRAPH, read('[{:x1s [:baz]}]'))
+        self.assertResult(result, {'x1s': [
+            {'baz': 'D3 [B1]'},
+            {'baz': 'D1 [B3]'},
+            {'baz': 'D2 [B2]'},
+        ]})
+        result = self.engine.execute(GRAPH, read('[{:y1s [:baz]}]'))
+        self.assertResult(result, {'y1s': [
+            {'baz': 'D3 [B1]'},
+            {'baz': 'D1 [B3]'},
+            {'baz': 'D2 [B2]'},
         ]})
