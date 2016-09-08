@@ -5,6 +5,7 @@
 
    guide/index
    reference/index
+   changelog/index
 
 Why graphs? – They are simple, predictable, flexible, easy to compose and
 because of that, they are easy to reuse.

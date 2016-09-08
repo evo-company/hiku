@@ -13,6 +13,16 @@
         - aiopg==0.10.0
     - raw: apk del .build-deps
 
+- !Image
+  name: docs
+  from: env
+  repository: reg.local/hiku/docs
+  provision-with: !AnsibleTasks
+    - pip: name={{item}} executable=pip3 extra_args='--no-cache-dir'
+      with_items:
+        - sphinx==1.4.6
+        - sphinx_rtd_theme==0.1.10a0
+
 - !Service
   name: postgres
   image: !DockerImage onjin/alpine-postgres:9.5
@@ -25,3 +35,8 @@
     - !Argument {name: tests, default: tests3}
   image: env
   shell: py.test -q --tb=native {{tests}}
+
+- !ShellCommand
+  name: docs
+  image: docs
+  shell: sphinx-build -b html docs build
