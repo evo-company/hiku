@@ -4,10 +4,9 @@ from collections import namedtuple
 
 from .edn import loads
 from .query import Edge, Link, Field
-from .types import Record, Callable
+from .types import Record, Callable, Unknown
 from .nodes import Symbol, Tuple, List, Keyword, Dict
 from .compat import text_type, string_types
-from .typedef.types import Unknown
 from .readers.simple import transform
 
 

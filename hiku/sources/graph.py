@@ -6,10 +6,10 @@ from ..expr import to_expr
 from ..graph import Link, Field, Many
 from ..query import merge
 from ..utils import kw_only
+from ..types import Unknown
 from ..engine import Query, store_fields, subquery
 from ..checker import check, graph_types, fn_types
 from ..compiler import ExpressionCompiler
-from ..typedef.types import Unknown
 
 
 THIS_LINK_NAME = '__link_to_this'

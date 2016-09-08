@@ -3,9 +3,8 @@ from __future__ import absolute_import
 from contextlib import contextmanager
 
 from ..types import Record, RecordMeta, OptionalMeta, SequenceMeta, MappingMeta
-from ..types import GenericMeta
+from ..types import GenericMeta, Unknown
 from ..checker import GraphTypes
-from ..typedef.types import Unknown
 
 from .types import TypeDef
 

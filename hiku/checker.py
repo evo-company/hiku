@@ -5,8 +5,8 @@ from . import graph
 from .refs import NamedRef, Ref
 from .nodes import NodeTransformer, Symbol, Keyword, Tuple, List
 from .types import Sequence, SequenceMeta, Record, RecordMeta, Optional
-from .types import MappingMeta, OptionalMeta
-from .typedef.types import TypeRef, TypeRefMeta, Unknown, UnknownMeta
+from .types import MappingMeta, OptionalMeta, Unknown, UnknownMeta
+from .typedef.types import TypeRef, TypeRefMeta
 
 
 class GraphTypes(graph.GraphVisitor):

@@ -5,9 +5,8 @@ from hiku.expr import define, S, each, to_expr, if_some
 from hiku.refs import Ref, NamedRef, ref_to_req, RequirementsExtractor
 from hiku.graph import Many, One, Maybe
 from hiku.query import Edge, Field, Link
-from hiku.types import Record
+from hiku.types import Record, Unknown
 from hiku.checker import check, graph_types, fn_types
-from hiku.typedef.types import Unknown
 
 from .base import reqs_eq_patcher
 

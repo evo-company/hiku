@@ -5,10 +5,9 @@ from concurrent.futures import ThreadPoolExecutor
 
 from hiku.expr import define, S, each
 from hiku.graph import Graph, Edge, Link, Field, Option, Root, Many, One
-from hiku.types import Record, Sequence
+from hiku.types import Record, Sequence, Unknown
 from hiku.engine import Engine
 from hiku.sources.graph import SubGraph, Expr
-from hiku.typedef.types import Unknown
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
 

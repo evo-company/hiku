@@ -13,6 +13,16 @@ class GenericMeta(type):
         raise NotImplementedError
 
 
+class UnknownMeta(GenericMeta):
+
+    def accept(cls, visitor):
+        return visitor.visit_unknown(cls)
+
+
+class Unknown(with_metaclass(UnknownMeta, object)):
+    pass
+
+
 class BooleanMeta(GenericMeta):
 
     def accept(cls, visitor):

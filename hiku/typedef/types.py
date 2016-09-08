@@ -1,4 +1,4 @@
-from ..types import TypingMeta, GenericMeta
+from ..types import TypingMeta
 from ..compat import with_metaclass
 
 
@@ -25,14 +25,4 @@ class TypeRefMeta(TypingMeta):
 
 
 class TypeRef(with_metaclass(TypeRefMeta, object)):
-    pass
-
-
-class UnknownMeta(GenericMeta):
-
-    def accept(cls, visitor):
-        return visitor.visit_unknown(cls)
-
-
-class Unknown(with_metaclass(UnknownMeta, object)):
     pass
