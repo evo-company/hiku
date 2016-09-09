@@ -1,61 +1,58 @@
-**Hiku** is a library to design Graph APIs
+Hiku
+====
 
-.. toctree::
-   :maxdepth: 2
-
-   guide/index
-   reference/index
-   changelog/index
+`Hiku` is a library to design Graph APIs
 
 Why graphs? – They are simple, predictable, flexible, easy to compose and
 because of that, they are easy to reuse.
 
-Hiku is intended to be an answer for questions about how to speak to your
-services, how to implement them and how to avoid ORMs usage.
+`Hiku` is intended to be an answer for the questions about how to efficiently
+pull data from your services via Graph API and how to implement this API
+in your services with performance and flexibility in mind.
 
-Why not ORM? – Databases are too low level, they are implementation details of the
-application/service. It is hard to abstract them properly, even with very smart and
-sophisticated ORMs. Because again, databases are too low level and real-life
-entities are not always possible or practical to map as 1:1 to the database schema.
-
-::
-
-    Every piece of knowledge must have a single, unambiguous, authoritative
-    representation within a system.
-
-– This is a quote from DRY principle, it says that
-business logic (domain logic) should have only one single definition and
-should be reused everywhere in the project. Here we are trying to make this possible
-and practical to use.
-
-Concepts
+Features
 ~~~~~~~~
 
-Graphs are composed of edges, fields and links.
+★ Express all your data sources as graph of edges with fields and links.
+You are free to choose between sync **threads/greenlets** and async
+**coroutines** styles for data loading in your application. In both cases
+`Hiku` can load data **concurrently** to speed-up overall graph queries.
+Of course this is optional feature, and you are not required to rewrite
+your code in order to use this feature later, code is initially written
+in a way to make possible to run it concurrently.
 
-You can define fields, links and edges right in the implicit **root** of the
-graph, which means that to access them, you do not need to know their
-identity (ID), so they are singleton objects.
+★ Query your graph using `Hiku Simple Queries (HSQ)` or using GraphQL_
+(in the future). This is how client can express its needs and avoid
+data underfetching or data overfetching. Client will load only what
+it currently needs using one query, instead of multiple queries to
+different *resources* (as in RESTful APIs, for example). `HSQ` is
+basically a data structure in EDN_ format. For example:
 
-All other data (probably the largest) are represented in the form of a
-network of edges, which should be referenced by identity and can only
-be reached via a link.
+.. code-block:: clojure
 
-There are two types of links: pointing to one object and pointing
-to many objects.
+    [:datetime]
 
-Two-level Graph
-~~~~~~~~~~~~~~~
+will result in:
 
-This is how to properly abstract databases and other data sources into highly
-reusable high-level entities.
+.. code-block:: javascript
 
-You describe low-level graph to map your database as 1:1, every edge will be
-a table, every field would be a column and every link will be a query,
-to map one table to another.
+    {
+      "datetime": "2015-10-21T07:28:00.000000"
+    }
 
-High-level graph are edges with expressions instead of simple fields,
-each expression describes how to compute high-level value using low-level graph. When you
-are asking to retrieve some values from high-level graph, `hiku` generates a
-query for the low-level graph, to retrieve minimal required data from database
-to compute expressions in high-level graph.
+★ Abstract implementation details of how and where data actually stored,
+by using concept of `Two-level Graph` and `Hiku's` expressions language.
+This lets you define **low-level** graph to express all your data
+sources as is, and **high-level** graph to express your business-logic
+above low-level graph. High-level graph will use expressions to collect
+and transform data from low-level graph.
+
+.. toctree::
+    :maxdepth: 2
+
+    guide/index
+    reference/index
+    changelog/index
+
+.. _GraphQL: http://facebook.github.io/graphql/
+.. _EDN: https://github.com/edn-format/edn
