@@ -27,7 +27,7 @@ And let's create a Python module for our playground (for example `sandbox.py`):
 
   graph = Graph([
       Root([
-          Field('datetime', lambda _: [datetime.now().isoformat()]),
+          Field('now', lambda _: [datetime.now().isoformat()]),
       ]),
   ])
 
@@ -51,14 +51,14 @@ Just open http://localhost:5000/ in your browser and make first query:
 
 .. code-block:: clojure
 
-  [:datetime]
+  [:now]
 
 You should get this result:
 
 .. code-block:: javascript
 
   {
-    "datetime": "2015-10-21T07:28:00.000000"
+    "now": "2015-10-21T07:28:00.000000"
   }
 
 In the reference documentation you can learn about
@@ -107,7 +107,7 @@ Then lets extend our graph with one :py:class:`~hiku.graph.Edge` and one
           Field('species', get_character_data),
       ]),
       Root([
-          Field('datetime', lambda _: [datetime.now().isoformat()]),
+          Field('now', lambda _: [datetime.now().isoformat()]),
           Link('characters', Many, lambda: [1, 2, 3],
                edge='character', requires=None),
       ]),
@@ -225,7 +225,7 @@ And actor will have a reference to the played character - ``character_id``.
                edge='character', requires='id'),
       ]),
       Root([
-          Field('datetime', lambda _: [datetime.now().isoformat()]),
+          Field('now', lambda _: [datetime.now().isoformat()]),
           Link('characters', Many, lambda: [1, 2, 3],
                edge='character', requires=None),
       ]),

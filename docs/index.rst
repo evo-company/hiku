@@ -30,14 +30,14 @@ basically a data structure in EDN_ format. For example:
 
 .. code-block:: clojure
 
-    [:datetime]
+    [:now]
 
 will result in:
 
 .. code-block:: javascript
 
     {
-      "datetime": "2015-10-21T07:28:00.000000"
+      "now": "2015-10-21T07:28:00.000000"
     }
 
 ★ Abstract implementation details of how and where data actually stored,
