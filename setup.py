@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name='Hiku',
     version='0.2',
-    description='Declarative data presentation library',
+    description='Library to implement Graph APIs',
     author='Vladimir Magamedov',
     author_email='vladimir@magamedov.com',
     url='https://github.com/vmagamedov/hiku',
