@@ -1,6 +1,7 @@
 # setup storage
 
 from sqlalchemy import MetaData, Table, Column, Integer, Unicode, ForeignKey
+from sqlalchemy import create_engine
 
 metadata = MetaData()
 
@@ -20,28 +21,19 @@ character_table = Table(
     Column('name', Unicode),
 )
 
-data = {
-    'image': {
-        1: dict(id=1, location=1, name='j.kirk.jpg'),
-        2: dict(id=2, location=1, name='spock.jpg'),
-        3: dict(id=3, location=1, name='l.mccoy.jpg'),
-    },
-    'character': {
-        1: dict(id=1, image_id=1, name='James T. Kirk'),
-        2: dict(id=2, image_id=2, name='Spock'),
-        3: dict(id=3, image_id=3, name='Leonard McCoy'),
-    },
-}
-
-from sqlalchemy import create_engine
-
 sa_engine = create_engine('sqlite://')
 metadata.create_all(sa_engine)
 
-for image_data in data['image'].values():
-    sa_engine.execute(image_table.insert().values(image_data))
-for character_data in data['character'].values():
-    sa_engine.execute(character_table.insert().values(character_data))
+sa_engine.execute(image_table.insert().values([
+    dict(id=1, location=1, name='j.kirk.jpg'),
+    dict(id=2, location=1, name='spock.jpg'),
+    dict(id=3, location=1, name='l.mccoy.jpg'),
+]))
+sa_engine.execute(character_table.insert().values([
+    dict(id=1, image_id=1, name='James T. Kirk'),
+    dict(id=2, image_id=2, name='Spock'),
+    dict(id=3, image_id=3, name='Leonard McCoy'),
+]))
 
 # define low-level graph
 
@@ -104,9 +96,11 @@ def execute(graph, query_string):
 def test_low_level():
     result = execute(_GRAPH, '[{:characters [:name :image_id]}]')
     assert result == {
-        'characters': [{'image_id': 1, 'name': 'James T. Kirk'},
-                       {'image_id': 2, 'name': 'Spock'},
-                       {'image_id': 3, 'name': 'Leonard McCoy'}],
+        'characters': [
+            {'image_id': 1, 'name': 'James T. Kirk'},
+            {'image_id': 2, 'name': 'Spock'},
+            {'image_id': 3, 'name': 'Leonard McCoy'},
+        ],
     }
 
 # define high-level graph
@@ -138,6 +132,8 @@ GRAPH = Graph([
              edge='character', requires=None),
     ]),
 ])
+
+# test high-level graph
 
 def test_high_level():
     result = execute(GRAPH, '[{:characters [:name :image-url]}]')

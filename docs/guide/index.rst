@@ -5,4 +5,5 @@ User's Guide
     :maxdepth: 2
 
     introduction
-    sqlalchemy
+    database
+    subgraph

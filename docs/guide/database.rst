@@ -1,13 +1,13 @@
-SQLAlchemy support
-==================
+Using databases
+===============
 
 Hiku provides support for loading data from SQL databases using SQLAlchemy_
 library, but Hiku doesn't requires to use it's ORM layer, it requires only Core
 SQLAlchemy_ functionality - tables definition and expression language to
 construct SELECT queries.
 
-Database schema
-~~~~~~~~~~~~~~~
+Prerequisites
+~~~~~~~~~~~~~
 
 We will translate our previous example from the :doc:`introduction`, here is it's
 database schema:
@@ -48,7 +48,10 @@ And let's store the same :ref:`data <introduction-data>` in our database:
     for actor_data in data['actor'].values():
         engine.execute(actor_table.insert().values(actor_data))
 
-Then we will be able to expose these tables in our graph:
+Graph definition
+~~~~~~~~~~~~~~~~
+
+Defined tables can be exposed as graph of edges:
 
 .. code-block:: python
 
@@ -132,14 +135,16 @@ looking like this:
 
 .. code-block:: sql
 
-    SELECT actor.id from actor WHERE actor.character_id IN $character_ids;
+    SELECT actor.id FROM actor
+      WHERE actor.character_id IN (character_ids);
 
-List of ``$character_ids`` we already know (it is an ``id`` field of the current
+List of ``character_ids`` we already know (it is an ``id`` field of the current
 edge), all we need is to fetch ``actor.id`` column to make a link from
 ``character`` edge to the ``actor`` edge.
 :py:class:`~hiku.sources.sqlalchemy.LinkQuery` does this for you.
 
-Query:
+Querying graph
+~~~~~~~~~~~~~~
 
 .. code-block:: python
 

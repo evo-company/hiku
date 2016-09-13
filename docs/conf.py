@@ -5,8 +5,6 @@ import sphinx_rtd_theme
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 extensions = ['sphinx.ext.autodoc']
 
-templates_path = ['_templates']
-html_static_path = ['_static']
 source_suffix = '.rst'
 master_doc = 'index'
 
