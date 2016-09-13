@@ -1,7 +1,7 @@
 # setup storage
 
-from sqlalchemy import MetaData, Table, Column, Integer, Unicode, ForeignKey
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, MetaData, Table, Column
+from sqlalchemy import Integer, Unicode, ForeignKey
 
 metadata = MetaData()
 
@@ -9,7 +9,6 @@ image_table = Table(
     'image',
     metadata,
     Column('id', Integer, primary_key=True),
-    Column('location', Integer, nullable=False),
     Column('name', Unicode, nullable=False),
 )
 
@@ -17,7 +16,7 @@ character_table = Table(
     'character',
     metadata,
     Column('id', Integer, primary_key=True),
-    Column('image_id', ForeignKey('image.id'), nullable=False),
+    Column('image_id', ForeignKey('image.id')),
     Column('name', Unicode),
 )
 
@@ -25,9 +24,9 @@ sa_engine = create_engine('sqlite://')
 metadata.create_all(sa_engine)
 
 sa_engine.execute(image_table.insert().values([
-    dict(id=1, location=1, name='j.kirk.jpg'),
-    dict(id=2, location=1, name='spock.jpg'),
-    dict(id=3, location=1, name='l.mccoy.jpg'),
+    dict(id=1, name='j.kirk.jpg'),
+    dict(id=2, name='spock.jpg'),
+    dict(id=3, name='l.mccoy.jpg'),
 ]))
 sa_engine.execute(character_table.insert().values([
     dict(id=1, image_id=1, name='James T. Kirk'),
@@ -62,7 +61,6 @@ def to_characters_query(ctx):
 _GRAPH = Graph([
     Edge('image', [
         sa.Field('id', image_query),
-        sa.Field('location', image_query),
         sa.Field('name', image_query),
     ]),
     Edge('character', [
@@ -94,24 +92,25 @@ def execute(graph, query_string):
     return denormalize(graph, result, query)
 
 def test_low_level():
-    result = execute(_GRAPH, '[{:characters [:name :image_id]}]')
+    result = execute(_GRAPH, '[{:characters [:name {:image [:id :name]}]}]')
     assert result == {
         'characters': [
-            {'image_id': 1, 'name': 'James T. Kirk'},
-            {'image_id': 2, 'name': 'Spock'},
-            {'image_id': 3, 'name': 'Leonard McCoy'},
+            {'name': 'James T. Kirk',
+             'image': {'id': 1, 'name': 'j.kirk.jpg'}},
+            {'name': 'Spock',
+             'image': {'id': 2, 'name': 'spock.jpg'}},
+            {'name': 'Leonard McCoy',
+             'image': {'id': 3, 'name': 'l.mccoy.jpg'}},
         ],
     }
 
 # define high-level graph
 
 from hiku.expr import S, define, if_some
-from hiku.types import Unknown, Record, Integer, String
+from hiku.types import Record, Integer, String
 from hiku.sources.graph import SubGraph, Expr
 
-@define(Record[{'id': Integer,
-                'location': Integer,
-                'name': String}])
+@define(Record[{'id': Integer, 'name': String}])
 def image_url(image):
     return 'http://example.com/{id}-{name}'.format(id=image['id'],
                                                    name=image['name'])

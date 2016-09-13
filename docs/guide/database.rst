@@ -53,6 +53,8 @@ Graph definition
 
 Defined tables can be exposed as graph of edges:
 
+.. _guide-database-graph:
+
 .. code-block:: python
 
     from hiku.graph import Graph, Root, Edge, Link, One, Many
