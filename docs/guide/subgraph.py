@@ -124,7 +124,7 @@ GRAPH = Graph([
         Expr('image-url', character_sg,
              if_some([S.img, S.this.image],
                      image_url(S.img),
-                     'http://example.com/no-image.jpg')),
+                     'http://example.com/no-photo.jpg')),
     ]),
     Root([
         Link('characters', Many, to_characters_query,

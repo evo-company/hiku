@@ -75,7 +75,7 @@ computation.
 
 And here is when and why we need to implement two-level graph. Low-level graph
 exposes all of our data sources. High-level graph is used to express our
-business-logic based on low-level graph, and hide it's implementation details.
+business-logic based on low-level graph, and hides it's implementation details.
 
 .. literalinclude:: subgraph.py
     :lines: 109-133
@@ -96,7 +96,7 @@ represent how to compute high-level representation of data from low-level graph.
 
 ``S`` - is a special factory object, used to create symbols on the fly.
 ``S.foo`` means just ``foo``. It exists only because Python doesn't support
-custom symbols.
+unbound symbols.
 
 ``S.this`` is a special case, it refers to the low-level counterpart of the
 current edge. So ``S.this.name`` :sup:`[15]` is a ``name`` field of the
@@ -108,31 +108,40 @@ In order to make data modifications, we will need to use more complex
 expressions. `Hiku` already has several built-in functions:
 :py:func:`~hiku.expr.each`, :py:func:`~hiku.expr.if_` and
 :py:func:`~hiku.expr.if_some`. And you are able to use your custom functions,
-:py:func:`~hiku.expr.define` decorator can be used to define them.
+:py:func:`~hiku.expr.define` decorator should be used to make them suitable for
+use in the `Hiku's` expressions.
 
-As you can see, we defined ``image_url`` function :sup:`[5-6]` to compute image
-url, and we declared types of arguments, which this function should accept. Here
-``@define(Record[...])`` means that this function accepts one argument, which
-should contain two fields - ``id`` and ``name``, and even that these fields
-should be with specific types.
+As you can see, we defined ``image_url`` function :sup:`[6]` to compute image
+url, and we declared argument types, which this function should accept, using
+:py:func:`hiku.expr.define` decorator. Here ``@define(Record[...])`` :sup:`[7]`
+means that decorated function accepts one argument (only positional arguments
+are supported), which should be a record with at least two fields -- ``id`` and
+``name``, and these fields should be with specified types:
+:py:class:`~hiku.types.Integer` and :py:class:`~hiku.types.String`.
 
 Type system and type checking plays a big role here. Expressions are declarative
 and `Hiku` can analyze them in order to know which data from the low-level graph
 should be loaded to compute high-level fields. When you request some fields in a
-query to high-level graph, `Hiku` will automatically generate query for
-low-level graph, this is how ``{:image [:id :name]}`` from ``:image-url`` magic
-happens.
+query to high-level graph (``:image-url``), `Hiku` will automatically generate
+query for low-level graph (``{:image [:id :name]}``).
 
-And we also have to explain why we are using :py:func:`~hiku.expr.if_some`
-function, before passing character's image into ``image_url`` function. It is
-used because ``S.this.image`` is of type ``Optional[Record[...]]`` and it can't
-be passed directly to the ``image_url`` function, which requires non-optional
+In our example above we can also see consequences of using type checking -- need
+to use :py:func:`~hiku.expr.if_some` function :sup:`[17]` before passing
+character's image into ``image_url`` function :sup:`[6]`. It is used because
+``S.this.image`` is of type ``Optional[Record[...]]`` and it can't be passed
+directly to the ``image_url`` function, which requires non-optional
 ``Record[...]`` type. :py:func:`~hiku.expr.if_some` function will unpack
-optional type into regular type (as symbol ``S.img`` :sup:`[18]`) and then we
-can freely use it and be sure that it's value wouldn't be ``None``.
+optional type into regular type (bound to the symbol ``S.img`` :sup:`[17]`)
+and then we can freely use it in the "then" clause of the
+:py:func:`~hiku.expr.if_some` expression :sup:`[18]` and be sure that it's
+value wouldn't be equal to ``None``. In the "else" clause we will return url
+of the standard "no-photo" image :sup:`[19]`. Without using
+:py:func:`~hiku.expr.if_some` function `Hiku` will raise type error.
 
-Test:
+Testing our high-level graph:
 
 .. literalinclude:: subgraph.py
     :lines: 138-148
     :dedent: 4
+
+As you can see, the goal is achieved.
