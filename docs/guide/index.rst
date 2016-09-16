@@ -4,6 +4,6 @@ User's Guide
 .. toctree::
     :maxdepth: 2
 
-    introduction
+    basics
     database
     subgraph

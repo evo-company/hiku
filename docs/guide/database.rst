@@ -9,10 +9,10 @@ construct SELECT queries.
 Prerequisites
 ~~~~~~~~~~~~~
 
-We will translate our previous example from the :doc:`introduction`, but now all
+We will translate our previous example from the :doc:`basics`, but now all
 the data is stored in the SQLite database:
 
-.. literalinclude:: database.py
+.. literalinclude:: test_database.py
     :lines: 3-39
 
 Graph definition
@@ -22,7 +22,7 @@ Defined tables can be exposed as graph of edges:
 
 .. _guide-database-graph:
 
-.. literalinclude:: database.py
+.. literalinclude:: test_database.py
     :lines: 43-90
     :linenos:
     :emphasize-lines: 5,7,11-13,15,18,19,21,39-40
@@ -77,18 +77,18 @@ Querying graph
 
 For testing purposes let's define helper function ``execute``:
 
-.. literalinclude:: database.py
+.. literalinclude:: test_database.py
     :lines: 94-104
 
 Testing one to many link:
 
-.. literalinclude:: database.py
+.. literalinclude:: test_database.py
     :lines: 107-132
     :dedent: 4
 
 Testing many to one link:
 
-.. literalinclude:: database.py
+.. literalinclude:: test_database.py
     :lines: 135-163
     :dedent: 4
 

@@ -11,7 +11,7 @@ In order to show this feature we will try to adapt our
 :doc:`previous example <database>`, ``actor`` table was removed and ``image``
 table was added:
 
-.. literalinclude:: subgraph.py
+.. literalinclude:: test_subgraph.py
     :lines: 3-35
 
 Low-level graph definition
@@ -21,7 +21,7 @@ Low-level graph is a graph, which exposes all our data sources, database for
 example. So this graph definition wouldn't be much different from our
 :ref:`previous graph definition <guide-database-graph>`:
 
-.. literalinclude:: subgraph.py
+.. literalinclude:: test_subgraph.py
     :lines: 39-77
     :linenos:
     :emphasize-lines: 14,32-33
@@ -38,12 +38,12 @@ value.
 
 For testing purposes let's define helper function ``execute``:
 
-.. literalinclude:: subgraph.py
+.. literalinclude:: test_subgraph.py
     :lines: 81-92
 
 So let's query some data, needed to show characters with their photos:
 
-.. literalinclude:: subgraph.py
+.. literalinclude:: test_subgraph.py
     :lines: 95-105
     :dedent: 4
 
@@ -77,7 +77,7 @@ And here is when and why we need to implement two-level graph. Low-level graph
 exposes all of our data sources. High-level graph is used to express our
 business-logic based on low-level graph, and hides it's implementation details.
 
-.. literalinclude:: subgraph.py
+.. literalinclude:: test_subgraph.py
     :lines: 109-133
     :linenos:
     :emphasize-lines: 5-6,10,15,17-19
@@ -140,7 +140,7 @@ of the standard "no-photo" image :sup:`[19]`. Without using
 
 Testing our high-level graph:
 
-.. literalinclude:: subgraph.py
+.. literalinclude:: test_subgraph.py
     :lines: 138-148
     :dedent: 4
 
