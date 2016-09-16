@@ -23,23 +23,36 @@ Of course this is optional feature, and you are not required to rewrite
 your code in order to use this feature later, code is initially written
 in a way to make possible to run it concurrently.
 
-★ Query your graph using `Hiku Simple Queries (HSQ)` or using GraphQL_
-(in the future). This is how client can express its needs and avoid
-data underfetching or data overfetching. Client will load only what
-it currently needs using one query, instead of multiple queries to
-different *resources* (as in RESTful APIs, for example). `HSQ` is
-basically a data structure in EDN_ format. For example:
+★ Query your graph using `simple` queries or using GraphQL_ (in the future).
+This is how client can express its needs and avoid data underfetching or data
+overfetching. Client will load only what it currently needs using one query,
+instead of multiple queries to different *resources* (as in RESTful APIs, for
+example). `Simple` queries are basically a data structures in edn_ format. For
+example:
 
 .. code-block:: clojure
 
-    [:now]
+    [{:characters [:name :species]}]
 
 will result in:
 
 .. code-block:: javascript
 
     {
-      "now": "2015-10-21T07:28:00.000000"
+        "characters": [
+            {
+                "name": "James T. Kirk",
+                "species": "Human"
+            },
+            {
+                "name": "Spock",
+                "species": "Vulcan/Human"
+            },
+            {
+                "name": "Leonard McCoy",
+                "species": "Human"
+            }
+        ]
     }
 
 ★ Abstract implementation details of how and where data actually stored,
@@ -57,4 +70,4 @@ and transform data from low-level graph.
     changelog/index
 
 .. _GraphQL: http://facebook.github.io/graphql/
-.. _EDN: https://github.com/edn-format/edn
+.. _edn: https://github.com/edn-format/edn

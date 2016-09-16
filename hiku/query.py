@@ -3,14 +3,15 @@ hiku.query
 ==========
 
 `Hiku` doesn't rely on any specific query language, internally it uses generic
-data structures (query nodes) to describe result and they could be constructed
-by parsing different suitable query languages.
+query representation to describe result and it could be constructed by parsing
+different suitable query languages.
 
-However, `Hiku` provides one built-in way to describe result - `edn`_ data
-structure (**HSQ** - Hiku Simple Query), similar to the `Datomic Pull API`_.
+However, `Hiku` provides one built-in way to describe result -- `edn`_ data
+structure -- `simple` queries, which are maybe the same as `om.next`_ queries,
+which are inspired by `Datomic Pull API`_.
 
 Why not to use `GraphQL`_ by default? `GraphQL` is complex due to the need to
-write queries/fragments manually by hand. `HSQ` queries are not even queries,
+write queries/fragments manually by hand. `Simple` queries are not even queries,
 they are just simple data structures - specifications of the result, they are
 really easy to work with.
 
@@ -62,6 +63,7 @@ of type ``One`` or ``Maybe``.
 .. _edn: https://github.com/edn-format/edn
 .. _Datomic Pull API: http://docs.datomic.com/pull.html
 .. _GraphQL: http://facebook.github.io/graphql/
+.. _om.next: https://github.com/omcljs/om/wiki/Documentation-(om.next)
 """
 from itertools import chain
 from collections import OrderedDict
