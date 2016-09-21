@@ -1,22 +1,23 @@
 """
-hiku.result
-===========
+    hiku.result
+    ~~~~~~~~~~~
 
-Throughout documentation all query result examples are showed as **denormalized
-hierarchical** `JSON`-like value, but this is not how `Hiku` stores results
-internally.
+    In all examples query results are showed in **denormalized** form, suitable
+    for reading (by humans) and for serializing into simple formats, into `JSON`
+    for example. But this is not how `Hiku` stores result internally.
 
-Internally, `Hiku` stores results in the **fully normalized** way. So
-result in `Hiku` is also a graph-like structure with references between
-objects. This approach has lots of advantages:
+    Internally `Hiku` stores result in a fully **normalized** form. So result in
+    `Hiku` is also a graph structure with references between objects. This
+    approach has lots of advantages:
 
-* normalization helps to heavily reduce serialized result size when we need
-  to transfer it (avoids data duplication);
-* it reduces internal memory usage and simplifies work with data internally;
-* gives ability to cache, precisely and effortlessly update local state
-  on the client;
+      - normalization helps to heavily reduce size of serialized result when we
+        need to transfer it (this avoids data duplication)
+      - it reduces internal memory usage and simplifies work with data
+        internally
+      - gives ability to cache, precisely and effortlessly update local state
+        on the client
+
 """
-
 from collections import defaultdict
 
 from .types import RecordMeta, OptionalMeta, SequenceMeta
@@ -48,7 +49,14 @@ class State(defaultdict):
 
 
 class Result(State):
+    """Internal result representation
 
+    It gives access to the result of the :py:class:`~hiku.graph.Root` edge --
+    which is a starting point of the query execution, and from it to all the
+    other edge objects, which are stored internally in the index.
+
+    Behaves like a mapping.
+    """
     def __init__(self):
         super(Result, self).__init__()
         self.index = State()
@@ -95,4 +103,12 @@ def _denormalize(graph, graph_obj, result, query_obj):
 
 
 def denormalize(graph, result, query):
+    """Transforms normalized result (graph) into simple hierarchical structure
+
+    This hierarchical structure will follow query structure.
+
+    :param graph: :py:class:`~hiku.graph.Graph` definition
+    :param result: result of the query
+    :param query: executed query, instance of the :py:class:`~hiku.query.Edge`
+    """
     return _denormalize(graph, graph.root, result, merge([query]))

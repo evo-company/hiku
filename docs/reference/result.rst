@@ -1,2 +1,2 @@
 .. automodule:: hiku.result
-   :members:
+   :members: Result, denormalize
