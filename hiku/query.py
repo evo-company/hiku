@@ -7,13 +7,8 @@ query representation to describe result and it could be constructed by parsing
 different suitable query languages.
 
 However, `Hiku` provides one built-in way to describe result -- `edn`_ data
-structure -- `simple` queries, which are maybe the same as `om.next`_ queries,
+structure -- `simple` queries, which are very similar to the `om.next`_ queries,
 which are inspired by `Datomic Pull API`_.
-
-Why not to use `GraphQL`_ by default? `GraphQL` is complex due to the need to
-write queries/fragments manually by hand. `Simple` queries are not even queries,
-they are just simple data structures - specifications of the result, they are
-really easy to work with.
 
 * ``[:foo]`` - edge fields definition (`edn` keywords in vector)
 * ``{:bar [:baz]}`` - link definition (`edn` map with keyword and vector)
@@ -24,45 +19,28 @@ Example:
 
 .. code-block:: clojure
 
-  [:foo {:bar [:baz]}]
+    [:foo {:bar [:baz]}]
 
-Here ``:foo`` and ``:baz`` are fields, ``:foo`` field is defined in the
-``root`` edge, ``:baz`` field is defined in the edge, which is linked from
-``root`` edge using ``:bar`` link.
+This query will be read internally as:
 
-More complex example:
+.. code-block:: python
 
-.. code-block:: clojure
+    Edge([Field('foo'),
+          Link('bar', Edge([Field('baz')]))])
 
-  [:a {:b [:c :d {:e [:f :g]}]} :h]
+And query result will look like this:
 
-This query will return result like this:
+.. code-block:: python
 
-.. code-block:: javascript
-
-  {
-    "a": ?,
-    "b": [
-      {
-        "c": ?,
-        "d": ?,
-        "e": {
-          "f": ?,
-          "g": ?
-        }
-      },
-      ...
-    ],
-    "h": ?
-  }
-
-By looking only at the query we can't predict types of the graph links,
-in this example link ``:b`` is of type ``Many``, and link ``:e`` is
-of type ``One`` or ``Maybe``.
+    {
+        'foo': 1,
+        'bar': {
+            'baz': 2,
+        },
+    }
 
 .. _edn: https://github.com/edn-format/edn
 .. _Datomic Pull API: http://docs.datomic.com/pull.html
-.. _GraphQL: http://facebook.github.io/graphql/
 .. _om.next: https://github.com/omcljs/om/wiki/Documentation-(om.next)
 """
 from itertools import chain
@@ -81,11 +59,10 @@ def _name_repr(name, options):
 
 
 class Field(object):
-    """
-    *class* ``hiku.query.Field(name, options=None)``
+    """Represents a field of the edge
 
-    - ``name: str``
-    - ``options: Optional[Mapping[str, Any]]``
+    :param name: name of the field
+    :param optional options: field options -- mapping of names to values
     """
     def __init__(self, name, options=None):
         self.name = name
@@ -99,12 +76,12 @@ class Field(object):
 
 
 class Link(object):
-    """
-    *class* ``hiku.query.Link(name, edge, options=None)``
+    """Represents a link to the edge
 
-    - ``name: str``
-    - ``edge: hiku.query.Edge``
-    - ``options: Optional[Mapping[str, Any]]``
+    :param name: name of the link
+    :param edge: collection of fields and links --
+                 :py:class:`~hiku.query.Edge`
+    :param optional options: link options -- mapping of names to values
     """
     def __init__(self, name, edge, options=None):
         self.name = name
@@ -120,10 +97,10 @@ class Link(object):
 
 
 class Edge(object):
-    """
-    *class* ``hiku.query.Edge(fields)``
+    """Represents collection of fields and links
 
-    - ``fields: Sequence[Union[hiku.query.Field, hiku.query.Link]]``
+    :param fields: list of :py:class:`~hiku.query.Field` and
+                   :py:class:`~hiku.query.Link`
     """
     def __init__(self, fields):
         self.fields = fields
@@ -154,6 +131,11 @@ def _merge(edges):
 
 
 def merge(edges):
+    """Merges multiple queries into one query
+
+    :param edges: queries, represented as list of :py:class:`~hiku.query.Edge`
+    :return: merged query as one :py:class:`~hiku.query.Edge`
+    """
     return Edge(list(_merge(edges)))
 
 
