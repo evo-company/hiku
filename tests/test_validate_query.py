@@ -16,24 +16,24 @@ GRAPH = Graph([
         Edge('decants', []),
 
         # simple
-        Field('robby', _),
+        Field('robby', None, _),
         # complex
         Field('wounded', Optional[Record[{'attr': Integer}]], _),
         Field('annuals', Record[{'attr': Integer}], _),
         Field('hialeah', Sequence[Record[{'attr': Integer}]], _),
         # with options
-        Field('motown', _, options=[Option('prine')]),
-        Field('nyerere', _, options=[Option('epaule', default=1)]),
-        Field('wreche', _, options=[Option('cierra', Integer)]),
-        Field('hunter', _, options=[Option('fried', Integer, default=1)]),
+        Field('motown', None, _, options=[Option('prine', None)]),
+        Field('nyerere', None, _, options=[Option('epaule', None, default=1)]),
+        Field('wreche', None, _, options=[Option('cierra', Integer)]),
+        Field('hunter', None, _, options=[Option('fried', Integer, default=1)]),
 
         # simple
         Link('amyls', Many, _, edge='hooted', requires=None),
         # with options
         Link('ferrous', Many, _, edge='hooted', requires=None,
-             options=[Option('cantab')]),
+             options=[Option('cantab', None)]),
         Link('knesset', Many, _, edge='hooted', requires=None,
-             options=[Option('ceases', default=1)]),
+             options=[Option('ceases', None, default=1)]),
         Link('pouria', Many, _, edge='hooted', requires=None,
              options=[Option('flunk', Integer)]),
         Link('secants', Many, _, edge='hooted', requires=None,

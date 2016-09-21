@@ -38,21 +38,21 @@ def noop(*_):
 # TODO: refactor
 ENV = Graph([
     Edge('x', [
-        Field('b', noop),
+        Field('b', None, noop),
     ]),
     Edge('y', [
-        Field('c', noop),
+        Field('c', None, noop),
         Link('x1', One, noop, edge='x', requires=None),
         Link('xs', Many, noop, edge='x', requires=None),
     ]),
     Root([
-        Field('a', noop),
+        Field('a', None, noop),
         Field('nitrox', Optional[String], noop),
         Edge('x', [
-            Field('b', noop),
+            Field('b', None, noop),
         ]),
         Edge('y', [
-            Field('c', noop),
+            Field('c', None, noop),
             Link('x1', One, noop, edge='x', requires=None),
             Link('xs', Many, noop, edge='x', requires=None),
         ]),

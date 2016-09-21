@@ -14,14 +14,14 @@ def _():
 
 GRAPH = Graph([
     Edge('cosies', [
-        Field('nerv', _),
-        Field('doghead', _),
+        Field('nerv', None, _),
+        Field('doghead', None, _),
         Link('mistic', One, _, edge='kir', requires=None),
         Link('biopics', Many, _, edge='kir', requires=None),
     ]),
     Edge('kir', [
-        Field('panton', _),
-        Field('tamsin', _),
+        Field('panton', None, _),
+        Field('tamsin', None, _),
         Link('bahut', One, _, edge='cosies', requires=None),
         Link('paramo', Many, _, edge='cosies', requires=None),
     ]),
@@ -31,12 +31,12 @@ GRAPH = Graph([
         Field('matwork', Sequence[Record[{'bashaw': String}]], _),
     ]),
     Root([
-        Field('slotted', _),
+        Field('slotted', None, _),
         Field('tatler', Optional[Record[{'orudis': String}]], _),
         Field('coom', Record[{'yappers': String}], _),
         Field('barbary', Sequence[Record[{'betty': String}]], _),
         Edge('flossy', [
-            Field('demoing', _),
+            Field('demoing', None, _),
             Field('anoxic', Optional[Record[{'peeps': String}]], _),
             Field('seggen', Record[{'pensive': String}], _),
             Field('necker', Sequence[Record[{'carney': String}]], _),

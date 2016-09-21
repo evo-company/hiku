@@ -42,8 +42,8 @@ def get_graph():
     return Graph([
         Edge('tergate', [
             # simple fields
-            Field('arion', query_fields1),
-            Field('bhaga', query_fields2),
+            Field('arion', None, query_fields1),
+            Field('bhaga', None, query_fields2),
             # complex fields
             Field('eches', Optional[Record[{'gone': Integer}]],
                   query_fields1),
@@ -53,17 +53,17 @@ def get_graph():
                   query_fields3),
         ]),
         Root([
-            Field('indice', query_fields1),
-            Field('unmined', query_fields2),
+            Field('indice', None, query_fields1),
+            Field('unmined', None, query_fields2),
             Edge('kameron', [
-                Field('buran', query_fields1),
-                Field('updated', query_fields2),
+                Field('buran', None, query_fields1),
+                Field('updated', None, query_fields2),
             ]),
             Link('subaru', Many, query_link1, edge='tergate', requires=None),
             Link('jessie', Many, query_link2, edge='tergate', requires=None),
             # with options
             Link('doubled', Many, query_link1, edge='tergate', requires=None,
-                 options=[Option('empower', default='deedily_reaving')]),
+                 options=[Option('empower', None, default='deedily_reaving')]),
         ]),
     ])
 

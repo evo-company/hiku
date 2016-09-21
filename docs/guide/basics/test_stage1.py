@@ -6,7 +6,7 @@ from hiku.graph import Graph, Root, Field
 
 GRAPH = Graph([
     Root([
-        Field('now', lambda _: [datetime.now().isoformat()]),
+        Field('now', None, lambda _: [datetime.now().isoformat()]),
     ]),
 ])
 

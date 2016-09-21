@@ -28,8 +28,8 @@ def to_characters_link():
 
 GRAPH = Graph([
     Edge('character', [
-        Field('name', character_data),
-        Field('species', character_data),
+        Field('name', None, character_data),
+        Field('species', None, character_data),
     ]),
     Root([
         Link('characters', Many, to_characters_link,

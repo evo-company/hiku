@@ -41,14 +41,14 @@ def test_edge_contain_duplicate_fields():
     check_errors(
         Graph([
             Root([
-                Field('b', _fields_func),
+                Field('b', None, _fields_func),
             ]),
             Edge('foo', [
-                Field('a', _fields_func),
-                Field('a', _fields_func),
+                Field('a', None, _fields_func),
+                Field('a', None, _fields_func),
             ]),
             Root([
-                Field('b', _fields_func),
+                Field('b', None, _fields_func),
             ]),
         ]),
         ['Duplicated names found in the "root" edge: "b"',
@@ -77,7 +77,7 @@ def test_edge_contain_invalid_types():
         Graph([
             Edge('foo', [
                 1,
-                Field('bar', _fields_func),
+                Field('bar', None, _fields_func),
             ]),
         ]),
         [('Edge can not contain these types: {!r} in edge "foo"'
@@ -119,9 +119,9 @@ def test_link_contain_invalid_types():
         Graph([
             Edge('foo', []),
             Edge('bar', [
-                Field('id', _fields_func),
+                Field('id', None, _fields_func),
                 Link('baz', Many, _link_func, edge='foo', requires='id',
-                     options=[Option('size'), 1]),
+                     options=[Option('size', None), 1]),
             ]),
         ]),
         [('Invalid types provided as link "bar.baz" options: {!r}'

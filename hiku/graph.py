@@ -1,9 +1,10 @@
 """
-hiku.graph
-==========
+    hiku.graph
+    ~~~~~~~~~~
 
-Graph is defined by edges, fields and links. Simple functions
-are used to fetch any data from any source.
+    Graphs are defined by edges, fields and links. Simple functions
+    are used to fetch any data from any data source.
+
 """
 from abc import ABCMeta, abstractmethod
 from itertools import chain
@@ -12,11 +13,18 @@ from collections import OrderedDict
 from .utils import kw_only, cached_property, const
 from .compat import with_metaclass
 
-
+#: Type of the link, means that linked edge can be ``None``
 Maybe = const('Maybe')
+
+#: Type of the link, means that linked edge can *not* be ``None``
 One = const('One')
+
+#: Type of the link, means that linked edge is a list of edge objects
 Many = const('Many')
 
+#: Special constant that is used by links with type
+#: :py:const:`~hiku.graph.Maybe` in order to indicate that there is
+#: nothing to link to
 Nothing = const('Nothing')
 
 
@@ -32,26 +40,25 @@ class AbstractOption(AbstractNode):
 
 
 class Option(AbstractOption):
+    """Defines an option, used to customize results of the fields and links
+
+    Options without default value are **required**.
+
+    Example of a required option::
+
+        Option('id', Integer)
+
+    Example of an optional option::
+
+        Option('size', Integer, default=100)
+
     """
-    *class* ``hiku.graph.Option(name, type, *, default=None)``
-
-    *class* ``hiku.graph.Option(name, *, default=None)``
-
-    Options are also optionally typed, so there are also two class signatures.
-
-    - ``name: str`` - name of the option
-    - ``type: hiku.types.GenericMeta`` - type of the option
-    - ``default: Any`` - default option value
-    """
-    def __init__(self, name, *other, **kwargs):
-        if not len(other):
-            type_ = None
-        elif len(other) == 1:
-            type_, = other
-        else:
-            raise TypeError('More positional arguments ({}) than expected (2)'
-                            .format(len(other) + 1))
-
+    def __init__(self, name, type_, **kwargs):
+        """
+        :param name: name of the option
+        :param type_: type of the option or ``None``
+        :param kw-only,optional default: default option value
+        """
         self.name = name
         self.type = type_
         self.default, = kw_only(kwargs, [], ['default'])
@@ -65,42 +72,47 @@ class AbstractField(AbstractNode):
 
 
 class Field(AbstractField):
+    """Defines a field of the edge
+
+    Example::
+
+        graph = Graph([
+            Edge('user', [
+                Field('name', String, func),
+            ]),
+        ])
+
+    Example with options::
+
+        graph = Graph([
+            Root([
+                Field('lorem-ipsum', String, func,
+                      options=[Option('words', Integer, default=50)]),
+            ]),
+        ])
+
+    Data loading protocol::
+
+        # root edge fields
+        def func(fields) -> List[T]
+
+        # non-root edge fields
+        def func(fields, ids) -> List[List[T]]
+
+    Where:
+
+    - ``fields`` - list of :py:class:`hiku.query.Field`
+    - ``ids`` - list edge identifiers
+
     """
-    *class* ``hiku.graph.Field(name, type, func, *, options=None,
-    description=None)``
-
-    *class* ``hiku.graph.Field(name, func, *, options=None, description=None)``
-
-    Typing is optional, so there are two class signatures.
-
-    - ``name: str`` - name of the field
-    - ``type: hiku.types.GenericMeta`` - type of the field
-    - ``func: Union[Callable, Coroutine]`` - function to resolve field values
-    - ``options: Optional[Sequence[hiku.graph.Option]]``
-    - ``description: Optional[str]`` - field description
-
-    Field function's protocol:
-
-    .. code-block:: python
-
-      def fields_func(fields: Sequence[hiku.query.Field]) -> Sequence[Any]:
-          \"""Resolves field values in the root edge\"""
-
-      def fields_func(fields: Sequence[hiku.query.Field], ids: Sequence[ID])
-          -> Sequence[Sequence[Any]]:
-          \"""Resolves field values in regular edges\"""
-    """
-    def __init__(self, name, *other, **kwargs):
-        if not len(other):
-            raise TypeError('Missing required argument')
-        elif len(other) == 1:
-            type_, func = None, other[0]
-        elif len(other) == 2:
-            type_, func = other
-        else:
-            raise TypeError('More positional arguments ({}) than expected (3)'
-                            .format(len(other) + 1))
-
+    def __init__(self, name, type_, func, **kwargs):
+        """
+        :param str name: name of the field
+        :param type_: type of the field or ``None``
+        :param func: function to load field's data
+        :param kw-only,optional options: list of acceptable options
+        :param kw-only,optional description: description of the field
+        """
         options, description = kw_only(kwargs, [], ['options', 'description'])
 
         self.name = name
@@ -122,67 +134,85 @@ class AbstractLink(AbstractNode):
 
 
 class Link(AbstractLink):
-    """
-    *class* ``hiku.graph.Link(name, type, func, *, edge, requires, options=None,
-    description=None)``
+    """Defines a link to the edge
 
-    Links are used to point to other edges.
+    Example::
 
-    - ``name: str`` - name of the link
-    - ``type: Union[hiku.graph.Maybe, hiku.graph.One, hiku.graph.Many]``
-    - ``func: Union[Callable, Coroutine]`` - function to resolve linked edge ids
-    - ``edge: str`` - name of the linked edge
-    - ``requires: Optional[str]`` - field name, which is used to associate this
-      edge with linked edge
-    - ``options: Optional[Sequence[hiku.graph.Option]]`` - list of accepted
-      options
-    - ``description: Optional[str]`` - link description
+        graph = Graph([
+            Edge('user', [...]),
+            Root([
+                Link('users', Many, func, edge='user', requires=None),
+            ]),
+        ])
 
-    Link types:
+    Example with requirements::
 
-    - ``hiku.graph.Maybe`` - one or nothing
-    - ``hiku.graph.One`` - exactly one
-    - ``hiku.graph.Many`` - sequence
+        graph = Graph([
+            Edge('character', [...]),
+            Edge('actor', [
+                Field('id', Integer, field_func),
+                Link('characters', Many, link_func,
+                     edge='character', requires='id'),
+            ])
+        ])
 
-    Link function's protocol:
+    Requirements are needed when link points from non-root edge.
 
-    .. code-block:: python
+    Example with options::
 
-      ID = Hashable
-      MaybeID = Union[ID, hiku.graph.Nothing]
+        graph = Graph([
+            Edge('user', [...]),
+            Root([
+                Link('users', Many, func, edge='user', requires=None,
+                     options=[Option('limit', Integer, default=100)]),
+            ]),
+        ])
 
-      def link_func() -> MaybeID:
-          \"""Link to maybe one\"""
+    Identifiers loading function protocol::
 
-      def link_func() -> ID:
-          \"""Link to one\"""
+        # requires is None and type is One
+        def func() -> T
 
-      def link_func() -> Sequence[ID]:
-          \"""Link to many\"""
+        # requires is None and type is Maybe
+        def func() -> Union[T, Nothing]
 
-      def link_func(ids: Sequence[ID]) -> Sequence[MaybeID]:
-          \"""Link from one/many to maybe one\"""
+        # requires is None and type is Many
+        def func() -> List[T]
 
-      def link_func(ids: Sequence[ID]) -> Sequence[ID]:
-          \"""Link from one/many to one\"""
+        # requires is not None and type is One
+        def func(ids) -> List[T]
 
-      def link_func(ids: Sequence[ID]) -> Sequence[Sequence[ID]]:
-          \"""Link from one/many to many\"""
+        # requires is not None and type is Maybe
+        def func(ids) -> List[Union[T, Nothing]]
 
-    If link was defined with options, then link function should accept another
-    one positional parameter: ``Mapping[str, Any]`` - provided in query link
-    values, for example:
+        # requires is not None and type is Many
+        def func(ids) -> List[List[T]]
 
-    .. code-block:: python
+    See also: :py:const:`hiku.graph.Nothing`, :py:const:`hiku.graph.Maybe`,
+    :py:const:`hiku.graph.One`, :py:const:`hiku.graph.Many`.
 
-      def link_func(options: Mapping[str, Any]) -> Sequence[ID]:
-          \"""Link to many with options\"""
+    If link was defined with options, then link function should accept one
+    additional positional argument::
 
-      def link_func(ids: Sequence[ID], options: Mapping[str, Any]) \\
-          -> Sequence[ID]:
-          \"""Link from one/many to one with options\"""
+        # many to many link with options
+        def func(ids, options) -> List[List[T]]
+
+    Where ``options`` is a mapping ``str: value`` of provided in the query
+    options.
     """
     def __init__(self, name, type_, func, **kwargs):
+        """
+        :param name: name of the link
+        :param type_: type of the link, one of: :py:class:`~hiku.graph.Maybe`,
+                      :py:class:`~hiku.graph.One` or
+                      :py:class:`~hiku.graph.Many`
+        :param func: function to load identifiers of the linked edge
+        :param kw-only edge: name of the linked edge
+        :param kw-only requires: field name from the current edge, required
+                                      to compute identifiers of the linked edge
+        :param kw-only,optional options: list of acceptable options
+        :param kw-only,optional description: description of the link
+        """
         edge, requires, options, description = \
             kw_only(kwargs, ['edge', 'requires'], ['options', 'description'])
 
@@ -207,17 +237,27 @@ class AbstractEdge(AbstractNode):
 
 
 class Edge(AbstractEdge):
-    """
-    Collection of the fields and links, which describes some entity and
-    relations with other entities.
+    """Collection of the fields and links, which describes some entity and
+    relations with other entities
 
-    *class* ``hiku.graph.Edge(name, fields, *, description=None)``
+    Example::
 
-    - ``name: str`` - name of the edge
-    - ``fields: Sequence[Union[hiku.graph.Field, hiku.graph.Link]]``
-    - ``description: Optional[str]`` - edge description
+        graph = Graph([
+            Edge('user', [
+                Field('id', Integer, field_func),
+                Field('name', String, field_func),
+                Link('roles', Many, link_func,
+                     edge='role', requires='id'),
+            ]),
+        ])
+
     """
     def __init__(self, name, fields, **kwargs):
+        """
+        :param name: name of the edge
+        :param fields: list of fields and links
+        :param kw-only,optional description: description of the edge
+        """
         self.name = name
         self.fields = fields
         self.description, = kw_only(kwargs, [], ['description'])
@@ -231,15 +271,25 @@ class Edge(AbstractEdge):
 
 
 class Root(Edge):
-    """
-    Special implicit edge, where query execution starts from.
+    """Special implicit root edge, starting point of the query execution
 
-    *class* ``hiku.graph.Root(items)``
+    Example::
 
-    - ``items: Sequence[Union[hiku.graph.Edge, hiku.graph.Field,
-      hiku.graph.Link]]``
+        graph = Graph([
+            Edge('baz', [...]),
+            Root([
+                Field('foo', String, root_fields_func),
+                Link('bar', Many, to_baz_func,
+                     edge='baz', requires=None),
+                Edge('quux', [...]),
+            ]),
+        ])
+
     """
     def __init__(self, items):
+        """
+        :param items: list of fields, links and singleton edges
+        """
         super(Root, self).__init__(None, items)
 
 
@@ -250,11 +300,19 @@ class AbstractGraph(AbstractNode):
 class Graph(AbstractGraph):
     """Collection of edges - definition of the graph
 
-    *class* ``hiku.graph.Graph(items)``
+    Example::
 
-    - ``items: Sequence[hiku.graph.Edge]`` - list of edges
+        graph = Graph([
+            Edge('foo', [...]),
+            Edge('bar', [...]),
+            Root([...]),
+        ])
+
     """
     def __init__(self, items):
+        """
+        :param items: list of edges
+        """
         self.items = items
 
     @cached_property

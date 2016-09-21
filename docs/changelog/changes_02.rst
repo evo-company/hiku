@@ -68,6 +68,9 @@ Backward-incompatible changes
 - Moved type :py:class:`hiku.typedef.types.Unknown` to the
   :py:class:`hiku.types.Unknown`
 
+- Positional ``type`` argument in :py:class:`hiku.graph.Field` and in
+  :py:class:`hiku.graph.Option` now is required
+
 New features
 ~~~~~~~~~~~~
 
@@ -128,7 +131,7 @@ New features
         return [ctx['storage'][f.name] for f in fields]
 
     Root([
-        Field('foo', func),
+        Field('foo', None, func),
     ])
 
     engine.execute(graph, read('[:foo]'),

@@ -17,20 +17,20 @@ def _(*args, **kwargs):
 
 GRAPH = g.Graph([
     g.Edge('patens', [
-        g.Field('clacks', _),
-        g.Field('panicle', _),
+        g.Field('clacks', None, _),
+        g.Field('panicle', None, _),
         g.Link('apatite', One, _, edge='sais', requires=None),
         g.Link('jakies', Many, _, edge='sais', requires=None),
     ]),
     g.Edge('sais', [
-        g.Field('oloroso', _),
-        g.Field('gashes', _),
+        g.Field('oloroso', None, _),
+        g.Field('gashes', None, _),
     ]),
     g.Root([
-        g.Field('sailed', _),
+        g.Field('sailed', None, _),
         g.Edge('malatya', [
-            g.Field('bartok', _),
-            g.Field('rotifer', _),
+            g.Field('bartok', None, _),
+            g.Field('rotifer', None, _),
             g.Link('teling', One, _, edge='patens', requires=None),
             g.Link('wandy', Many, _, edge='patens', requires=None),
         ]),

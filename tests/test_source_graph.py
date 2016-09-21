@@ -64,21 +64,21 @@ def y_to_x(ids):
 
 _GRAPH = Graph([
     Edge('x', [
-        Field('id', query_x),
-        Field('a', query_x),
-        Field('b', query_x),
-        Field('y_id', query_x),
+        Field('id', None, query_x),
+        Field('a', None, query_x),
+        Field('b', None, query_x),
+        Field('y_id', None, query_x),
         Link('y', One, x_to_y, edge='y', requires='id'),
     ]),
     Edge('y', [
-        Field('id', query_y),
-        Field('c', query_y),
-        Field('d', query_y),
+        Field('id', None, query_y),
+        Field('c', None, query_y),
+        Field('d', None, query_y),
         Link('xs', Many, y_to_x, edge='x', requires='id'),
     ]),
     Root([
-        Field('f1', query_f),
-        Field('f2', query_f),
+        Field('f1', None, query_f),
+        Field('f2', None, query_f),
     ]),
 ])
 
@@ -118,9 +118,9 @@ GRAPH = Graph([
         Expr('foo', sg_x, foo(S.this, S.this.y)),
         Expr('bar', sg_x, bar(S.this)),
         Expr('baz', sg_x, baz(S.this.y)),
-        Expr('buz', sg_x, buz(S.this, S.size), options=[Option('size')]),
+        Expr('buz', sg_x, buz(S.this, S.size), options=[Option('size', None)]),
         Expr('buz2', sg_x, buz(S.this, S.size),
-             options=[Option('size', default=100)]),
+             options=[Option('size', None, default=100)]),
     ]),
     Edge('y1', [
         Expr('id', sg_y, S.this.id),

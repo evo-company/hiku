@@ -53,15 +53,15 @@ def to_characters_link():
 
 GRAPH = Graph([
     Edge('character', [
-        Field('id', character_data),
-        Field('name', character_data),
-        Field('species', character_data),
+        Field('id', None, character_data),
+        Field('name', None, character_data),
+        Field('species', None, character_data),
         Link('actors', Many, character_to_actors_link,
              edge='actor', requires='id'),
     ]),
     Edge('actor', [
-        Field('id', actor_data),
-        Field('name', actor_data),
+        Field('id', None, actor_data),
+        Field('name', None, actor_data),
         Link('character', One, actor_to_character_link,
              edge='character', requires='id'),
     ]),
