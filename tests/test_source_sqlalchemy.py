@@ -10,8 +10,8 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
-from hiku.types import IntegerMeta, StringMeta
-from hiku.graph import Graph, Edge, Link, Root, Many, One, Maybe
+from hiku.types import IntegerMeta, StringMeta, TypeRef, Sequence, Optional
+from hiku.graph import Graph, Edge, Link, Root
 from hiku.utils import cached_property
 from hiku.compat import with_metaclass
 from hiku.engine import Engine
@@ -104,11 +104,11 @@ def get_queries(source_module, ctx_var, base_cls):
 
         bar_query = _sm.FieldsQuery(ctx_var, bar_table)
 
-        to_foo_query = _sm.LinkQuery(Many, ctx_var, edge='foo',
+        to_foo_query = _sm.LinkQuery(Sequence[TypeRef['foo']], ctx_var,
                                      from_column=foo_table.c.bar_id,
                                      to_column=foo_table.c.id)
 
-        to_bar_query = _sm.LinkQuery(Maybe, ctx_var, edge='bar',
+        to_bar_query = _sm.LinkQuery(Optional[TypeRef['bar']], ctx_var,
                                      from_column=bar_table.c.id,
                                      to_column=bar_table.c.id)
 
@@ -134,14 +134,14 @@ def get_graph(source_module, queries):
             _sm.Link('foo-s', _q.to_foo_query, requires='id'),
         ]),
         Root([
-            Link('foo-list', Many, _q.foo_list,
-                 edge='foo', requires=None),
-            Link('bar-list', Many, _q.bar_list,
-                 edge='bar', requires=None),
-            Link('not-found-one', One, _q.not_found_one,
-                 edge='bar', requires=None),
-            Link('not-found-list', Many, _q.not_found_list,
-                 edge='bar', requires=None),
+            Link('foo-list', Sequence[TypeRef['foo']],
+                 _q.foo_list, requires=None),
+            Link('bar-list', Sequence[TypeRef['bar']],
+                 _q.bar_list, requires=None),
+            Link('not-found-one', TypeRef['bar'],
+                 _q.not_found_one, requires=None),
+            Link('not-found-list', Sequence[TypeRef['bar']],
+                 _q.not_found_list, requires=None),
         ]),
     ])
 
@@ -191,7 +191,7 @@ class SourceSQLAlchemyTestBase(with_metaclass(ABCMeta, object)):
 
     def test_same_table(self):
         with pytest.raises(ValueError) as e:
-            sa.LinkQuery(Many, SA_ENGINE, edge='bar',
+            sa.LinkQuery(Sequence[TypeRef['bar']], SA_ENGINE,
                          from_column=foo_table.c.id,
                          to_column=bar_table.c.id)
         e.match('should belong')

@@ -3,7 +3,8 @@ from itertools import chain
 from .. import query
 from ..refs import RequirementsExtractor
 from ..expr import to_expr
-from ..graph import Link, Field, Many
+from ..graph import Link, Field
+from ..types import TypeRef, Sequence
 from ..query import merge
 from ..utils import kw_only
 from ..types import Unknown
@@ -83,8 +84,8 @@ class SubGraph(object):
                   for f in chain.from_iterable(e.functions
                                                for e in graph_fields)}
 
-        this_link = Link(THIS_LINK_NAME, Many, None,
-                         edge=self.edge, requires=None)
+        this_link = Link(THIS_LINK_NAME, Sequence[TypeRef[self.edge]],
+                         None, requires=None)
 
         reqs = merge(f.reqs for f in graph_fields)
         procs = [f.proc for f in graph_fields]

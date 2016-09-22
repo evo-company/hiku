@@ -4,8 +4,8 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 from hiku.expr import define, S, each
-from hiku.graph import Graph, Edge, Link, Field, Option, Root, Many, One
-from hiku.types import Record, Sequence, Unknown
+from hiku.graph import Graph, Edge, Link, Field, Option, Root
+from hiku.types import Record, Sequence, Unknown, TypeRef
 from hiku.engine import Engine
 from hiku.sources.graph import SubGraph, Expr
 from hiku.readers.simple import read
@@ -68,13 +68,13 @@ _GRAPH = Graph([
         Field('a', None, query_x),
         Field('b', None, query_x),
         Field('y_id', None, query_x),
-        Link('y', One, x_to_y, edge='y', requires='id'),
+        Link('y', TypeRef['y'], x_to_y, requires='id'),
     ]),
     Edge('y', [
         Field('id', None, query_y),
         Field('c', None, query_y),
         Field('d', None, query_y),
-        Link('xs', Many, y_to_x, edge='x', requires='id'),
+        Link('xs', Sequence[TypeRef['x']], y_to_x, requires='id'),
     ]),
     Root([
         Field('f1', None, query_f),
@@ -131,8 +131,8 @@ GRAPH = Graph([
         Expr('baz', sg_y, baz(S.this)),
     ]),
     Root([
-        Link('x1s', Many, to_x, edge='x1', requires=None),
-        Link('y1s', Many, to_y, edge='y1', requires=None),
+        Link('x1s', Sequence[TypeRef['x1']], to_x, requires=None),
+        Link('y1s', Sequence[TypeRef['y1']], to_y, requires=None),
     ]),
 ])
 

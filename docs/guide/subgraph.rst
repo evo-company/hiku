@@ -22,29 +22,29 @@ example. So this graph definition wouldn't be much different from our
 :ref:`previous graph definition <guide-database-graph>`:
 
 .. literalinclude:: test_subgraph.py
-    :lines: 39-77
+    :lines: 39-78
     :linenos:
-    :emphasize-lines: 14,32-33
+    :emphasize-lines: 15,33-34
 
-This example shows a :py:class:`~hiku.graph.Link` :sup:`[32-33]` with
-:py:const:`~hiku.graph.Maybe` type. This is because column
+This example shows a :py:class:`~hiku.graph.Link` :sup:`[33-34]` with
+:py:const:`~hiku.types.Optional` type. This is because column
 ``character.image_id`` can be equal to ``null``.
 
-:py:const:`~hiku.graph.Maybe` type requires to use
+:py:const:`~hiku.types.Optional` type requires to use
 :py:const:`~hiku.graph.Nothing` constant in the ``maybe_direct_link``
-:sup:`[14]` function in order to indicate that there is nothing to link to. This
+:sup:`[15]` function in order to indicate that there is nothing to link to. This
 special constant is used instead of ``None``, because ``None`` can be a valid
 value.
 
 For testing purposes let's define helper function ``execute``:
 
 .. literalinclude:: test_subgraph.py
-    :lines: 81-92
+    :lines: 82-93
 
 So let's query some data, needed to show characters with their photos:
 
 .. literalinclude:: test_subgraph.py
-    :lines: 95-105
+    :lines: 96-106
     :dedent: 4
 
 What's wrong with this query?
@@ -78,7 +78,7 @@ exposes all of our data sources. High-level graph is used to express our
 business-logic based on low-level graph, and hides it's implementation details.
 
 .. literalinclude:: test_subgraph.py
-    :lines: 109-133
+    :lines: 110-134
     :linenos:
     :emphasize-lines: 5-6,10,15,17-19
 
@@ -141,7 +141,7 @@ of the standard "no-photo" image :sup:`[19]`. Without using
 Testing our high-level graph:
 
 .. literalinclude:: test_subgraph.py
-    :lines: 138-148
+    :lines: 139-149
     :dedent: 4
 
 As you can see, the goal is achieved.

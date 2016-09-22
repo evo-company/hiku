@@ -36,13 +36,33 @@ Backward-incompatible changes
 - Removed :py:class:`hiku.types.ContainerType`
 - Removed :py:func:`hiku.types.to_instance`
 
-- Replaced required keyword argument ``to_list`` in the
-  :py:class:`hiku.graph.Link` with second positional argument, which
-  has a type of ``Union[Maybe, One, Many]``
+- Moved :py:class:`hiku.typedef.types.TypeRef` into :py:class:`hiku.types.TypeRef`
+- Moved :py:class:`hiku.typedef.types.TypeRefMeta` into
+  :py:class:`hiku.types.TypeRefMeta`
 
-- Replaced required keyword argument ``to_list`` in the
-  :py:class:`hiku.sources.sqlalchemy.LinkQuery` with first positional
-  argument, which has a type of ``Union[Maybe, One, Many]``
+- Replaced required keyword arguments ``to_list`` and ``edge`` in the
+  :py:class:`hiku.graph.Link` class by one second positional argument, which
+  can have one of these values:
+
+  - ``TypeRef['foo']`` or ``Optional[TypeRef['foo']]`` instead of
+    ``edge='foo', to_list=False``
+  - ``Sequence[TypeRef['foo']]`` instead of ``edge='foo', to_list=True``
+
+  Before:
+
+  .. code-block:: python
+
+    Link('foo', func, edge='bar', requires='id', to_list=True)
+
+  Now:
+
+  .. code-block:: python
+
+    Link('foo', Sequence[TypeRef['bar']], func, requires='id')
+
+- Replaced required keyword arguments ``to_list`` and ``edge`` in the
+  :py:class:`hiku.sources.sqlalchemy.LinkQuery` class by one second positional
+  argument, as in :py:class:`hiku.graph.Link`
 
 - Renamed required keyword argument and corresponding instance attribute
   from ``doc`` into ``description`` in the :py:class:`hiku.graph.Field`,
@@ -87,17 +107,16 @@ New features
 - Implemented :py:class:`hiku.validate.graph.GraphValidator`
   to validate graph definition
 
-- Added ability to define graph links with :py:const:`hiku.graph.Maybe`
-  type, this link will conform to the :py:class:`hiku.types.Optional` type
-  in the Hiku's type system:
+- Added ability to define graph links with :py:const:`hiku.types.Optional`
+  type:
 
   .. code-block:: python
 
-    Link('link-to-foo', Maybe, func, edge='foo', requires=None)
+    Link('link-to-foo', Optional[TypeRef['foo']], func, requires=None)
 
 - Added ability to query complex fields, which has a type of
-  ``Optional[Record[...]]`` (Maybe), ``Record[...]`` (One) or
-  ``Sequence[Record[...]]`` (Many) as if they were linked edges:
+  ``Optional[Record[...]]``, ``Record[...]`` or ``Sequence[Record[...]]``
+  as if they were linked edges:
 
   .. code-block:: python
 

@@ -1,8 +1,7 @@
 from .query import Edge, Link, Field, merge
 from .types import GenericMeta, RecordMeta, SequenceMeta, MappingMeta
-from .types import OptionalMeta
+from .types import OptionalMeta, TypeRefMeta
 from .nodes import NodeVisitor
-from .typedef.types import TypeRefMeta
 
 
 # TODO: revisit this

@@ -85,7 +85,7 @@ _LINK_REF_MAKER = {
 
 
 def store_links(result, edge, link, ids, query_result):
-    field_val = partial(_LINK_REF_MAKER[link.type], result, link)
+    field_val = partial(_LINK_REF_MAKER[link.type_enum], result, link)
     if edge.name is not None:
         if ids is not None:
             for i, res in zip(ids, query_result):
@@ -217,7 +217,8 @@ class Query(Workflow):
 
     def process_link(self, edge, graph_link, query_edge, ids, result):
         store_links(self._result, edge, graph_link, ids, result)
-        to_ids = link_result_to_ids(ids is not None, graph_link.type, result)
+        to_ids = link_result_to_ids(ids is not None, graph_link.type_enum,
+                                    result)
         if to_ids:
             self.process_edge(self.graph.edges_map[graph_link.edge], query_edge,
                               to_ids)

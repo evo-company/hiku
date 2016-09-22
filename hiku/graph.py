@@ -10,21 +10,18 @@ from abc import ABCMeta, abstractmethod
 from itertools import chain
 from collections import OrderedDict
 
+from .types import OptionalMeta, SequenceMeta, TypeRefMeta
 from .utils import kw_only, cached_property, const
 from .compat import with_metaclass
 
-#: Type of the link, means that linked edge can be ``None``
 Maybe = const('Maybe')
 
-#: Type of the link, means that linked edge can *not* be ``None``
 One = const('One')
 
-#: Type of the link, means that linked edge is a list of edge objects
 Many = const('Many')
 
-#: Special constant that is used by links with type
-#: :py:const:`~hiku.graph.Maybe` in order to indicate that there is
-#: nothing to link to
+#: Special constant that is used by links with :py:class:`~hiku.types.Optional`
+#: type in order to indicate that there is nothing to link to
 Nothing = const('Nothing')
 
 
@@ -133,6 +130,18 @@ class AbstractLink(AbstractNode):
     pass
 
 
+def get_type_enum(type_):
+    if isinstance(type_, TypeRefMeta):
+        return One, type_.__type_name__
+    elif isinstance(type_, OptionalMeta):
+        if isinstance(type_.__type__, TypeRefMeta):
+            return Maybe, type_.__type__.__type_name__
+    elif isinstance(type_, SequenceMeta):
+        if isinstance(type_.__item_type__, TypeRefMeta):
+            return Many, type_.__item_type__.__type_name__
+    raise TypeError('Invalid type specified: {!r}'.format(type_))
+
+
 class Link(AbstractLink):
     """Defines a link to the edge
 
@@ -141,7 +150,7 @@ class Link(AbstractLink):
         graph = Graph([
             Edge('user', [...]),
             Root([
-                Link('users', Many, func, edge='user', requires=None),
+                Link('users', Sequence[TypeRef['user']], func, requires=None),
             ]),
         ])
 
@@ -151,8 +160,8 @@ class Link(AbstractLink):
             Edge('character', [...]),
             Edge('actor', [
                 Field('id', Integer, field_func),
-                Link('characters', Many, link_func,
-                     edge='character', requires='id'),
+                Link('characters', Sequence[TypeRef['character']],
+                     link_func, requires='id'),
             ])
         ])
 
@@ -163,33 +172,32 @@ class Link(AbstractLink):
         graph = Graph([
             Edge('user', [...]),
             Root([
-                Link('users', Many, func, edge='user', requires=None,
+                Link('users', Sequence[TypeRef['user']], func, requires=None,
                      options=[Option('limit', Integer, default=100)]),
             ]),
         ])
 
     Identifiers loading function protocol::
 
-        # requires is None and type is One
+        # requires is None and type is TypeRef['foo']
         def func() -> T
 
-        # requires is None and type is Maybe
+        # requires is None and type is Optional[TypeRef['foo']]
         def func() -> Union[T, Nothing]
 
-        # requires is None and type is Many
+        # requires is None and type is Sequence[TypeRef['foo']]
         def func() -> List[T]
 
-        # requires is not None and type is One
+        # requires is not None and type is TypeRef['foo']
         def func(ids) -> List[T]
 
-        # requires is not None and type is Maybe
+        # requires is not None and type is Optional[TypeRef['foo']]
         def func(ids) -> List[Union[T, Nothing]]
 
-        # requires is not None and type is Many
+        # requires is not None and type is Sequence[TypeRef['foo']]
         def func(ids) -> List[List[T]]
 
-    See also: :py:const:`hiku.graph.Nothing`, :py:const:`hiku.graph.Maybe`,
-    :py:const:`hiku.graph.One`, :py:const:`hiku.graph.Many`.
+    See also :py:const:`hiku.graph.Nothing`.
 
     If link was defined with options, then link function should accept one
     additional positional argument::
@@ -203,9 +211,7 @@ class Link(AbstractLink):
     def __init__(self, name, type_, func, **kwargs):
         """
         :param name: name of the link
-        :param type_: type of the link, one of: :py:class:`~hiku.graph.Maybe`,
-                      :py:class:`~hiku.graph.One` or
-                      :py:class:`~hiku.graph.Many`
+        :param type_: type of the link
         :param func: function to load identifiers of the linked edge
         :param kw-only edge: name of the linked edge
         :param kw-only requires: field name from the current edge, required
@@ -213,13 +219,16 @@ class Link(AbstractLink):
         :param kw-only,optional options: list of acceptable options
         :param kw-only,optional description: description of the link
         """
-        edge, requires, options, description = \
-            kw_only(kwargs, ['edge', 'requires'], ['options', 'description'])
+        requires, options, description = \
+            kw_only(kwargs, ['requires'], ['options', 'description'])
+
+        type_enum, edge = get_type_enum(type_)
 
         self.name = name
         self.type = type_
-        self.func = func
+        self.type_enum = type_enum
         self.edge = edge
+        self.func = func
         self.requires = requires
         self.options = options or ()
         self.description = description
@@ -246,8 +255,8 @@ class Edge(AbstractEdge):
             Edge('user', [
                 Field('id', Integer, field_func),
                 Field('name', String, field_func),
-                Link('roles', Many, link_func,
-                     edge='role', requires='id'),
+                Link('roles', Sequence[TypeRef['role']],
+                     link_func, requires='id'),
             ]),
         ])
 
@@ -279,8 +288,8 @@ class Root(Edge):
             Edge('baz', [...]),
             Root([
                 Field('foo', String, root_fields_func),
-                Link('bar', Many, to_baz_func,
-                     edge='baz', requires=None),
+                Link('bar', Sequence[TypeRef['baz']],
+                     to_baz_func, requires=None),
                 Edge('quux', [...]),
             ]),
         ])

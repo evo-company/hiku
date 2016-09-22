@@ -92,7 +92,7 @@ def _denormalize(graph, graph_obj, result, query_obj):
 
         elif isinstance(graph_obj, GraphLink):
             graph_edge = graph.edges_map[graph_obj.edge]
-            if graph_obj.type is Many:
+            if graph_obj.type_enum is Many:
                 return [_denormalize(graph, graph_edge, v, query_obj.edge)
                         for v in result]
             else:

@@ -129,6 +129,19 @@ class Callable(with_metaclass(CallableMeta, object)):
     pass
 
 
+class TypeRefMeta(TypingMeta):
+
+    def __cls_init__(cls, name):
+        cls.__type_name__ = name
+
+    def accept(cls, visitor):
+        return visitor.visit_typeref(cls)
+
+
+class TypeRef(with_metaclass(TypeRefMeta, object)):
+    pass
+
+
 class AbstractTypeVisitor(with_metaclass(ABCMeta, object)):
 
     @abstractmethod

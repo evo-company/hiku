@@ -6,7 +6,7 @@ import sqlalchemy
 
 from ..utils import kw_only
 from ..types import String, Integer
-from ..graph import Field as FieldBase, Link as LinkBase
+from ..graph import Field as FieldBase, Link as LinkBase, get_type_enum
 from ..graph import Nothing, Maybe, One, Many
 from ..engine import pass_context
 
@@ -102,16 +102,17 @@ _MAPPERS = {
 class LinkQuery(object):
 
     def __init__(self, type_, sa_engine_ctx_var, **kwargs):
-        self.type = type_
-        self.sa_engine_ctx_var = sa_engine_ctx_var
-        edge, from_column, to_column = \
-            kw_only(kwargs, ['edge', 'from_column', 'to_column'])
+        type_enum, edge = get_type_enum(type_)
 
+        from_column, to_column = kw_only(kwargs, ['from_column', 'to_column'])
         if from_column.table is not to_column.table:
             raise ValueError('from_column and to_column should belong to '
                              'the one table')
 
+        self.type = type_
+        self.type_enum = type_enum
         self.edge = edge
+        self.sa_engine_ctx_var = sa_engine_ctx_var
         self.from_column = from_column
         self.to_column = to_column
 
@@ -127,7 +128,7 @@ class LinkQuery(object):
             expr = None
 
         def result_proc(pairs):
-            mapper = _MAPPERS[self.type]
+            mapper = _MAPPERS[self.type_enum]
             return mapper(pairs, ids)
 
         return expr, result_proc
@@ -150,5 +151,4 @@ class Link(LinkBase):
             kw_only(kwargs, ['requires'], ['options', 'description'])
 
         super(Link, self).__init__(name, query.type, query, requires=requires,
-                                   edge=query.edge, options=options,
-                                   description=description)
+                                   options=options, description=description)

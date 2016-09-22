@@ -1,8 +1,8 @@
 import pytest
 
 from hiku import query as q
-from hiku.graph import Graph, Edge, Field, Link, Option, Root, Many
-from hiku.types import Integer, Record, Sequence, Optional
+from hiku.graph import Graph, Edge, Field, Link, Option, Root
+from hiku.types import Integer, Record, Sequence, Optional, TypeRef
 from hiku.validate.query import QueryValidator
 
 
@@ -28,15 +28,15 @@ GRAPH = Graph([
         Field('hunter', None, _, options=[Option('fried', Integer, default=1)]),
 
         # simple
-        Link('amyls', Many, _, edge='hooted', requires=None),
+        Link('amyls', Sequence[TypeRef['hooted']], _, requires=None),
         # with options
-        Link('ferrous', Many, _, edge='hooted', requires=None,
+        Link('ferrous', Sequence[TypeRef['hooted']], _, requires=None,
              options=[Option('cantab', None)]),
-        Link('knesset', Many, _, edge='hooted', requires=None,
+        Link('knesset', Sequence[TypeRef['hooted']], _, requires=None,
              options=[Option('ceases', None, default=1)]),
-        Link('pouria', Many, _, edge='hooted', requires=None,
+        Link('pouria', Sequence[TypeRef['hooted']], _, requires=None,
              options=[Option('flunk', Integer)]),
-        Link('secants', Many, _, edge='hooted', requires=None,
+        Link('secants', Sequence[TypeRef['hooted']], _, requires=None,
              options=[Option('monadic', Integer, default=1)]),
     ]),
 ])

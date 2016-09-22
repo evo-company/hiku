@@ -1,10 +1,9 @@
 from hiku.expr import S, to_expr, if_some
 from hiku.refs import NamedRef, Ref
 from hiku.nodes import List, Symbol
-from hiku.graph import Graph, Field, Edge, Root, Link, Maybe
-from hiku.types import Integer, String, Record, Optional
+from hiku.graph import Graph, Field, Edge, Root, Link
+from hiku.types import Integer, String, Record, Optional, TypeRef
 from hiku.checker import check, graph_types, fn_types
-from hiku.typedef.types import TypeRef
 
 from .base import ref_eq_patcher, type_eq_patcher
 
@@ -23,7 +22,7 @@ GRAPH = Graph([
         Edge('guida', [
             Field('canette', String, _),
         ]),
-        Link('rakyats', Maybe, _, edge='thalweg', requires=None),
+        Link('rakyats', Optional[TypeRef['thalweg']], _, requires=None),
     ]),
 ])
 

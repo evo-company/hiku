@@ -2,8 +2,8 @@ from __future__ import unicode_literals
 
 import json
 
-from hiku.types import Record, String, Optional, Sequence
-from hiku.graph import Graph, Link, Edge, Field, Root, Many, One
+from hiku.types import Record, String, Optional, Sequence, TypeRef
+from hiku.graph import Graph, Link, Edge, Field, Root
 from hiku.result import denormalize, Result
 from hiku.readers.simple import read
 
@@ -16,14 +16,14 @@ GRAPH = Graph([
     Edge('cosies', [
         Field('nerv', None, _),
         Field('doghead', None, _),
-        Link('mistic', One, _, edge='kir', requires=None),
-        Link('biopics', Many, _, edge='kir', requires=None),
+        Link('mistic', TypeRef['kir'], _, requires=None),
+        Link('biopics', Sequence[TypeRef['kir']], _, requires=None),
     ]),
     Edge('kir', [
         Field('panton', None, _),
         Field('tamsin', None, _),
-        Link('bahut', One, _, edge='cosies', requires=None),
-        Link('paramo', Many, _, edge='cosies', requires=None),
+        Link('bahut', TypeRef['cosies'], _, requires=None),
+        Link('paramo', Sequence[TypeRef['cosies']], _, requires=None),
     ]),
     Edge('saunas', [
         Field('went', Optional[Record[{'changer': String}]], _),
@@ -40,12 +40,12 @@ GRAPH = Graph([
             Field('anoxic', Optional[Record[{'peeps': String}]], _),
             Field('seggen', Record[{'pensive': String}], _),
             Field('necker', Sequence[Record[{'carney': String}]], _),
-            Link('daur', One, _, edge='cosies', requires=None),
-            Link('peafowl', Many, _, edge='cosies', requires=None),
+            Link('daur', TypeRef['cosies'], _, requires=None),
+            Link('peafowl', Sequence[TypeRef['cosies']], _, requires=None),
         ]),
-        Link('zareeba', One, _, edge='cosies', requires=None),
-        Link('crowdie', Many, _, edge='cosies', requires=None),
-        Link('moujik', One, _, edge='saunas', requires=None),
+        Link('zareeba', TypeRef['cosies'], _, requires=None),
+        Link('crowdie', Sequence[TypeRef['cosies']], _, requires=None),
+        Link('moujik', TypeRef['saunas'], _, requires=None),
     ]),
 ])
 

@@ -74,16 +74,16 @@ Then lets define our graph with one :py:class:`~hiku.graph.Edge` and one
 :py:class:`~hiku.graph.Link`:
 
 .. literalinclude:: basics/test_stage2.py
-    :lines: 13-38
+    :lines: 13-39
     :linenos:
-    :emphasize-lines: 7,14,19-20,23-24
+    :emphasize-lines: 8,15,20-21,24-25
 
-``character_data`` function :sup:`[7]` is used to resolve values for two fields
+``character_data`` function :sup:`[8]` is used to resolve values for two fields
 in the ``character`` edge. As you can see, it returns basically a list of lists
 with values in the same order as it was requested in arguments (order of ids and
 fields should be preserved).
 
-This function used twice in the graph :sup:`[19-20]` -- for two fields, this is
+This function used twice in the graph :sup:`[20-21]` -- for two fields, this is
 how `Hiku` understands that both these fields can be loaded using this one
 function and one function call. `Hiku` groups fields by function, to load them
 together.
@@ -92,8 +92,8 @@ This gives us ability to resolve many fields for many objects (ids) using just
 one simple function (when possible) to efficiently load data without introducing
 lots of queries (to eliminate ``N+1`` problem, for example).
 
-``to_characters_link`` function :sup:`[14]` is used to make a link
-:sup:`[23-24]` from the :py:class:`~hiku.graph.Root` edge to the ``character``
+``to_characters_link`` function :sup:`[15]` is used to make a link
+:sup:`[24-25]` from the :py:class:`~hiku.graph.Root` edge to the ``character``
 edge. This function should return character ids.
 
 So now you are able to try this query in the console:
@@ -105,7 +105,7 @@ So now you are able to try this query in the console:
 Or in the program:
 
 .. literalinclude:: basics/test_stage2.py
-    :lines: 50-66
+    :lines: 51-67
     :dedent: 4
 
 Linking edge to edge
@@ -126,29 +126,29 @@ other.
 Here is our extended graph definition:
 
 .. literalinclude:: basics/test_stage3.py
-    :lines: 21-72
+    :lines: 21-73
     :linenos:
-    :emphasize-lines: 19,25,35,36,39-40,42,45-46
+    :emphasize-lines: 20,26,36,37,40-41,43,46-47
 
-Here ``actors`` :py:class:`~hiku.graph.Link` :sup:`[39-40]`, defined in the
-``character`` edge :sup:`[35]`, requires ``id`` field :sup:`[36]` to map
-characters to actors. That's why ``id`` field :sup:`[36]` was added to the
-``character`` edge :sup:`[35]`. The same work should be done in the ``actor``
-edge :sup:`[42]` to implement backward ``character`` link :sup:`[45-46]`.
+Here ``actors`` :py:class:`~hiku.graph.Link` :sup:`[40-41]`, defined in the
+``character`` edge :sup:`[36]`, requires ``id`` field :sup:`[37]` to map
+characters to actors. That's why ``id`` field :sup:`[37]` was added to the
+``character`` edge :sup:`[36]`. The same work should be done in the ``actor``
+edge :sup:`[43]` to implement backward ``character`` link :sup:`[46-47]`.
 
-``character_to_actors_link`` function :sup:`[19]` accepts ids of the characters
+``character_to_actors_link`` function :sup:`[20]` accepts ids of the characters
 and should return list of lists -- ids of the actors, in the same order, so
 every character id can be associated with a list of actor ids. This is how
 **one to many** links works.
 
-``actor_to_character_link`` function :sup:`[25]` requires/accepts ids of the
+``actor_to_character_link`` function :sup:`[26]` requires/accepts ids of the
 actors and returns ids of the characters in the same order. This is how
 **many to one** links works.
 
 So now we can include linked edge fields in our query:
 
 .. literalinclude:: basics/test_stage3.py
-    :lines: 89-102
+    :lines: 90-103
     :dedent: 4
 
 We can go further and follow ``character`` link from the ``actor`` edge and
@@ -157,7 +157,7 @@ which is normal when this feature is desired, as long as query is a hierarchical
 finite structure and result follows it's structure.
 
 .. literalinclude:: basics/test_stage3.py
-    :lines: 105-126
+    :lines: 106-127
     :dedent: 4
     :linenos:
     :emphasize-lines: 11,13,15

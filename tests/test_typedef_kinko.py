@@ -1,8 +1,9 @@
 import difflib
 from textwrap import dedent
 
-from hiku.graph import Graph, Edge, Field, Link, Root, Many, One
+from hiku.graph import Graph, Edge, Field, Link, Root
 from hiku.types import Sequence, Mapping, Integer, String, Optional, Record
+from hiku.types import TypeRef
 from hiku.typedef.kinko import dumps
 
 
@@ -140,11 +141,11 @@ def test_type_ref():
             ]),
             Edge('amb', [
                 Field('loor', String, _),
-                Link('cressy', One, _, edge='xeric', requires=None),
+                Link('cressy', TypeRef['xeric'], _, requires=None),
             ]),
             Edge('offeree', [
                 Field('abila', String, _),
-                Link('ferber', Many, _, edge='xeric', requires=None),
+                Link('ferber', Sequence[TypeRef['xeric']], _, requires=None),
             ]),
         ]),
         """
@@ -175,12 +176,12 @@ def testDocs():
             Edge('trine', [
                 Field('propels', Optional[String], _,
                       description="attribute propels"),
-                Link('cardura', One, _, edge='switzer', requires=None,
+                Link('cardura', TypeRef['switzer'], _, requires=None,
                      description="link cardura to switzer"),
             ], description="trine description"),
             Edge('packrat', [
                 Field('pikes', String, _, description="attribute pikes"),
-                Link('albus', Many, _, edge='switzer', requires=None,
+                Link('albus', Sequence[TypeRef['switzer']], _, requires=None,
                      description="link albus to switzer"),
             ], description="packrat description"),
         ]),

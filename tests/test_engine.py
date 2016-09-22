@@ -5,8 +5,8 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 from hiku import query
-from hiku.graph import Graph, Edge, Field, Link, Option, Root, Many
-from hiku.types import Record, Sequence, Integer, Optional
+from hiku.graph import Graph, Edge, Field, Link, Option, Root
+from hiku.types import Record, Sequence, Integer, Optional, TypeRef
 from hiku.engine import Engine, pass_context, Context
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
@@ -59,10 +59,13 @@ def get_graph():
                 Field('buran', None, query_fields1),
                 Field('updated', None, query_fields2),
             ]),
-            Link('subaru', Many, query_link1, edge='tergate', requires=None),
-            Link('jessie', Many, query_link2, edge='tergate', requires=None),
+            Link('subaru', Sequence[TypeRef['tergate']],
+                 query_link1, requires=None),
+            Link('jessie', Sequence[TypeRef['tergate']],
+                 query_link2, requires=None),
             # with options
-            Link('doubled', Many, query_link1, edge='tergate', requires=None,
+            Link('doubled', Sequence[TypeRef['tergate']],
+                 query_link1, requires=None,
                  options=[Option('empower', None, default='deedily_reaving')]),
         ]),
     ])

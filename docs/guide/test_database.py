@@ -40,7 +40,8 @@ sa_engine.execute(actor_table.insert().values([
 
 # define graph
 
-from hiku.graph import Graph, Root, Edge, Link, One, Many
+from hiku.graph import Graph, Root, Edge, Link
+from hiku.types import TypeRef, Sequence
 from hiku.engine import pass_context
 from hiku.sources import sqlalchemy as sa
 
@@ -50,7 +51,7 @@ character_query = sa.FieldsQuery(SA_ENGINE, character_table)
 
 actor_query = sa.FieldsQuery(SA_ENGINE, actor_table)
 
-character_to_actors_query = sa.LinkQuery(Many, SA_ENGINE, edge='actor',
+character_to_actors_query = sa.LinkQuery(Sequence[TypeRef['actor']], SA_ENGINE,
                                          from_column=actor_table.c.character_id,
                                          to_column=actor_table.c.id)
 
@@ -78,14 +79,14 @@ GRAPH = Graph([
         sa.Field('id', actor_query),
         sa.Field('name', actor_query),
         sa.Field('character_id', actor_query),
-        Link('character', One, direct_link,
-             edge='character', requires='character_id'),
+        Link('character', TypeRef['character'],
+             direct_link, requires='character_id'),
     ]),
     Root([
-        Link('characters', Many, to_characters_query,
-             edge='character', requires=None),
-        Link('actors', Many, to_actors_query,
-             edge='actor', requires=None),
+        Link('characters', Sequence[TypeRef['character']],
+             to_characters_query, requires=None),
+        Link('actors', Sequence[TypeRef['actor']],
+             to_actors_query, requires=None),
     ]),
 ])
 

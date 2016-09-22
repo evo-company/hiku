@@ -3,9 +3,8 @@ from unittest import skip
 from hiku import graph as g
 from hiku.expr import define, S, each, to_expr, if_some
 from hiku.refs import Ref, NamedRef, ref_to_req, RequirementsExtractor
-from hiku.graph import Many, One, Maybe
 from hiku.query import Edge, Field, Link
-from hiku.types import Record, Unknown
+from hiku.types import Record, Unknown, TypeRef, Sequence, Optional
 from hiku.checker import check, graph_types, fn_types
 
 from .base import reqs_eq_patcher
@@ -19,8 +18,8 @@ GRAPH = g.Graph([
     g.Edge('patens', [
         g.Field('clacks', None, _),
         g.Field('panicle', None, _),
-        g.Link('apatite', One, _, edge='sais', requires=None),
-        g.Link('jakies', Many, _, edge='sais', requires=None),
+        g.Link('apatite', TypeRef['sais'], _, requires=None),
+        g.Link('jakies', Sequence[TypeRef['sais']], _, requires=None),
     ]),
     g.Edge('sais', [
         g.Field('oloroso', None, _),
@@ -31,12 +30,12 @@ GRAPH = g.Graph([
         g.Edge('malatya', [
             g.Field('bartok', None, _),
             g.Field('rotifer', None, _),
-            g.Link('teling', One, _, edge='patens', requires=None),
-            g.Link('wandy', Many, _, edge='patens', requires=None),
+            g.Link('teling', TypeRef['patens'], _, requires=None),
+            g.Link('wandy', Sequence[TypeRef['patens']], _, requires=None),
         ]),
-        g.Link('civics', Maybe, _, edge='patens', requires=None),
-        g.Link('weigh', One, _, edge='patens', requires=None),
-        g.Link('comped', Many, _, edge='patens', requires=None),
+        g.Link('civics', Optional[TypeRef['patens']], _, requires=None),
+        g.Link('weigh', TypeRef['patens'], _, requires=None),
+        g.Link('comped', Sequence[TypeRef['patens']], _, requires=None),
     ]),
 ])
 

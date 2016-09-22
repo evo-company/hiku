@@ -9,8 +9,8 @@ import astor
 import pytest
 
 from hiku.expr import define, S, if_, each, to_expr, if_some
-from hiku.types import Optional, String, Record, Unknown
-from hiku.graph import Graph, Field, Edge, Link, Root, Many, One
+from hiku.types import Optional, String, Record, Unknown, TypeRef, Sequence
+from hiku.graph import Graph, Field, Edge, Link, Root
 from hiku.compat import PY3, PY35
 from hiku.checker import check, graph_types, fn_types
 from hiku.compiler import ExpressionCompiler
@@ -42,8 +42,8 @@ ENV = Graph([
     ]),
     Edge('y', [
         Field('c', None, noop),
-        Link('x1', One, noop, edge='x', requires=None),
-        Link('xs', Many, noop, edge='x', requires=None),
+        Link('x1', TypeRef['x'], noop, requires=None),
+        Link('xs', Sequence[TypeRef['x']], noop, requires=None),
     ]),
     Root([
         Field('a', None, noop),
@@ -53,11 +53,11 @@ ENV = Graph([
         ]),
         Edge('y', [
             Field('c', None, noop),
-            Link('x1', One, noop, edge='x', requires=None),
-            Link('xs', Many, noop, edge='x', requires=None),
+            Link('x1', TypeRef['x'], noop, requires=None),
+            Link('xs', Sequence[TypeRef['x']], noop, requires=None),
         ]),
-        Link('y1', One, noop, edge='y', requires=None),
-        Link('ys', Many, noop, edge='y', requires=None),
+        Link('y1', TypeRef['y'], noop, requires=None),
+        Link('ys', Sequence[TypeRef['y']], noop, requires=None),
     ])
 ])
 

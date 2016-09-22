@@ -6,7 +6,7 @@ from .refs import NamedRef, Ref
 from .nodes import NodeTransformer, Symbol, Keyword, Tuple, List
 from .types import Sequence, SequenceMeta, Record, RecordMeta, Optional
 from .types import MappingMeta, OptionalMeta, Unknown, UnknownMeta
-from .typedef.types import TypeRef, TypeRefMeta
+from .types import TypeRef, TypeRefMeta
 
 
 class GraphTypes(graph.GraphVisitor):
@@ -20,14 +20,14 @@ class GraphTypes(graph.GraphVisitor):
         return Record[[(f.name, self.visit(f)) for f in obj.fields]]
 
     def visit_link(self, obj):
-        if obj.type is graph.Maybe:
+        if obj.type_enum is graph.Maybe:
             return Optional[TypeRef[obj.edge]]
-        elif obj.type is graph.One:
+        elif obj.type_enum is graph.One:
             return TypeRef[obj.edge]
-        elif obj.type is graph.Many:
+        elif obj.type_enum is graph.Many:
             return Sequence[TypeRef[obj.edge]]
         else:
-            raise TypeError(repr(obj.type))
+            raise TypeError(repr(obj.type_enum))
 
     def visit_field(self, obj):
         return obj.type or Unknown

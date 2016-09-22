@@ -10,7 +10,8 @@ data = {
 
 # graph definition
 
-from hiku.graph import Graph, Root, Field, Edge, Link, Many
+from hiku.graph import Graph, Root, Field, Edge, Link
+from hiku.types import TypeRef, Sequence
 from hiku.engine import Engine
 from hiku.result import denormalize
 from hiku.readers.simple import read
@@ -32,8 +33,8 @@ GRAPH = Graph([
         Field('species', None, character_data),
     ]),
     Root([
-        Link('characters', Many, to_characters_link,
-             edge='character', requires=None),
+        Link('characters', Sequence[TypeRef['character']],
+             to_characters_link, requires=None),
     ]),
 ])
 
