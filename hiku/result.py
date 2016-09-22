@@ -107,6 +107,13 @@ def denormalize(graph, result, query):
 
     This hierarchical structure will follow query structure.
 
+    Example::
+
+        query = hiku.readers.simple.read('[:foo]')
+        norm_result = hiku_engine.execute(graph, query)
+        result = hiku.result.denormalize(graph, norm_result, query)
+        assert result == {'foo': 'value'}
+
     :param graph: :py:class:`~hiku.graph.Graph` definition
     :param result: result of the query
     :param query: executed query, instance of the :py:class:`~hiku.query.Edge`
