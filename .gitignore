@@ -1,6 +1,7 @@
 build
 dist
 env
+*.js.gz
 *.egg-info
 *.pyc
 *.pyo

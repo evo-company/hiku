@@ -14,6 +14,30 @@
     - raw: apk del .build-deps
 
 - !Image
+  name: static.env
+  from: !DockerImage alpine:3.4
+  repository: vmagamedov/hiku-static.env
+  provision-with: !AnsibleTasks
+    - raw: apk add --no-cache nodejs
+    - npm: name={{item}} path=/usr/local/lib
+      with_items:
+        - babel-core@6.14.0
+        - babel-loader@6.2.5
+        - babel-preset-es2015@6.14.0
+        - babel-preset-react@6.11.1
+        - style-loader@0.13.1
+        - css-loader@0.25.0
+        - imports-loader@0.6.5
+        - exports-loader@0.6.3
+        - webpack@1.13.2
+        - webpack-dev-server@1.16.1
+        - react@15.3.2
+        - react-dom@15.3.2
+        - codemirror@5.19.0
+        - es6-promise@4.0.3
+        - whatwg-fetch@1.0.0
+
+- !Image
   name: docs
   from: env
   repository: reg.local/hiku/docs
@@ -37,6 +61,28 @@
   shell: py.test -q --tb=native {{tests}}
 
 - !ShellCommand
-  name: docs
+  name: build docs
   image: docs
   shell: sphinx-build -b html docs build
+
+- !ShellCommand
+  name: build static
+  image: static.env
+  shell: >
+    NODE_PATH=/usr/local/lib/node_modules
+    /usr/local/lib/node_modules/.bin/webpack -p
+    && rm -f ./hiku/console/assets/console.js.gz
+    && gzip ./hiku/console/assets/console.js
+
+- !ShellCommand
+  name: webpack
+  image: static.env
+  shell: >
+    NODE_PATH=/usr/local/lib/node_modules
+    /usr/local/lib/node_modules/.bin/webpack-dev-server
+    --content-base=hiku/console/assets
+    --host=0.0.0.0
+    --watch-poll
+    --inline --hot
+  ports:
+    - !Expose { port: 8080, as: 8080 }

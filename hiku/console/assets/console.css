@@ -1,0 +1,21 @@
+.CodeMirror {
+    height: auto;
+}
+.CodeMirror pre.CodeMirror-placeholder {
+    color: #999;
+}
+.query {
+    border-bottom: 1px solid #eee;
+}
+.result .CodeMirror-cursor, .docs .CodeMirror-cursor {
+    visibility: hidden;
+}
+.float-left {
+    float: left;
+}
+.float-right {
+    float: right;
+}
+.clear-both {
+    clear: both;
+}

@@ -1,135 +1,14 @@
 <!doctype html>
 <html>
-<head>
-    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/codemirror.min.css">
-    <style type="text/css">
-        .CodeMirror {
-            height: auto;
-        }
-        .CodeMirror pre.CodeMirror-placeholder {
-            color: #999;
-        }
-        #query {
-            border-bottom: 1px solid #eee;
-        }
-        #result .CodeMirror-cursor, #docs .CodeMirror-cursor {
-            visibility: hidden;
-        }
-    </style>
-</head>
+<head></head>
 <body>
-    <div>
-        <div id="main" style="float: left; width: 100%;">
-            <div>
-                <div style="float:left"><button onclick="submit();">run</button></div>
-                <div style="float:right"><button onclick="showDocs();">docs</button></div>
-                <div id="query"></div>
-                <div style="clear:both"></div>
-            </div>
-            <div id="result"></div>
-        </div>
-        <div id="sidebar" style="float: right; width: 30%; visibility: hidden;">
-            <div id="docs"></div>
-        </div>
-        <div style="clear:both"></div>
-    </div>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/codemirror.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/addon/selection/active-line.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/addon/edit/matchbrackets.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/addon/edit/closebrackets.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/addon/display/placeholder.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/mode/clojure/clojure.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.11.0/mode/javascript/javascript.min.js"></script>
+    <div id="container"></div>
     <script>
-        var osx = navigator.platform == "MacIntel";
-        var run_key_name = osx ? String.fromCharCode(8984) + "Enter" : "Ctrl+Enter";
-        var queryView = CodeMirror(document.getElementById("query"), {
-            placeholder: "Type your query here and press " + run_key_name,
-            viewportMargin: Infinity,
-            matchBrackets: true,
-            autoCloseBrackets: "[](){}\"\"",
-            mode: "clojure"
-        });
-        var resultView = CodeMirror(document.getElementById("result"), {
-            mode: {name: "javascript", json: true},
-            readOnly: true
-        });
-        function submit() {
-            var httpRequest = new XMLHttpRequest();
-            httpRequest.onreadystatechange = function() {
-                if (httpRequest.readyState === XMLHttpRequest.DONE) {
-                    var status = httpRequest.status;
-                    var cType = httpRequest.getResponseHeader("Content-Type");
-                    if (status === 200) {
-                        var result = JSON.parse(httpRequest.responseText);
-                        resultView.setValue(JSON.stringify(result, null, "  "));
-                    } else {
-                        if (status === 400 && cType === "application/json") {
-                            var data = JSON.parse(httpRequest.responseText);
-                            var report = 'Errors:\n';
-                            for (var i=0; i < data.errors.length; i++) {
-                                report = report + '- ' + data.errors[i] + '\n'
-                            }
-                            resultView.setValue(report);
-                        } else if (status === 500 && cType === "application/json") {
-                            var data = JSON.parse(httpRequest.responseText);
-                            resultView.setValue(data.traceback || "Server Error");
-                        } else {
-                            resultView.setValue("Error");
-                        }
-                    }
-                }
-            };
-            httpRequest.open("POST", "$index_url");
-            httpRequest.setRequestHeader('Content-Type', 'application/edn');
-            httpRequest.send(queryView.getValue());
-        }
-        var key_map = {
-            "Tab": function(cm) {
-                var spaces = new Array(cm.getOption("indentUnit") + 1).join(" ");
-                cm.replaceSelection(spaces);
-            }
+        window.URLS = {
+            'index': '$index_url',
+            'docs': '$docs_url'
         };
-        key_map[osx ? "Cmd-Enter" : "Ctrl-Enter"] = function() {submit()};
-        queryView.setOption("extraKeys", key_map);
-        window.onload = function() {
-            queryView.focus();
-        };
-
-        var mainView = document.getElementById("main");
-        var sideView = document.getElementById("sidebar");
-        var docsView = CodeMirror(document.getElementById("docs"), {
-            readOnly: true
-        });
-
-        function loadDocs() {
-            var httpRequest = new XMLHttpRequest();
-            httpRequest.onreadystatechange = function() {
-                if (httpRequest.readyState === XMLHttpRequest.DONE) {
-                    if (httpRequest.status === 200) {
-                        docsView.setValue(httpRequest.responseText);
-                    } else {
-                        docsView.setValue("Error");
-                    }
-                }
-            };
-            httpRequest.open("GET", "$docs_url");
-            httpRequest.send();
-            docsView.setValue("Loading...");
-        }
-
-        function showDocs() {
-            if (docsView.getValue() === "") {
-                loadDocs();
-            }
-            if (sideView.style.visibility === "hidden") {
-                mainView.style.width = "70%";
-                sideView.style.visibility = "visible";
-            } else {
-                mainView.style.width = "100%";
-                sideView.style.visibility = "hidden";
-            }
-        }
     </script>
+    <script src="$js_url"></script>
 </body>
 </html>

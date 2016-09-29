@@ -40,6 +40,7 @@ class ConsoleApplication(object):
     _urls = {
         'index_url': '/',
         'docs_url': '/docs',
+        'js_url': '/console.js',
     }
 
     def __init__(self, root, engine, ctx=None, debug=False):
@@ -66,6 +67,12 @@ class ConsoleApplication(object):
         elif path_info == self._urls['docs_url']:
             if environ['REQUEST_METHOD'] == 'GET':
                 return self._docs_get(environ, start_response)
+            else:
+                return self._error(405, start_response)
+
+        elif path_info == self._urls['js_url']:
+            if environ['REQUEST_METHOD'] == 'GET':
+                return self._static_get(environ, start_response)
             else:
                 return self._error(405, start_response)
 
@@ -133,5 +140,14 @@ class ConsoleApplication(object):
         content = _encode(self._docs_content)
         start_response('200 OK', [
             ('Content-Length', str(len(content))),
+        ])
+        return [content]
+
+    def _static_get(self, environ, start_response):
+        content = pkgutil.get_data('hiku.console', 'assets/console.js.gz')
+        start_response('200 OK', [
+            ('Content-Type', 'text/javascript; charset=UTF-8'),
+            ('Content-Length', str(len(content))),
+            ('Content-Encoding', 'gzip'),
         ])
         return [content]
