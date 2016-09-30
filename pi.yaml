@@ -71,8 +71,6 @@
   shell: >
     NODE_PATH=/usr/local/lib/node_modules
     /usr/local/lib/node_modules/.bin/webpack -p
-    && rm -f ./hiku/console/assets/console.js.gz
-    && gzip ./hiku/console/assets/console.js
 
 - !ShellCommand
   name: webpack

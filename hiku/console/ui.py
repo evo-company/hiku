@@ -144,10 +144,9 @@ class ConsoleApplication(object):
         return [content]
 
     def _static_get(self, environ, start_response):
-        content = pkgutil.get_data('hiku.console', 'assets/console.js.gz')
+        content = pkgutil.get_data('hiku.console', 'assets/console.js')
         start_response('200 OK', [
             ('Content-Type', 'text/javascript; charset=UTF-8'),
             ('Content-Length', str(len(content))),
-            ('Content-Encoding', 'gzip'),
         ])
         return [content]

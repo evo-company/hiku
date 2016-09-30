@@ -1,7 +1,7 @@
+hiku/console/assets/*.js
 build
 dist
 env
-*.js.gz
 *.egg-info
 *.pyc
 *.pyo
