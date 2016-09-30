@@ -1,2 +1,4 @@
 graft hiku/console/assets
 recursive-exclude tests *
+recursive-exclude tests3 *
+recursive-exclude docs *

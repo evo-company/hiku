@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='Hiku',
-    version='0.1.dev0',
+    version='0.1.0',
     description='Declarative data presentation library',
     author='Vladimir Magamedov',
     author_email='vladimir@magamedov.com',
