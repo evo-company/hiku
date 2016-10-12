@@ -46,12 +46,15 @@ def store_fields(result, edge, fields, ids, query_result):
     names = [f.name for f in fields]
     if edge.name is not None:
         if ids is not None:
+            edge_index = result.index.setdefault(edge.name, {})
             for i, row in zip(ids, query_result):
-                result.index[edge.name][i].update(zip(names, row))
+                edge_data = edge_index.setdefault(i, {})
+                edge_data.update(zip(names, row))
         else:
-            result[edge.name].update(zip(names, query_result))
+            edge_data = result.root.setdefault(edge.name, {})
+            edge_data.update(zip(names, query_result))
     else:
-        result.update(zip(names, query_result))
+        result.root.update(zip(names, query_result))
 
 
 def link_reqs(result, edge, link, ids):
@@ -59,9 +62,9 @@ def link_reqs(result, edge, link, ids):
         if ids is not None:
             return [result.index[edge.name][i][link.requires] for i in ids]
         else:
-            return result[edge.name][link.requires]
+            return result.root[edge.name][link.requires]
     else:
-        return result[link.requires]
+        return result.root[link.requires]
 
 
 def link_ref_maybe(result, link, ident):
@@ -88,12 +91,15 @@ def store_links(result, edge, link, ids, query_result):
     field_val = partial(_LINK_REF_MAKER[link.type_enum], result, link)
     if edge.name is not None:
         if ids is not None:
+            edge_index = result.index.setdefault(edge.name, {})
             for i, res in zip(ids, query_result):
-                result.index[edge.name][i][link.name] = field_val(res)
+                edge_data = edge_index.setdefault(i, {})
+                edge_data[link.name] = field_val(res)
         else:
-            result[edge.name][link.name] = field_val(query_result)
+            edge_data = result.root.setdefault(edge.name, {})
+            edge_data[link.name] = field_val(query_result)
     else:
-        result[link.name] = field_val(query_result)
+        result.root[link.name] = field_val(query_result)
 
 
 def link_result_to_ids(is_list, link_type, result):

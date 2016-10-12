@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from ..edn import dumps as _dumps, TaggedElement, List
-from ..result import Ref
+from ..result import Ref, Result
 from ..compat import text_type
 
 
@@ -17,6 +17,8 @@ def _transform(obj):
     elif isinstance(obj, dict):
         assert all(isinstance(k, text_type) for k in obj.keys())
         return {k: _transform(v) for k, v in obj.items()}
+    elif isinstance(obj, Result):
+        return _transform(obj.root)
     else:
         return obj
 

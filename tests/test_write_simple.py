@@ -16,13 +16,15 @@ class TestWriteSimple(TestCase):
 
     def testSimple(self):
         result = Result()
-        result['f1'] = 1
-        result['a']['f2'] = 2
-        result.index['b'][1] = {'f3': 'bar1'}
-        result.index['b'][2] = {'f3': 'bar2'}
-        result.index['b'][3] = {'f3': 'bar3'}
-        result['l1'] = result.ref('b', 1)
-        result['l2'] = [result.ref('b', 2), result.ref('b', 3)]
+        result.root['f1'] = 1
+        a = result.root.setdefault('a', {})
+        a['f2'] = 2
+        b = result.index.setdefault('b', {})
+        b[1] = {'f3': 'bar1'}
+        b[2] = {'f3': 'bar2'}
+        b[3] = {'f3': 'bar3'}
+        result.root['l1'] = result.ref('b', 1)
+        result.root['l2'] = [result.ref('b', 2), result.ref('b', 3)]
         self.assertWrites(
             result,
             """

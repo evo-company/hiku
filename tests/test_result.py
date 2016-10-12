@@ -50,7 +50,7 @@ GRAPH = Graph([
 ])
 
 RESULT = Result()
-RESULT.update({
+RESULT.root.update({
     'slotted': 'quoy_ushered',
     'tatler': {'orudis': 'fhp_musterd'},
     'coom': {'yappers': 'idaho_golok'},

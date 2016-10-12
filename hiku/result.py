@@ -18,8 +18,6 @@
         on the client
 
 """
-from collections import defaultdict
-
 from .types import RecordMeta, OptionalMeta, SequenceMeta
 from .query import Edge, Field, Link, merge
 from .graph import Link as GraphLink, Field as GraphField, Many
@@ -42,13 +40,7 @@ class Ref(object):
         return self.index[self.edge][self.ident] == other
 
 
-class State(defaultdict):
-
-    def __init__(self):
-        super(State, self).__init__(State)
-
-
-class Result(State):
+class Result(object):
     """Internal result representation
 
     It gives access to the result of the :py:class:`~hiku.graph.Root` edge --
@@ -58,8 +50,11 @@ class Result(State):
     Behaves like a mapping.
     """
     def __init__(self):
-        super(Result, self).__init__()
-        self.index = State()
+        self.root = {}
+        self.index = {}
+
+    def __getitem__(self, key):
+        return self.root[key]
 
     def ref(self, edge, ident):
         return Ref(self.index, edge, ident)
