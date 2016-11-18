@@ -1,7 +1,7 @@
 Hiku
 ====
 
-Release v0.2 - :doc:`What's new <changelog/changes_02>`
+Release v0.3 - :doc:`What's new <changelog/changes_03>`
 
 `Hiku` is a library to design Graph APIs
 

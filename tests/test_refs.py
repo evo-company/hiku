@@ -1,11 +1,11 @@
 from unittest import skip
 
 from hiku import graph as g
-from hiku.expr import define, S, each, to_expr, if_some
-from hiku.refs import Ref, NamedRef, ref_to_req, RequirementsExtractor
 from hiku.query import Edge, Field, Link
 from hiku.types import Record, Unknown, TypeRef, Sequence, Optional
-from hiku.checker import check, graph_types, fn_types
+from hiku.expr.core import define, S, each, to_expr, if_some
+from hiku.expr.refs import Ref, NamedRef, ref_to_req, RequirementsExtractor
+from hiku.expr.checker import check, graph_types, fn_types
 
 from .base import reqs_eq_patcher
 

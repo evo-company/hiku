@@ -1,9 +1,9 @@
-from hiku.expr import S, to_expr, if_some
-from hiku.refs import NamedRef, Ref
-from hiku.nodes import List, Symbol
 from hiku.graph import Graph, Field, Edge, Root, Link
 from hiku.types import Integer, String, Record, Optional, TypeRef
-from hiku.checker import check, graph_types, fn_types
+from hiku.expr.core import S, to_expr, if_some
+from hiku.expr.refs import NamedRef, Ref
+from hiku.expr.nodes import List, Symbol
+from hiku.expr.checker import check, graph_types, fn_types
 
 from .base import ref_eq_patcher, type_eq_patcher
 

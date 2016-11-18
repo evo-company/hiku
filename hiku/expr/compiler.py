@@ -1,9 +1,10 @@
 from contextlib import contextmanager
 from collections import Counter
 
-from .types import CallableMeta
+from ..types import CallableMeta
+from ..compat import ast as py, text_type
+
 from .nodes import Symbol, Keyword
-from .compat import ast as py, text_type
 
 
 class Environ(object):

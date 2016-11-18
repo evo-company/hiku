@@ -70,6 +70,7 @@ def get_graph():
         ]),
     ])
 
+
 thread_pool = ThreadPoolExecutor(2)
 
 

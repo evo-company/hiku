@@ -1,6 +1,7 @@
-from .query import Edge, Link, Field, merge
-from .types import GenericMeta, RecordMeta, SequenceMeta, MappingMeta
-from .types import OptionalMeta, TypeRefMeta
+from ..query import Edge, Link, Field, merge
+from ..types import GenericMeta, RecordMeta, SequenceMeta, MappingMeta
+from ..types import OptionalMeta, TypeRefMeta
+
 from .nodes import NodeVisitor
 
 

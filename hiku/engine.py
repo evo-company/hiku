@@ -21,25 +21,25 @@ class SplitPattern(query.QueryVisitor):
             self.visit(item)
         return self._fields, self._links, self._edges
 
-    def visit_edge(self, node):
-        raise ValueError('Unexpected value: {!r}'.format(node))
+    def visit_edge(self, obj):
+        raise ValueError('Unexpected value: {!r}'.format(obj))
 
-    def visit_field(self, node):
-        self._fields.append((self._edge.fields_map[node.name], node))
+    def visit_field(self, obj):
+        self._fields.append((self._edge.fields_map[obj.name], obj))
 
-    def visit_link(self, node):
-        obj = self._edge.fields_map[node.name]
-        if isinstance(obj, Link):
-            if obj.requires:
-                self._fields.append((self._edge.fields_map[obj.requires],
-                                     query.Field(obj.requires)))
-            self._links.append((obj, node))
-        elif isinstance(obj, Edge):
-            self._edges.append(node)
+    def visit_link(self, obj):
+        graph_obj = self._edge.fields_map[obj.name]
+        if isinstance(graph_obj, Link):
+            if graph_obj.requires:
+                self._fields.append((self._edge.fields_map[graph_obj.requires],
+                                     query.Field(graph_obj.requires)))
+            self._links.append((graph_obj, obj))
+        elif isinstance(graph_obj, Edge):
+            self._edges.append(obj)
         else:
-            assert isinstance(obj, Field), type(obj)
-            # `node` here is a link, but this link is treated as a complex field
-            self._fields.append((obj, node))
+            assert isinstance(graph_obj, Field), type(graph_obj)
+            # `obj` here is a link, but this link is treated as a complex field
+            self._fields.append((graph_obj, obj))
 
 
 def store_fields(result, edge, fields, ids, query_result):

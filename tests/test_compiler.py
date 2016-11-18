@@ -8,12 +8,12 @@ from collections import OrderedDict
 import astor
 import pytest
 
-from hiku.expr import define, S, if_, each, to_expr, if_some
 from hiku.types import Optional, String, Record, Unknown, TypeRef, Sequence
 from hiku.graph import Graph, Field, Edge, Link, Root
 from hiku.compat import PY3, PY35
-from hiku.checker import check, graph_types, fn_types
-from hiku.compiler import ExpressionCompiler
+from hiku.expr.core import define, S, if_, each, to_expr, if_some
+from hiku.expr.checker import check, graph_types, fn_types
+from hiku.expr.compiler import ExpressionCompiler
 
 
 @define(Unknown, _name='foo')

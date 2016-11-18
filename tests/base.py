@@ -9,9 +9,10 @@ except ImportError:
     from mock import call as _call, ANY as _ANY
     from itertools import izip_longest as zip_longest
 
-from hiku.refs import Ref
 from hiku.types import GenericMeta
 from hiku.query import Field, Link, Edge
+from hiku.expr.refs import Ref
+
 
 patch = _patch
 Mock = _Mock

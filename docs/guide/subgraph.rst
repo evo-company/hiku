@@ -109,14 +109,14 @@ using symbols with their names.
 
 In order to make data modifications, we will need to use more complex
 expressions. `Hiku` already has several built-in functions:
-:py:func:`~hiku.expr.each`, :py:func:`~hiku.expr.if_` and
-:py:func:`~hiku.expr.if_some`. And you are able to use your custom functions,
-:py:func:`~hiku.expr.define` decorator should be used to make them suitable for
+:py:func:`~hiku.expr.core.each`, :py:func:`~hiku.expr.core.if_` and
+:py:func:`~hiku.expr.core.if_some`. And you are able to use your custom functions,
+:py:func:`~hiku.expr.core.define` decorator should be used to make them suitable for
 use in the `Hiku's` expressions.
 
 As you can see, we defined ``image_url`` function :sup:`[6]` to compute image
 url, and we declared argument types, which this function should accept, using
-:py:func:`hiku.expr.define` decorator. Here ``@define(Record[...])`` :sup:`[7]`
+:py:func:`hiku.expr.core.define` decorator. Here ``@define(Record[...])`` :sup:`[7]`
 means that decorated function accepts one argument (only positional arguments
 are supported), which should be a record with at least two fields -- ``id`` and
 ``name``, and these fields should be with specified types:
@@ -129,17 +129,17 @@ query to high-level graph (``:image-url``), `Hiku` will automatically generate
 query for low-level graph (``{:image [:id :name]}``).
 
 In our example above we can also see consequences of using type checking -- need
-to use :py:func:`~hiku.expr.if_some` function :sup:`[17]` before passing
+to use :py:func:`~hiku.expr.core.if_some` function :sup:`[17]` before passing
 character's image into ``image_url`` function :sup:`[6]`. It is used because
 ``S.this.image`` is of type ``Optional[Record[...]]`` and it can't be passed
 directly to the ``image_url`` function, which requires non-optional
-``Record[...]`` type. :py:func:`~hiku.expr.if_some` function will unpack
+``Record[...]`` type. :py:func:`~hiku.expr.core.if_some` function will unpack
 optional type into regular type (bound to the symbol ``S.img`` :sup:`[17]`)
 and then we can freely use it in the "then" clause of the
-:py:func:`~hiku.expr.if_some` expression :sup:`[18]` and be sure that it's
+:py:func:`~hiku.expr.core.if_some` expression :sup:`[18]` and be sure that it's
 value wouldn't be equal to ``None``. In the "else" clause we will return url
 of the standard "no-photo" image :sup:`[19]`. Without using
-:py:func:`~hiku.expr.if_some` function `Hiku` will raise type error.
+:py:func:`~hiku.expr.core.if_some` function `Hiku` will raise type error.
 
 Testing our high-level graph:
 

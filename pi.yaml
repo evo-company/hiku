@@ -58,24 +58,24 @@
   params:
     - !Argument {name: tests, default: tests3}
   image: env
-  shell: py.test -q --tb=native {{tests}}
+  eval: py.test -q --tb=native {{tests}}
 
 - !ShellCommand
   name: build docs
   image: docs
-  shell: sphinx-build -b html docs build
+  eval: sphinx-build -b html docs build
 
 - !ShellCommand
   name: build static
   image: static.env
-  shell: >
+  eval: >
     NODE_PATH=/usr/local/lib/node_modules
     /usr/local/lib/node_modules/.bin/webpack -p
 
 - !ShellCommand
   name: webpack
   image: static.env
-  shell: >
+  eval: >
     NODE_PATH=/usr/local/lib/node_modules
     /usr/local/lib/node_modules/.bin/webpack-dev-server
     --content-base=hiku/console/assets

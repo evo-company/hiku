@@ -2,12 +2,13 @@ from functools import wraps
 from itertools import chain
 from collections import namedtuple
 
-from .edn import loads
-from .query import Edge, Link, Field
-from .types import Record, Callable, Unknown
+from ..edn import loads
+from ..query import Edge, Link, Field
+from ..types import Record, Callable, Unknown
+from ..compat import text_type, string_types
+from ..readers.simple import transform
+
 from .nodes import Symbol, Tuple, List, Keyword, Dict
-from .compat import text_type, string_types
-from .readers.simple import transform
 
 
 _Func = namedtuple('__func__', 'expr, args')

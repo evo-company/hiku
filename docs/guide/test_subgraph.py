@@ -107,7 +107,7 @@ def test_low_level():
 
 # define high-level graph
 
-from hiku.expr import S, define, if_some
+from hiku.expr.core import S, define, if_some
 from hiku.types import Record, Integer, String
 from hiku.sources.graph import SubGraph, Expr
 

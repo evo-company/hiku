@@ -1,12 +1,13 @@
 from contextlib import contextmanager
 from collections import deque, OrderedDict
 
-from . import graph
+from .. import graph
+from ..types import Sequence, SequenceMeta, Record, RecordMeta, Optional
+from ..types import MappingMeta, OptionalMeta, Unknown, UnknownMeta
+from ..types import TypeRef, TypeRefMeta
+
 from .refs import NamedRef, Ref
 from .nodes import NodeTransformer, Symbol, Keyword, Tuple, List
-from .types import Sequence, SequenceMeta, Record, RecordMeta, Optional
-from .types import MappingMeta, OptionalMeta, Unknown, UnknownMeta
-from .types import TypeRef, TypeRefMeta
 
 
 class GraphTypes(graph.GraphVisitor):

@@ -1,16 +1,16 @@
 from itertools import chain
 
 from .. import query
-from ..refs import RequirementsExtractor
-from ..expr import to_expr
 from ..graph import Link, Field
 from ..types import TypeRef, Sequence
 from ..query import merge
 from ..utils import kw_only
 from ..types import Unknown
 from ..engine import Query, store_fields, subquery
-from ..checker import check, graph_types, fn_types
-from ..compiler import ExpressionCompiler
+from ..expr.refs import RequirementsExtractor
+from ..expr.core import to_expr
+from ..expr.checker import check, graph_types, fn_types
+from ..expr.compiler import ExpressionCompiler
 
 
 THIS_LINK_NAME = '__link_to_this'
@@ -45,7 +45,7 @@ class Expr(Field):
         super(Expr, self).__init__(name, type_, subquery,
                                    options=options, description=description)
 
-        node, functions = to_expr(expr)
+        expr_node, functions = to_expr(expr)
 
         self.functions = functions
 
@@ -53,17 +53,17 @@ class Expr(Field):
         types.update(fn_types(self.functions))
         types.update({opt.name: Unknown for opt in self.options})
 
-        node = check(node, types)
+        expr_node = check(expr_node, types)
 
         options_set = set(self.options_map)
-        edge = RequirementsExtractor.extract(types, node)
+        edge = RequirementsExtractor.extract(types, expr_node)
         edge = query.Edge([f for f in edge.fields
                            if f.name not in options_set])
         self.reqs = edge
 
         option_names = [opt.name for opt in self.options]
         self.option_defaults = [(opt.name, opt.default) for opt in self.options]
-        code = ExpressionCompiler.compile_lambda_expr(node, option_names)
+        code = ExpressionCompiler.compile_lambda_expr(expr_node, option_names)
         self.proc = eval(compile(code, '<expr>', 'eval'))
 
 

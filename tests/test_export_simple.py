@@ -5,8 +5,8 @@ from hiku.query import Field, Link, Edge
 from hiku.export.simple import export
 
 
-def check_export(node, data):
-    assert dumps(export(node)) == data
+def check_export(query_obj, data):
+    assert dumps(export(query_obj)) == data
 
 
 def test_field():

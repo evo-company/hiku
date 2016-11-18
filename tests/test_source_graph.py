@@ -3,10 +3,10 @@ from __future__ import unicode_literals
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
-from hiku.expr import define, S, each
 from hiku.graph import Graph, Edge, Link, Field, Option, Root
 from hiku.types import Record, Sequence, Unknown, TypeRef
 from hiku.engine import Engine
+from hiku.expr.core import define, S, each
 from hiku.sources.graph import SubGraph, Expr
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
