@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import json
 
 from hiku.types import Record, String, Optional, Sequence, TypeRef
-from hiku.graph import Graph, Link, Edge, Field, Root
+from hiku.graph import Graph, Link, Node, Field, Root
 from hiku.result import denormalize, Result
 from hiku.readers.simple import read
 
@@ -13,19 +13,19 @@ def _():
 
 
 GRAPH = Graph([
-    Edge('cosies', [
+    Node('cosies', [
         Field('nerv', None, _),
         Field('doghead', None, _),
         Link('mistic', TypeRef['kir'], _, requires=None),
         Link('biopics', Sequence[TypeRef['kir']], _, requires=None),
     ]),
-    Edge('kir', [
+    Node('kir', [
         Field('panton', None, _),
         Field('tamsin', None, _),
         Link('bahut', TypeRef['cosies'], _, requires=None),
         Link('paramo', Sequence[TypeRef['cosies']], _, requires=None),
     ]),
-    Edge('saunas', [
+    Node('saunas', [
         Field('went', Optional[Record[{'changer': String}]], _),
         Field('atelier', Record[{'litas': String}], _),
         Field('matwork', Sequence[Record[{'bashaw': String}]], _),
@@ -35,7 +35,7 @@ GRAPH = Graph([
         Field('tatler', Optional[Record[{'orudis': String}]], _),
         Field('coom', Record[{'yappers': String}], _),
         Field('barbary', Sequence[Record[{'betty': String}]], _),
-        Edge('flossy', [
+        Node('flossy', [
             Field('demoing', None, _),
             Field('anoxic', Optional[Record[{'peeps': String}]], _),
             Field('seggen', Record[{'pensive': String}], _),
@@ -149,12 +149,12 @@ def test_root_fields_complex():
                  {'barbary': [{'betty': 'japheth_ophir'}]})
 
 
-def test_root_edge_fields():
+def test_root_node_fields():
     check_result('[{:flossy [:demoing]}]',
                  {'flossy': {'demoing': 'judaea_bhutani'}})
 
 
-def test_root_edge_fields_complex():
+def test_root_node_fields_complex():
     check_result('[{:flossy [{:anoxic []}]}]',
                  {'flossy': {'anoxic': {}}})
     check_result('[{:flossy [{:anoxic [:peeps]}]}]',
@@ -171,14 +171,14 @@ def test_root_edge_fields_complex():
                  {'flossy': {'necker': [{'carney': 'calla_pedway'}]}})
 
 
-def test_edge_fields():
+def test_node_fields():
     check_result('[{:zareeba [:nerv]} {:crowdie [:doghead]}]',
                  {'zareeba': {'nerv': 'calgary_badass'},
                   'crowdie': [{'doghead': 'satsuma_mks'},
                               {'doghead': 'cached_jello'}]})
 
 
-def test_edge_fields_complex():
+def test_node_fields_complex():
     check_result('[{:moujik [{:went []}]}]',
                  {'moujik': {'went': {}}})
     check_result('[{:moujik [{:went [:changer]}]}]',
@@ -196,7 +196,7 @@ def test_edge_fields_complex():
                                          {'bashaw': 'worms_gemman'}]}})
 
 
-def test_root_edge_links():
+def test_root_node_links():
     check_result('[{:flossy [{:daur [:doghead]} {:peafowl [:nerv]}]}]',
                  {'flossy': {'daur': {'doghead': 'satsuma_mks'},
                              'peafowl': [{'nerv': 'orkneys_kumiss'},

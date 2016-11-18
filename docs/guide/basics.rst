@@ -21,11 +21,11 @@ would be a current time:
     :lines: 3-11
 
 This is the simplest :py:class:`~hiku.graph.Graph` with one
-:py:class:`~hiku.graph.Field` in the :py:class:`~hiku.graph.Root` edge.
+:py:class:`~hiku.graph.Field` in the :py:class:`~hiku.graph.Root` node.
 
 .. note:: We are using lambda-function and ignoring it's first argument because
     this function is used to load only one field and this field in the
-    :py:class:`~hiku.graph.Root` edge. In other cases you will need to use this
+    :py:class:`~hiku.graph.Root` node. In other cases you will need to use this
     and possibly other required arguments.
 
 Then this field could be queried using this query:
@@ -54,7 +54,7 @@ to setup and run it:
 Then just open http://localhost:5000/ url in your browser and perform query from
 the console.
 
-Introducing edges and links
+Introducing nodes and links
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. note:: Source code of this example can be found
@@ -70,7 +70,7 @@ lets define our data:
     data. How to load data from more sophisticated sources like databases will
     be explained in the next chapters.
 
-Then lets define our graph with one :py:class:`~hiku.graph.Edge` and one
+Then lets define our graph with one :py:class:`~hiku.graph.Node` and one
 :py:class:`~hiku.graph.Link`:
 
 .. literalinclude:: basics/test_stage2.py
@@ -79,7 +79,7 @@ Then lets define our graph with one :py:class:`~hiku.graph.Edge` and one
     :emphasize-lines: 8,15,20-21,24-25
 
 ``character_data`` function :sup:`[8]` is used to resolve values for two fields
-in the ``character`` edge. As you can see, it returns basically a list of lists
+in the ``character`` node. As you can see, it returns basically a list of lists
 with values in the same order as it was requested in arguments (order of ids and
 fields should be preserved).
 
@@ -93,8 +93,8 @@ one simple function (when possible) to efficiently load data without introducing
 lots of queries (to eliminate ``N+1`` problem, for example).
 
 ``to_characters_link`` function :sup:`[15]` is used to make a link
-:sup:`[24-25]` from the :py:class:`~hiku.graph.Root` edge to the ``character``
-edge. This function should return character ids.
+:sup:`[24-25]` from the :py:class:`~hiku.graph.Root` node to the ``character``
+node. This function should return character ids.
 
 So now you are able to try this query in the console:
 
@@ -108,7 +108,7 @@ Or in the program:
     :lines: 51-67
     :dedent: 4
 
-Linking edge to edge
+Linking node to node
 ~~~~~~~~~~~~~~~~~~~~
 
 .. note:: Source code of this example can be found
@@ -120,7 +120,7 @@ Let's extend our data with one more entity - ``actor``:
     :lines: 3-17
 
 Where actor will have a reference to the played character -- ``character_id``.
-We will also need ``id`` fields in both edges in order to link them with each
+We will also need ``id`` fields in both nodes in order to link them with each
 other.
 
 Here is our extended graph definition:
@@ -131,10 +131,10 @@ Here is our extended graph definition:
     :emphasize-lines: 20,26,36,37,40-41,43,46-47
 
 Here ``actors`` :py:class:`~hiku.graph.Link` :sup:`[40-41]`, defined in the
-``character`` edge :sup:`[36]`, requires ``id`` field :sup:`[37]` to map
+``character`` node :sup:`[36]`, requires ``id`` field :sup:`[37]` to map
 characters to actors. That's why ``id`` field :sup:`[37]` was added to the
-``character`` edge :sup:`[36]`. The same work should be done in the ``actor``
-edge :sup:`[43]` to implement backward ``character`` link :sup:`[46-47]`.
+``character`` node :sup:`[36]`. The same work should be done in the ``actor``
+node :sup:`[43]` to implement backward ``character`` link :sup:`[46-47]`.
 
 ``character_to_actors_link`` function :sup:`[20]` accepts ids of the characters
 and should return list of lists -- ids of the actors, in the same order, so
@@ -145,14 +145,14 @@ every character id can be associated with a list of actor ids. This is how
 actors and returns ids of the characters in the same order. This is how
 **many to one** links works.
 
-So now we can include linked edge fields in our query:
+So now we can include linked node fields in our query:
 
 .. literalinclude:: basics/test_stage3.py
     :lines: 90-103
     :dedent: 4
 
-We can go further and follow ``character`` link from the ``actor`` edge and
-return fields from ``character`` edge. This is an example of the cyclic links,
+We can go further and follow ``character`` link from the ``actor`` node and
+return fields from ``character`` node. This is an example of the cyclic links,
 which is normal when this feature is desired, as long as query is a hierarchical
 finite structure and result follows it's structure.
 

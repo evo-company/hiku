@@ -40,7 +40,7 @@ sa_engine.execute(actor_table.insert().values([
 
 # define graph
 
-from hiku.graph import Graph, Root, Edge, Link
+from hiku.graph import Graph, Root, Node, Link
 from hiku.types import TypeRef, Sequence
 from hiku.engine import pass_context
 from hiku.sources import sqlalchemy as sa
@@ -69,13 +69,13 @@ def to_actors_query(ctx):
     return [row.id for row in ctx[SA_ENGINE].execute(query)]
 
 GRAPH = Graph([
-    Edge('character', [
+    Node('character', [
         sa.Field('id', character_query),
         sa.Field('name', character_query),
         sa.Field('species', character_query),
         sa.Link('actors', character_to_actors_query, requires='id'),
     ]),
-    Edge('actor', [
+    Node('actor', [
         sa.Field('id', actor_query),
         sa.Field('name', actor_query),
         sa.Field('character_id', actor_query),

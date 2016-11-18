@@ -16,10 +16,10 @@ from ..expr.compiler import ExpressionCompiler
 THIS_LINK_NAME = '__link_to_this'
 
 
-def _create_result_proc(query, env, edge, fields, procs, options, ids):
+def _create_result_proc(query, env, node, fields, procs, options, ids):
     def result_proc(result):
         sq_result = query.result()
-        store_fields(result, edge, fields, ids, [
+        store_fields(result, node, fields, ids, [
             [proc(this, env, sq_result, *opt_args)
              for proc, opt_args in zip(procs, options)]
             for this in sq_result[THIS_LINK_NAME]
@@ -56,10 +56,10 @@ class Expr(Field):
         expr_node = check(expr_node, types)
 
         options_set = set(self.options_map)
-        edge = RequirementsExtractor.extract(types, expr_node)
-        edge = query.Edge([f for f in edge.fields
-                           if f.name not in options_set])
-        self.reqs = edge
+        query_node = RequirementsExtractor.extract(types, expr_node)
+        query_node = query.Node([f for f in query_node.fields
+                                 if f.name not in options_set])
+        self.reqs = query_node
 
         option_names = [opt.name for opt in self.options]
         self.option_defaults = [(opt.name, opt.default) for opt in self.options]
@@ -70,21 +70,21 @@ class Expr(Field):
 @subquery
 class SubGraph(object):
 
-    def __init__(self, graph, edge):
+    def __init__(self, graph, node):
         self.graph = graph
-        self.edge = edge
+        self.node = node
 
         types = graph_types(graph)
-        types['this'] = types[edge]  # make an alias
+        types['this'] = types[node]  # make an alias
         self.types = types
 
-    def __call__(self, queue, ctx, task_set, edge, fields, ids):
-        graph_fields = [edge.fields_map[f.name] for f in fields]
+    def __call__(self, queue, ctx, task_set, node, fields, ids):
+        graph_fields = [node.fields_map[f.name] for f in fields]
         fn_env = {f.__def_name__: f.__def_body__
                   for f in chain.from_iterable(e.functions
                                                for e in graph_fields)}
 
-        this_link = Link(THIS_LINK_NAME, Sequence[TypeRef[self.edge]],
+        this_link = Link(THIS_LINK_NAME, Sequence[TypeRef[self.node]],
                          None, requires=None)
 
         reqs = merge(f.reqs for f in graph_fields)
@@ -93,12 +93,12 @@ class SubGraph(object):
                     for name, default in gf.option_defaults]
                    for qf, gf in zip(fields, graph_fields)]
 
-        this_req = reqs.fields_map['this'].edge
-        other_reqs = query.Edge([r for r in reqs.fields
+        this_req = reqs.fields_map['this'].node
+        other_reqs = query.Node([r for r in reqs.fields
                                  if r.name != 'this'])
 
         q = Query(queue, task_set, self.graph, ctx)
         q.process_link(self.graph.root, this_link, this_req, None, ids)
-        q.process_edge(self.graph.root, other_reqs, None)
-        return _create_result_proc(q, fn_env, edge, fields, procs,
+        q.process_node(self.graph.root, other_reqs, None)
+        return _create_result_proc(q, fn_env, node, fields, procs,
                                    options, ids)

@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 from hiku import query
-from hiku.graph import Graph, Edge, Field, Link, Option, Root
+from hiku.graph import Graph, Node, Field, Link, Option, Root
 from hiku.types import Record, Sequence, Integer, Optional, TypeRef
 from hiku.engine import Engine, pass_context, Context
 from hiku.readers.simple import read
@@ -40,7 +40,7 @@ def _patch(func):
 
 def get_graph():
     return Graph([
-        Edge('tergate', [
+        Node('tergate', [
             # simple fields
             Field('arion', None, query_fields1),
             Field('bhaga', None, query_fields2),
@@ -55,7 +55,7 @@ def get_graph():
         Root([
             Field('indice', None, query_fields1),
             Field('unmined', None, query_fields2),
-            Edge('kameron', [
+            Node('kameron', [
                 Field('buran', None, query_fields1),
                 Field('updated', None, query_fields2),
             ]),
@@ -91,7 +91,7 @@ def test_root_fields():
             qf2.assert_called_once_with([query.Field('unmined')])
 
 
-def test_root_edge_fields():
+def test_root_node_fields():
     with _patch(query_fields1) as qf1, _patch(query_fields2) as qf2:
         qf1.return_value = ['khios_iid']
         qf2.return_value = ['cambay_cricket']
@@ -103,7 +103,7 @@ def test_root_edge_fields():
             qf2.assert_called_once_with([query.Field('updated')])
 
 
-def test_edge_fields():
+def test_node_fields():
     with \
             _patch(query_fields1) as qf1,\
             _patch(query_fields2) as qf2,\
@@ -124,7 +124,7 @@ def test_edge_fields():
             qf2.assert_called_once_with([query.Field('bhaga')], [1])
 
 
-def test_edge_complex_fields():
+def test_node_complex_fields():
     with \
             _patch(query_link1) as ql1,\
             _patch(query_fields1) as qf1,\
@@ -153,17 +153,17 @@ def test_edge_complex_fields():
             ql1.assert_called_once_with()
             qf1.assert_called_once_with([
                 query.Link('eches',
-                           query.Edge([query.Field('gone')]))],
+                           query.Node([query.Field('gone')]))],
                 [1],
             )
             qf2.assert_called_once_with([
                 query.Link('lappin',
-                           query.Edge([query.Field('sodden')]))],
+                           query.Node([query.Field('sodden')]))],
                 [1],
             )
             qf3.assert_called_once_with([
                 query.Link('ant',
-                           query.Edge([query.Field('circlet')]))],
+                           query.Node([query.Field('circlet')]))],
                 [1],
             )
 

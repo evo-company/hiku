@@ -1,4 +1,4 @@
-from hiku.graph import Graph, Edge, Field, Root, Link, Option
+from hiku.graph import Graph, Node, Field, Root, Link, Option
 from hiku.types import TypeRef, Sequence
 from hiku.validate.graph import GraphValidator
 
@@ -17,13 +17,13 @@ def check_errors(graph, errors):
     assert validator.errors.list == errors
 
 
-def test_graph_contain_duplicate_edges():
+def test_graph_contain_duplicate_nodes():
     check_errors(
         Graph([
-            Edge('foo', []),
-            Edge('foo', []),
+            Node('foo', []),
+            Node('foo', []),
         ]),
-        ['Duplicated edge names found in the graph: "foo"'],
+        ['Duplicated node names found in the graph: "foo"'],
     )
 
 
@@ -31,20 +31,20 @@ def test_graph_contain_invalid_types():
     check_errors(
         Graph([
             1,
-            Edge('foo', []),
+            Node('foo', []),
         ]),
         [('Graph can not contain these types: {!r}'
           .format(int))],
     )
 
 
-def test_edge_contain_duplicate_fields():
+def test_node_contain_duplicate_fields():
     check_errors(
         Graph([
             Root([
                 Field('b', None, _fields_func),
             ]),
-            Edge('foo', [
+            Node('foo', [
                 Field('a', None, _fields_func),
                 Field('a', None, _fields_func),
             ]),
@@ -52,57 +52,57 @@ def test_edge_contain_duplicate_fields():
                 Field('b', None, _fields_func),
             ]),
         ]),
-        ['Duplicated names found in the "root" edge: "b"',
-         'Duplicated names found in the "foo" edge: "a"'],
+        ['Duplicated names found in the "root" node: "b"',
+         'Duplicated names found in the "foo" node: "a"'],
     )
 
 
-def test_edge_contain_edge():
+def test_node_contain_node():
     check_errors(
         Graph([
             Root([
                 # this is ok
-                Edge('foo', []),
+                Node('foo', []),
             ]),
-            Edge('bar', [
+            Node('bar', [
                 # this is wrong
-                Edge('baz', []),
+                Node('baz', []),
             ]),
         ]),
-        ['Edge can not be defined in the non-root edge: "baz" in "bar"'],
+        ['Node can not be defined in the non-root node: "baz" in "bar"'],
     )
 
 
-def test_edge_contain_invalid_types():
+def test_node_contain_invalid_types():
     check_errors(
         Graph([
-            Edge('foo', [
+            Node('foo', [
                 1,
                 Field('bar', None, _fields_func),
             ]),
         ]),
-        [('Edge can not contain these types: {!r} in edge "foo"'
+        [('Node can not contain these types: {!r} in node "foo"'
           .format(int))],
     )
 
 
-def test_link_missing_edge():
+def test_link_missing_node():
     check_errors(
         Graph([
-            Edge('bar', [
+            Node('bar', [
                 Link('link', Sequence[TypeRef['missing']],
                      _link_func, requires=None),
             ]),
         ]),
-        ['Link "bar.link" points to the missing edge "missing"'],
+        ['Link "bar.link" points to the missing node "missing"'],
     )
 
 
 def test_link_requires_missing_field():
     check_errors(
         Graph([
-            Edge('foo', []),
-            Edge('bar', [
+            Node('foo', []),
+            Node('bar', [
                 Link('link1', Sequence[TypeRef['foo']],
                      _link_func, requires='missing1'),
             ]),
@@ -111,16 +111,16 @@ def test_link_requires_missing_field():
                      _link_func, requires='missing2'),
             ]),
         ]),
-        ['Link "link2" requires missing field "missing2" in the "root" edge',
-         'Link "link1" requires missing field "missing1" in the "bar" edge'],
+        ['Link "link2" requires missing field "missing2" in the "root" node',
+         'Link "link1" requires missing field "missing1" in the "bar" node'],
     )
 
 
 def test_link_contain_invalid_types():
     check_errors(
         Graph([
-            Edge('foo', []),
-            Edge('bar', [
+            Node('foo', []),
+            Node('bar', [
                 Field('id', None, _fields_func),
                 Link('baz', Sequence[TypeRef['foo']],
                      _link_func, requires='id',

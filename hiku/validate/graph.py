@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from collections import Counter
 
 from ..graph import GraphVisitor
-from ..graph import AbstractEdge, AbstractField, AbstractLink, AbstractOption
+from ..graph import AbstractNode, AbstractField, AbstractLink, AbstractOption
 
 from .errors import Errors
 
@@ -22,7 +22,7 @@ def _format_types(objects):
 
 class _NameFormatter(GraphVisitor):
 
-    def visit_edge(self, obj):
+    def visit_node(self, obj):
         return obj.name or 'root'
 
     def visit_link(self, obj):
@@ -37,8 +37,8 @@ class _NameFormatter(GraphVisitor):
 
 class GraphValidator(GraphVisitor):
     _name_formatter = _NameFormatter()
-    _graph_accept_types = (AbstractEdge,)
-    _edge_accept_types = (AbstractEdge, AbstractField, AbstractLink)
+    _graph_accept_types = (AbstractNode,)
+    _node_accept_types = (AbstractNode, AbstractField, AbstractLink)
     _link_accept_types = (AbstractOption,)
 
     def __init__(self, graph):
@@ -79,46 +79,46 @@ class GraphValidator(GraphVisitor):
         with self.push_ctx(obj):
             super(GraphValidator, self).visit_link(obj)
 
-        if obj.edge not in self.graph.edges_map:
+        if obj.node not in self.graph.nodes_map:
             self.errors.report(
-                'Link "{}" points to the missing edge "{}"'
-                .format(self._format_path(obj), obj.edge)
+                'Link "{}" points to the missing node "{}"'
+                .format(self._format_path(obj), obj.node)
             )
 
         if obj.requires is not None:
             if obj.requires not in self.ctx.fields_map:
                 self.errors.report(
-                    'Link "{}" requires missing field "{}" in the "{}" edge'
+                    'Link "{}" requires missing field "{}" in the "{}" node'
                     .format(obj.name, obj.requires, self._format_path())
                 )
 
-    def visit_edge(self, obj):
+    def visit_node(self, obj):
         invalid = [f for f in obj.fields
-                   if not isinstance(f, self._edge_accept_types)]
+                   if not isinstance(f, self._node_accept_types)]
         if invalid:
             self.errors.report(
-                'Edge can not contain these types: {} in edge "{}"'
+                'Node can not contain these types: {} in node "{}"'
                 .format(_format_types(invalid), obj.name)
             )
             return
 
         with self.push_ctx(obj):
-            super(GraphValidator, self).visit_edge(obj)
+            super(GraphValidator, self).visit_node(obj)
 
         duplicates = _get_duplicates(e.name for e in obj.fields)
         if duplicates:
-            edge_name = 'root' if obj.name is None else obj.name
+            node_name = 'root' if obj.name is None else obj.name
             self.errors.report('Duplicated names found in the "{}" '
-                               'edge: {}'
-                               .format(edge_name, _format_names(duplicates)))
+                               'node: {}'
+                               .format(node_name, _format_names(duplicates)))
 
         if obj.name is not None:
-            edges = [f.name for f in obj.fields if isinstance(f, AbstractEdge)]
-            if edges:
+            nodes = [f.name for f in obj.fields if isinstance(f, AbstractNode)]
+            if nodes:
                 self.errors.report(
-                    'Edge can not be defined in the non-root edge: '
+                    'Node can not be defined in the non-root node: '
                     '{} in "{}"'
-                    .format(_format_names(edges), obj.name)
+                    .format(_format_names(nodes), obj.name)
                 )
 
     def visit_graph(self, obj):
@@ -133,10 +133,10 @@ class GraphValidator(GraphVisitor):
 
         with self.push_ctx(obj):
             self.visit(obj.root)
-            for item in obj.edges:
+            for item in obj.nodes:
                 self.visit(item)
 
-        duplicates = _get_duplicates(e.name for e in obj.edges)
+        duplicates = _get_duplicates(e.name for e in obj.nodes)
         if duplicates:
-            self.errors.report('Duplicated edge names found in the graph: {}'
+            self.errors.report('Duplicated node names found in the graph: {}'
                                .format(_format_names(duplicates)))

@@ -13,20 +13,20 @@ from .nodes import NodeTransformer, Symbol, Keyword, Tuple, List
 class GraphTypes(graph.GraphVisitor):
 
     def visit_graph(self, obj):
-        types = OrderedDict((edge.name, self.visit(edge)) for edge in obj.edges)
+        types = OrderedDict((node.name, self.visit(node)) for node in obj.nodes)
         types.update(self.visit(obj.root).__field_types__)
         return types
 
-    def visit_edge(self, obj):
+    def visit_node(self, obj):
         return Record[[(f.name, self.visit(f)) for f in obj.fields]]
 
     def visit_link(self, obj):
         if obj.type_enum is graph.Maybe:
-            return Optional[TypeRef[obj.edge]]
+            return Optional[TypeRef[obj.node]]
         elif obj.type_enum is graph.One:
-            return TypeRef[obj.edge]
+            return TypeRef[obj.node]
         elif obj.type_enum is graph.Many:
-            return Sequence[TypeRef[obj.edge]]
+            return Sequence[TypeRef[obj.node]]
         else:
             raise TypeError(repr(obj.type_enum))
 

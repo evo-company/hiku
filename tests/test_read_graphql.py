@@ -1,4 +1,4 @@
-from hiku.query import Edge, Field
+from hiku.query import Node, Field
 from hiku.readers.graphql import read
 
 from .base import TestCase, reqs_eq_patcher
@@ -12,5 +12,5 @@ class TestReadGraphQL(TestCase):
                 read("""
                 { hello }
                 """),
-                Edge([Field('hello')]),
+                Node([Field('hello')]),
             )

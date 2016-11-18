@@ -1,7 +1,7 @@
 from unittest import skip
 
 from hiku import graph as g
-from hiku.query import Edge, Field, Link
+from hiku.query import Node, Field, Link
 from hiku.types import Record, Unknown, TypeRef, Sequence, Optional
 from hiku.expr.core import define, S, each, to_expr, if_some
 from hiku.expr.refs import Ref, NamedRef, ref_to_req, RequirementsExtractor
@@ -15,19 +15,19 @@ def _(*args, **kwargs):
 
 
 GRAPH = g.Graph([
-    g.Edge('patens', [
+    g.Node('patens', [
         g.Field('clacks', None, _),
         g.Field('panicle', None, _),
         g.Link('apatite', TypeRef['sais'], _, requires=None),
         g.Link('jakies', Sequence[TypeRef['sais']], _, requires=None),
     ]),
-    g.Edge('sais', [
+    g.Node('sais', [
         g.Field('oloroso', None, _),
         g.Field('gashes', None, _),
     ]),
     g.Root([
         g.Field('sailed', None, _),
-        g.Edge('malatya', [
+        g.Node('malatya', [
             g.Field('bartok', None, _),
             g.Field('rotifer', None, _),
             g.Link('teling', TypeRef['patens'], _, requires=None),
@@ -60,96 +60,96 @@ def check_query(dsl_expr, query):
 
 def test_ref_root_field():
     check_req(NamedRef(None, 'sailed', TYPES['sailed']),
-              Edge([Field('sailed')]))
+              Node([Field('sailed')]))
 
 
-def test_ref_root_edge_field():
+def test_ref_root_node_field():
     malatya_ref = NamedRef(None, 'malatya', TYPES['malatya'])
-    check_req(malatya_ref, Edge([Link('malatya', Edge([]))]))
+    check_req(malatya_ref, Node([Link('malatya', Node([]))]))
 
     bartok_ref = NamedRef(malatya_ref, 'bartok',
                           TYPES['malatya'].__field_types__['bartok'])
-    check_req(bartok_ref, Edge([Link('malatya', Edge([Field('bartok')]))]))
+    check_req(bartok_ref, Node([Link('malatya', Node([Field('bartok')]))]))
 
 
-def test_ref_link_one_edge_field():
+def test_ref_link_one_node_field():
     weigh_ref = NamedRef(None, 'weigh', TYPES['weigh'])
-    check_req(weigh_ref, Edge([Link('weigh', Edge([]))]))
+    check_req(weigh_ref, Node([Link('weigh', Node([]))]))
 
     patens_ref = Ref(weigh_ref, TYPES['patens'])
-    check_req(patens_ref, Edge([Link('weigh', Edge([]))]))
+    check_req(patens_ref, Node([Link('weigh', Node([]))]))
 
     clacks_ref = NamedRef(patens_ref, 'clacks',
                           TYPES['patens'].__field_types__['clacks'])
-    check_req(clacks_ref, Edge([Link('weigh', Edge([Field('clacks')]))]))
+    check_req(clacks_ref, Node([Link('weigh', Node([Field('clacks')]))]))
 
 
-def test_ref_link_many_edge_field():
+def test_ref_link_many_node_field():
     comped_ref = NamedRef(None, 'comped', TYPES['comped'])
-    check_req(comped_ref, Edge([Link('comped', Edge([]))]))
+    check_req(comped_ref, Node([Link('comped', Node([]))]))
 
     patens_ref = Ref(comped_ref, TYPES['patens'])
-    check_req(patens_ref, Edge([Link('comped', Edge([]))]))
+    check_req(patens_ref, Node([Link('comped', Node([]))]))
 
     clacks_ref = NamedRef(patens_ref, 'clacks',
                           TYPES['patens'].__field_types__['clacks'])
-    check_req(clacks_ref, Edge([Link('comped', Edge([Field('clacks')]))]))
+    check_req(clacks_ref, Node([Link('comped', Node([Field('clacks')]))]))
 
 
-def test_ref_link_maybe_edge_field():
+def test_ref_link_maybe_node_field():
     print(TYPES['civics'])
     civics_ref = NamedRef(None, 'civics', TYPES['civics'])
-    check_req(civics_ref, Edge([Link('civics', Edge([]))]))
+    check_req(civics_ref, Node([Link('civics', Node([]))]))
 
     patens_ref = Ref(civics_ref, TYPES['patens'])
-    check_req(patens_ref, Edge([Link('civics', Edge([]))]))
+    check_req(patens_ref, Node([Link('civics', Node([]))]))
 
     clacks_ref = NamedRef(patens_ref, 'clacks',
                           TYPES['patens'].__field_types__['clacks'])
-    check_req(clacks_ref, Edge([Link('civics', Edge([Field('clacks')]))]))
+    check_req(clacks_ref, Node([Link('civics', Node([Field('clacks')]))]))
 
 
 def test_ref_add_req():
     check_req(NamedRef(None, 'comped', TYPES['comped']),
-              Edge([Link('comped', Edge([Field('clacks'),
+              Node([Link('comped', Node([Field('clacks'),
                                          Field('panicle')]))]),
-              add_req=Edge([Field('clacks'), Field('panicle')]))
+              add_req=Node([Field('clacks'), Field('panicle')]))
 
 
 def test_query_root_field():
-    check_query(S.sailed, Edge([Field('sailed')]))
+    check_query(S.sailed, Node([Field('sailed')]))
 
 
-def test_query_edge_field():
+def test_query_node_field():
     check_query(
         S.weigh.clacks,
-        Edge([Link('weigh', Edge([Field('clacks')]))]),
+        Node([Link('weigh', Node([Field('clacks')]))]),
     )
 
 
-def test_query_root_edge_link_field():
+def test_query_root_node_link_field():
     check_query(
         S.malatya.teling.clacks,
-        Edge([Link('malatya',
-                   Edge([Link('teling', Edge([Field('clacks')]))]))]),
+        Node([Link('malatya',
+                   Node([Link('teling', Node([Field('clacks')]))]))]),
     )
 
 
-def test_query_each_edge_field():
+def test_query_each_node_field():
     check_query(
         each(S.item, S.comped, S.item.clacks),
-        Edge([Link('comped', Edge([Field('clacks')]))]),
+        Node([Link('comped', Node([Field('clacks')]))]),
     )
 
 
-def test_query_each_root_edge_link_field():
+def test_query_each_root_node_link_field():
     check_query(
         each(S.item, S.malatya.wandy, S.item.clacks),
-        Edge([Link('malatya', Edge([Link('wandy', Edge([Field('clacks')]))]))]),
+        Node([Link('malatya', Node([Link('wandy', Node([Field('clacks')]))]))]),
     )
 
 
-def test_query_tuple_with_edge():
+def test_query_tuple_with_node():
 
     @define(Record[{'clacks': Unknown, 'panicle': Unknown}])
     def foo():
@@ -159,42 +159,42 @@ def test_query_tuple_with_edge():
     def bar():
         pass
 
-    sais_part = Edge([Field('oloroso'), Field('gashes')])
+    sais_part = Node([Field('oloroso'), Field('gashes')])
 
     # 1
     check_query(
         foo(S.weigh),
-        Edge([Link('weigh', Edge([Field('clacks'), Field('panicle')]))]),
+        Node([Link('weigh', Node([Field('clacks'), Field('panicle')]))]),
     )
     # M
     check_query(
         each(S.x, S.comped, foo(S.x)),
-        Edge([Link('comped', Edge([Field('clacks'), Field('panicle')]))]),
+        Node([Link('comped', Node([Field('clacks'), Field('panicle')]))]),
     )
     # 1:1
     check_query(
         bar(S.weigh.apatite),
-        Edge([Link('weigh', Edge([Link('apatite', Edge([Field('oloroso'),
+        Node([Link('weigh', Node([Link('apatite', Node([Field('oloroso'),
                                                         Field('gashes')]))]))]),
     )
     # 1:M
     check_query(
         each(S.x, S.weigh.jakies, bar(S.x)),
-        Edge([Link('weigh', Edge([Link('jakies', sais_part)]))]),
+        Node([Link('weigh', Node([Link('jakies', sais_part)]))]),
     )
     # M:1
     check_query(
         each(S.x, S.comped, bar(S.x.apatite)),
-        Edge([Link('comped', Edge([Link('apatite', sais_part)]))]),
+        Node([Link('comped', Node([Link('apatite', sais_part)]))]),
     )
     # M:M
     check_query(
         each(S.x, S.comped, each(S.y, S.x.jakies, bar(S.y))),
-        Edge([Link('comped', Edge([Link('jakies', sais_part)]))]),
+        Node([Link('comped', Node([Link('jakies', sais_part)]))]),
     )
 
 
-def test_query_tuple_with_nested_one_edge():
+def test_query_tuple_with_nested_one_node():
 
     @define(Record[{'clacks': Unknown,
                     'apatite': Record[{'oloroso': Unknown,
@@ -202,22 +202,22 @@ def test_query_tuple_with_nested_one_edge():
     def foo():
         pass
 
-    sais_part = Edge([Field('oloroso'), Field('gashes')])
+    sais_part = Node([Field('oloroso'), Field('gashes')])
 
     check_query(
         foo(S.weigh),
-        Edge([Link('weigh', Edge([Field('clacks'),
+        Node([Link('weigh', Node([Field('clacks'),
                                   Link('apatite', sais_part)]))]),
     )
     check_query(
         each(S.x, S.comped, foo(S.x)),
-        Edge([Link('comped', Edge([Field('clacks'),
+        Node([Link('comped', Node([Field('clacks'),
                                    Link('apatite', sais_part)]))]),
     )
 
 
 @skip('fn_types() lacks information about links (one or many)')
-def test_query_tuple_with_nested_many_edge():
+def test_query_tuple_with_nested_many_node():
 
     @define(Record[{'panicle': Unknown,
                     'jakies': Record[{'oloroso': Unknown,
@@ -225,16 +225,16 @@ def test_query_tuple_with_nested_many_edge():
     def foo():
         pass
 
-    sais_part = Edge([Field('oloroso'), Field('gashes')])
+    sais_part = Node([Field('oloroso'), Field('gashes')])
 
     check_query(
         foo(S.weigh),
-        Edge([Link('weigh', Edge([Field('panicle'),
+        Node([Link('weigh', Node([Field('panicle'),
                                   Link('jakies', sais_part)]))]),
     )
     check_query(
         each(S.x, S.comped, foo(S.x)),
-        Edge([Link('comped', Edge([Field('panicle'),
+        Node([Link('comped', Node([Field('panicle'),
                                    Link('jakies', sais_part)]))]),
     )
 
@@ -250,11 +250,11 @@ def test_query_tuple_with_simple_args():
 
     check_query(
         foo(S.weigh, 1, S.weigh.apatite, 2),
-        Edge([Link('weigh',
-                   Edge([Field('clacks'),
+        Node([Link('weigh',
+                   Node([Field('clacks'),
                          Field('panicle'),
                          Link('apatite',
-                              Edge([Field('oloroso'),
+                              Node([Field('oloroso'),
                                     Field('gashes')]))]))]),
     )
 
@@ -267,8 +267,8 @@ def test_query_list():
 
     check_query(
         each(S.x, S.comped, [foo(S.weigh), foo(S.x)]),
-        Edge([Link('comped', Edge([Field('clacks'), Field('panicle')])),
-              Link('weigh', Edge([Field('clacks'), Field('panicle')]))]),
+        Node([Link('comped', Node([Field('clacks'), Field('panicle')])),
+              Link('weigh', Node([Field('clacks'), Field('panicle')]))]),
     )
 
 
@@ -281,13 +281,13 @@ def test_query_dict():
     check_query(
         each(S.x, S.comped,
              {'a': foo(S.weigh), 'b': foo(S.x)}),
-        Edge([Link('comped', Edge([Field('clacks'), Field('panicle')])),
-              Link('weigh', Edge([Field('clacks'), Field('panicle')]))]),
+        Node([Link('comped', Node([Field('clacks'), Field('panicle')])),
+              Link('weigh', Node([Field('clacks'), Field('panicle')]))]),
     )
 
 
 def test_query_optional():
     check_query(
         if_some([S.x, S.civics], S.x.clacks, 'false'),
-        Edge([Link('civics', Edge([Field('clacks')]))]),
+        Node([Link('civics', Node([Field('clacks')]))]),
     )

@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from graphql.language.parser import parse
 from graphql.language.visitor import Visitor, visit
 
-from ..query import Edge, Field
+from ..query import Node, Field
 
 
 class GraphQLTransformer(Visitor):
@@ -15,8 +15,8 @@ class GraphQLTransformer(Visitor):
     def transform(cls, document):
         visitor = cls()
         visit(document, visitor)
-        edge = Edge([Field(name) for name in visitor._stack[0]])
-        return edge
+        node = Node([Field(name) for name in visitor._stack[0]])
+        return node
 
     def enter_SelectionSet(self, node, key, parent, path, ancestors):
         for field in node.selections:

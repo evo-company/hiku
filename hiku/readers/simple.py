@@ -1,5 +1,5 @@
 from ..edn import loads, Dict, List, Keyword, Tuple
-from ..query import Edge, Link, Field
+from ..query import Node, Link, Field
 from ..compat import text_type
 
 
@@ -49,14 +49,14 @@ def _extract(values):
                                     'but as {!r}'.format(key))
                 yield Link(name, transform(val), options)
         else:
-            raise TypeError('Invalid edge member: {!r}'.format(value))
+            raise TypeError('Invalid node member: {!r}'.format(value))
 
 
 def transform(value):
     if isinstance(value, List):
-        return Edge(list(_extract(value)))
+        return Node(list(_extract(value)))
     else:
-        raise TypeError('Edge should be defined as vector, '
+        raise TypeError('Node should be defined as vector, '
                         '{!r} provided instead'.format(value))
 
 

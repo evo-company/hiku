@@ -2,7 +2,7 @@
     hiku.graph
     ~~~~~~~~~~
 
-    Graphs are defined by edges, fields and links. Simple functions
+    Graphs are defined by nodes, fields and links. Simple functions
     are used to fetch any data from any data source.
 
 """
@@ -69,12 +69,12 @@ class AbstractField(AbstractNode):
 
 
 class Field(AbstractField):
-    """Defines a field of the edge
+    """Defines a field of the node
 
     Example::
 
         graph = Graph([
-            Edge('user', [
+            Node('user', [
                 Field('name', String, func),
             ]),
         ])
@@ -90,16 +90,16 @@ class Field(AbstractField):
 
     Data loading protocol::
 
-        # root edge fields
+        # root node fields
         def func(fields) -> List[T]
 
-        # non-root edge fields
+        # non-root node fields
         def func(fields, ids) -> List[List[T]]
 
     Where:
 
     - ``fields`` - list of :py:class:`hiku.query.Field`
-    - ``ids`` - list edge identifiers
+    - ``ids`` - list node identifiers
 
     """
     def __init__(self, name, type_, func, **kwargs):
@@ -143,12 +143,12 @@ def get_type_enum(type_):
 
 
 class Link(AbstractLink):
-    """Defines a link to the edge
+    """Defines a link to the node
 
     Example::
 
         graph = Graph([
-            Edge('user', [...]),
+            Node('user', [...]),
             Root([
                 Link('users', Sequence[TypeRef['user']], func, requires=None),
             ]),
@@ -157,20 +157,20 @@ class Link(AbstractLink):
     Example with requirements::
 
         graph = Graph([
-            Edge('character', [...]),
-            Edge('actor', [
+            Node('character', [...]),
+            Node('actor', [
                 Field('id', Integer, field_func),
                 Link('characters', Sequence[TypeRef['character']],
                      link_func, requires='id'),
             ])
         ])
 
-    Requirements are needed when link points from non-root edge.
+    Requirements are needed when link points from non-root node.
 
     Example with options::
 
         graph = Graph([
-            Edge('user', [...]),
+            Node('user', [...]),
             Root([
                 Link('users', Sequence[TypeRef['user']], func, requires=None,
                      options=[Option('limit', Integer, default=100)]),
@@ -212,22 +212,22 @@ class Link(AbstractLink):
         """
         :param name: name of the link
         :param type_: type of the link
-        :param func: function to load identifiers of the linked edge
-        :param kw-only edge: name of the linked edge
-        :param kw-only requires: field name from the current edge, required
-                                      to compute identifiers of the linked edge
+        :param func: function to load identifiers of the linked node
+        :param kw-only node: name of the linked node
+        :param kw-only requires: field name from the current node, required
+                                      to compute identifiers of the linked node
         :param kw-only,optional options: list of acceptable options
         :param kw-only,optional description: description of the link
         """
         requires, options, description = \
             kw_only(kwargs, ['requires'], ['options', 'description'])
 
-        type_enum, edge = get_type_enum(type_)
+        type_enum, node = get_type_enum(type_)
 
         self.name = name
         self.type = type_
         self.type_enum = type_enum
-        self.edge = edge
+        self.node = node
         self.func = func
         self.requires = requires
         self.options = options or ()
@@ -241,18 +241,18 @@ class Link(AbstractLink):
         return visitor.visit_link(self)
 
 
-class AbstractEdge(AbstractNode):
+class AbstractNode(AbstractNode):
     pass
 
 
-class Edge(AbstractEdge):
+class Node(AbstractNode):
     """Collection of the fields and links, which describes some entity and
     relations with other entities
 
     Example::
 
         graph = Graph([
-            Edge('user', [
+            Node('user', [
                 Field('id', Integer, field_func),
                 Field('name', String, field_func),
                 Link('roles', Sequence[TypeRef['role']],
@@ -263,9 +263,9 @@ class Edge(AbstractEdge):
     """
     def __init__(self, name, fields, **kwargs):
         """
-        :param name: name of the edge
+        :param name: name of the node
         :param fields: list of fields and links
-        :param kw-only,optional description: description of the edge
+        :param kw-only,optional description: description of the node
         """
         self.name = name
         self.fields = fields
@@ -276,28 +276,28 @@ class Edge(AbstractEdge):
         return OrderedDict((f.name, f) for f in self.fields)
 
     def accept(self, visitor):
-        return visitor.visit_edge(self)
+        return visitor.visit_node(self)
 
 
-class Root(Edge):
-    """Special implicit root edge, starting point of the query execution
+class Root(Node):
+    """Special implicit root node, starting point of the query execution
 
     Example::
 
         graph = Graph([
-            Edge('baz', [...]),
+            Node('baz', [...]),
             Root([
                 Field('foo', String, root_fields_func),
                 Link('bar', Sequence[TypeRef['baz']],
                      to_baz_func, requires=None),
-                Edge('quux', [...]),
+                Node('quux', [...]),
             ]),
         ])
 
     """
     def __init__(self, items):
         """
-        :param items: list of fields, links and singleton edges
+        :param items: list of fields, links and singleton nodes
         """
         super(Root, self).__init__(None, items)
 
@@ -307,20 +307,20 @@ class AbstractGraph(AbstractNode):
 
 
 class Graph(AbstractGraph):
-    """Collection of edges - definition of the graph
+    """Collection of nodes - definition of the graph
 
     Example::
 
         graph = Graph([
-            Edge('foo', [...]),
-            Edge('bar', [...]),
+            Node('foo', [...]),
+            Node('bar', [...]),
             Root([...]),
         ])
 
     """
     def __init__(self, items):
         """
-        :param items: list of edges
+        :param items: list of nodes
         """
         self.items = items
 
@@ -330,12 +330,12 @@ class Graph(AbstractGraph):
                                              if e.name is None)))
 
     @cached_property
-    def edges(self):
+    def nodes(self):
         return [e for e in self.items if e.name is not None]
 
     @cached_property
-    def edges_map(self):
-        return OrderedDict((e.name, e) for e in self.edges)
+    def nodes_map(self):
+        return OrderedDict((e.name, e) for e in self.nodes)
 
     def accept(self, visitor):
         return visitor.visit_graph(self)
@@ -357,7 +357,7 @@ class GraphVisitor(object):
         for option in obj.options:
             self.visit(option)
 
-    def visit_edge(self, obj):
+    def visit_node(self, obj):
         for item in obj.fields:
             self.visit(item)
 

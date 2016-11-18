@@ -21,7 +21,7 @@ the data is stored in the SQLite database:
 Graph definition
 ~~~~~~~~~~~~~~~~
 
-Defined tables can be exposed as graph of edges:
+Defined tables can be exposed as graph of nodes:
 
 .. _guide-database-graph:
 
@@ -51,17 +51,17 @@ in the same manner.
 Hiku's SQLAlchemy support is provided by
 :py:class:`hiku.sources.sqlalchemy.FieldsQuery` and
 :py:class:`hiku.sources.sqlalchemy.Field` to express table columns as fields in
-the edge. And by :py:class:`hiku.sources.sqlalchemy.LinkQuery` and
+the node. And by :py:class:`hiku.sources.sqlalchemy.LinkQuery` and
 :py:class:`hiku.sources.sqlalchemy.Link` to express relations between tables as
-links between edges.
+links between nodes.
 
 ``direct_link`` :sup:`[16]` is a special case: when one table contains foreign
 key to the other table - `many-to-one` relation or `one-to-one` relation, no
-additional queries needed to make a direct link between those tables as edges.
+additional queries needed to make a direct link between those tables as nodes.
 ``character`` link :sup:`[40-41]` is a good example of such direct link.
 
 Other relation types require to make additional query in order to fetch linked
-edge ids. ``to_actors_query`` :sup:`[12-14]` for example. Such queries require
+node ids. ``to_actors_query`` :sup:`[12-14]` for example. Such queries require
 selecting only one table, ``actor_table`` in this example. SQL query will be
 looking like this:
 
@@ -71,8 +71,8 @@ looking like this:
       WHERE actor.character_id IN (character_ids);
 
 List of ``character_ids`` we already know (it is an ``id`` field of the current
-edge), all we need is to fetch ``actor.id`` column to make a link from
-``character`` edge to the ``actor`` edge.
+node), all we need is to fetch ``actor.id`` column to make a link from
+``character`` node to the ``actor`` node.
 :py:class:`~hiku.sources.sqlalchemy.LinkQuery` does this for you.
 
 Querying graph

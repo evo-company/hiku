@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from hiku.edn import dumps
-from hiku.query import Field, Link, Edge
+from hiku.query import Field, Link, Node
 from hiku.export.simple import export
 
 
@@ -16,10 +16,10 @@ def test_field():
 
 
 def test_link():
-    check_export(Link('foo', Edge([])), '{:foo []}')
-    check_export(Link('foo', Edge([]), options={'bar': 'baz'}),
+    check_export(Link('foo', Node([])), '{:foo []}')
+    check_export(Link('foo', Node([]), options={'bar': 'baz'}),
                  '{(:foo {:bar "baz"}) []}')
 
 
-def test_edge():
-    check_export(Edge([Field('foo')]), '[:foo]')
+def test_node():
+    check_export(Node([Field('foo')]), '[:foo]')

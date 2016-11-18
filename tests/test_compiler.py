@@ -9,7 +9,7 @@ import astor
 import pytest
 
 from hiku.types import Optional, String, Record, Unknown, TypeRef, Sequence
-from hiku.graph import Graph, Field, Edge, Link, Root
+from hiku.graph import Graph, Field, Node, Link, Root
 from hiku.compat import PY3, PY35
 from hiku.expr.core import define, S, if_, each, to_expr, if_some
 from hiku.expr.checker import check, graph_types, fn_types
@@ -37,10 +37,10 @@ def noop(*_):
 
 # TODO: refactor
 ENV = Graph([
-    Edge('x', [
+    Node('x', [
         Field('b', None, noop),
     ]),
-    Edge('y', [
+    Node('y', [
         Field('c', None, noop),
         Link('x1', TypeRef['x'], noop, requires=None),
         Link('xs', Sequence[TypeRef['x']], noop, requires=None),
@@ -48,10 +48,10 @@ ENV = Graph([
     Root([
         Field('a', None, noop),
         Field('nitrox', Optional[String], noop),
-        Edge('x', [
+        Node('x', [
             Field('b', None, noop),
         ]),
-        Edge('y', [
+        Node('y', [
             Field('c', None, noop),
             Link('x1', TypeRef['x'], noop, requires=None),
             Link('xs', Sequence[TypeRef['x']], noop, requires=None),

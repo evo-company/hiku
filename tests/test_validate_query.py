@@ -1,7 +1,7 @@
 import pytest
 
 from hiku import query as q
-from hiku.graph import Graph, Edge, Field, Link, Option, Root
+from hiku.graph import Graph, Node, Field, Link, Option, Root
 from hiku.types import Integer, Record, Sequence, Optional, TypeRef
 from hiku.validate.query import QueryValidator
 
@@ -11,9 +11,9 @@ def _():
 
 
 GRAPH = Graph([
-    Edge('hooted', []),
+    Node('hooted', []),
     Root([
-        Edge('decants', []),
+        Node('decants', []),
 
         # simple
         Field('robby', None, _),
@@ -49,45 +49,45 @@ def check_errors(query, errors):
 
 
 def test_field():
-    # field in the root edge
-    check_errors(q.Edge([q.Field('invalid')]), [
-        'Field "invalid" is not implemented in the "root" edge',
+    # field in the root node
+    check_errors(q.Node([q.Field('invalid')]), [
+        'Field "invalid" is not implemented in the "root" node',
     ])
-    # field in the global edge
-    check_errors(q.Edge([q.Link('decants', q.Edge([q.Field('invalid')]))]), [
-        'Field "invalid" is not implemented in the "decants" edge',
+    # field in the global node
+    check_errors(q.Node([q.Link('decants', q.Node([q.Field('invalid')]))]), [
+        'Field "invalid" is not implemented in the "decants" node',
     ])
-    # field in the linked edge
-    check_errors(q.Edge([q.Link('amyls', q.Edge([q.Field('invalid')]))]), [
-        'Field "invalid" is not implemented in the "hooted" edge',
+    # field in the linked node
+    check_errors(q.Node([q.Link('amyls', q.Node([q.Field('invalid')]))]), [
+        'Field "invalid" is not implemented in the "hooted" node',
     ])
-    # simple field as edge
-    check_errors(q.Edge([q.Link('robby', q.Edge([]))]), [
-        'Trying to query "root.robby" simple field as edge',
+    # simple field as node
+    check_errors(q.Node([q.Link('robby', q.Node([]))]), [
+        'Trying to query "root.robby" simple field as node',
     ])
 
 
 @pytest.mark.parametrize('field_name', ['wounded', 'annuals', 'hialeah'])
 def test_field_complex(field_name):
-    check_errors(q.Edge([q.Link(field_name, q.Edge([]))]), [])
-    check_errors(q.Edge([q.Link(field_name, q.Edge([q.Field('invalid')]))]), [
+    check_errors(q.Node([q.Link(field_name, q.Node([]))]), [])
+    check_errors(q.Node([q.Link(field_name, q.Node([q.Field('invalid')]))]), [
         'Unknown field name',
     ])
-    check_errors(q.Edge([q.Link(field_name, q.Edge([q.Field('attr')]))]), [])
+    check_errors(q.Node([q.Link(field_name, q.Node([q.Field('attr')]))]), [])
 
 
 def test_non_field():
-    check_errors(q.Edge([q.Field('amyls')]), [
+    check_errors(q.Node([q.Field('amyls')]), [
         'Trying to query "root.amyls" link as it was a field',
     ])
-    check_errors(q.Edge([q.Field('decants')]), [
-        'Trying to query "decants" edge as it was a field',
+    check_errors(q.Node([q.Field('decants')]), [
+        'Trying to query "decants" node as it was a field',
     ])
 
 
 def test_field_options():
     def mk(field_name, **kwargs):
-        return q.Edge([q.Field(field_name, **kwargs)])
+        return q.Node([q.Field(field_name, **kwargs)])
 
     check_errors(mk('motown'), [
         'Required option "root.motown:prine" is not specified',
@@ -135,24 +135,24 @@ def test_field_options():
 
 
 def test_link():
-    l = q.Link('invalid', q.Edge([]))
-    # link in the root edge
-    check_errors(q.Edge([l]), [
-        'Link "invalid" is not implemented in the "root" edge',
+    l = q.Link('invalid', q.Node([]))
+    # link in the root node
+    check_errors(q.Node([l]), [
+        'Link "invalid" is not implemented in the "root" node',
     ])
-    # link in the global edge
-    check_errors(q.Edge([q.Link('decants', q.Edge([l]))]), [
-        'Link "invalid" is not implemented in the "decants" edge',
+    # link in the global node
+    check_errors(q.Node([q.Link('decants', q.Node([l]))]), [
+        'Link "invalid" is not implemented in the "decants" node',
     ])
-    # link in the linked edge
-    check_errors(q.Edge([q.Link('amyls', q.Edge([l]))]), [
-        'Link "invalid" is not implemented in the "hooted" edge',
+    # link in the linked node
+    check_errors(q.Node([q.Link('amyls', q.Node([l]))]), [
+        'Link "invalid" is not implemented in the "hooted" node',
     ])
 
 
 def test_link_options():
     def mk(link_name, **kwargs):
-        return q.Edge([q.Link(link_name, q.Edge([]), **kwargs)])
+        return q.Node([q.Link(link_name, q.Node([]), **kwargs)])
 
     check_errors(mk('ferrous'), [
         'Required option "root.ferrous:cantab" is not specified',

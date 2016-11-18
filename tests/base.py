@@ -10,7 +10,7 @@ except ImportError:
     from itertools import izip_longest as zip_longest
 
 from hiku.types import GenericMeta
-from hiku.query import Field, Link, Edge
+from hiku.query import Field, Link, Node
 from hiku.expr.refs import Ref
 
 
@@ -30,7 +30,7 @@ def _eq(self, other):
     return self.__dict__ == other.__dict__
 
 
-def _edge_eq(self, other):
+def _node_eq(self, other):
     if type(self) is not type(other):
         return False
     return self.fields_map == dict(other.fields_map)
@@ -38,12 +38,12 @@ def _edge_eq(self, other):
 
 _field_patch = patch.multiple(Field, __eq__=_eq, __ne__=_ne)
 _link_patch = patch.multiple(Link, __eq__=_eq, __ne__=_ne)
-_edge_patch = patch.multiple(Edge, __eq__=_edge_eq, __ne__=_ne)
+_node_patch = patch.multiple(Node, __eq__=_node_eq, __ne__=_ne)
 
 
 @contextmanager
 def reqs_eq_patcher():
-    with _field_patch, _link_patch, _edge_patch:
+    with _field_patch, _link_patch, _node_patch:
         yield
 
 

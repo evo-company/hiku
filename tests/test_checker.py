@@ -1,4 +1,4 @@
-from hiku.graph import Graph, Field, Edge, Root, Link
+from hiku.graph import Graph, Field, Node, Root, Link
 from hiku.types import Integer, String, Record, Optional, TypeRef
 from hiku.expr.core import S, to_expr, if_some
 from hiku.expr.refs import NamedRef, Ref
@@ -13,13 +13,13 @@ def _(*args, **kwargs):
 
 
 GRAPH = Graph([
-    Edge('thalweg', [
+    Node('thalweg', [
         Field('pinout', Integer, _),
     ]),
     Root([
         Field('araneus', Integer, _),
         Field('peen', Optional[Record[{'copies': Integer}]], _),
-        Edge('guida', [
+        Node('guida', [
             Field('canette', String, _),
         ]),
         Link('rakyats', Optional[TypeRef['thalweg']], _, requires=None),
@@ -46,7 +46,7 @@ def test_root_field():
     check_ref(expr, NamedRef(None, 'araneus', TYPES['araneus']))
 
 
-def test_edge_field():
+def test_node_field():
     expr = check_expr(S.guida.canette)
     guida_ref = NamedRef(None, 'guida', Record[{'canette': String}])
     check_ref(expr, NamedRef(guida_ref, 'canette', String))

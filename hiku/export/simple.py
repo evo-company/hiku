@@ -16,9 +16,9 @@ class Exporter(QueryVisitor):
         if obj.options is not None:
             l = Tuple([l, Dict((Keyword(k), v)
                                for k, v in obj.options.items())])
-        return Dict([(l, self.visit(obj.edge))])
+        return Dict([(l, self.visit(obj.node))])
 
-    def visit_edge(self, obj):
+    def visit_node(self, obj):
         return List(self.visit(f) for f in obj.fields)
 
 

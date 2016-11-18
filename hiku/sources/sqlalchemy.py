@@ -102,7 +102,7 @@ _MAPPERS = {
 class LinkQuery(object):
 
     def __init__(self, type_, sa_engine_ctx_var, **kwargs):
-        type_enum, edge = get_type_enum(type_)
+        type_enum, node = get_type_enum(type_)
 
         from_column, to_column = kw_only(kwargs, ['from_column', 'to_column'])
         if from_column.table is not to_column.table:
@@ -111,7 +111,7 @@ class LinkQuery(object):
 
         self.type = type_
         self.type_enum = type_enum
-        self.edge = edge
+        self.node = node
         self.sa_engine_ctx_var = sa_engine_ctx_var
         self.from_column = from_column
         self.to_column = to_column

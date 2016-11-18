@@ -13,3 +13,7 @@ Backward-incompatible changes
 - Moved :py:mod:`hiku.compiler` to the :py:mod:`hiku.expr.compiler`
 - Moved :py:mod:`hiku.nodes` to the :py:mod:`hiku.expr.nodes`
 - Moved :py:mod:`hiku.refs` to the :py:mod:`hiku.expr.refs`
+
+- Renamed :py:class:`hiku.graph.AbstractEdge` into :py:class:`hiku.graph.AbstractNode`
+- Renamed :py:class:`hiku.graph.Edge` into :py:class:`hiku.graph.Node`
+- Renamed :py:class:`hiku.query.Edge` into :py:class:`hiku.query.Node`

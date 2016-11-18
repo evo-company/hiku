@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from hiku.query import Edge, Field, Link
+from hiku.query import Node, Field, Link
 from hiku.readers.simple import read
 
 from .base import TestCase, reqs_eq_patcher
@@ -24,7 +24,7 @@ class TestReadSimple(TestCase):
             """
             [:foo :bar]
             """,
-            Edge([Field('foo'), Field('bar')]),
+            Node([Field('foo'), Field('bar')]),
         )
 
     def testFieldInvalid(self):
@@ -38,7 +38,7 @@ class TestReadSimple(TestCase):
             """
             [(:foo {:bar 1}) :baz]
             """,
-            Edge([Field('foo', options={'bar': 1}),
+            Node([Field('foo', options={'bar': 1}),
                   Field('baz')]),
         )
 
@@ -64,7 +64,7 @@ class TestReadSimple(TestCase):
             """
             [{:foo [:bar :baz]}]
             """,
-            Edge([Link('foo', Edge([Field('bar'), Field('baz')]))]),
+            Node([Link('foo', Node([Field('bar'), Field('baz')]))]),
         )
 
     def testLinkOptions(self):
@@ -72,7 +72,7 @@ class TestReadSimple(TestCase):
             """
             [{(:foo {:bar 1}) [:baz]}]
             """,
-            Edge([Link('foo', Edge([Field('baz')]),
+            Node([Link('foo', Node([Field('baz')]),
                        options={'bar': 1})]),
         )
 

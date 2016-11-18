@@ -10,7 +10,7 @@ data = {
 
 # graph definition
 
-from hiku.graph import Graph, Root, Field, Edge, Link
+from hiku.graph import Graph, Root, Field, Node, Link
 from hiku.types import TypeRef, Sequence
 from hiku.engine import Engine
 from hiku.result import denormalize
@@ -28,7 +28,7 @@ def to_characters_link():
     return [1, 2, 3]
 
 GRAPH = Graph([
-    Edge('character', [
+    Node('character', [
         Field('name', None, character_data),
         Field('species', None, character_data),
     ]),

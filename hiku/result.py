@@ -19,33 +19,33 @@
 
 """
 from .types import RecordMeta, OptionalMeta, SequenceMeta
-from .query import Edge, Field, Link, merge
+from .query import Node, Field, Link, merge
 from .graph import Link as GraphLink, Field as GraphField, Many
 
 
 class Ref(object):
 
-    def __init__(self, index, edge, ident):
+    def __init__(self, index, node, ident):
         self.index = index
-        self.edge = edge
+        self.node = node
         self.ident = ident
 
     def __getitem__(self, key):
-        return self.index[self.edge][self.ident][key]
+        return self.index[self.node][self.ident][key]
 
     def __repr__(self):
-        return '<{}:{}>'.format(self.edge, self.ident)
+        return '<{}:{}>'.format(self.node, self.ident)
 
     def __eq__(self, other):
-        return self.index[self.edge][self.ident] == other
+        return self.index[self.node][self.ident] == other
 
 
 class Result(object):
     """Internal result representation
 
-    It gives access to the result of the :py:class:`~hiku.graph.Root` edge --
+    It gives access to the result of the :py:class:`~hiku.graph.Root` node --
     which is a starting point of the query execution, and from it to all the
-    other edge objects, which are stored internally in the index.
+    other node objects, which are stored internally in the index.
 
     Behaves like a mapping.
     """
@@ -56,16 +56,16 @@ class Result(object):
     def __getitem__(self, key):
         return self.root[key]
 
-    def ref(self, edge, ident):
-        return Ref(self.index, edge, ident)
+    def ref(self, node, ident):
+        return Ref(self.index, node, ident)
 
 
-def _filter_fields(result, edge):
-    return {f.name: result[f.name] for f in edge.fields}
+def _filter_fields(result, node):
+    return {f.name: result[f.name] for f in node.fields}
 
 
 def _denormalize(graph, graph_obj, result, query_obj):
-    if isinstance(query_obj, Edge):
+    if isinstance(query_obj, Node):
         return {f.name: _denormalize(graph, graph_obj.fields_map[f.name],
                                      result[f.name], f)
                 for f in query_obj.fields}
@@ -77,24 +77,24 @@ def _denormalize(graph, graph_obj, result, query_obj):
         if isinstance(graph_obj, GraphField):
             type_ = graph_obj.type
             if isinstance(type_, SequenceMeta):
-                return [_filter_fields(item, query_obj.edge) for item in result]
+                return [_filter_fields(item, query_obj.node) for item in result]
             elif isinstance(type_, OptionalMeta):
-                return (_filter_fields(result, query_obj.edge)
+                return (_filter_fields(result, query_obj.node)
                         if result is not None else None)
             else:
                 assert isinstance(type_, RecordMeta), repr(type_)
-                return _filter_fields(result, query_obj.edge)
+                return _filter_fields(result, query_obj.node)
 
         elif isinstance(graph_obj, GraphLink):
-            graph_edge = graph.edges_map[graph_obj.edge]
+            graph_node = graph.nodes_map[graph_obj.node]
             if graph_obj.type_enum is Many:
-                return [_denormalize(graph, graph_edge, v, query_obj.edge)
+                return [_denormalize(graph, graph_node, v, query_obj.node)
                         for v in result]
             else:
-                return _denormalize(graph, graph_edge, result, query_obj.edge)
+                return _denormalize(graph, graph_node, result, query_obj.node)
 
         else:
-            return _denormalize(graph, graph_obj, result, query_obj.edge)
+            return _denormalize(graph, graph_obj, result, query_obj.node)
 
 
 def denormalize(graph, result, query):
@@ -111,6 +111,6 @@ def denormalize(graph, result, query):
 
     :param graph: :py:class:`~hiku.graph.Graph` definition
     :param result: result of the query
-    :param query: executed query, instance of the :py:class:`~hiku.query.Edge`
+    :param query: executed query, instance of the :py:class:`~hiku.query.Node`
     """
     return _denormalize(graph, graph.root, result, merge([query]))

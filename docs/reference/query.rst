@@ -1,2 +1,2 @@
 .. automodule:: hiku.query
-    :members: Edge, Field, Link, merge
+    :members: Node, Field, Link, merge

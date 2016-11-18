@@ -1,4 +1,4 @@
-from ..query import Edge, Link, Field, merge
+from ..query import Node, Link, Field, merge
 from ..types import GenericMeta, RecordMeta, SequenceMeta, MappingMeta
 from ..types import OptionalMeta, TypeRefMeta
 
@@ -45,9 +45,9 @@ def ref_to_req(types, ref, add_req=None):
 
     if isinstance(ref_type, RecordMeta):
         if isinstance(ref, NamedRef):
-            edge = Edge([]) if add_req is None else add_req
+            node = Node([]) if add_req is None else add_req
             return ref_to_req(types, ref.backref,
-                              Edge([Link(ref.name, edge)]))
+                              Node([Link(ref.name, node)]))
         else:
             return ref_to_req(types, ref.backref, add_req)
 
@@ -55,9 +55,9 @@ def ref_to_req(types, ref, add_req=None):
         item_type = get_type(types, ref_type.__item_type__)
         if isinstance(item_type, RecordMeta):
             assert isinstance(ref, NamedRef), type(ref)
-            edge = Edge([]) if add_req is None else add_req
+            node = Node([]) if add_req is None else add_req
             return ref_to_req(types, ref.backref,
-                              Edge([Link(ref.name, edge)]))
+                              Node([Link(ref.name, node)]))
         else:
             raise NotImplementedError
 
@@ -66,7 +66,7 @@ def ref_to_req(types, ref, add_req=None):
         assert isinstance(ref, NamedRef), type(ref)
         assert add_req is None, repr(add_req)
         return ref_to_req(types, ref.backref,
-                          Edge([Field(ref.name)]))
+                          Node([Field(ref.name)]))
 
     else:
         raise TypeError('Reference to the invalid type: {!r}'
@@ -85,7 +85,7 @@ def type_to_query(type_):
                 raise NotImplementedError
         else:
             fields.append(Field(f_name))
-    return Edge(fields)
+    return Node(fields)
 
 
 class RequirementsExtractor(NodeVisitor):

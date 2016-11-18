@@ -89,7 +89,7 @@ Hold on, as there are lots of new things in the high-level graph definition
 above.
 
 :py:class:`~hiku.sources.graph.SubGraph` source :sup:`[10]` is used to refer to
-low-level edge. Low-level edge and it's high-level counterpart are basically
+low-level node. Low-level node and it's high-level counterpart are basically
 refer to the same logical entity (`character`) and they share same unique
 identifiers (``character.id``), used to identify every instance of the entity.
 
@@ -102,9 +102,9 @@ represent how to compute high-level representation of data from low-level graph.
 unbound symbols.
 
 ``S.this`` is a special case, it refers to the low-level counterpart of the
-current edge. So ``S.this.name`` :sup:`[15]` is a ``name`` field of the
-``character`` edge from the low-level graph. As you can see, to expose low-level
-fields in the high-level edge without modification, you just need to refer them
+current node. So ``S.this.name`` :sup:`[15]` is a ``name`` field of the
+``character`` node from the low-level graph. As you can see, to expose low-level
+fields in the high-level node without modification, you just need to refer them
 using symbols with their names.
 
 In order to make data modifications, we will need to use more complex

@@ -1,7 +1,7 @@
 import difflib
 from textwrap import dedent
 
-from hiku.graph import Graph, Edge, Field, Link, Root
+from hiku.graph import Graph, Node, Field, Link, Root
 from hiku.types import Sequence, Mapping, Integer, String, Optional, Record
 from hiku.types import TypeRef
 from hiku.typedef.kinko import dumps
@@ -57,14 +57,14 @@ def test_field_complex():
     )
 
 
-def test_edge():
+def test_node():
     assert_dumps(
         Graph([
-            Edge('adder', [
+            Node('adder', [
                 Field('kott', String, _),
                 Field('aseptic', String, _),
             ]),
-            Edge('brayden', [
+            Node('brayden', [
                 Field('unhot', String, _),
                 Field('linea', String, _),
             ]),
@@ -136,14 +136,14 @@ def test_dict_complex():
 def test_type_ref():
     assert_dumps(
         Graph([
-            Edge('xeric', [
+            Node('xeric', [
                 Field('derrida', String, _),
             ]),
-            Edge('amb', [
+            Node('amb', [
                 Field('loor', String, _),
                 Link('cressy', TypeRef['xeric'], _, requires=None),
             ]),
-            Edge('offeree', [
+            Node('offeree', [
                 Field('abila', String, _),
                 Link('ferber', Sequence[TypeRef['xeric']], _, requires=None),
             ]),
@@ -170,16 +170,16 @@ def test_type_ref():
 def testDocs():
     assert_dumps(
         Graph([
-            Edge('switzer', [
+            Node('switzer', [
                 Field('beatch', String, _, description="attribute beatch"),
             ], description="switzer description"),
-            Edge('trine', [
+            Node('trine', [
                 Field('propels', Optional[String], _,
                       description="attribute propels"),
                 Link('cardura', TypeRef['switzer'], _, requires=None,
                      description="link cardura to switzer"),
             ], description="trine description"),
-            Edge('packrat', [
+            Node('packrat', [
                 Field('pikes', String, _, description="attribute pikes"),
                 Link('albus', Sequence[TypeRef['switzer']], _, requires=None,
                      description="link albus to switzer"),

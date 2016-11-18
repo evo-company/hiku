@@ -2,7 +2,7 @@ from itertools import repeat
 
 from ..types import AbstractTypeVisitor
 from ..query import QueryVisitor
-from ..graph import GraphVisitor, Edge, Field, Link
+from ..graph import GraphVisitor, Node, Field, Link
 from ..compat import text_type
 
 from .errors import Errors
@@ -40,8 +40,8 @@ class _AssumeRecord(AbstractTypeVisitor):
 
 class _AssumeField(GraphVisitor):
 
-    def __init__(self, edge, errors):
-        self.edge = edge
+    def __init__(self, node, errors):
+        self.node = node
         self.errors = errors
 
     def visit_field(self, obj):
@@ -49,13 +49,13 @@ class _AssumeField(GraphVisitor):
 
     def visit_link(self, obj):
         self.errors.report('Trying to query "{}.{}" link as it was a field'
-                           .format(self.edge.name or 'root', obj.name))
+                           .format(self.node.name or 'root', obj.name))
         return False
 
-    def visit_edge(self, obj):
-        assert self.edge.name is None,\
-            'Nested edge can be only in the root edge'
-        self.errors.report('Trying to query "{}" edge as it was a field'
+    def visit_node(self, obj):
+        assert self.node.name is None,\
+            'Nested node can be only in the root node'
+        self.errors.report('Trying to query "{}" node as it was a field'
                            .format(obj.name))
         return False
 
@@ -101,9 +101,9 @@ class _ValidateOptions(GraphVisitor):
         super(_ValidateOptions, self).visit_link(obj)
         unknown = set(self._options).difference(obj.options_map)
         if unknown:
-            edge, field = self.for_
+            node, field = self.for_
             self.errors.report('Unknown options for "{}.{}": {}'.
-                               format(edge, field, ', '.join(unknown)))
+                               format(node, field, ', '.join(unknown)))
 
     visit_field = visit_link
 
@@ -111,21 +111,21 @@ class _ValidateOptions(GraphVisitor):
         default = _undefined if obj.default is None else obj.default
         value = self._options.get(obj.name, default)
         if value is _undefined:
-            edge, field = self.for_
+            node, field = self.for_
             self.errors.report('Required option "{}.{}:{}" is not specified'
-                               .format(edge, field, obj.name))
+                               .format(node, field, obj.name))
         elif obj.type is not None:
             try:
                 _OptionTypeValidator(value).visit(obj.type)
             except _TypeError:
-                edge, field = self.for_
+                node, field = self.for_
                 type_name = type(value).__name__
                 self.errors.report('Invalid type "{}" for option "{}.{}:{}" '
                                    'provided'
-                                   .format(type_name, edge, field, obj.name))
+                                   .format(type_name, node, field, obj.name))
 
-    def visit_edge(self, obj):
-        assert self.options is None, 'Edge can not have options'
+    def visit_node(self, obj):
+        assert self.options is None, 'Node can not have options'
 
 
 class _RecordFieldsValidator(QueryVisitor):
@@ -143,70 +143,70 @@ class _RecordFieldsValidator(QueryVisitor):
     def visit_link(self, obj):
         self._errors.report('Not a link')
 
-    def visit_edge(self, obj):
-        raise AssertionError('Edge is not expected here')
+    def visit_node(self, obj):
+        raise AssertionError('Node is not expected here')
 
 
 class QueryValidator(QueryVisitor):
 
     def __init__(self, graph):
-        self.map = graph.edges_map
+        self.map = graph.nodes_map
         self.path = [graph.root]
         self.errors = Errors()
 
     def visit_field(self, obj):
-        edge = self.path[-1]
-        field = edge.fields_map.get(obj.name)
+        node = self.path[-1]
+        field = node.fields_map.get(obj.name)
         if field is not None:
-            is_field = _AssumeField(edge, self.errors).visit(field)
+            is_field = _AssumeField(node, self.errors).visit(field)
             if is_field:
-                for_ = (edge.name or 'root', obj.name)
+                for_ = (node.name or 'root', obj.name)
                 _ValidateOptions(obj.options, for_, self.errors).visit(field)
         else:
-            self.errors.report('Field "{}" is not implemented in the "{}" edge'
-                               .format(obj.name, edge.name or 'root'))
+            self.errors.report('Field "{}" is not implemented in the "{}" node'
+                               .format(obj.name, node.name or 'root'))
 
     def visit_link(self, obj):
-        edge = self.path[-1]
-        graph_obj = edge.fields_map.get(obj.name, _undefined)
+        node = self.path[-1]
+        graph_obj = node.fields_map.get(obj.name, _undefined)
         if isinstance(graph_obj, Field):
-            for_ = (edge.name or 'root', obj.name)
+            for_ = (node.name or 'root', obj.name)
             _ValidateOptions(obj.options, for_, self.errors).visit(graph_obj)
 
             field_types = _AssumeRecord().visit(graph_obj.type)
             if field_types is not None:
                 fields_validator = _RecordFieldsValidator(field_types,
                                                           self.errors)
-                for field in obj.edge.fields:
+                for field in obj.node.fields:
                     fields_validator.visit(field)
             else:
                 self.errors.report('Trying to query "{}.{}" simple field '
-                                   'as edge'
-                                   .format(edge.name or 'root', obj.name))
+                                   'as node'
+                                   .format(node.name or 'root', obj.name))
 
         elif isinstance(graph_obj, Link):
-            linked_edge = self.map[graph_obj.edge]
-            for_ = (edge.name or 'root', obj.name)
+            linked_node = self.map[graph_obj.node]
+            for_ = (node.name or 'root', obj.name)
             _ValidateOptions(obj.options, for_, self.errors).visit(graph_obj)
 
-            self.path.append(linked_edge)
+            self.path.append(linked_node)
             try:
-                self.visit(obj.edge)
+                self.visit(obj.node)
             finally:
                 self.path.pop()
 
-        elif isinstance(graph_obj, Edge):
-            linked_edge = graph_obj
+        elif isinstance(graph_obj, Node):
+            linked_node = graph_obj
             if obj.options is not None:
                 self.errors.report('Options are not possible here')
-            self.path.append(linked_edge)
+            self.path.append(linked_node)
             try:
-                self.visit(obj.edge)
+                self.visit(obj.node)
             finally:
                 self.path.pop()
 
         elif graph_obj is _undefined:
-            self.errors.report('Link "{}" is not implemented in the "{}" edge'
-                               .format(obj.name, edge.name or 'root'))
+            self.errors.report('Link "{}" is not implemented in the "{}" node'
+                               .format(obj.name, node.name or 'root'))
         else:
             raise TypeError(repr(graph_obj))

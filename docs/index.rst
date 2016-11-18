@@ -15,7 +15,7 @@ in your services with performance and flexibility in mind.
 Features
 ~~~~~~~~
 
-★ Express all your data sources as graph of edges with fields and links.
+★ Express all your data sources as graph of nodes with fields and links.
 You are free to choose between sync **threads/greenlets** and async
 **coroutines** styles for data loading in your application. In both cases
 `Hiku` can load data **concurrently** to speed-up overall graph queries.

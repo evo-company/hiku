@@ -36,7 +36,7 @@ sa_engine.execute(character_table.insert().values([
 
 # define low-level graph
 
-from hiku.graph import Graph, Root, Edge, Link
+from hiku.graph import Graph, Root, Node, Link
 from hiku.types import TypeRef, Sequence, Optional
 from hiku.engine import pass_context, Nothing
 from hiku.sources import sqlalchemy as sa
@@ -60,11 +60,11 @@ def to_characters_query(ctx):
     return [row.id for row in ctx[SA_ENGINE].execute(query)]
 
 _GRAPH = Graph([
-    Edge('image', [
+    Node('image', [
         sa.Field('id', image_query),
         sa.Field('name', image_query),
     ]),
-    Edge('character', [
+    Node('character', [
         sa.Field('id', character_query),
         sa.Field('image_id', character_query),
         sa.Field('name', character_query),
@@ -119,7 +119,7 @@ def image_url(image):
 character_sg = SubGraph(_GRAPH, 'character')
 
 GRAPH = Graph([
-    Edge('character', [
+    Node('character', [
         Expr('id', character_sg, S.this.id),
         Expr('name', character_sg, S.this.name),
         Expr('image-url', character_sg,

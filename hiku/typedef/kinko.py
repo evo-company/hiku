@@ -41,8 +41,8 @@ class GraphTypesEx(GraphTypes):
         return [TypeDef[n, t] for n, t in types_map.items()
                 if t is not Unknown]
 
-    def visit_edge(self, obj):
-        record = super(GraphTypesEx, self).visit_edge(obj)
+    def visit_node(self, obj):
+        record = super(GraphTypesEx, self).visit_node(obj)
         return Record[[(n, t) for n, t in record.__field_types__.items()
                        if t is not Unknown]]
 

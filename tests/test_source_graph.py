@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
-from hiku.graph import Graph, Edge, Link, Field, Option, Root
+from hiku.graph import Graph, Node, Link, Field, Option, Root
 from hiku.types import Record, Sequence, Unknown, TypeRef
 from hiku.engine import Engine
 from hiku.expr.core import define, S, each
@@ -63,14 +63,14 @@ def y_to_x(ids):
 
 
 _GRAPH = Graph([
-    Edge('x', [
+    Node('x', [
         Field('id', None, query_x),
         Field('a', None, query_x),
         Field('b', None, query_x),
         Field('y_id', None, query_x),
         Link('y', TypeRef['y'], x_to_y, requires='id'),
     ]),
-    Edge('y', [
+    Node('y', [
         Field('id', None, query_y),
         Field('c', None, query_y),
         Field('d', None, query_y),
@@ -111,7 +111,7 @@ sg_y = SubGraph(_GRAPH, 'y')
 
 # TODO: refactor
 GRAPH = Graph([
-    Edge('x1', [
+    Node('x1', [
         Expr('id', sg_x, S.this.id),
         Expr('a', sg_x, S.this.a),
         Expr('f', sg_x, S.f1),
@@ -122,7 +122,7 @@ GRAPH = Graph([
         Expr('buz2', sg_x, buz(S.this, S.size),
              options=[Option('size', None, default=100)]),
     ]),
-    Edge('y1', [
+    Node('y1', [
         Expr('id', sg_y, S.this.id),
         Expr('c', sg_y, S.this.c),
         Expr('f', sg_y, S.f2),

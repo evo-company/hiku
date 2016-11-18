@@ -20,7 +20,7 @@ data = {
 
 from collections import defaultdict
 
-from hiku.graph import Graph, Root, Field, Edge, Link
+from hiku.graph import Graph, Root, Field, Node, Link
 from hiku.types import TypeRef, Sequence
 
 def character_data(fields, ids):
@@ -53,14 +53,14 @@ def to_characters_link():
     return [1, 2, 3]
 
 GRAPH = Graph([
-    Edge('character', [
+    Node('character', [
         Field('id', None, character_data),
         Field('name', None, character_data),
         Field('species', None, character_data),
         Link('actors', Sequence[TypeRef['actor']],
              character_to_actors_link, requires='id'),
     ]),
-    Edge('actor', [
+    Node('actor', [
         Field('id', None, actor_data),
         Field('name', None, actor_data),
         Link('character', TypeRef['character'],

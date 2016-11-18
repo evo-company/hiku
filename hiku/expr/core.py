@@ -3,7 +3,7 @@ from itertools import chain
 from collections import namedtuple
 
 from ..edn import loads
-from ..query import Edge, Link, Field
+from ..query import Node, Link, Field
 from ..types import Record, Callable, Unknown
 from ..compat import text_type, string_types
 from ..readers.simple import transform
@@ -56,10 +56,10 @@ def to_expr(obj):
 
 
 def _query_to_types(obj):
-    if isinstance(obj, Edge):
+    if isinstance(obj, Node):
         return Record[[(f.name, _query_to_types(f)) for f in obj.fields]]
     elif isinstance(obj, Link):
-        return _query_to_types(obj.edge)
+        return _query_to_types(obj.node)
     elif isinstance(obj, Field):
         return Unknown
     else:

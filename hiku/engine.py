@@ -3,81 +3,81 @@ from itertools import chain
 from collections import defaultdict
 
 from . import query
-from .graph import Link, Edge, Maybe, One, Many, Nothing, Field
+from .graph import Link, Node, Maybe, One, Many, Nothing, Field
 from .result import Result
 from .executors.queue import Workflow, Queue
 
 
 class SplitPattern(query.QueryVisitor):
 
-    def __init__(self, edge):
-        self._edge = edge
+    def __init__(self, node):
+        self._node = node
         self._fields = []
         self._links = []
-        self._edges = []
+        self._nodes = []
 
     def split(self, pattern):
         for item in pattern.fields:
             self.visit(item)
-        return self._fields, self._links, self._edges
+        return self._fields, self._links, self._nodes
 
-    def visit_edge(self, obj):
+    def visit_node(self, obj):
         raise ValueError('Unexpected value: {!r}'.format(obj))
 
     def visit_field(self, obj):
-        self._fields.append((self._edge.fields_map[obj.name], obj))
+        self._fields.append((self._node.fields_map[obj.name], obj))
 
     def visit_link(self, obj):
-        graph_obj = self._edge.fields_map[obj.name]
+        graph_obj = self._node.fields_map[obj.name]
         if isinstance(graph_obj, Link):
             if graph_obj.requires:
-                self._fields.append((self._edge.fields_map[graph_obj.requires],
+                self._fields.append((self._node.fields_map[graph_obj.requires],
                                      query.Field(graph_obj.requires)))
             self._links.append((graph_obj, obj))
-        elif isinstance(graph_obj, Edge):
-            self._edges.append(obj)
+        elif isinstance(graph_obj, Node):
+            self._nodes.append(obj)
         else:
             assert isinstance(graph_obj, Field), type(graph_obj)
             # `obj` here is a link, but this link is treated as a complex field
             self._fields.append((graph_obj, obj))
 
 
-def store_fields(result, edge, fields, ids, query_result):
+def store_fields(result, node, fields, ids, query_result):
     names = [f.name for f in fields]
-    if edge.name is not None:
+    if node.name is not None:
         if ids is not None:
-            edge_index = result.index.setdefault(edge.name, {})
+            node_index = result.index.setdefault(node.name, {})
             for i, row in zip(ids, query_result):
-                edge_data = edge_index.setdefault(i, {})
-                edge_data.update(zip(names, row))
+                node_data = node_index.setdefault(i, {})
+                node_data.update(zip(names, row))
         else:
-            edge_data = result.root.setdefault(edge.name, {})
-            edge_data.update(zip(names, query_result))
+            node_data = result.root.setdefault(node.name, {})
+            node_data.update(zip(names, query_result))
     else:
         result.root.update(zip(names, query_result))
 
 
-def link_reqs(result, edge, link, ids):
-    if edge.name is not None:
+def link_reqs(result, node, link, ids):
+    if node.name is not None:
         if ids is not None:
-            return [result.index[edge.name][i][link.requires] for i in ids]
+            return [result.index[node.name][i][link.requires] for i in ids]
         else:
-            return result.root[edge.name][link.requires]
+            return result.root[node.name][link.requires]
     else:
         return result.root[link.requires]
 
 
 def link_ref_maybe(result, link, ident):
-    return None if ident is Nothing else result.ref(link.edge, ident)
+    return None if ident is Nothing else result.ref(link.node, ident)
 
 
 def link_ref_one(result, link, ident):
     assert ident is not Nothing
-    return result.ref(link.edge, ident)
+    return result.ref(link.node, ident)
 
 
 def link_ref_many(result, link, idents):
-    return [result.ref(link.edge, i) for i in idents]
+    return [result.ref(link.node, i) for i in idents]
 
 
 _LINK_REF_MAKER = {
@@ -87,17 +87,17 @@ _LINK_REF_MAKER = {
 }
 
 
-def store_links(result, edge, link, ids, query_result):
+def store_links(result, node, link, ids, query_result):
     field_val = partial(_LINK_REF_MAKER[link.type_enum], result, link)
-    if edge.name is not None:
+    if node.name is not None:
         if ids is not None:
-            edge_index = result.index.setdefault(edge.name, {})
+            node_index = result.index.setdefault(node.name, {})
             for i, res in zip(ids, query_result):
-                edge_data = edge_index.setdefault(i, {})
-                edge_data[link.name] = field_val(res)
+                node_data = node_index.setdefault(i, {})
+                node_data[link.name] = field_val(res)
         else:
-            edge_data = result.root.setdefault(edge.name, {})
-            edge_data[link.name] = field_val(query_result)
+            node_data = result.root.setdefault(node.name, {})
+            node_data[link.name] = field_val(query_result)
     else:
         result.root[link.name] = field_val(query_result)
 
@@ -148,12 +148,12 @@ class Query(Workflow):
     def result(self):
         return self._result
 
-    def process_edge(self, edge, pattern, ids):
-        fields, links, edges = SplitPattern(edge).split(pattern)
+    def process_node(self, node, pattern, ids):
+        fields, links, nodes = SplitPattern(node).split(pattern)
 
-        assert not (edge.name and edges), 'Nested edges are not supported yet'
-        for link in edges:
-            self.process_edge(edge.fields_map[link.name], link.edge, None)
+        assert not (node.name and nodes), 'Nested nodes are not supported yet'
+        for link in nodes:
+            self.process_node(node.fields_map[link.name], link.node, None)
 
         to_func = {}
         from_func = defaultdict(list)
@@ -168,10 +168,10 @@ class Query(Workflow):
                 task_set = self._queue.fork(self._task_set)
                 if ids is not None:
                     result_proc = func(self._queue, self._ctx, task_set,
-                                       edge, func_fields, ids)
+                                       node, func_fields, ids)
                 else:
                     result_proc = func(self._queue, self._ctx, task_set,
-                                       edge, func_fields)
+                                       node, func_fields)
                 to_fut[func] = task_set
                 self._queue.add_callback(task_set, (
                     lambda:
@@ -185,7 +185,7 @@ class Query(Workflow):
                 to_fut[func] = fut
                 self._queue.add_callback(fut, (
                     lambda _fut=fut, _func_fields=func_fields:
-                    store_fields(self._result, edge, _func_fields, ids,
+                    store_fields(self._result, node, _func_fields, ids,
                                  _fut.result())
                 ))
 
@@ -195,7 +195,7 @@ class Query(Workflow):
                 fut = to_fut[to_func[graph_link.requires]]
                 self._queue.add_callback(fut, (
                     lambda _gl=graph_link, _ql=query_link:
-                    self._process_edge_link(edge, _gl, _ql, ids)
+                    self._process_node_link(node, _gl, _ql, ids)
                 ))
             else:
                 if graph_link.options:
@@ -204,12 +204,12 @@ class Query(Workflow):
                 else:
                     fut = self._submit(graph_link.func)
                 self._queue.add_callback(fut, (
-                    lambda _fut=fut, _gl=graph_link, _qe=query_link.edge:
-                    self.process_link(edge, _gl, _qe, ids, _fut.result())
+                    lambda _fut=fut, _gl=graph_link, _qe=query_link.node:
+                    self.process_link(node, _gl, _qe, ids, _fut.result())
                 ))
 
-    def _process_edge_link(self, edge, graph_link, query_link, ids):
-        reqs = link_reqs(self._result, edge, graph_link, ids)
+    def _process_node_link(self, node, graph_link, query_link, ids):
+        reqs = link_reqs(self._result, node, graph_link, ids)
         if graph_link.options:
             options = get_options(graph_link, query_link)
             fut = self._submit(graph_link.func, reqs, options)
@@ -217,16 +217,16 @@ class Query(Workflow):
             fut = self._submit(graph_link.func, reqs)
         self._queue.add_callback(fut, (
             lambda:
-            self.process_link(edge, graph_link, query_link.edge, ids,
+            self.process_link(node, graph_link, query_link.node, ids,
                               fut.result())
         ))
 
-    def process_link(self, edge, graph_link, query_edge, ids, result):
-        store_links(self._result, edge, graph_link, ids, result)
+    def process_link(self, node, graph_link, query_node, ids, result):
+        store_links(self._result, node, graph_link, ids, result)
         to_ids = link_result_to_ids(ids is not None, graph_link.type_enum,
                                     result)
         if to_ids:
-            self.process_edge(self.graph.edges_map[graph_link.edge], query_edge,
+            self.process_node(self.graph.nodes_map[graph_link.node], query_node,
                               to_ids)
 
 
@@ -270,5 +270,5 @@ class Engine(object):
         queue = Queue(self.executor)
         task_set = queue.fork(None)
         q = Query(queue, task_set, graph, Context(ctx or {}))
-        q.process_edge(q.graph.root, pattern, None)
+        q.process_node(q.graph.root, pattern, None)
         return self.executor.process(queue, q)

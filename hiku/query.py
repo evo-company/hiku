@@ -10,7 +10,7 @@
     structure -- `simple` queries, which are very similar to the `om.next`_
     queries, which are inspired by `Datomic Pull API`_.
 
-      - ``[:foo]`` - edge fields definition (`edn` keywords in vector)
+      - ``[:foo]`` - node fields definition (`edn` keywords in vector)
       - ``{:bar [:baz]}`` - link definition (`edn` map with keyword and vector)
       - ``(:foo {:key val})`` - field or link options definition (field name or
         link name, wrapped with `edn` list with map of options as a second
@@ -26,8 +26,8 @@
 
     .. code-block:: python
 
-        Edge([Field('foo'),
-              Link('bar', Edge([Field('baz')]))])
+        Node([Field('foo'),
+              Link('bar', Node([Field('baz')]))])
 
     And query result will look like this:
 
@@ -60,7 +60,7 @@ def _name_repr(name, options):
 
 
 class Field(object):
-    """Represents a field of the edge
+    """Represents a field of the node
 
     :param name: name of the field
     :param optional options: field options -- mapping of names to values
@@ -77,27 +77,27 @@ class Field(object):
 
 
 class Link(object):
-    """Represents a link to the edge
+    """Represents a link to the node
 
     :param name: name of the link
-    :param edge: collection of fields and links --
-                 :py:class:`~hiku.query.Edge`
+    :param node: collection of fields and links --
+                 :py:class:`~hiku.query.Node`
     :param optional options: link options -- mapping of names to values
     """
-    def __init__(self, name, edge, options=None):
+    def __init__(self, name, node, options=None):
         self.name = name
-        self.edge = edge
+        self.node = node
         self.options = options
 
     def __repr__(self):
         return '{{{} {!r}}}'.format(_name_repr(self.name, self.options),
-                                    self.edge)
+                                    self.node)
 
     def accept(self, visitor):
         return visitor.visit_link(self)
 
 
-class Edge(object):
+class Node(object):
     """Represents collection of fields and links
 
     :param fields: list of :py:class:`~hiku.query.Field` and
@@ -114,30 +114,30 @@ class Edge(object):
         return '[{}]'.format(' '.join(map(repr, self.fields)))
 
     def accept(self, visitor):
-        return visitor.visit_edge(self)
+        return visitor.visit_node(self)
 
 
-def _merge(edges):
+def _merge(nodes):
     seen = set()
     to_merge = OrderedDict()
-    for field in chain.from_iterable(e.fields for e in edges):
+    for field in chain.from_iterable(e.fields for e in nodes):
         if field.__class__ is Link:
-            to_merge.setdefault(field.name, []).append(field.edge)
+            to_merge.setdefault(field.name, []).append(field.node)
         else:
             if field.name not in seen:
                 seen.add(field.name)
                 yield field
     for name, values in to_merge.items():
-        yield Link(name, Edge(list(_merge(values))))
+        yield Link(name, Node(list(_merge(values))))
 
 
-def merge(edges):
+def merge(nodes):
     """Merges multiple queries into one query
 
-    :param edges: queries, represented as list of :py:class:`~hiku.query.Edge`
-    :return: merged query as one :py:class:`~hiku.query.Edge`
+    :param nodes: queries, represented as list of :py:class:`~hiku.query.Node`
+    :return: merged query as one :py:class:`~hiku.query.Node`
     """
-    return Edge(list(_merge(edges)))
+    return Node(list(_merge(nodes)))
 
 
 class QueryVisitor(object):
@@ -149,8 +149,8 @@ class QueryVisitor(object):
         pass
 
     def visit_link(self, obj):
-        self.visit(obj.edge)
+        self.visit(obj.node)
 
-    def visit_edge(self, obj):
+    def visit_node(self, obj):
         for item in obj.fields:
             self.visit(item)

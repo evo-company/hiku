@@ -7,7 +7,7 @@ from ..compat import text_type
 
 def default(obj):
     if isinstance(obj, Ref):
-        return TaggedElement('graph/ref', List((obj.edge, obj.ident)))
+        return TaggedElement('graph/ref', List((obj.node, obj.ident)))
     raise TypeError('Can not tag this object: {!r}'.format(obj))
 
 

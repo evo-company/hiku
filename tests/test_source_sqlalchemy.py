@@ -11,7 +11,7 @@ from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
 from hiku.types import IntegerMeta, StringMeta, TypeRef, Sequence, Optional
-from hiku.graph import Graph, Edge, Link, Root
+from hiku.graph import Graph, Node, Link, Root
 from hiku.utils import cached_property
 from hiku.compat import with_metaclass
 from hiku.engine import Engine
@@ -120,14 +120,14 @@ def get_graph(source_module, queries):
     _q = queries
 
     return Graph([
-        Edge(foo_table.name, [
+        Node(foo_table.name, [
             _sm.Field('id', _q.foo_query),
             _sm.Field('name', _q.foo_query),
             _sm.Field('count', _q.foo_query),
             _sm.Field('bar_id', _q.foo_query),
             _sm.Link('bar', _q.to_bar_query, requires='bar_id'),
         ]),
-        Edge(bar_table.name, [
+        Node(bar_table.name, [
             _sm.Field('id', _q.bar_query),
             _sm.Field('name', _q.bar_query),
             _sm.Field('type', _q.bar_query),
@@ -181,11 +181,11 @@ class SourceSQLAlchemyTestBase(with_metaclass(ABCMeta, object)):
 
     def test_types(self):
         assert isinstance(
-            self.graph.edges_map[foo_table.name].fields_map['id'].type,
+            self.graph.nodes_map[foo_table.name].fields_map['id'].type,
             IntegerMeta,
         )
         assert isinstance(
-            self.graph.edges_map[foo_table.name].fields_map['name'].type,
+            self.graph.nodes_map[foo_table.name].fields_map['name'].type,
             StringMeta,
         )
 
