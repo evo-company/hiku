@@ -10,13 +10,13 @@ from hiku.sources import sqlalchemy as sa
 from hiku.console.ui import ConsoleApplication
 from hiku.executors.sync import SyncExecutor
 
-from .test_source_sqlalchemy import SA_ENGINE, SyncQueries, setup_db
+from .test_source_sqlalchemy import SA_ENGINE_KEY, SyncQueries, setup_db
 from .test_source_sqlalchemy import get_queries, get_graph
 
 
 engine = Engine(SyncExecutor())
 
-GRAPH = get_graph(sa, get_queries(sa, SA_ENGINE, SyncQueries))
+GRAPH = get_graph(sa, get_queries(sa, SA_ENGINE_KEY, SyncQueries))
 
 
 def request(app, method, path_info, script_name='', payload=None):
@@ -59,7 +59,7 @@ def test_query():
     )
     setup_db(sa_engine)
 
-    app = ConsoleApplication(GRAPH, engine, {SA_ENGINE: sa_engine},
+    app = ConsoleApplication(GRAPH, engine, {SA_ENGINE_KEY: sa_engine},
                              debug=True)
     query = b'[{:bar-list [:name :type {:foo-s [:name :count]}]}]'
 

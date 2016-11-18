@@ -45,13 +45,13 @@ from hiku.types import TypeRef, Sequence
 from hiku.engine import pass_context
 from hiku.sources import sqlalchemy as sa
 
-SA_ENGINE = 'sa-engine'
+SA_ENGINE_KEY = 'sa-engine'
 
-character_query = sa.FieldsQuery(SA_ENGINE, character_table)
+character_query = sa.FieldsQuery(SA_ENGINE_KEY, character_table)
 
-actor_query = sa.FieldsQuery(SA_ENGINE, actor_table)
+actor_query = sa.FieldsQuery(SA_ENGINE_KEY, actor_table)
 
-character_to_actors_query = sa.LinkQuery(Sequence[TypeRef['actor']], SA_ENGINE,
+character_to_actors_query = sa.LinkQuery(Sequence[TypeRef['actor']], SA_ENGINE_KEY,
                                          from_column=actor_table.c.character_id,
                                          to_column=actor_table.c.id)
 
@@ -61,12 +61,12 @@ def direct_link(ids):
 @pass_context
 def to_characters_query(ctx):
     query = character_table.select(character_table.c.id)
-    return [row.id for row in ctx[SA_ENGINE].execute(query)]
+    return [row.id for row in ctx[SA_ENGINE_KEY].execute(query)]
 
 @pass_context
 def to_actors_query(ctx):
     query = actor_table.select(actor_table.c.id)
-    return [row.id for row in ctx[SA_ENGINE].execute(query)]
+    return [row.id for row in ctx[SA_ENGINE_KEY].execute(query)]
 
 GRAPH = Graph([
     Node('character', [
@@ -101,7 +101,7 @@ hiku_engine = Engine(SyncExecutor())
 
 def execute(graph, query_string):
     query = read(query_string)
-    result = hiku_engine.execute(graph, query, {SA_ENGINE: sa_engine})
+    result = hiku_engine.execute(graph, query, {SA_ENGINE_KEY: sa_engine})
     return denormalize(graph, result, query)
 
 def test_character_to_actors():

@@ -8,7 +8,7 @@ from hiku.sources import sqlalchemy as sa
 from hiku.console.ui import ConsoleApplication
 from hiku.executors.sync import SyncExecutor
 
-from tests.test_source_sqlalchemy import SA_ENGINE, SyncQueries, setup_db
+from tests.test_source_sqlalchemy import SA_ENGINE_KEY, SyncQueries, setup_db
 from tests.test_source_sqlalchemy import get_queries, get_graph
 
 
@@ -22,9 +22,9 @@ if __name__ == '__main__':
     )
     setup_db(sa_engine)
 
-    graph = get_graph(sa, get_queries(sa, SA_ENGINE, SyncQueries))
+    graph = get_graph(sa, get_queries(sa, SA_ENGINE_KEY, SyncQueries))
 
-    app = ConsoleApplication(graph, engine, {SA_ENGINE: sa_engine},
+    app = ConsoleApplication(graph, engine, {SA_ENGINE_KEY: sa_engine},
                              debug=True)
     http_server = make_server('localhost', 5000, app)
     http_server.serve_forever()

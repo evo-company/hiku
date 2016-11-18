@@ -37,11 +37,11 @@ way to solve this issue without using global variables (thread-locals) - by
 providing query execution context.
 
 Query execution context is a simple mapping, where you can store and read values
-during query execution. In this example we are using ``SA_ENGINE`` constant
+during query execution. In this example we are using ``SA_ENGINE_KEY`` constant
 :sup:`[19]` as a key to access our SQLAlchemy's engine. In order to access query
 context :py:func:`~hiku.engine.pass_context` decorator should be used
 :sup:`[19]` and then ``to_characters_query`` function :sup:`[20]` will receive
-it as a first positional argument. ``SA_ENGINE`` constant is used to get
+it as a first positional argument. ``SA_ENGINE_KEY`` constant is used to get
 SQLAlchemy's engine from the context :sup:`[22]` in order to execute SQL query.
 
 :py:class:`~hiku.sources.sqlalchemy.FieldsQuery` :sup:`[8]` and

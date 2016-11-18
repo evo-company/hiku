@@ -18,7 +18,7 @@ from tests.test_source_sqlalchemy import SyncQueries, AbstractQueries
 from tests.test_source_sqlalchemy import SourceSQLAlchemyTestBase
 
 
-SA_ENGINE = 'sa-engine'
+SA_ENGINE_KEY = 'sa-engine'
 
 
 class AsyncQueries(AbstractQueries):
@@ -77,7 +77,7 @@ class TestSourceAIOPG(SourceSQLAlchemyTestBase):
 
     @cached_property
     def queries(self):
-        return get_queries(sa, SA_ENGINE, AsyncQueries)
+        return get_queries(sa, SA_ENGINE_KEY, AsyncQueries)
 
     @asyncio.coroutine
     def _check(self, src, value, event_loop):
@@ -86,7 +86,7 @@ class TestSourceAIOPG(SourceSQLAlchemyTestBase):
         try:
             engine = Engine(AsyncIOExecutor(event_loop))
             result = yield from engine.execute(self.graph, read(src),
-                                               {SA_ENGINE: sa_engine})
+                                               {SA_ENGINE_KEY: sa_engine})
             check_result(result, value)
         finally:
             sa_engine.close()

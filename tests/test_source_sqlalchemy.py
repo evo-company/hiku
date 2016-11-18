@@ -22,7 +22,7 @@ from hiku.executors.threads import ThreadsExecutor
 from .base import check_result
 
 
-SA_ENGINE = 'sa-engine'
+SA_ENGINE_KEY = 'sa-engine'
 
 metadata = MetaData()
 
@@ -191,7 +191,7 @@ class SourceSQLAlchemyTestBase(with_metaclass(ABCMeta, object)):
 
     def test_same_table(self):
         with pytest.raises(ValueError) as e:
-            sa.LinkQuery(Sequence[TypeRef['bar']], SA_ENGINE,
+            sa.LinkQuery(Sequence[TypeRef['bar']], SA_ENGINE_KEY,
                          from_column=foo_table.c.id,
                          to_column=bar_table.c.id)
         e.match('should belong')
@@ -251,7 +251,7 @@ class TestSourceSQLAlchemy(SourceSQLAlchemyTestBase):
 
     @cached_property
     def queries(self):
-        return get_queries(sa, SA_ENGINE, SyncQueries)
+        return get_queries(sa, SA_ENGINE_KEY, SyncQueries)
 
     def check(self, src, value):
         sa_engine = create_engine(
@@ -262,5 +262,6 @@ class TestSourceSQLAlchemy(SourceSQLAlchemyTestBase):
         setup_db(sa_engine)
 
         engine = Engine(ThreadsExecutor(thread_pool))
-        result = engine.execute(self.graph, read(src), {SA_ENGINE: sa_engine})
+        result = engine.execute(self.graph, read(src),
+                                {SA_ENGINE_KEY: sa_engine})
         check_result(result, value)

@@ -41,11 +41,11 @@ from hiku.types import TypeRef, Sequence, Optional
 from hiku.engine import pass_context, Nothing
 from hiku.sources import sqlalchemy as sa
 
-SA_ENGINE = 'sa-engine'
+SA_ENGINE_KEY = 'sa-engine'
 
-image_query = sa.FieldsQuery(SA_ENGINE, image_table)
+image_query = sa.FieldsQuery(SA_ENGINE_KEY, image_table)
 
-character_query = sa.FieldsQuery(SA_ENGINE, character_table)
+character_query = sa.FieldsQuery(SA_ENGINE_KEY, character_table)
 
 def direct_link(ids):
     return ids
@@ -57,7 +57,7 @@ def maybe_direct_link(ids):
 @pass_context
 def to_characters_query(ctx):
     query = character_table.select(character_table.c.id)
-    return [row.id for row in ctx[SA_ENGINE].execute(query)]
+    return [row.id for row in ctx[SA_ENGINE_KEY].execute(query)]
 
 _GRAPH = Graph([
     Node('image', [
@@ -89,7 +89,7 @@ hiku_engine = Engine(SyncExecutor())
 def execute(graph, query_string):
     query = read(query_string)
     result = hiku_engine.execute(graph, query,
-                                 {SA_ENGINE: sa_engine})
+                                 {SA_ENGINE_KEY: sa_engine})
     return denormalize(graph, result, query)
 
 def test_low_level():
