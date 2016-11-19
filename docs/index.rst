@@ -23,12 +23,12 @@ Of course this is optional feature, and you are not required to rewrite
 your code in order to use this feature later, code is initially written
 in a way to make possible to run it concurrently.
 
-★ Query your graph using `simple` queries or using GraphQL_ (in the future).
-This is how client can express its needs and avoid data underfetching or data
-overfetching. Client will load only what it currently needs using one query,
-instead of multiple queries to different *resources* (as in RESTful APIs, for
-example). `Simple` queries are basically a data structures in edn_ format. For
-example:
+★ Query your graph using `simple` queries or using GraphQL_ (partially
+supported). This is how client can express its needs and avoid data
+under-fetching or data over-fetching. Client will load only what it currently
+needs using one query, instead of multiple queries to different *resources* (as
+in RESTful APIs, for example). `Simple` queries are basically a data structures
+in edn_ format. For example:
 
 .. code-block:: clojure
 

@@ -1,26 +1,56 @@
 from __future__ import absolute_import
 
+from graphql.language import ast
 from graphql.language.parser import parse
-from graphql.language.visitor import Visitor, visit
 
-from ..query import Node, Field
+from ..query import Node, Field, Link
 
 
-class GraphQLTransformer(Visitor):
+class NodeVisitor(object):
 
-    def __init__(self):
-        self._stack = [set()]
+    def visit(self, obj):
+        if not isinstance(obj, ast.Node):
+            raise TypeError('Unknown node type: {!r}'.format(obj))
+        visit_method = getattr(self, 'visit_{}'.format(obj.__class__.__name__),
+                               None)
+        if visit_method is None:
+            raise TypeError('Not implemented node type: {!r}'.format(obj))
+        return visit_method(obj)
+
+
+class GraphQLTransformer(NodeVisitor):
 
     @classmethod
     def transform(cls, document):
         visitor = cls()
-        visit(document, visitor)
-        node = Node([Field(name) for name in visitor._stack[0]])
-        return node
+        return visitor.visit(document)
 
-    def enter_SelectionSet(self, node, key, parent, path, ancestors):
-        for field in node.selections:
-            self._stack[-1].add(field.name.value)
+    def visit_Document(self, obj):
+        if len(obj.definitions) != 1:
+            raise NotImplementedError('Only single operation per document is '
+                                      'supported, {} operations was provided'
+                                      .format(len(obj.definitions)))
+        definition, = obj.definitions
+        if definition.operation != 'query':
+            raise NotImplementedError('Only "query" operations are supported, '
+                                      '"{}" operation was provided'
+                                      .format(definition.operation))
+        assert definition.operation == 'query', definition.operation
+        return self.visit(definition.selection_set)
+
+    def visit_SelectionSet(self, obj):
+        return Node([self.visit(i) for i in obj.selections])
+
+    def visit_Field(self, obj):
+        if obj.alias is not None:
+            raise NotImplementedError('Field aliases are not supported: {!r}'
+                                      .format(obj))
+        options = {arg.name.value: arg.value.value for arg in obj.arguments}
+        if obj.selection_set is None:
+            return Field(obj.name.value, options or None)
+        else:
+            node = self.visit(obj.selection_set)
+            return Link(obj.name.value, node, options or None)
 
 
 def read(src):
