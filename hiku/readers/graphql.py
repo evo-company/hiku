@@ -14,7 +14,8 @@ class NodeVisitor(object):
         visit_method = getattr(self, 'visit_{}'.format(obj.__class__.__name__),
                                None)
         if visit_method is None:
-            raise TypeError('Not implemented node type: {!r}'.format(obj))
+            raise NotImplementedError('Not implemented node type: {!r}'
+                                      .format(obj))
         return visit_method(obj)
 
 
@@ -30,13 +31,15 @@ class GraphQLTransformer(NodeVisitor):
             raise NotImplementedError('Only single operation per document is '
                                       'supported, {} operations was provided'
                                       .format(len(obj.definitions)))
-        definition, = obj.definitions
-        if definition.operation != 'query':
+        return self.visit(obj.definitions[0])
+
+    def visit_OperationDefinition(self, obj):
+        if obj.operation != 'query':
             raise NotImplementedError('Only "query" operations are supported, '
                                       '"{}" operation was provided'
-                                      .format(definition.operation))
-        assert definition.operation == 'query', definition.operation
-        return self.visit(definition.selection_set)
+                                      .format(obj.operation))
+        assert obj.operation == 'query', obj.operation
+        return self.visit(obj.selection_set)
 
     def visit_SelectionSet(self, obj):
         return Node([self.visit(i) for i in obj.selections])

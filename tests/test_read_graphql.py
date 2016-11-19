@@ -59,3 +59,9 @@ def test_mutation_operation():
         read('mutation { doSomething(kokam: "screens") }')
     err.match('Only "query" operations are supported, "mutation" operation '
               'was provided')
+
+
+def test_unknown_node():
+    with pytest.raises(NotImplementedError) as err:
+        read('fragment bays on sweats { apollo }')
+    err.match('Not implemented node type: FragmentDefinition')
