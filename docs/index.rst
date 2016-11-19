@@ -34,7 +34,18 @@ in edn_ format. For example:
 
     [{:characters [:name :species]}]
 
-will result in:
+Corresponding `GraphQL` query will look like this:
+
+.. code-block:: javascript
+
+    {
+        characters {
+            name
+            species
+        }
+    }
+
+And result of these queries will look like this:
 
 .. code-block:: javascript
 
