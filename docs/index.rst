@@ -77,6 +77,7 @@ and transform data from low-level graph.
     :maxdepth: 2
 
     guide/index
+    graphql
     reference/index
     changelog/index
 
