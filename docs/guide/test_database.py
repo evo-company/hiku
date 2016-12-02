@@ -1,7 +1,7 @@
 # setup storage
 
 from sqlalchemy import create_engine, MetaData, Table, Column
-from sqlalchemy import Integer, String, ForeignKey
+from sqlalchemy import Integer, String, ForeignKey, select
 
 metadata = MetaData()
 
@@ -60,12 +60,12 @@ def direct_link(ids):
 
 @pass_context
 def to_characters_query(ctx):
-    query = character_table.select(character_table.c.id)
+    query = select([character_table.c.id])
     return [row.id for row in ctx[SA_ENGINE_KEY].execute(query)]
 
 @pass_context
 def to_actors_query(ctx):
-    query = actor_table.select(actor_table.c.id)
+    query = select([actor_table.c.id])
     return [row.id for row in ctx[SA_ENGINE_KEY].execute(query)]
 
 GRAPH = Graph([
