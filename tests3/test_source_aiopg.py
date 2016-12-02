@@ -6,6 +6,8 @@ import aiopg.sa
 import sqlalchemy
 import psycopg2.extensions
 
+from pytest_asyncio.plugin import ForbiddenEventLoopPolicy
+
 from hiku.utils import cached_property
 from hiku.engine import Engine
 from hiku.sources import aiopg as sa
@@ -93,5 +95,11 @@ class TestSourceAIOPG(SourceSQLAlchemyTestBase):
             yield from sa_engine.wait_closed()
 
     def check(self, src, value):
-        event_loop = asyncio.get_event_loop()
-        event_loop.run_until_complete(self._check(src, value, event_loop))
+        policy = asyncio.get_event_loop_policy()
+        loop = policy.new_event_loop()
+        asyncio.set_event_loop_policy(ForbiddenEventLoopPolicy())
+        try:
+            loop.run_until_complete(self._check(src, value, loop))
+        finally:
+            loop.close()
+            asyncio.set_event_loop_policy(policy)

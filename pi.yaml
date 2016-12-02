@@ -7,10 +7,12 @@
     - raw: apk add --no-cache --virtual .build-deps python3-dev postgresql-dev musl-dev gcc
     - pip: name={{item}} executable=pip3 extra_args='--no-cache-dir'
       with_items:
-        - pytest==3.0.2
-        - sqlalchemy==1.0.15
+        - pytest==3.0.4
+        - pytest-asyncio==0.5.0
+        - graphql-core==1.0.1
+        - sqlalchemy==1.1.4
         - psycopg2==2.6.2
-        - aiopg==0.10.0
+        - aiopg==0.12.0
     - raw: apk del .build-deps
 
 - !Image
@@ -56,7 +58,7 @@
   requires:
     - postgres
   params:
-    - !Argument {name: tests, default: tests3}
+    - !Argument {name: tests, default: "tests3 docs"}
   image: env
   eval: py.test -q --tb=native {{tests}}
 

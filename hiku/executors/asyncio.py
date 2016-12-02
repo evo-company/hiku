@@ -13,6 +13,7 @@ class AsyncIOExecutor(object):
     def process(self, queue, workflow):
         while queue.__futures__:
             done, _ = yield from wait(queue.__futures__,
+                                      loop=self._loop,
                                       return_when=FIRST_COMPLETED)
             queue.progress(done)
         return workflow.result()
