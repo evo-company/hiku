@@ -10,7 +10,7 @@ without any change in the graph definition.
 But, to be able to load data using :py:mod:`python:asyncio` library, all data
 loading functions should be coroutines. We will translate one of the
 :doc:`previous examples <database>` to show how to use :py:mod:`python:asyncio`
-and :doc:`aiopg:index` libraries.
+and aiopg_ libraries.
 
 Prerequisites
 ~~~~~~~~~~~~~
@@ -70,3 +70,5 @@ Testing many to one link:
 .. literalinclude:: test_asyncio.py
     :lines: 186-216
     :dedent: 4
+
+.. _aiopg: http://aiopg.readthedocs.io/en/stable/
