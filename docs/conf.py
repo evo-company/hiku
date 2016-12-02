@@ -3,7 +3,13 @@ import os.path
 import sphinx_rtd_theme
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-extensions = ['sphinx.ext.autodoc']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.intersphinx']
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3.6', None),
+    'aiopg': ('http://aiopg.readthedocs.io/en/stable', None),
+    'sqlalchemy': ('http://docs.sqlalchemy.org/en/rel_1_1', None),
+}
 
 source_suffix = '.rst'
 master_doc = 'index'

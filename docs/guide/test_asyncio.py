@@ -4,11 +4,9 @@ import asyncio
 
 # setup storage
 
-import aiopg.sa
-
 from sqlalchemy import MetaData, Table, Column
 from sqlalchemy import Integer, String, ForeignKey, select
-
+from sqlalchemy.sql.ddl import CreateTable
 
 metadata = MetaData()
 
@@ -30,8 +28,7 @@ actor_table = Table(
 
 # setup test environment
 
-from sqlalchemy.sql.ddl import CreateTable
-
+import aiopg.sa
 
 async def init_db(pg_dsn, *, loop):
     db_name = 'test_{}'.format(uuid.uuid4().hex)
@@ -39,7 +36,6 @@ async def init_db(pg_dsn, *, loop):
         async with db_engine.acquire() as conn:
             await conn.execute('CREATE DATABASE {0}'.format(db_name))
             return db_name
-
 
 async def setup_db(db_dsn, *, loop):
     async with aiopg.sa.create_engine(db_dsn, loop=loop) as db_engine:
@@ -61,12 +57,10 @@ async def setup_db(db_dsn, *, loop):
                 dict(id=6, character_id=3, name='Karl Urban'),
             ]))
 
-
 async def drop_db(pg_dsn, db_name, *, loop):
     async with aiopg.sa.create_engine(pg_dsn, loop=loop) as db_engine:
         async with db_engine.acquire() as conn:
             await conn.execute('DROP DATABASE {0}'.format(db_name))
-
 
 @pytest.fixture(scope='session', name='db_dsn')
 def db_dsn_fixture(request):
@@ -101,10 +95,8 @@ character_to_actors_query = sa.LinkQuery(Sequence[TypeRef['actor']], SA_ENGINE_K
                                          from_column=actor_table.c.character_id,
                                          to_column=actor_table.c.id)
 
-
 async def direct_link(ids):
     return ids
-
 
 @pass_context
 async def to_characters_query(ctx):
@@ -113,14 +105,12 @@ async def to_characters_query(ctx):
         rows = await conn.execute(query)
     return [row.id for row in rows]
 
-
 @pass_context
 async def to_actors_query(ctx):
     query = select([actor_table.c.id])
     async with ctx[SA_ENGINE_KEY].acquire() as conn:
         rows = await conn.execute(query)
     return [row.id for row in rows]
-
 
 GRAPH = Graph([
     Node('character', [
@@ -146,17 +136,17 @@ GRAPH = Graph([
 
 # test graph
 
+import aiopg.sa
+
 from hiku.engine import Engine
 from hiku.result import denormalize
 from hiku.readers.simple import read
 from hiku.executors.asyncio import AsyncIOExecutor
 
-
 async def execute(hiku_engine, sa_engine, graph, query_string):
     query = read(query_string)
     result = await hiku_engine.execute(graph, query, {SA_ENGINE_KEY: sa_engine})
     return denormalize(graph, result, query)
-
 
 @pytest.mark.asyncio(forbid_global_loop=True)
 async def test_character_to_actors(db_dsn, event_loop):
@@ -189,7 +179,6 @@ async def test_character_to_actors(db_dsn, event_loop):
                 },
             ],
         }
-
 
 @pytest.mark.asyncio(forbid_global_loop=True)
 async def test_actor_to_character(db_dsn, event_loop):

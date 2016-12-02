@@ -7,3 +7,4 @@ User's Guide
     basics
     database
     subgraph
+    asyncio

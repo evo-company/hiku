@@ -44,9 +44,11 @@
   from: env
   repository: reg.local/hiku/docs
   provision-with: !AnsibleTasks
+    - raw: apk add --no-cache ca-certificates
+    - raw: update-ca-certificates
     - pip: name={{item}} executable=pip3 extra_args='--no-cache-dir'
       with_items:
-        - sphinx==1.4.6
+        - sphinx==1.4.9
         - sphinx_rtd_theme==0.1.10a0
 
 - !Service
