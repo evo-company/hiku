@@ -1,0 +1,6 @@
+conda:
+  file: readthedocs-env.yml
+python:
+  extra_requirements:
+    - sqlalchemy
+    - graphql

@@ -12,7 +12,6 @@ setup(
     license='BSD',
     install_requires=[],
     extras_require={
-        'sqlalchemy': ['sqlalchemy'],
         'graphql': ['graphql-core'],
     }
 )
