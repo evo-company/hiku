@@ -20,7 +20,7 @@
 """
 from .types import RecordMeta, OptionalMeta, SequenceMeta
 from .query import Node, Field, Link, merge
-from .graph import Link as GraphLink, Field as GraphField, Many
+from .graph import Link as GraphLink, Field as GraphField, Many, Maybe
 
 
 class Ref(object):
@@ -90,6 +90,8 @@ def _denormalize(graph, graph_obj, result, query_obj):
             if graph_obj.type_enum is Many:
                 return [_denormalize(graph, graph_node, v, query_obj.node)
                         for v in result]
+            elif graph_obj.type_enum is Maybe and result is None:
+                return None
             else:
                 return _denormalize(graph, graph_node, result, query_obj.node)
 

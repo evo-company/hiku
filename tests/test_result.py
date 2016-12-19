@@ -42,6 +42,7 @@ GRAPH = Graph([
             Field('necker', Sequence[Record[{'carney': String}]], _),
             Link('daur', TypeRef['cosies'], _, requires=None),
             Link('peafowl', Sequence[TypeRef['cosies']], _, requires=None),
+            Link('carf', Optional[TypeRef['cosies']], _, requires=None,)
         ]),
         Link('zareeba', TypeRef['cosies'], _, requires=None),
         Link('crowdie', Sequence[TypeRef['cosies']], _, requires=None),
@@ -63,6 +64,7 @@ RESULT.root.update({
         'daur': RESULT.ref('cosies', 1),
         'peafowl': [RESULT.ref('cosies', 3),
                     RESULT.ref('cosies', 2)],
+        'carf': None,
     },
     'zareeba': RESULT.ref('cosies', 2),
     'crowdie': [RESULT.ref('cosies', 1),
@@ -255,3 +257,9 @@ def test_circle_links():
             ],
         }},
     )
+
+
+def test_optional():
+    check_result('[{:flossy [{:daur [:doghead]} {:carf [:nerv]}]}]',
+                 {'flossy': {'daur': {'doghead': 'satsuma_mks'},
+                             'carf': None}})

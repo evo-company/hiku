@@ -17,3 +17,8 @@ Backward-incompatible changes
 - Renamed :py:class:`hiku.graph.AbstractEdge` into :py:class:`hiku.graph.AbstractNode`
 - Renamed :py:class:`hiku.graph.Edge` into :py:class:`hiku.graph.Node`
 - Renamed :py:class:`hiku.query.Edge` into :py:class:`hiku.query.Node`
+
+Fixes
+~~~~~
+
+- Fixed bug with result denormalization for links with Optional types
