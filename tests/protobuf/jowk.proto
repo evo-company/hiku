@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package tests.protobuf.jowk;
+
+message Synocha {
+  sint64 grovel = 1;
+  string chaddar = 2;
+}
+
+message Estufa {
+  sint64 bald = 1;
+  string tandoor = 2;
+  repeated Synocha specify = 3;
+}
+
+message Root {
+  Estufa soberly = 1;
+  string snarfs = 2;
+}

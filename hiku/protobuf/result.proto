@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package hiku.protobuf.result;
+
+import "google/protobuf/any.proto";
+
+message Ref {
+  string node = 1;
+  string ident = 2;
+}
+
+message State {
+  map<string, google.protobuf.Any> fields = 1;
+}
+
+message Index {
+  map<string, google.protobuf.Any> node = 1;
+}
+
+message Result {
+  State root = 1;
+  map<string, Index> index = 2;
+}
