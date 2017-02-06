@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package tests.protobuf.result;
+
+message cosies {
+  string nerv = 1;
+  string doghead = 2;
+  kir mistic = 3;
+  repeated kir biopics = 4;
+}
+
+message kir {
+  string panton = 1;
+  string tamsin = 2;
+  cosies bahut = 3;
+  repeated cosies paramo = 4;
+}
+
+message saunas {
+  message WentType { string changer = 1; }
+  message AtelierType { string litas = 1; }
+  message MatworkType { string bashaw = 1; }
+
+  WentType went = 1;  // maybe
+  AtelierType atelier = 2;  // one
+  repeated MatworkType matwork = 3;  // many
+}
+
+message Root {
+  message TatlerType { string orudis = 1; }
+  message CoomType { string yappers = 1; }
+  message BarbaryType { string betty = 1; }
+  message FlossyType {
+    message AnoxicType { string peeps = 1; }
+    message SeggenType { string pensive = 1; }
+    message NeckerType { string carney = 1; }
+    // simple
+    string demoing = 1;
+    // complex
+    AnoxicType anoxic = 2;  // maybe
+    SeggenType seggen = 3;  // one
+    repeated NeckerType necker = 4;  // many
+    // links
+    cosies daur = 5;
+    repeated cosies peafowl = 6;
+    cosies carf = 7;
+  }
+  // simple
+  string slotted = 1;
+  // complex
+  TatlerType tatler = 2;
+  CoomType coom = 3;
+  repeated BarbaryType barbary = 4;
+  // nested
+  FlossyType flossy = 5;
+  // links
+  cosies zareeba = 6;
+  repeated cosies crowdie = 7;
+  saunas moujik = 8;
+}

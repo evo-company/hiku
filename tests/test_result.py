@@ -8,20 +8,20 @@ from hiku.result import denormalize, Result
 from hiku.readers.simple import read
 
 
-def _():
-    return 1/0
+def _(*args):
+    raise NotImplementedError('Data loading not implemented')
 
 
 GRAPH = Graph([
     Node('cosies', [
-        Field('nerv', None, _),
-        Field('doghead', None, _),
+        Field('nerv', String, _),
+        Field('doghead', String, _),
         Link('mistic', TypeRef['kir'], _, requires=None),
         Link('biopics', Sequence[TypeRef['kir']], _, requires=None),
     ]),
     Node('kir', [
-        Field('panton', None, _),
-        Field('tamsin', None, _),
+        Field('panton', String, _),
+        Field('tamsin', String, _),
         Link('bahut', TypeRef['cosies'], _, requires=None),
         Link('paramo', Sequence[TypeRef['cosies']], _, requires=None),
     ]),
@@ -31,12 +31,12 @@ GRAPH = Graph([
         Field('matwork', Sequence[Record[{'bashaw': String}]], _),
     ]),
     Root([
-        Field('slotted', None, _),
+        Field('slotted', String, _),
         Field('tatler', Optional[Record[{'orudis': String}]], _),
         Field('coom', Record[{'yappers': String}], _),
         Field('barbary', Sequence[Record[{'betty': String}]], _),
         Node('flossy', [
-            Field('demoing', None, _),
+            Field('demoing', String, _),
             Field('anoxic', Optional[Record[{'peeps': String}]], _),
             Field('seggen', Record[{'pensive': String}], _),
             Field('necker', Sequence[Record[{'carney': String}]], _),
