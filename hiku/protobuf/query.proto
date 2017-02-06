@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package hiku.protobuf.query;
+
+message Option {
+  oneof value {
+    string string = 1;
+    sint32 integer = 2;
+  }
+}
+
+message Field {
+  string name = 1;
+  map<string, Option> options = 2;
+}
+
+message Link {
+  string name = 1;
+  Node node = 2;
+  map<string, Option> options = 3;
+}
+
+message Node {
+  repeated Field fields = 1;
+  repeated Link links = 2;
+}
