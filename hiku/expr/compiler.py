@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from collections import Counter
 
 from ..types import CallableMeta
-from ..compat import ast as py, text_type
+from ..compat import ast as py, text_type, PY36
 
 from .nodes import Symbol, Keyword
 
@@ -113,9 +113,10 @@ class ExpressionCompiler(object):
         with self.env.push([var.name]):
             var_name = self.env[var.name]
             body_expr = self.visit(body)
+        py_comp_extra = [0] if PY36 else []  # comprehension:is_async
         return py.ListComp(body_expr,
                            [py.comprehension(py.Name(var_name, py.Store()),
-                                             col_expr, [])])
+                                             col_expr, [], *py_comp_extra)])
 
     def visit_tuple(self, node):
         sym = node.values[0]

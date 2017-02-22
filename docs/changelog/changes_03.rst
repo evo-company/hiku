@@ -18,6 +18,11 @@ Backward-incompatible changes
 - Renamed :py:class:`hiku.graph.Edge` into :py:class:`hiku.graph.Node`
 - Renamed :py:class:`hiku.query.Edge` into :py:class:`hiku.query.Node`
 
+Features
+~~~~~~~~
+
+- Added Python 3.6 support
+
 Fixes
 ~~~~~
 
