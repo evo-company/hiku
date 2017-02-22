@@ -1,43 +1,27 @@
-GraphQL support
-===============
+Using GraphQL
+=============
 
 `Hiku` is trying to be simple so it doesn't support all the `GraphQL`
 features.
 
-In order to parse `GraphQL` queries you will need to install `graphql-core`
+In order to parse `GraphQL` queries you will need to install ``graphql-core``
 library:
 
 .. code-block:: shell
 
-    pip install graphql-core
-
-or install `Hiku` library with extras:
-
-.. code-block:: shell
-
-    pip install hiku[graphql]
+    $ pip install graphql-core
 
 **Supported features**
 
-- documents with single query operation
+- query documents with single query operation
 - selection sets
 - fields with arguments
 
-**Probably will be supported**
+**Probably will be supported in the future**
 
+- mutations and other non-query operations
 - field aliases
-
-**Unsupported (intentionally)**
-
-- mutations and other possible non-query operations
-- multiple operations per document
-- all the fragments-related features
-- introspection
-- directives
-- interfaces
 - variables
-- unions
-- enums
 
 Reading GraphQL queries
 ~~~~~~~~~~~~~~~~~~~~~~~

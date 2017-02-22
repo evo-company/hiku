@@ -11,7 +11,10 @@ Release v0.3 - :doc:`What's new <changelog/changes_03>`
 .. toctree::
     :maxdepth: 2
 
-    guide/index
+    basics
+    database
+    subgraph
+    asyncio
     graphql
     reference/index
     changelog/index
