@@ -2,84 +2,93 @@
   name: env
   from: !DockerImage alpine:3.4
   repository: reg.local/hiku/env35
-  provision-with: !AnsibleTasks
-    - raw: apk add --no-cache python3 libpq
-    - raw: apk add --no-cache --virtual .build-deps python3-dev postgresql-dev musl-dev gcc
-    - pip: name={{item}} executable=pip3 extra_args='--no-cache-dir'
-      with_items:
-        - pytest==3.0.4
-        - pytest-asyncio==0.5.0
-        - graphql-core==1.0.1
-        - sqlalchemy==1.1.4
-        - psycopg2==2.6.2
-        - aiopg==0.12.0
-    - raw: apk del .build-deps
+  tasks:
+  - run: apk add --no-cache python3 libpq
+  - run: apk add --no-cache --virtual .build-deps {{packages|join(" ")}}
+    packages:
+    - python3-dev
+    - postgresql-dev
+    - musl-dev
+    - gcc
+  - run: pip3 install --no-cache-dir {{packages|join(" ")}}
+    packages:
+    - pytest==3.0.4
+    - pytest-asyncio==0.5.0
+    - graphql-core==1.0.1
+    - sqlalchemy==1.1.4
+    - psycopg2==2.6.2
+    - aiopg==0.12.0
+  - run: apk del .build-deps
 
 - !Image
   name: static.env
   from: !DockerImage alpine:3.4
   repository: vmagamedov/hiku-static.env
-  provision-with: !AnsibleTasks
-    - raw: apk add --no-cache nodejs
-    - npm: name={{item}} path=/usr/local/lib
-      with_items:
-        - babel-core@6.14.0
-        - babel-loader@6.2.5
-        - babel-preset-es2015@6.14.0
-        - babel-preset-react@6.11.1
-        - style-loader@0.13.1
-        - css-loader@0.25.0
-        - imports-loader@0.6.5
-        - exports-loader@0.6.3
-        - webpack@1.13.2
-        - webpack-dev-server@1.16.1
-        - react@15.3.2
-        - react-dom@15.3.2
-        - codemirror@5.19.0
-        - es6-promise@4.0.3
-        - whatwg-fetch@1.0.0
+  tasks:
+  - run: apk add --no-cache nodejs
+  - run: |
+      cd /usr/local/lib
+      {% for package in packages %}
+      npm install {{package}}
+      {% endfor %}
+    packages:
+    - babel-core@6.14.0
+    - babel-loader@6.2.5
+    - babel-preset-es2015@6.14.0
+    - babel-preset-react@6.11.1
+    - style-loader@0.13.1
+    - css-loader@0.25.0
+    - imports-loader@0.6.5
+    - exports-loader@0.6.3
+    - webpack@1.13.2
+    - webpack-dev-server@1.16.1
+    - react@15.3.2
+    - react-dom@15.3.2
+    - codemirror@5.19.0
+    - es6-promise@4.0.3
+    - whatwg-fetch@1.0.0
 
 - !Image
   name: docs
   from: env
   repository: reg.local/hiku/docs
-  provision-with: !AnsibleTasks
-    - raw: apk add --no-cache ca-certificates
-    - raw: update-ca-certificates
-    - pip: name={{item}} executable=pip3 extra_args='--no-cache-dir'
-      with_items:
-        - sphinx==1.4.9
-        - sphinx_rtd_theme==0.1.10a0
+  tasks:
+  - run: apk add --no-cache ca-certificates
+  - run: update-ca-certificates
+  - run: pip3 install --no-cache-dir {{packages|join(" ")}}
+    packages:
+    - sphinx==1.4.9
+    - sphinx_rtd_theme==0.1.10a0
 
 - !Service
   name: postgres
   image: !DockerImage onjin/alpine-postgres:9.5
 
-- !ShellCommand
+- !Command
   name: test
   requires:
     - postgres
   params:
     - !Argument {name: tests, default: "tests3 docs"}
   image: env
-  eval: py.test -q --tb=native {{tests}}
+  run: py.test -q --tb=native {{tests}}
 
-- !ShellCommand
+- !Command
   name: build docs
   image: docs
-  eval: sphinx-build -b html docs build
+  run: sphinx-build -b html docs build
 
-- !ShellCommand
+- !Command
   name: build static
   image: static.env
-  eval: >
+  run: >
     NODE_PATH=/usr/local/lib/node_modules
     /usr/local/lib/node_modules/.bin/webpack -p
 
-- !ShellCommand
+- !Command
   name: webpack
   image: static.env
-  eval: >
+  run: >
     NODE_PATH=/usr/local/lib/node_modules
     /usr/local/lib/node_modules/.bin/webpack-dev-server
     --content-base=hiku/console/assets
