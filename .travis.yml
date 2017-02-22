@@ -15,8 +15,7 @@ before_cache:
 - rm -f $HOME/.cache/pip/log/debug.log
 addons:
   apt:
+    sources:
+    - ubuntu-toolchain-r-test
     packages:
-    - build-essential
-    - autoconf
-    - libtool
-    - python-dev
+    - gcc-4.8
