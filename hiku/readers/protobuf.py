@@ -13,12 +13,19 @@ def _transform_options(pb_obj):
 
 def transform(pb_node):
     fields = []
-    for f in pb_node.fields:
-        assert f.name, f
-        fields.append(Field(f.name, _transform_options(f)))
-    for l in pb_node.links:
-        assert l.name and l.node, l
-        fields.append(Link(l.name, transform(l.node), _transform_options(l)))
+    for i in pb_node.items:
+        item_type = i.WhichOneof('value')
+        if item_type == 'field':
+            if not i.field.name:
+                raise TypeError('Field name is empty: {!r}'.format(i))
+            fields.append(Field(i.field.name, _transform_options(i.field)))
+        elif item_type == 'link':
+            if not i.link.name:
+                raise TypeError('Link name is empty: {!r}'.format(i))
+            fields.append(Link(i.link.name, transform(i.link.node),
+                               _transform_options(i.link)))
+        else:
+            raise TypeError('Node item is empty: {!r}'.format(i))
     return Node(fields)
 
 

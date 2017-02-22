@@ -20,7 +20,13 @@ message Link {
   map<string, Option> options = 3;
 }
 
+message Item {
+  oneof value {
+    Field field = 1;
+    Link link = 2;
+  }
+}
+
 message Node {
-  repeated Field fields = 1;
-  repeated Link links = 2;
+  repeated Item items = 1;
 }
