@@ -1,6 +1,83 @@
 Changes in 0.2
 ==============
 
+0.2.0
+~~~~~
+
+- Added ability to export :py:mod:`hiku.query` nodes. Added
+  :py:mod:`hiku.export.simple` exporter, which will export query
+  into EDN data structure
+
+- Added debug mode for the :py:mod:`hiku.console` application,
+  showing Python tracebacks if debug mode is turned on
+
+- Implemented :py:class:`hiku.validate.query.QueryValidator`
+  to validate query against graph definition before it's execution
+
+- Implemented :py:class:`hiku.validate.graph.GraphValidator`
+  to validate graph definition
+
+- Added ability to define graph links with :py:const:`hiku.types.Optional`
+  type:
+
+  .. code-block:: python
+
+    Link('link-to-foo', Optional[TypeRef['foo']], func, requires=None)
+
+- Added ability to query complex fields, which has a type of
+  ``Optional[Record[...]]``, ``Record[...]`` or ``Sequence[Record[...]]``
+  as if they were linked edges:
+
+  .. code-block:: python
+
+    Edge('foo', [
+        Field('bar', Record[{'baz': Integer}], func),
+    ])
+
+  Here ``bar`` field should be queried as it was a link to the edge:
+
+  .. code-block:: clojure
+
+      [{:link-to-foo [{:bar [:baz]}]}]
+
+- Added ability to use scalar values in the expressions. Currently
+  only integer numbers and strings are supported:
+
+  .. code-block:: python
+
+    Expr('foo', foo_subgraph, func(S.this.foo, 'scalar'))
+
+- Implemented :py:func:`hiku.expr.if_some` function in order to unpack
+  :py:class:`hiku.types.Optional` type in expressions
+
+- Added ability to pass objects, required to execute query, using bound
+  to the query context:
+
+  .. code-block:: python
+
+    @pass_context
+    def func(ctx, fields):
+        return [ctx['storage'][f.name] for f in fields]
+
+    Root([
+        Field('foo', None, func),
+    ])
+
+    engine.execute(graph, read('[:foo]'),
+                   ctx={'storage': {'foo': 1}})
+
+- Implemented new :py:mod:`hiku.sources.aiopg` source for using aiopg_ and
+  :py:class:`hiku.executors.asyncio.AsyncIOExecutor` to asynchronously
+  load data from the `PostgreSQL` database
+
+- Added ability to define function arguments using types instead of queries:
+
+  .. code-block:: python
+
+    @define(Record[{'foo': Integer}])  # instead of @define('[[:foo]]')
+    def func(arg):
+        return arg['foo'] + 1
+
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -91,81 +168,5 @@ Backward-incompatible changes
 - Positional ``type`` argument in :py:class:`hiku.graph.Field` and in
   :py:class:`hiku.graph.Option` now is required
 
-New features
-~~~~~~~~~~~~
-
-- Added ability to export :py:mod:`hiku.query` nodes. Added
-  :py:mod:`hiku.export.simple` exporter, which will export query
-  into EDN data structure
-
-- Added debug mode for the :py:mod:`hiku.console` application,
-  showing Python tracebacks if debug mode is turned on
-
-- Implemented :py:class:`hiku.validate.query.QueryValidator`
-  to validate query against graph definition before it's execution
-
-- Implemented :py:class:`hiku.validate.graph.GraphValidator`
-  to validate graph definition
-
-- Added ability to define graph links with :py:const:`hiku.types.Optional`
-  type:
-
-  .. code-block:: python
-
-    Link('link-to-foo', Optional[TypeRef['foo']], func, requires=None)
-
-- Added ability to query complex fields, which has a type of
-  ``Optional[Record[...]]``, ``Record[...]`` or ``Sequence[Record[...]]``
-  as if they were linked edges:
-
-  .. code-block:: python
-
-    Edge('foo', [
-        Field('bar', Record[{'baz': Integer}], func),
-    ])
-
-  Here ``bar`` field should be queried as it was a link to the edge:
-
-  .. code-block:: clojure
-
-      [{:link-to-foo [{:bar [:baz]}]}]
-
-- Added ability to use scalar values in the expressions. Currently
-  only integer numbers and strings are supported:
-
-  .. code-block:: python
-
-    Expr('foo', foo_subgraph, func(S.this.foo, 'scalar'))
-
-- Implemented :py:func:`hiku.expr.if_some` function in order to unpack
-  :py:class:`hiku.types.Optional` type in expressions
-
-- Added ability to pass objects, required to execute query, using bound
-  to the query context:
-
-  .. code-block:: python
-
-    @pass_context
-    def func(ctx, fields):
-        return [ctx['storage'][f.name] for f in fields]
-
-    Root([
-        Field('foo', None, func),
-    ])
-
-    engine.execute(graph, read('[:foo]'),
-                   ctx={'storage': {'foo': 1}})
-
-- Implemented new :py:mod:`hiku.sources.aiopg` source for using aiopg_ and
-  :py:class:`hiku.executors.asyncio.AsyncIOExecutor` to asynchronously
-  load data from the `PostgreSQL` database
-
-- Added ability to define function arguments using types instead of queries:
-
-  .. code-block:: python
-
-    @define(Record[{'foo': Integer}])  # instead of @define('[[:foo]]')
-    def func(arg):
-        return arg['foo'] + 1
 
 .. _aiopg: http://aiopg.readthedocs.io/
