@@ -6,16 +6,19 @@ python:
 - '3.5'
 - '3.6'
 - 'pypy'
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - gcc-6
 install: pip install tox-travis
+env:
+  global:
+  - CC=/usr/bin/gcc-6
 script: tox
 cache:
   directories:
   - $HOME/.cache/pip
 before_cache:
 - rm -f $HOME/.cache/pip/log/debug.log
-addons:
-  apt:
-    sources:
-    - ubuntu-toolchain-r-test
-    packages:
-    - gcc-4.8
