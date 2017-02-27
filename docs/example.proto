@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+message Character {
+  string name = 1;
+  string species = 2;
+}
+
+message Root {
+  repeated Character characters = 1;
+}

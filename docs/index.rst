@@ -16,5 +16,6 @@ Release v0.3 - :doc:`What's new <changelog/changes_03>`
     subgraph
     asyncio
     graphql
+    protobuf
     reference/index
     changelog/index
