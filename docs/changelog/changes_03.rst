@@ -1,6 +1,11 @@
 Changes in 0.3
 ==============
 
+0.3.5
+~~~~~
+
+- Added :py:class:`hiku.builder.Q` object for query building
+
 0.3.4
 ~~~~~
 
