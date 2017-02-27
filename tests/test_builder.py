@@ -1,21 +1,18 @@
 from hiku.query import Node, Field, Link
-from hiku.builder import build, Handle
+from hiku.builder import build, Q
 
 from .base import reqs_eq_patcher
 
 
-_ = Handle()
-
-
 def test():
     query = build([
-        _.tyan,
-        _.turlock[
-            _.gange
+        Q.tyan,
+        Q.turlock[
+            Q.gange
         ],
-        _.tiber(ramsons='defaces')[
-            _.decifer(botches='auxerre'),
-            _.exocet(brogues='hygiea'),
+        Q.tiber(ramsons='defaces')[
+            Q.decifer(botches='auxerre'),
+            Q.exocet(brogues='hygiea'),
         ],
     ])
     with reqs_eq_patcher():
