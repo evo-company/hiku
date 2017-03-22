@@ -1,6 +1,11 @@
 Changes in 0.3
 ==============
 
+0.3.6
+~~~~~
+
+- Fixed SQLAlchemy source to properly lookup columns in table definitions
+
 0.3.5
 ~~~~~
 
