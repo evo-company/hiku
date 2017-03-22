@@ -25,7 +25,7 @@ class FieldsQuery(object):
         if not ids:
             return []
 
-        columns = [getattr(self.from_clause.c, f.name) for f in fields_]
+        columns = [self.from_clause.c[f.name] for f in fields_]
         expr = (
             sqlalchemy.select([self.primary_key] + columns)
             .select_from(self.from_clause)
@@ -52,8 +52,8 @@ class Field(FieldBase):
 
     def __init__(self, name, query, **kwargs):
         try:
-            column = getattr(query.from_clause.c, name)
-        except AttributeError:
+            column = query.from_clause.c[name]
+        except KeyError:
             raise ValueError('FromClause {} does not have a column named {}'
                              .format(query.from_clause, name))
         type_ = _translate_type(column)
