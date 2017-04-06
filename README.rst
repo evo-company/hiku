@@ -1,77 +1,43 @@
-**Hiku** is a library to design *Graph API*
+**Hiku** is a library to design Graph APIs. Why graphs? – They are simple,
+predictable, flexible, easy to compose and because of that, they are easy
+to reuse.
 
-`Documentation <http://hiku.readthedocs.io/en/latest/>`_ |
-`Example <https://github.com/vmagamedov/sw.kinko>`_
+Documentation: https://hiku.readthedocs.io/
 
-.. __boundary__
+Licensed under **BSD-3-Clause** license. See LICENSE.txt
 
-Why graphs? – They are simple, predictable, flexible, easy to compose and
-because of that, they are easy to reuse.
+Installation
+~~~~~~~~~~~~
 
-`Hiku` is intended to be an answer for the questions about how to efficiently
-pull data from your services via Graph API and how to implement this API
-in your services with performance and flexibility in mind.
+.. code-block:: shell
 
-Features
-~~~~~~~~
+  $ pip install hiku
 
-★ Express all your data sources as graph of nodes with fields and links.
-You are free to choose between sync **threads/greenlets** and async
-**coroutines** styles for data loading in your application. In both cases
-`Hiku` can load data **concurrently** to speed-up overall graph queries.
-Of course this is optional feature, and you are not required to rewrite
-your code in order to use this feature later, code is initially written
-in a way to make possible to run it concurrently.
+Highlights
+~~~~~~~~~~
 
-★ Query your graph using `simple` queries or using GraphQL_ (partially
-supported). This is how client can express its needs and avoid data
-under-fetching or data over-fetching. Client will load only what it currently
-needs using one query, instead of multiple queries to different *resources* (as
-in RESTful APIs, for example). `Simple` queries are basically a data structures
-in edn_ format. For example:
+* Not coupled to one specific query language
+* Flexibility in result serialization, including binary format
+* All concurrency models supported: async/await, threads, greenlets
+* Parallel execution of the query itself for free
+* No data under-fetching or over-fetching
+* No extra data loading from databases, only what was needed to fulfill
+  the query
+* No ``N+1`` problems, they are eliminated by design
+* Even complex queries of any size are predictable in terms of
+  performance impact
+* Implements a concept of the `Two-Level Graph` in order to put your
+  business-logic in the right place
 
-.. code-block:: clojure
+Contributing
+~~~~~~~~~~~~
 
-    [{:characters [:name :species]}]
+Please feel free to open an issue if you are getting mysterious error
+messages. It will be much easier to track down bugs, if you will
+provide short graph definition to reproduce it. Pull requests are highly
+appreciated and awaited. Especially when it comes to a spelling errors
+in documentation.
 
-Corresponding `GraphQL` query will look like this:
+Use Tox_ in order to test and lint your changes.
 
-.. code-block:: javascript
-
-    {
-        characters {
-            name
-            species
-        }
-    }
-
-And result of these queries will look like this:
-
-.. code-block:: javascript
-
-    {
-        "characters": [
-            {
-                "name": "James T. Kirk",
-                "species": "Human"
-            },
-            {
-                "name": "Spock",
-                "species": "Vulcan/Human"
-            },
-            {
-                "name": "Leonard McCoy",
-                "species": "Human"
-            }
-        ]
-    }
-
-★ Abstract implementation details of how and where data actually stored,
-by using concept of `Two-level Graph` and `Hiku's` expressions language.
-This lets you define **low-level** graph to express all your data
-sources as is, and **high-level** graph to express your business-logic
-above low-level graph. High-level graph will use expressions to collect
-and transform data from low-level graph.
-
-.. _GraphQL: http://facebook.github.io/graphql/
-.. _edn: https://github.com/edn-format/edn
+.. _Tox: https://tox.readthedocs.io/
