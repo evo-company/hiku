@@ -60,6 +60,7 @@
     packages:
     - sphinx==1.4.9
     - sphinx_rtd_theme==0.1.10a0
+    - sphinx_tabs==0.2.2
 
 - !Service
   name: postgres

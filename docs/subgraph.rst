@@ -1,4 +1,4 @@
-Building Two-level Graph
+Building Two-Level Graph
 ========================
 
 Two-level graph is a way to express business-logic once and provide it

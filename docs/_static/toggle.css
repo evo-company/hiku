@@ -1,0 +1,13 @@
+.toggle .header {
+    display: block;
+    clear: both;
+    margin-bottom: 24px;
+}
+
+.toggle .header:after {
+    content: " ⊞";
+}
+
+.toggle .header.open:after {
+    content: " ⊟";
+}

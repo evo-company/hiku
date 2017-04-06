@@ -3,7 +3,11 @@ import os.path
 import sphinx_rtd_theme
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.intersphinx']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.intersphinx',
+    'sphinx_tabs.tabs',
+]
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3.6', None),
@@ -21,5 +25,8 @@ author = 'Vladimir Magamedov'
 version = 'dev'
 release = 'dev'
 
+templates_path = ['_templates']
+
 html_theme = 'sphinx_rtd_theme'
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+html_static_path = ['_static']
