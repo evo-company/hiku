@@ -89,7 +89,9 @@ def check_type(types, t1, t2):
         pass
     else:
         if isinstance(t1, type(t2)):
-            if isinstance(t2, SequenceMeta):
+            if isinstance(t2, OptionalMeta):
+                check_type(types, t1.__type__, t2.__type__)
+            elif isinstance(t2, SequenceMeta):
                 check_type(types, t1.__item_type__, t2.__item_type__)
             elif isinstance(t2, MappingMeta):
                 check_type(types, t1.__key_type__, t2.__key_type__)

@@ -1,6 +1,8 @@
+import pytest
+
 from hiku.graph import Graph, Field, Node, Root, Link
 from hiku.types import Integer, String, Record, Optional, TypeRef
-from hiku.expr.core import S, to_expr, if_some
+from hiku.expr.core import S, to_expr, if_some, define
 from hiku.expr.refs import NamedRef, Ref
 from hiku.expr.nodes import List, Symbol
 from hiku.expr.checker import check, graph_types, fn_types
@@ -70,3 +72,21 @@ def test_optional_link():
     assert isinstance(x, Symbol)
     rakyats_ref = NamedRef(None, 'rakyats', Optional[TypeRef['thalweg']])
     check_ref(x, Ref(rakyats_ref, TypeRef['thalweg']))
+
+
+def test_optional_arg():
+
+    @define(Optional[Record[{'pinout': Integer}]])
+    def foo():
+        pass
+
+    @define(Optional[Record[{'invalid': Integer}]])
+    def bar():
+        pass
+
+    check_expr(foo(S.rakyats))
+
+    with pytest.raises(TypeError) as err:
+        check_expr(bar(S.rakyats))
+
+    assert err.match('Missing field invalid')
