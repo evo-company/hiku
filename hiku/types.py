@@ -54,20 +54,36 @@ class Integer(with_metaclass(IntegerMeta, object)):
 
 
 class TypingMeta(GenericMeta):
+    __final__ = False
 
     def __cls_init__(cls, *args):
         raise NotImplementedError
 
+    def __cls_repr__(cls):
+        raise NotImplementedError
+
     def __getitem__(cls, parameters):
+        if cls.__final__:
+            raise TypeError('Cannot substitute parameters in {!r}'.format(cls))
         type_ = cls.__class__(cls.__name__, cls.__bases__, dict(cls.__dict__))
         type_.__cls_init__(parameters)
+        type_.__final__ = True
         return type_
+
+    def __repr__(self):
+        if self.__final__:
+            return self.__cls_repr__()
+        else:
+            return super(TypingMeta, self).__repr__()
 
 
 class OptionalMeta(TypingMeta):
 
     def __cls_init__(cls, type_):
         cls.__type__ = type_
+
+    def __cls_repr__(self):
+        return '{}[{!r}]'.format(self.__name__, self.__type__)
 
     def accept(cls, visitor):
         return visitor.visit_optional(cls)
@@ -82,6 +98,9 @@ class SequenceMeta(TypingMeta):
     def __cls_init__(cls, item_type):
         cls.__item_type__ = item_type
 
+    def __cls_repr__(self):
+        return '{}[{!r}]'.format(self.__name__, self.__item_type__)
+
     def accept(cls, visitor):
         return visitor.visit_sequence(cls)
 
@@ -94,6 +113,10 @@ class MappingMeta(TypingMeta):
 
     def __cls_init__(cls, params):
         cls.__key_type__, cls.__value_type__ = params
+
+    def __cls_repr__(self):
+        return '{}[{!r}, {!r}]'.format(self.__name__, self.__key_type__,
+                                       self.__value_type__)
 
     def accept(cls, visitor):
         return visitor.visit_mapping(cls)
@@ -108,6 +131,9 @@ class RecordMeta(TypingMeta):
     def __cls_init__(cls, field_types):
         cls.__field_types__ = OrderedDict(field_types)
 
+    def __cls_repr__(self):
+        return '{}[{!r}]'.format(self.__name__, dict(self.__field_types__))
+
     def accept(cls, visitor):
         return visitor.visit_record(cls)
 
@@ -121,6 +147,10 @@ class CallableMeta(TypingMeta):
     def __cls_init__(cls, arg_types):
         cls.__arg_types__ = arg_types
 
+    def __cls_repr__(self):
+        return '{}[{}]'.format(self.__name__,
+                               ', '.join(map(repr, self.__arg_types__)))
+
     def accept(cls, visitor):
         return visitor.visit_callable(cls)
 
@@ -133,6 +163,9 @@ class TypeRefMeta(TypingMeta):
 
     def __cls_init__(cls, name):
         cls.__type_name__ = name
+
+    def __cls_repr__(self):
+        return '{}[{!r}]'.format(self.__name__, self.__type_name__)
 
     def accept(cls, visitor):
         return visitor.visit_typeref(cls)
