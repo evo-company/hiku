@@ -18,6 +18,7 @@ GRAPH = g.Graph([
     g.Node('patens', [
         g.Field('clacks', None, _),
         g.Field('panicle', None, _),
+        g.Link('una', Optional[TypeRef['sais']], _, requires=None),
         g.Link('apatite', TypeRef['sais'], _, requires=None),
         g.Link('jakies', Sequence[TypeRef['sais']], _, requires=None),
     ]),
@@ -302,4 +303,20 @@ def test_query_optional_arg():
     check_query(
         foo(S.civics),
         Node([Link('civics', Node([Field('clacks')]))]),
+    )
+
+
+def test_query_nested_optional_arg():
+
+    @define(Record[{'una': Optional[Record[{'oloroso': Unknown}]]}])
+    def foo(arg):
+        pass
+
+    check_query(
+        foo(S.weigh),
+        Node([
+            Link('weigh', Node([
+                Link('una', Node([Field('oloroso')])),
+            ])),
+        ]),
     )

@@ -76,6 +76,8 @@ def ref_to_req(types, ref, add_req=None):
 def type_to_query(type_):
     fields = []
     for f_name, f_type in type_.__field_types__.items():
+        if isinstance(f_type, OptionalMeta):
+            f_type = f_type.__type__
         if isinstance(f_type, RecordMeta):
             fields.append(Link(f_name, type_to_query(f_type)))
         elif isinstance(f_type, SequenceMeta):
