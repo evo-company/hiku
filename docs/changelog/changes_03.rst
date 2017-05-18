@@ -1,6 +1,11 @@
 Changes in 0.3
 ==============
 
+0.3.7
+~~~~~
+
+  - Fixed optional types checking and usage in expressions
+
 0.3.6
 ~~~~~
 
