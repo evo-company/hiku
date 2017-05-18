@@ -104,8 +104,7 @@ def check_type(types, t1, t2):
                     v1 = get_type(types, v1)
                     check_type(types, v1, v2)
         else:
-            raise TypeError('Types mismatch: {} != {}'
-                            .format(type(t1), type(t2)))
+            raise TypeError('Types mismatch, {!r} != {!r}'.format(t1, t2))
 
 
 class Checker(NodeTransformer):
