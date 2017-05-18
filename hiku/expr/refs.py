@@ -113,6 +113,8 @@ class RequirementsExtractor(NodeVisitor):
         sym_ref = getattr(sym, '__ref__', None)
         if sym_ref is not None:
             for arg, arg_type in zip(args, sym_ref.to.__arg_types__):
+                if isinstance(arg_type, OptionalMeta):
+                    arg_type = arg_type.__type__
                 if isinstance(arg_type, RecordMeta):
                     self._reqs.append(ref_to_req(self._types, arg.__ref__,
                                                  type_to_query(arg_type)))

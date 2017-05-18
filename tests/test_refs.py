@@ -286,8 +286,20 @@ def test_query_dict():
     )
 
 
-def test_query_optional():
+def test_query_if_some():
     check_query(
         if_some([S.x, S.civics], S.x.clacks, 'false'),
+        Node([Link('civics', Node([Field('clacks')]))]),
+    )
+
+
+def test_query_optional_arg():
+
+    @define(Optional[Record[{'clacks': Unknown}]])
+    def foo(arg):
+        pass
+
+    check_query(
+        foo(S.civics),
         Node([Link('civics', Node([Field('clacks')]))]),
     )
