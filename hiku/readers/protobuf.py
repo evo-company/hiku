@@ -2,12 +2,21 @@ from ..query import Node, Link, Field
 from ..protobuf import query_pb2
 
 
+_OPTION_VALUE_GETTERS = {
+    'string': lambda op: op.string,
+    'integer': lambda op: op.integer,
+    'repeated_string': lambda op: list(op.repeated_string.items),
+    'repeated_integer': lambda op: list(op.repeated_integer.items),
+}
+
+
 def _transform_options(pb_obj):
     options = {}
     for key, pb_option in pb_obj.options.items():
         option_type = pb_option.WhichOneof('value')
-        assert option_type, 'Option value is not set: {!r}'.format(pb_option)
-        options[key] = getattr(pb_option, option_type)
+        if option_type is None:
+            raise TypeError('Option value is not set: {!r}'.format(pb_option))
+        options[key] = _OPTION_VALUE_GETTERS[option_type](pb_option)
     return options or None
 
 

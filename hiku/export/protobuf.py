@@ -1,3 +1,5 @@
+from collections import Sequence
+
 from ..query import QueryVisitor
 from ..compat import string_types
 from ..protobuf import query_pb2
@@ -14,6 +16,14 @@ class Exporter(QueryVisitor):
                 pb_obj.options[k].integer = v
             elif isinstance(v, string_types):
                 pb_obj.options[k].string = v
+            elif isinstance(v, Sequence):
+                if all(isinstance(i, int) for i in v):
+                    pb_obj.options[k].repeated_integer.items[:] = v
+                elif all(isinstance(i, string_types) for i in v):
+                    pb_obj.options[k].repeated_string.items[:] = v
+                else:
+                    raise TypeError('Invalid option items type: {}={!r}'
+                                    .format(k, v))
             else:
                 raise TypeError('Invalid option value type: {}={!r}'
                                 .format(k, v))

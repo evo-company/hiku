@@ -2,10 +2,20 @@ syntax = "proto3";
 
 package hiku.protobuf.query;
 
+message RepeatedString {
+  repeated string items = 1;
+}
+
+message RepeatedInteger {
+  repeated sint32 items = 1;
+}
+
 message Option {
   oneof value {
     string string = 1;
     sint32 integer = 2;
+    RepeatedString repeated_string = 3;
+    RepeatedInteger repeated_integer = 4;
   }
 }
 
