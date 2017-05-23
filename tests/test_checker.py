@@ -24,6 +24,7 @@ GRAPH = Graph([
         Node('guida', [
             Field('canette', String, _),
         ]),
+        Link('faulds', TypeRef['thalweg'], _, requires=None),
         Link('rakyats', Optional[TypeRef['thalweg']], _, requires=None),
     ]),
 ])
@@ -84,6 +85,7 @@ def test_optional_arg():
     def bar():
         pass
 
+    check_expr(foo(S.faulds))
     check_expr(foo(S.rakyats))
 
     with pytest.raises(TypeError) as err:

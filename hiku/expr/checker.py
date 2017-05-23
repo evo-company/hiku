@@ -103,6 +103,8 @@ def check_type(types, t1, t2):
                         raise TypeError('Missing field {}'.format(key))
                     v1 = get_type(types, v1)
                     check_type(types, v1, v2)
+        elif isinstance(t2, OptionalMeta):
+            check_type(types, t1, t2.__type__)
         else:
             raise TypeError('Types mismatch, {!r} != {!r}'.format(t1, t2))
 
