@@ -59,6 +59,9 @@ class _AssumeField(GraphVisitor):
                            .format(obj.name))
         return False
 
+    def visit_root(self, obj):
+        raise AssertionError('Root node is not expected here')
+
 
 class _TypeError(TypeError):
     pass
@@ -126,6 +129,9 @@ class _ValidateOptions(GraphVisitor):
 
     def visit_node(self, obj):
         assert self.options is None, 'Node can not have options'
+
+    def visit_root(self, obj):
+        raise AssertionError('Root node is not expected here')
 
 
 class _RecordFieldsValidator(QueryVisitor):

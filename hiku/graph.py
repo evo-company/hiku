@@ -60,6 +60,10 @@ class Option(AbstractOption):
         self.type = type_
         self.default, = kw_only(kwargs, [], ['default'])
 
+    def __repr__(self):
+        return '{}({!r}, {!r}, ...)'.format(self.__class__.__name__,
+                                            self.name, self.type)
+
     def accept(self, visitor):
         return visitor.visit_option(self)
 
@@ -117,6 +121,10 @@ class Field(AbstractField):
         self.func = func
         self.options = options or ()
         self.description = description
+
+    def __repr__(self):
+        return '{}({!r}, {!r}, {!r})'.format(self.__class__.__name__, self.name,
+                                             self.type, self.func)
 
     @cached_property
     def options_map(self):
@@ -233,6 +241,11 @@ class Link(AbstractLink):
         self.options = options or ()
         self.description = description
 
+    def __repr__(self):
+        return '{}({!r}, {!r}, {!r}, ...)'.format(self.__class__.__name__,
+                                                  self.name, self.type,
+                                                  self.func)
+
     @cached_property
     def options_map(self):
         return OrderedDict((op.name, op) for op in self.options)
@@ -271,6 +284,10 @@ class Node(AbstractNode):
         self.fields = fields
         self.description, = kw_only(kwargs, [], ['description'])
 
+    def __repr__(self):
+        return '{}({!r}, {!r}, ...)'.format(self.__class__.__name__, self.name,
+                                            self.fields)
+
     @cached_property
     def fields_map(self):
         return OrderedDict((f.name, f) for f in self.fields)
@@ -301,6 +318,13 @@ class Root(Node):
         """
         super(Root, self).__init__(None, items)
 
+    def __repr__(self):
+        return '{}({!r}, {!r})'.format(self.__class__.__name__, self.name,
+                                       self.fields)
+
+    def accept(self, visitor):
+        return visitor.visit_root(self)
+
 
 class AbstractGraph(AbstractNode):
     pass
@@ -324,6 +348,9 @@ class Graph(AbstractGraph):
         """
         self.items = items
 
+    def __repr__(self):
+        return '{}({!r})'.format(self.__class__.__name__, self.items)
+
     @cached_property
     def root(self):
         return Root(list(chain.from_iterable(e.fields for e in self.items
@@ -341,7 +368,38 @@ class Graph(AbstractGraph):
         return visitor.visit_graph(self)
 
 
-class GraphVisitor(object):
+class AbstractGraphVisitor(with_metaclass(ABCMeta, object)):
+
+    @abstractmethod
+    def visit(self, obj):
+        pass
+
+    @abstractmethod
+    def visit_option(self, obj):
+        pass
+
+    @abstractmethod
+    def visit_field(self, obj):
+        pass
+
+    @abstractmethod
+    def visit_link(self, obj):
+        pass
+
+    @abstractmethod
+    def visit_node(self, obj):
+        pass
+
+    @abstractmethod
+    def visit_root(self, obj):
+        pass
+
+    @abstractmethod
+    def visit_graph(self, obj):
+        pass
+
+
+class GraphVisitor(AbstractGraphVisitor):
 
     def visit(self, obj):
         return obj.accept(self)
@@ -361,6 +419,40 @@ class GraphVisitor(object):
         for item in obj.fields:
             self.visit(item)
 
+    def visit_root(self, obj):
+        for item in obj.fields:
+            self.visit(item)
+
     def visit_graph(self, obj):
         for item in obj.items:
             self.visit(item)
+
+
+class GraphTransformer(AbstractGraphVisitor):
+
+    def visit(self, obj):
+        return obj.accept(self)
+
+    def visit_option(self, obj):
+        return Option(obj.name, obj.type, default=obj.default)
+
+    def visit_field(self, obj):
+        return Field(obj.name, obj.type, obj.func,
+                     options=[self.visit(op) for op in obj.options],
+                     description=obj.description)
+
+    def visit_link(self, obj):
+        return Link(obj.name, obj.type, obj.func,
+                    requires=obj.requires,
+                    options=[self.visit(op) for op in obj.options],
+                    description=obj.description)
+
+    def visit_node(self, obj):
+        return Node(obj.name, [self.visit(f) for f in obj.fields],
+                    description=obj.description)
+
+    def visit_root(self, obj):
+        return Root([self.visit(f) for f in obj.fields])
+
+    def visit_graph(self, obj):
+        return Graph([self.visit(node) for node in obj.items])

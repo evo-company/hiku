@@ -23,7 +23,10 @@ def _format_types(objects):
 class _NameFormatter(GraphVisitor):
 
     def visit_node(self, obj):
-        return obj.name or 'root'
+        return obj.name
+
+    def visit_root(self, obj):
+        return 'root'
 
     def visit_link(self, obj):
         return '.{}'.format(obj.name)
@@ -92,34 +95,38 @@ class GraphValidator(GraphVisitor):
                     .format(obj.name, obj.requires, self._format_path())
                 )
 
-    def visit_node(self, obj):
+    def _generic_visit_node(self, obj, node_name):
         invalid = [f for f in obj.fields
                    if not isinstance(f, self._node_accept_types)]
         if invalid:
             self.errors.report(
                 'Node can not contain these types: {} in node "{}"'
-                .format(_format_types(invalid), obj.name)
+                .format(_format_types(invalid), node_name)
             )
             return
 
         with self.push_ctx(obj):
-            super(GraphValidator, self).visit_node(obj)
+            for item in obj.fields:
+                self.visit(item)
 
         duplicates = _get_duplicates(e.name for e in obj.fields)
         if duplicates:
-            node_name = 'root' if obj.name is None else obj.name
             self.errors.report('Duplicated names found in the "{}" '
                                'node: {}'
                                .format(node_name, _format_names(duplicates)))
 
-        if obj.name is not None:
-            nodes = [f.name for f in obj.fields if isinstance(f, AbstractNode)]
-            if nodes:
-                self.errors.report(
-                    'Node can not be defined in the non-root node: '
-                    '{} in "{}"'
-                    .format(_format_names(nodes), obj.name)
-                )
+    def visit_node(self, obj):
+        self._generic_visit_node(obj, obj.name)
+        nodes = [f.name for f in obj.fields if isinstance(f, AbstractNode)]
+        if nodes:
+            self.errors.report(
+                'Node can not be defined in the non-root node: '
+                '{} in "{}"'
+                .format(_format_names(nodes), obj.name)
+            )
+
+    def visit_root(self, obj):
+        self._generic_visit_node(obj, 'root')
 
     def visit_graph(self, obj):
         invalid = [f for f in obj.items

@@ -20,6 +20,9 @@ class GraphTypes(graph.GraphVisitor):
     def visit_node(self, obj):
         return Record[[(f.name, self.visit(f)) for f in obj.fields]]
 
+    def visit_root(self, obj):
+        return Record[[(f.name, self.visit(f)) for f in obj.fields]]
+
     def visit_link(self, obj):
         if obj.type_enum is graph.Maybe:
             return Optional[TypeRef[obj.node]]

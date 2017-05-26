@@ -61,10 +61,10 @@ def test_query():
 
     app = ConsoleApplication(GRAPH, engine, {SA_ENGINE_KEY: sa_engine},
                              debug=True)
-    query = b'[{:bar-list [:name :type {:foo-s [:name :count]}]}]'
+    query = b'[{:bar_list [:name :type {:foo_s [:name :count]}]}]'
 
     status, headers, content = request(app, 'POST', '/', payload=query)
     assert status == '200 OK'
     assert ('Content-Type', 'application/json') in headers
     result = json.loads(content.decode('utf-8'))
-    assert 'bar-list' in result
+    assert 'bar_list' in result

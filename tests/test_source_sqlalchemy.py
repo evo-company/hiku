@@ -131,16 +131,16 @@ def get_graph(source_module, queries):
             _sm.Field('id', _q.bar_query),
             _sm.Field('name', _q.bar_query),
             _sm.Field('type', _q.bar_query),
-            _sm.Link('foo-s', _q.to_foo_query, requires='id'),
+            _sm.Link('foo_s', _q.to_foo_query, requires='id'),
         ]),
         Root([
-            Link('foo-list', Sequence[TypeRef['foo']],
+            Link('foo_list', Sequence[TypeRef['foo']],
                  _q.foo_list, requires=None),
-            Link('bar-list', Sequence[TypeRef['bar']],
+            Link('bar_list', Sequence[TypeRef['bar']],
                  _q.bar_list, requires=None),
-            Link('not-found-one', TypeRef['bar'],
+            Link('not_found_one', TypeRef['bar'],
                  _q.not_found_one, requires=None),
-            Link('not-found-list', Sequence[TypeRef['bar']],
+            Link('not_found_list', Sequence[TypeRef['bar']],
                  _q.not_found_list, requires=None),
         ]),
     ])
@@ -203,8 +203,8 @@ class SourceSQLAlchemyTestBase(with_metaclass(ABCMeta, object)):
 
     def test_many_to_one(self):
         self.check(
-            '[{:foo-list [:name :count {:bar [:name :type]}]}]',
-            {'foo-list': [
+            '[{:foo_list [:name :count {:bar [:name :type]}]}]',
+            {'foo_list': [
                 {'name': 'foo3', 'count': 15, 'bar_id': 4,
                  'bar': {'name': 'bar1', 'type': 1}},
                 {'name': 'foo2', 'count': 10, 'bar_id': 5,
@@ -216,16 +216,16 @@ class SourceSQLAlchemyTestBase(with_metaclass(ABCMeta, object)):
 
     def test_one_to_many(self):
         self.check(
-            '[{:bar-list [:name :type {:foo-s [:name :count]}]}]',
-            {'bar-list': [
-                {'id': 6, 'name': 'bar3', 'type': 3, 'foo-s': [
+            '[{:bar_list [:name :type {:foo_s [:name :count]}]}]',
+            {'bar_list': [
+                {'id': 6, 'name': 'bar3', 'type': 3, 'foo_s': [
                     {'name': 'foo4', 'count': 20},
                 ]},
-                {'id': 5, 'name': 'bar2', 'type': 2, 'foo-s': [
+                {'id': 5, 'name': 'bar2', 'type': 2, 'foo_s': [
                     {'name': 'foo2', 'count': 10},
                     {'name': 'foo5', 'count': 25},
                 ]},
-                {'id': 4, 'name': 'bar1', 'type': 1, 'foo-s': [
+                {'id': 4, 'name': 'bar1', 'type': 1, 'foo_s': [
                     {'name': 'foo3', 'count': 15},
                     {'name': 'foo6', 'count': 30},
                 ]},
@@ -234,11 +234,11 @@ class SourceSQLAlchemyTestBase(with_metaclass(ABCMeta, object)):
 
     def test_not_found(self):
         self.check(
-            '[{:not-found-one [:name :type]}'
-            ' {:not-found-list [:name :type]}]',
+            '[{:not_found_one [:name :type]}'
+            ' {:not_found_list [:name :type]}]',
             {
-                'not-found-one': {'name': None, 'type': None},
-                'not-found-list': [
+                'not_found_one': {'name': None, 'type': None},
+                'not_found_list': [
                     {'name': 'bar3', 'type': 3},
                     {'name': None, 'type': None},
                     {'name': 'bar1', 'type': 1},

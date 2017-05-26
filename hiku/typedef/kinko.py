@@ -46,6 +46,11 @@ class GraphTypesEx(GraphTypes):
         return Record[[(n, t) for n, t in record.__field_types__.items()
                        if t is not Unknown]]
 
+    def visit_root(self, obj):
+        record = super(GraphTypesEx, self).visit_root(obj)
+        return Record[[(n, t) for n, t in record.__field_types__.items()
+                       if t is not Unknown]]
+
 
 class _LinePrinter(object):
 
