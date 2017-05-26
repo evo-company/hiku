@@ -27,7 +27,7 @@ def test_field_args():
 
 
 def test_field_alias():
-    with pytest.raises(NotImplementedError) as err:
+    with pytest.raises(TypeError) as err:
         read('{ glamors: foule }')
     err.match('Field aliases are not supported')
 
@@ -48,20 +48,100 @@ def test_complex_field_args():
 
 
 def test_multiple_operations():
-    with pytest.raises(NotImplementedError) as err:
+    with pytest.raises(TypeError) as err:
         read('{ gummed } { calce } { aaron }')
     err.match('Only single operation per document is supported, '
               '3 operations was provided')
 
 
 def test_mutation_operation():
-    with pytest.raises(NotImplementedError) as err:
+    with pytest.raises(TypeError) as err:
         read('mutation { doSomething(kokam: "screens") }')
     err.match('Only "query" operations are supported, "mutation" operation '
               'was provided')
 
 
-def test_unknown_node():
-    with pytest.raises(NotImplementedError) as err:
-        read('fragment bays on sweats { apollo }')
-    err.match('Not implemented node type: FragmentDefinition')
+def test_named_fragments():
+    check_read(
+        """
+        query Juger {
+          gilts {
+            sneezer(gire: "noatak") {
+              flowers
+              ...Goaded
+              apres
+            }
+            ... on Valium {
+              movies {
+                boree
+              }
+            }
+          }
+        }
+        fragment Goaded on Makai {
+          doozie
+          pins {
+            gunya
+            ...Meer
+          }
+        }
+        fragment Meer on Torsion {
+          kilned {
+            rusk
+          }
+        }
+        """,
+        Node([
+            Link('gilts', Node([
+                Link('sneezer', Node([
+                    Field('flowers'),
+                    Field('doozie'),
+                    Link('pins', Node([
+                        Field('gunya'),
+                        Link('kilned', Node([
+                            Field('rusk'),
+                        ])),
+                    ])),
+                    Field('apres'),
+                ]), options={'gire': 'noatak'}),
+                Link('movies', Node([
+                    Field('boree'),
+                ])),
+            ])),
+        ]),
+    )
+
+
+def test_reference_cycle_in_fragments():
+    with pytest.raises(TypeError) as err:
+        read("""
+        query Suckle {
+          roguish
+          ...Pakol
+        }
+        fragment Pakol on Crees {
+          fatuous
+          ...Varlet
+        }
+        fragment Varlet on Bribee {
+          penfold
+          ...Pakol
+        }
+        """)
+    err.match('Cyclic fragment usage: "Pakol"')
+
+
+def test_duplicated_fragment_names():
+    with pytest.raises(TypeError) as err:
+        read("""
+        query Pelota {
+          sinope
+        }
+        fragment Splosh on Makai {
+          saggier
+        }
+        fragment Splosh on Whether {
+          refits
+        }
+        """)
+    err.match('Duplicated fragment name: "Splosh"')
