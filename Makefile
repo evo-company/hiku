@@ -4,6 +4,7 @@ proto:
 	python -m grpc_tools.protoc -I. --python_out=. docs/example.proto
 
 release:
+	./scripts/release_check.sh
 	rm hiku/console/assets/*.js
 	pi build static
 	python setup.py sdist
