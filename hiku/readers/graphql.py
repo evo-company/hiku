@@ -64,6 +64,21 @@ class SelectionSetVisitMixin(object):
     def transform_fragment(self, name):
         raise NotImplementedError
 
+    @property
+    def query_variables(self):
+        raise NotImplementedError
+
+    @property
+    def query_name(self):
+        raise NotImplementedError
+
+    def lookup_variable(self, name):
+        try:
+            return self.query_variables[name]
+        except KeyError:
+            raise TypeError('Variable ${} is not defined in query {}'
+                            .format(name, self.query_name))
+
     def visit_SelectionSet(self, obj):
         for i in obj.selections:
             for j in self.visit(i):
@@ -73,12 +88,40 @@ class SelectionSetVisitMixin(object):
         if obj.alias is not None:
             raise TypeError('Field aliases are not supported: {!r}'
                             .format(obj))
-        options = {arg.name.value: arg.value.value for arg in obj.arguments}
+        options = {arg.name.value: self.visit(arg.value)
+                   for arg in obj.arguments}
         if obj.selection_set is None:
             yield Field(obj.name.value, options or None)
         else:
             node = Node(list(self.visit(obj.selection_set)))
             yield Link(obj.name.value, node, options or None)
+
+    def visit_Variable(self, obj):
+        return self.lookup_variable(obj.name.value)
+
+    def _visit_scalar(self, obj):
+        return obj.value
+
+    def visit_IntValue(self, obj):
+        return int(obj.value)
+
+    def visit_FloatValue(self, obj):
+        return float(obj.value)
+
+    def visit_StringValue(self, obj):
+        return obj.value
+
+    def visit_BooleanValue(self, obj):
+        return obj.value
+
+    def visit_EnumValue(self, obj):
+        return obj.value
+
+    def visit_ListValue(self, obj):
+        return [self.visit(i) for i in obj.values]
+
+    def visit_ObjectValue(self, obj):
+        return {f.name.value: self.visit(f.value) for f in obj.fields}
 
     def visit_FragmentSpread(self, obj):
         assert not obj.directives, obj.directives
@@ -91,10 +134,14 @@ class SelectionSetVisitMixin(object):
 
 
 class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
+    query_name = None
+    query_variables = None
 
-    def __init__(self, document):
+    def __init__(self, document, query_name, query_variables):
         collector = FragmentsCollector()
         collector.visit(document)
+        self.query_name = query_name
+        self.query_variables = query_variables
         self.fragments_map = collector.fragments_map
         self.cache = {}
         self.pending_fragments = set()
@@ -122,13 +169,17 @@ class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
 
 
 class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
+    query_name = None
+    query_variables = None
+    fragments_transformer = None
 
-    def __init__(self, document):
-        self.fragments_transformer = FragmentsTransformer(document)
+    def __init__(self, document, variables=None):
+        self.document = document
+        self.variables = variables
 
     @classmethod
-    def transform(cls, document):
-        visitor = cls(document)
+    def transform(cls, document, variables=None):
+        visitor = cls(document, variables)
         return visitor.visit(document)
 
     def transform_fragment(self, name):
@@ -149,12 +200,39 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
                             '"{}" operation was provided'
                             .format(obj.operation))
         assert obj.operation == 'query', obj.operation
-        yield Node(list(self.visit(obj.selection_set)))
+
+        variables = self.variables or {}
+        query_name = obj.name.value if obj.name else '<unnamed>'
+        query_variables = {}
+        for var_defn in obj.variable_definitions or ():
+            name = var_defn.variable.name.value
+            try:
+                value = variables[name]
+            except KeyError:
+                if var_defn.default_value is not None:
+                    value = self.visit(var_defn.default_value)
+                else:
+                    raise TypeError('Variable "{}" is not provided for query {}'
+                                    .format(name, query_name))
+            query_variables[name] = value
+
+        self.query_name = query_name
+        self.query_variables = query_variables
+        self.fragments_transformer = FragmentsTransformer(self.document,
+                                                          self.query_name,
+                                                          self.query_variables)
+        try:
+            node = Node(list(self.visit(obj.selection_set)))
+        finally:
+            self.query_name = None
+            self.query_variables = None
+            self.fragments_transformer = None
+        yield node
 
     def visit_FragmentDefinition(self, obj):
         return []  # not interested in fragments here
 
 
-def read(src):
+def read(src, variables=None):
     doc = parse(src)
-    return GraphQLTransformer.transform(doc)
+    return GraphQLTransformer.transform(doc, variables)
