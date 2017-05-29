@@ -194,6 +194,10 @@ class AbstractTypeVisitor(with_metaclass(ABCMeta, object)):
         pass
 
     @abstractmethod
+    def visit_typeref(self, obj):
+        pass
+
+    @abstractmethod
     def visit_optional(self, obj):
         pass
 
@@ -226,6 +230,9 @@ class TypeVisitor(AbstractTypeVisitor):
         pass
 
     def visit_integer(self, obj):
+        pass
+
+    def visit_typeref(self, obj):
         pass
 
     def visit_optional(self, obj):
