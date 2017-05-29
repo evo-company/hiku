@@ -1,3 +1,5 @@
+import inspect
+
 from functools import partial
 from itertools import chain
 from collections import defaultdict
@@ -107,7 +109,9 @@ def link_result_to_ids(is_list, link_type, result):
         if link_type is Maybe:
             return [i for i in result if i is not Nothing]
         elif link_type is One:
-            assert all(i is not Nothing for i in result)
+            if any(i is Nothing for i in result):
+                raise TypeError('Non-optional link should not return Nothing: '
+                                '{!r}'.format(result))
             return result
         elif link_type is Many:
             return list(chain.from_iterable(result))
@@ -115,7 +119,8 @@ def link_result_to_ids(is_list, link_type, result):
         if link_type is Maybe:
             return [] if result is Nothing else [result]
         elif link_type is One:
-            assert result is not Nothing
+            if result is Nothing:
+                raise TypeError('Non-optional link should not return Nothing')
             return [result]
         elif link_type is Many:
             return result
@@ -222,6 +227,8 @@ class Query(Workflow):
         ))
 
     def process_link(self, node, graph_link, query_node, ids, result):
+        if inspect.isgenerator(result):
+            result = list(result)
         store_links(self._result, node, graph_link, ids, result)
         to_ids = link_result_to_ids(ids is not None, graph_link.type_enum,
                                     result)
