@@ -1,6 +1,13 @@
 Changes in 0.3
 ==============
 
+0.3.8
+~~~~~
+
+  - Added GraphQL introspection functionality
+  - Fixed bug in engine for the case, when linking function returns a generator
+  - Improved GraphQL reader, added support for query variables and fragments
+
 0.3.7
 ~~~~~
 
