@@ -19,7 +19,7 @@ app = Flask(__name__)
 
 
 @app.route('/', methods=['POST'])
-def hello():
+def handler():
     hiku_engine = app.config['HIKU_ENGINE']
     data = request.get_json()
     try:

@@ -269,34 +269,71 @@ class BindToGraph(GraphTransformer):
         return link
 
 
-def _type_name(node_name, fields, ids=None):
+class MakeAsync(GraphTransformer):
+
+    def __init__(self, async_wrapper):
+        self.async_wrapper = async_wrapper
+
+    def visit_field(self, obj):
+        field = super(MakeAsync, self).visit_field(obj)
+        field.func = self.async_wrapper(field.func)
+        return field
+
+    def visit_link(self, obj):
+        link = super(MakeAsync, self).visit_link(obj)
+        link.func = self.async_wrapper(link.func)
+        return link
+
+
+def type_name_field_func(node_name, fields, ids=None):
     return [[node_name] for _ in ids] if ids is not None else [node_name]
 
 
-class AddIntrospectionName(GraphTransformer):
+class AddIntrospection(GraphTransformer):
 
-    def __init__(self, introspection_graph):
+    def __init__(self, introspection_graph, type_name_field_factory):
         self.introspection_graph = introspection_graph
+        self.type_name_field_factory = type_name_field_factory
 
     def visit_node(self, obj):
-        node = super(AddIntrospectionName, self).visit_node(obj)
-        node.fields.append(Field('__typename', String,
-                                 partial(_type_name, obj.name)))
+        node = super(AddIntrospection, self).visit_node(obj)
+        node.fields.append(self.type_name_field_factory(obj.name))
         return node
 
     def visit_root(self, obj):
-        root = super(AddIntrospectionName, self).visit_root(obj)
+        root = super(AddIntrospection, self).visit_root(obj)
         root.fields.extend(self.introspection_graph.root.fields)
-        root.fields.append(Field('__typename', String,
-                                 partial(_type_name, ROOT_NAME)))
+        root.fields.append(self.type_name_field_factory(ROOT_NAME))
         return root
 
     def visit_graph(self, obj):
-        graph = super(AddIntrospectionName, self).visit_graph(obj)
+        graph = super(AddIntrospection, self).visit_graph(obj)
         graph.items.extend(self.introspection_graph.items)
         return graph
 
 
 def add_introspection(graph):
     introspection_graph = BindToGraph(graph).visit(GRAPH)
-    return AddIntrospectionName(introspection_graph).visit(graph)
+
+    def type_name_field_factory(node_name):
+        return Field('__typename', String,
+                     partial(type_name_field_func, node_name))
+
+    return AddIntrospection(introspection_graph,
+                            type_name_field_factory).visit(graph)
+
+
+def add_introspection_async(graph):
+    from ._graphql import async_wrapper
+
+    introspection_graph = BindToGraph(graph).visit(GRAPH)
+    introspection_graph = MakeAsync(async_wrapper)\
+        .visit(introspection_graph)
+
+    def type_name_field_factory(node_name):
+        return Field('__typename', String,
+                     async_wrapper(partial(type_name_field_func,
+                                           node_name)))
+
+    return AddIntrospection(introspection_graph,
+                            type_name_field_factory).visit(graph)
