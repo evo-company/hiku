@@ -2,26 +2,8 @@ sudo: false
 language: python
 python:
 - '2.7'
-- '3.4'
 - '3.5'
 - '3.6'
-- 'pypy'
-addons:
-  apt:
-    sources:
-    - ubuntu-toolchain-r-test
-    packages:
-    - gcc-6
 install:
 - pip install tox-travis
-# Workaround to build GRPC with newer gcc version for py36 and pypy
-- mkdir $HOME/.bin
-- ln -s /usr/bin/gcc-6 $HOME/.bin/cc
-- ln -s /usr/bin/gcc-6 $HOME/.bin/gcc
-- export PATH=$HOME/.bin:$PATH
 script: tox
-cache:
-  directories:
-  - $HOME/.cache/pip
-before_cache:
-- rm -f $HOME/.cache/pip/log/debug.log
