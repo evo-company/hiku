@@ -63,13 +63,13 @@
     - sphinx_tabs==0.2.2
 
 - !Service
-  name: postgres
+  name: pg
   image: !DockerImage onjin/alpine-postgres:9.5
+  network-name: postgres
 
 - !Command
   name: test
-  requires:
-    - postgres
+  requires: [pg]
   params:
     - !Argument {name: tests, default: "tests3 docs"}
   image: env

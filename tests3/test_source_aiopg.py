@@ -25,20 +25,16 @@ SA_ENGINE_KEY = 'sa-engine'
 
 class AsyncQueries(AbstractQueries):
 
-    @asyncio.coroutine
-    def foo_list(self):
+    async def foo_list(self):
         return SyncQueries.foo_list.__call__(self)
 
-    @asyncio.coroutine
-    def bar_list(self):
+    async def bar_list(self):
         return SyncQueries.bar_list.__call__(self)
 
-    @asyncio.coroutine
-    def not_found_one(self):
+    async def not_found_one(self):
         return SyncQueries.not_found_one.__call__(self)
 
-    @asyncio.coroutine
-    def not_found_list(self):
+    async def not_found_list(self):
         return SyncQueries.not_found_list.__call__(self)
 
 
@@ -81,18 +77,17 @@ class TestSourceAIOPG(SourceSQLAlchemyTestBase):
     def queries(self):
         return get_queries(sa, SA_ENGINE_KEY, AsyncQueries)
 
-    @asyncio.coroutine
-    def _check(self, src, value, event_loop):
-        sa_engine = yield from aiopg.sa.create_engine(self.db_dsn, minsize=0,
-                                                      loop=event_loop)
+    async def _check(self, src, value, event_loop):
+        sa_engine = await aiopg.sa.create_engine(self.db_dsn, minsize=0,
+                                                 loop=event_loop)
         try:
             engine = Engine(AsyncIOExecutor(event_loop))
-            result = yield from engine.execute(self.graph, read(src),
-                                               {SA_ENGINE_KEY: sa_engine})
+            result = await engine.execute(self.graph, read(src),
+                                          {SA_ENGINE_KEY: sa_engine})
             check_result(result, value)
         finally:
             sa_engine.close()
-            yield from sa_engine.wait_closed()
+            await sa_engine.wait_closed()
 
     def check(self, src, value):
         policy = asyncio.get_event_loop_policy()
