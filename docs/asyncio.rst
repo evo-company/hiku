@@ -16,7 +16,7 @@ Prerequisites
 ~~~~~~~~~~~~~
 
 .. note:: Source code of this example can be found
-    `on GitHub <https://github.com/vmagamedov/hiku/blob/master/docs/guide/test_asyncio.py>`_.
+    `on GitHub <https://github.com/vmagamedov/hiku/blob/master/docs/test_asyncio.py>`_.
 
 .. literalinclude:: test_asyncio.py
     :lines: 7-27
