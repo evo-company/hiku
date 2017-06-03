@@ -10,7 +10,7 @@ Prerequisites
 ~~~~~~~~~~~~~
 
 .. note:: Source code of this example can be found
-    `on GitHub <https://github.com/vmagamedov/hiku/blob/master/docs/guide/test_database.py>`_.
+    `on GitHub <https://github.com/vmagamedov/hiku/blob/master/docs/test_database.py>`_.
 
 We will translate our previous example from the :doc:`basics`, but now all
 the data is stored in the SQLite database:
