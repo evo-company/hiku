@@ -104,7 +104,8 @@ class LinkQuery(object):
     def __init__(self, type_, sa_engine_ctx_var, **kwargs):
         type_enum, node = get_type_enum(type_)
 
-        from_column, to_column = kw_only(kwargs, ['from_column', 'to_column'])
+        from_column, to_column = kw_only(self.__init__, kwargs,
+                                         ['from_column', 'to_column'])
         if from_column.table is not to_column.table:
             raise ValueError('from_column and to_column should belong to '
                              'the one table')
@@ -147,8 +148,4 @@ class LinkQuery(object):
 class Link(LinkBase):
 
     def __init__(self, name, query, **kwargs):
-        requires, options, description = \
-            kw_only(kwargs, ['requires'], ['options', 'description'])
-
-        super(Link, self).__init__(name, query.type, query, requires=requires,
-                                   options=options, description=description)
+        super(Link, self).__init__(name, query.type, query, **kwargs)

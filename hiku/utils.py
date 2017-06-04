@@ -1,25 +1,35 @@
 import sys
 
+from .compat import qualname
 
-_undefined = object()
 
-
-def kw_only(mapping, required, optional=None):
+def kw_only(fn, mapping, required, optional=None):
     d = mapping.copy()
-    result = []
-    for arg in required:
-        value = d.pop(arg, _undefined)
-        if value is _undefined:
-            raise TypeError('Required keyword argument {!r} not specified'
-                            .format(arg))
-        result.append(value)
-    if optional is not None:
-        for key in optional:
-            value = d.pop(key, None)
-            result.append(value)
-    if d:
-        raise TypeError('Unknown keyword arguments: {}'
-                        .format(', '.join(d.keys())))
+
+    missing = [a for a in required if a not in d]
+    if len(missing) == 1:
+        raise TypeError('{}() missing 1 required keyword-only argument: {!r}'
+                        .format(qualname(fn), missing[0]))
+    elif missing:
+        names = ', '.join(map(repr, missing[:-1]))
+        raise TypeError('{}() missing {} required keyword-only arguments: {} '
+                        'and {}'.format(qualname(fn), len(missing), names,
+                                        repr(missing[-1])))
+
+    result = [d.pop(key) for key in required]
+    result.extend(d.pop(key, default) for key, default in (optional or ()))
+
+    unexpected = sorted(d)
+    if len(unexpected) == 1:
+        name, = d
+        raise TypeError('{}() got 1 unexpected keyword argument: {!r}'
+                        .format(qualname(fn), name))
+    elif unexpected:
+        names = ', '.join(map(repr, unexpected[:-1]))
+        raise TypeError('{}() got {} unexpected keyword arguments: {} and {}'
+                        .format(qualname(fn), len(unexpected), names,
+                                repr(unexpected[-1])))
+
     return result
 
 

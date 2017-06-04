@@ -58,7 +58,7 @@ class Option(AbstractOption):
         """
         self.name = name
         self.type = type_
-        self.default, = kw_only(kwargs, [], ['default'])
+        self.default, = kw_only(self.__init__, kwargs, [], [('default', None)])
 
     def __repr__(self):
         return '{}({!r}, {!r}, ...)'.format(self.__class__.__name__,
@@ -114,7 +114,9 @@ class Field(AbstractField):
         :param kw-only,optional options: list of acceptable options
         :param kw-only,optional description: description of the field
         """
-        options, description = kw_only(kwargs, [], ['options', 'description'])
+        options, description = kw_only(self.__init__, kwargs, [],
+                                       [('options', None),
+                                        ('description', None)])
 
         self.name = name
         self.type = type_
@@ -221,14 +223,14 @@ class Link(AbstractLink):
         :param name: name of the link
         :param type_: type of the link
         :param func: function to load identifiers of the linked node
-        :param kw-only node: name of the linked node
         :param kw-only requires: field name from the current node, required
                                       to compute identifiers of the linked node
         :param kw-only,optional options: list of acceptable options
         :param kw-only,optional description: description of the link
         """
         requires, options, description = \
-            kw_only(kwargs, ['requires'], ['options', 'description'])
+            kw_only(self.__init__, kwargs, ['requires'],
+                    [('options', None), ('description', None)])
 
         type_enum, node = get_type_enum(type_)
 
@@ -282,7 +284,8 @@ class Node(AbstractNode):
         """
         self.name = name
         self.fields = fields
-        self.description, = kw_only(kwargs, [], ['description'])
+        self.description, = kw_only(self.__init__, kwargs, [],
+                                    [('description', None)])
 
     def __repr__(self):
         return '{}({!r}, {!r}, ...)'.format(self.__class__.__name__, self.name,

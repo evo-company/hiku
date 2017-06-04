@@ -4,7 +4,6 @@ from .. import query
 from ..graph import Link, Field
 from ..types import TypeRef, Sequence
 from ..query import merge
-from ..utils import kw_only
 from ..types import Unknown
 from ..engine import Query, store_fields, subquery
 from ..expr.refs import RequirementsExtractor
@@ -40,10 +39,7 @@ class Expr(Field):
             raise TypeError('More positional arguments ({}) than expected (2)'
                             .format(len(other)))
 
-        options, description = kw_only(kwargs, [], ['options', 'description'])
-
-        super(Expr, self).__init__(name, type_, subquery,
-                                   options=options, description=description)
+        super(Expr, self).__init__(name, type_, subquery, **kwargs)
 
         expr_node, functions = to_expr(expr)
 

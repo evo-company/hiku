@@ -1,5 +1,6 @@
 import sys
 import ast as _ast
+import inspect
 
 
 PY3 = sys.version_info[0] == 3
@@ -67,6 +68,18 @@ if PY3:
     text_type = str
     string_types = str,
 
+    def qualname(fn):
+        if inspect.ismethod(fn):
+            return fn.__func__.__qualname__
+        else:
+            return fn.__qualname__
+
 else:
     text_type = unicode  # noqa
     string_types = basestring,  # noqa
+
+    def qualname(fn):
+        if inspect.ismethod(fn):
+            return '{}.{}'.format(fn.im_class.__name__, fn.im_func.__name__)
+        else:
+            return fn.__name__
