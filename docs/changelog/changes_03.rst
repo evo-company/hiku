@@ -1,6 +1,11 @@
 Changes in 0.3
 ==============
 
+0.3.9
+~~~~~
+
+  - Added ability to specify option's default value as None
+
 0.3.8
 ~~~~~
 
