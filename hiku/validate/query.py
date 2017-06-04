@@ -2,7 +2,7 @@ from itertools import repeat
 
 from ..types import AbstractTypeVisitor
 from ..query import QueryVisitor
-from ..graph import GraphVisitor, Node, Field, Link
+from ..graph import GraphVisitor, Node, Field, Link, Nothing
 from ..compat import text_type
 
 from .errors import Errors
@@ -111,9 +111,8 @@ class _ValidateOptions(GraphVisitor):
     visit_field = visit_link
 
     def visit_option(self, obj):
-        default = _undefined if obj.default is None else obj.default
-        value = self._options.get(obj.name, default)
-        if value is _undefined:
+        value = self._options.get(obj.name, obj.default)
+        if value is Nothing:
             node, field = self.for_
             self.errors.report('Required option "{}.{}:{}" is not specified'
                                .format(node, field, obj.name))

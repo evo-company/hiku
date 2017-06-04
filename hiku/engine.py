@@ -131,7 +131,11 @@ def get_options(graph_obj, query_obj):
     _options = query_obj.options or {}
     options = {}
     for opt in graph_obj.options:
-        options[opt.name] = _options.get(opt.name, opt.default)
+        opt_value = _options.get(opt.name, opt.default)
+        if opt_value is Nothing:
+            raise TypeError('Required option "{}" for {!r} was not provided'
+                            .format(opt.name, graph_obj))
+        options[opt.name] = opt_value
     return options
 
 

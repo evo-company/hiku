@@ -15,23 +15,23 @@ from .base import patch, reqs_eq_patcher, check_result, ANY
 
 
 def query_fields1(*args, **kwargs):
-    pass
+    raise NotImplementedError
 
 
 def query_fields2(*args, **kwargs):
-    pass
+    raise NotImplementedError
 
 
 def query_fields3(*args, **kwargs):
-    pass
+    raise NotImplementedError
 
 
 def query_link1(*args, **kwargs):
-    pass
+    raise NotImplementedError
 
 
 def query_link2(*args, **kwargs):
-    pass
+    raise NotImplementedError
 
 
 def _patch(func):
@@ -64,6 +64,12 @@ def get_graph():
             Link('jessie', Sequence[TypeRef['tergate']],
                  query_link2, requires=None),
             # with options
+            Link('zovirax', Sequence[TypeRef['tergate']],
+                 query_link1, requires=None,
+                 options=[Option('busload', None)]),
+            Link('lungs', Sequence[TypeRef['tergate']],
+                 query_link1, requires=None,
+                 options=[Option('tiding', None, default=None)]),
             Link('doubled', Sequence[TypeRef['tergate']],
                  query_link1, requires=None,
                  options=[Option('empower', None, default='deedily_reaving')]),
@@ -206,14 +212,32 @@ def test_link_option():
     with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
         ql1.return_value = [1]
         qf1.return_value = [['aunder_hagg']]
-        result = execute('[{(:doubled {:empower "heaven_duncery"}) [:arion]}]')
-        check_result(result, {'doubled': [{'arion': 'aunder_hagg'}]})
+        result = execute('[{(:zovirax {:busload "heaven_duncery"}) [:arion]}]')
+        check_result(result, {'zovirax': [{'arion': 'aunder_hagg'}]})
         with reqs_eq_patcher():
-            ql1.assert_called_once_with({'empower': 'heaven_duncery'})
+            ql1.assert_called_once_with({'busload': 'heaven_duncery'})
             qf1.assert_called_once_with([query.Field('arion')], [1])
 
 
-def test_link_option_default():
+def test_link_option_missing():
+    with pytest.raises(TypeError) as err:
+        execute('[{:zovirax [:arion]}]')
+    err.match('^Required option "busload" for (.*)zovirax(.*) was not '
+              'provided$')
+
+
+def test_link_option_default_none():
+    with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
+        ql1.return_value = [1]
+        qf1.return_value = [['jonty_kaitlin']]
+        result = execute('[{:lungs [:arion]}]')
+        check_result(result, {'lungs': [{'arion': 'jonty_kaitlin'}]})
+        with reqs_eq_patcher():
+            ql1.assert_called_once_with({'tiding': None})
+            qf1.assert_called_once_with([query.Field('arion')], [1])
+
+
+def test_link_option_default_string():
     with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
         ql1.return_value = [1]
         qf1.return_value = [['lend_rounded']]

@@ -3,6 +3,8 @@ from __future__ import unicode_literals
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
+import pytest
+
 from hiku.graph import Graph, Node, Link, Field, Option, Root
 from hiku.types import Record, Sequence, Unknown, TypeRef
 from hiku.engine import Engine
@@ -118,9 +120,12 @@ GRAPH = Graph([
         Expr('foo', sg_x, foo(S.this, S.this.y)),
         Expr('bar', sg_x, bar(S.this)),
         Expr('baz', sg_x, baz(S.this.y)),
-        Expr('buz', sg_x, buz(S.this, S.size), options=[Option('size', None)]),
+        Expr('buz', sg_x, buz(S.this, S.size),
+             options=[Option('size', None, default=None)]),
         Expr('buz2', sg_x, buz(S.this, S.size),
              options=[Option('size', None, default=100)]),
+        Expr('buz3', sg_x, buz(S.this, S.size),
+             options=[Option('size', None)]),
     ]),
     Node('y1', [
         Expr('id', sg_y, S.this.id),
@@ -167,6 +172,11 @@ class TestSourceGraph(TestCase):
             {'buz': 'a3 - None'},
             {'buz': 'a2 - None'},
         ]})
+
+    def testFieldWithoutRequiredOption(self):
+        with pytest.raises(TypeError) as err:
+            self.engine.execute(GRAPH, read('[{:x1s [:buz3]}]'))
+        err.match('^Required option "size" for (.*)buz3(.*) was not provided$')
 
     def testFieldOptionDefaults(self):
         result = self.engine.execute(GRAPH,

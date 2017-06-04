@@ -26,6 +26,8 @@ GRAPH = Graph([
         Field('nyerere', None, _, options=[Option('epaule', None, default=1)]),
         Field('wreche', None, _, options=[Option('cierra', Integer)]),
         Field('hunter', None, _, options=[Option('fried', Integer, default=1)]),
+        Field('tapioca', None, _,
+              options=[Option('arbour', Optional[Integer], default=None)]),
 
         # simple
         Link('amyls', Sequence[TypeRef['hooted']], _, requires=None),
@@ -38,6 +40,8 @@ GRAPH = Graph([
              options=[Option('flunk', Integer)]),
         Link('secants', Sequence[TypeRef['hooted']], _, requires=None,
              options=[Option('monadic', Integer, default=1)]),
+        Link('hackled', Sequence[TypeRef['hooted']], _, requires=None,
+             options=[Option('lawing', Optional[Integer], default=None)]),
     ]),
 ])
 
@@ -133,6 +137,14 @@ def test_field_options():
         'Unknown options for "root.hunter": invalid',
     ])
 
+    check_errors(mk('tapioca'), [])
+    check_errors(mk('tapioca', options={}), [])
+    check_errors(mk('tapioca', options={'arbour': None}), [])
+    check_errors(mk('tapioca', options={'arbour': 123}), [])
+    check_errors(mk('tapioca', options={'arbour': '123'}), [
+        'Invalid type "str" for option "root.tapioca:arbour" provided',
+    ])
+
 
 def test_link():
     l = q.Link('invalid', q.Node([]))
@@ -196,4 +208,11 @@ def test_link_options():
     ])
     check_errors(mk('secants', options={'monadic': 1, 'invalid': 1}), [
         'Unknown options for "root.secants": invalid',
+    ])
+
+    check_errors(mk('hackled', options={}), [])
+    check_errors(mk('hackled', options={'lawing': None}), [])
+    check_errors(mk('hackled', options={'lawing': 123}), [])
+    check_errors(mk('hackled', options={'lawing': '123'}), [
+        'Invalid type "str" for option "root.hackled:lawing" provided',
     ])

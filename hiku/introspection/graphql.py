@@ -6,6 +6,7 @@ from collections import namedtuple
 from hiku.graph import Graph, Root, Node, Link, Option, Field, Nothing
 from hiku.graph import GraphTransformer
 from hiku.types import TypeRef, String, Sequence, Boolean, Optional, TypeVisitor
+from hiku.compat import text_type
 
 
 LIST = namedtuple('LIST', 'of_type')
@@ -142,7 +143,7 @@ def field_args_link(graph, ids):
     for ident in ids:
         node = nodes_map[ident.node]
         field = node.fields_map[ident.name]
-        yield [ArgumentIdent(node.name, field.name, option.name)
+        yield [ArgumentIdent(ident.node, field.name, option.name)
                for option in field.options
                if NAME_RE.match(option.name) and option.type is not None]
 
@@ -156,7 +157,8 @@ def input_value_info(graph, fields, ids):
         info = {'id': ident,
                 'name': option.name,
                 'description': None,
-                'defaultValue': str(option.default)}
+                'defaultValue': (None if option.default is Nothing
+                                 else text_type(option.default))}
         yield [info[f.name] for f in fields]
 
 

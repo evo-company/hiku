@@ -98,7 +98,6 @@ def test_ref_link_many_node_field():
 
 
 def test_ref_link_maybe_node_field():
-    print(TYPES['civics'])
     civics_ref = NamedRef(None, 'civics', TYPES['civics'])
     check_req(civics_ref, Node([Link('civics', Node([]))]))
 

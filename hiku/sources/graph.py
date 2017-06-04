@@ -1,7 +1,7 @@
 from itertools import chain
 
 from .. import query
-from ..graph import Link, Field
+from ..graph import Link, Field, Nothing
 from ..types import TypeRef, Sequence
 from ..query import merge
 from ..types import Unknown
@@ -58,9 +58,19 @@ class Expr(Field):
         self.reqs = query_node
 
         option_names = [opt.name for opt in self.options]
-        self.option_defaults = [(opt.name, opt.default) for opt in self.options]
         code = ExpressionCompiler.compile_lambda_expr(expr_node, option_names)
         self.proc = eval(compile(code, '<expr>', 'eval'))
+
+
+def _yield_options(query_field, graph_field):
+    options = query_field.options or {}
+    for option in graph_field.options:
+        value = options.get(option.name, option.default)
+        if value is Nothing:
+            raise TypeError('Required option "{}" for {!r} was not provided'
+                            .format(option.name, graph_field))
+        else:
+            yield value
 
 
 @subquery
@@ -85,8 +95,7 @@ class SubGraph(object):
 
         reqs = merge(f.reqs for f in graph_fields)
         procs = [f.proc for f in graph_fields]
-        options = [[qf.options.get(name, default) if qf.options else default
-                    for name, default in gf.option_defaults]
+        options = [list(_yield_options(qf, gf))
                    for qf, gf in zip(fields, graph_fields)]
 
         this_req = reqs.fields_map['this'].node

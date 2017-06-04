@@ -58,7 +58,8 @@ class Option(AbstractOption):
         """
         self.name = name
         self.type = type_
-        self.default, = kw_only(self.__init__, kwargs, [], [('default', None)])
+        self.default, = kw_only(self.__init__, kwargs, [],
+                                [('default', Nothing)])
 
     def __repr__(self):
         return '{}({!r}, {!r}, ...)'.format(self.__class__.__name__,
