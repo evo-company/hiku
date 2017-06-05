@@ -1,4 +1,3 @@
-import unittest
 from contextlib import contextmanager
 try:
     from itertools import zip_longest
@@ -95,9 +94,3 @@ def check_result(result, value):
                'path: {}, value: {!r}, expected: {!r}'
                .format(path_str, subres, subval))
         raise AssertionError(msg)
-
-
-class TestCase(unittest.TestCase):
-
-    def assertResult(self, result, value):
-        check_result(result, value)

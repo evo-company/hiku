@@ -1,20 +1,15 @@
 from hiku.query import merge, Node, Field, Link
 
-from .base import TestCase, reqs_eq_patcher
+from .base import reqs_eq_patcher
 
 
-class TestMerge(TestCase):
-
-    def test(self):
-        with reqs_eq_patcher():
-            self.assertEqual(
-                merge([
-                    Node([Field('a1'), Field('a2'),
-                          Link('b', Node([Field('b1'), Field('b2')]))]),
-                    Node([Field('a2'), Field('a3'),
-                          Link('b', Node([Field('b2'), Field('b3')]))]),
-                ]),
-                Node([Field('a1'), Field('a2'), Field('a3'),
-                      Link('b', Node([Field('b1'), Field('b2'),
-                                      Field('b3')]))]),
-            )
+def test():
+    q1 = Node([Field('a1'), Field('a2'),
+              Link('b', Node([Field('b1'), Field('b2')]))])
+    q2 = Node([Field('a2'), Field('a3'),
+              Link('b', Node([Field('b2'), Field('b3')]))])
+    query = merge([q1, q2])
+    expected = Node([Field('a1'), Field('a2'), Field('a3'),
+                     Link('b', Node([Field('b1'), Field('b2'), Field('b3')]))])
+    with reqs_eq_patcher():
+        assert query == expected

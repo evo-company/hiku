@@ -13,7 +13,7 @@ from hiku.sources.graph import SubGraph, Expr
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
 
-from .base import TestCase
+from .base import check_result
 
 
 DATA = {
@@ -142,68 +142,69 @@ GRAPH = Graph([
 ])
 
 
-class TestSourceGraph(TestCase):
+@pytest.fixture(name='engine')
+def _engine():
+    return Engine(ThreadsExecutor(ThreadPoolExecutor(2)))
 
-    def setUp(self):
-        self.engine = Engine(ThreadsExecutor(ThreadPoolExecutor(2)))
 
-    def testField(self):
-        result = self.engine.execute(GRAPH, read('[{:x1s [:a :f]}]'))
-        self.assertResult(result, {'x1s': [
-            {'a': 'a1', 'f': 7},
-            {'a': 'a3', 'f': 7},
-            {'a': 'a2', 'f': 7},
-        ]})
+def test_field(engine):
+    result = engine.execute(GRAPH, read('[{:x1s [:a :f]}]'))
+    check_result(result, {'x1s': [
+        {'a': 'a1', 'f': 7},
+        {'a': 'a3', 'f': 7},
+        {'a': 'a2', 'f': 7},
+    ]})
 
-    def testFieldOptions(self):
-        result = self.engine.execute(GRAPH,
-                                     read('[{:x1s [(:buz {:size "100"})]}]'))
-        self.assertResult(result, {'x1s': [
-            {'buz': 'a1 - 100'},
-            {'buz': 'a3 - 100'},
-            {'buz': 'a2 - 100'},
-        ]})
 
-    def testFieldWithoutOptions(self):
-        result = self.engine.execute(GRAPH,
-                                     read('[{:x1s [:buz]}]'))
-        self.assertResult(result, {'x1s': [
-            {'buz': 'a1 - None'},
-            {'buz': 'a3 - None'},
-            {'buz': 'a2 - None'},
-        ]})
+def test_field_options(engine):
+    result = engine.execute(GRAPH, read('[{:x1s [(:buz {:size "100"})]}]'))
+    check_result(result, {'x1s': [
+        {'buz': 'a1 - 100'},
+        {'buz': 'a3 - 100'},
+        {'buz': 'a2 - 100'},
+    ]})
 
-    def testFieldWithoutRequiredOption(self):
-        with pytest.raises(TypeError) as err:
-            self.engine.execute(GRAPH, read('[{:x1s [:buz3]}]'))
-        err.match('^Required option "size" for (.*)buz3(.*) was not provided$')
 
-    def testFieldOptionDefaults(self):
-        result = self.engine.execute(GRAPH,
-                                     read('[{:x1s [:buz2]}]'))
-        self.assertResult(result, {'x1s': [
-            {'buz2': 'a1 - 100'},
-            {'buz2': 'a3 - 100'},
-            {'buz2': 'a2 - 100'},
-        ]})
-        result = self.engine.execute(GRAPH,
-                                     read('[{:x1s [(:buz2 {:size 200})]}]'))
-        self.assertResult(result, {'x1s': [
-            {'buz2': 'a1 - 200'},
-            {'buz2': 'a3 - 200'},
-            {'buz2': 'a2 - 200'},
-        ]})
+def test_field_without_options(engine):
+    result = engine.execute(GRAPH, read('[{:x1s [:buz]}]'))
+    check_result(result, {'x1s': [
+        {'buz': 'a1 - None'},
+        {'buz': 'a3 - None'},
+        {'buz': 'a2 - None'},
+    ]})
 
-    def testSequenceInArgType(self):
-        result = self.engine.execute(GRAPH, read('[{:x1s [:baz]}]'))
-        self.assertResult(result, {'x1s': [
-            {'baz': 'D3 [B1]'},
-            {'baz': 'D1 [B3]'},
-            {'baz': 'D2 [B2]'},
-        ]})
-        result = self.engine.execute(GRAPH, read('[{:y1s [:baz]}]'))
-        self.assertResult(result, {'y1s': [
-            {'baz': 'D3 [B1]'},
-            {'baz': 'D1 [B3]'},
-            {'baz': 'D2 [B2]'},
-        ]})
+
+def test_field_without_required_option(engine):
+    with pytest.raises(TypeError) as err:
+        engine.execute(GRAPH, read('[{:x1s [:buz3]}]'))
+    err.match('^Required option "size" for (.*)buz3(.*) was not provided$')
+
+
+def test_field_option_defaults(engine):
+    result = engine.execute(GRAPH, read('[{:x1s [:buz2]}]'))
+    check_result(result, {'x1s': [
+        {'buz2': 'a1 - 100'},
+        {'buz2': 'a3 - 100'},
+        {'buz2': 'a2 - 100'},
+    ]})
+    result = engine.execute(GRAPH, read('[{:x1s [(:buz2 {:size 200})]}]'))
+    check_result(result, {'x1s': [
+        {'buz2': 'a1 - 200'},
+        {'buz2': 'a3 - 200'},
+        {'buz2': 'a2 - 200'},
+    ]})
+
+
+def test_sequence_in_arg_type(engine):
+    result = engine.execute(GRAPH, read('[{:x1s [:baz]}]'))
+    check_result(result, {'x1s': [
+        {'baz': 'D3 [B1]'},
+        {'baz': 'D1 [B3]'},
+        {'baz': 'D2 [B2]'},
+    ]})
+    result = engine.execute(GRAPH, read('[{:y1s [:baz]}]'))
+    check_result(result, {'y1s': [
+        {'baz': 'D3 [B1]'},
+        {'baz': 'D1 [B3]'},
+        {'baz': 'D2 [B2]'},
+    ]})
