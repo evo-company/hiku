@@ -8,7 +8,6 @@ from hiku.graph import Graph, Root, Node, Link, Option, Field, Nothing
 from hiku.graph import GraphTransformer
 from hiku.types import TypeRef, String, Sequence, Boolean, Optional, TypeVisitor
 from hiku.compat import text_type
-from hiku.sources.graph import Expr
 
 
 LIST = namedtuple('LIST', 'of_type')
@@ -300,11 +299,6 @@ class AddIntrospection(GraphTransformer):
         self.introspection_graph = introspection_graph
         self.type_name_field_factory = type_name_field_factory
 
-    def visit_expr(self, obj):
-        return Expr(obj.name, obj.func, obj.type, obj.expr,
-                    options=[self.visit(op) for op in obj.options],
-                    description=obj.description)
-
     def visit_node(self, obj):
         node = super(AddIntrospection, self).visit_node(obj)
         node.fields.append(self.type_name_field_factory(obj.name))
@@ -312,7 +306,6 @@ class AddIntrospection(GraphTransformer):
 
     def visit_root(self, obj):
         root = super(AddIntrospection, self).visit_root(obj)
-        root.fields.extend(self.introspection_graph.root.fields)
         root.fields.append(self.type_name_field_factory(ROOT_NAME))
         return root
 

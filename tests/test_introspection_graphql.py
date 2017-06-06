@@ -5,6 +5,8 @@ from hiku.engine import Engine
 from hiku.expr.core import S
 from hiku.sources.graph import SubGraph, Expr
 from hiku.executors.sync import SyncExecutor
+from hiku.validate.graph import GraphValidator
+from hiku.validate.query import QueryValidator
 from hiku.readers.graphql import read
 from hiku.introspection.graphql import add_introspection
 
@@ -256,7 +258,17 @@ def test_typename():
 def test_introspection_query():
     engine = Engine(SyncExecutor())
     graph = add_introspection(GRAPH)
+
+    graph_validator = GraphValidator(graph)
+    graph_validator.visit(graph)
+    assert not graph_validator.errors.list
+
     query = read(QUERY)
+
+    query_validator = QueryValidator(graph)
+    query_validator.visit(query)
+    assert not query_validator.errors.list
+
     norm_result = engine.execute(graph, query)
     result = denormalize(graph, norm_result, query)
     assert result == RESULT
