@@ -40,6 +40,7 @@ class Expr(Field):
                             .format(len(other)))
 
         super(Expr, self).__init__(name, type_, subquery, **kwargs)
+        self.expr = expr
 
         expr_node, functions = to_expr(expr)
 
@@ -60,6 +61,9 @@ class Expr(Field):
         option_names = [opt.name for opt in self.options]
         code = ExpressionCompiler.compile_lambda_expr(expr_node, option_names)
         self.proc = eval(compile(code, '<expr>', 'eval'))
+
+    def accept(self, visitor):
+        return visitor.visit_expr(self)
 
 
 def _yield_options(query_field, graph_field):

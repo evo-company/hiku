@@ -5,6 +5,7 @@ Changes in 0.3
 ~~~~~
 
   - Added ability to specify option's default value as None
+  - Fixed two-level graph introspection
 
 0.3.8
 ~~~~~

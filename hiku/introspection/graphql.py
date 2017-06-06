@@ -1,12 +1,14 @@
 import re
 
+from itertools import chain
 from functools import partial
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 
 from hiku.graph import Graph, Root, Node, Link, Option, Field, Nothing
 from hiku.graph import GraphTransformer
 from hiku.types import TypeRef, String, Sequence, Boolean, Optional, TypeVisitor
 from hiku.compat import text_type
+from hiku.sources.graph import Expr
 
 
 LIST = namedtuple('LIST', 'of_type')
@@ -57,7 +59,8 @@ def na_many(graph, ids=None, options=None):
 
 
 def _nodes_map(graph):
-    return dict(graph.nodes_map, **{ROOT_NAME: graph.root})
+    return OrderedDict(chain(((n.name, n) for n in graph.nodes),
+                             ((ROOT_NAME, graph.root),)))
 
 
 def type_link(graph, options):
@@ -296,6 +299,11 @@ class AddIntrospection(GraphTransformer):
     def __init__(self, introspection_graph, type_name_field_factory):
         self.introspection_graph = introspection_graph
         self.type_name_field_factory = type_name_field_factory
+
+    def visit_expr(self, obj):
+        return Expr(obj.name, obj.func, obj.type, obj.expr,
+                    options=[self.visit(op) for op in obj.options],
+                    description=obj.description)
 
     def visit_node(self, obj):
         node = super(AddIntrospection, self).visit_node(obj)
