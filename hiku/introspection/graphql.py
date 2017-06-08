@@ -4,10 +4,10 @@ from itertools import chain
 from functools import partial
 from collections import namedtuple, OrderedDict
 
-from hiku.graph import Graph, Root, Node, Link, Option, Field, Nothing
-from hiku.graph import GraphTransformer
-from hiku.types import TypeRef, String, Sequence, Boolean, Optional, TypeVisitor
-from hiku.compat import text_type
+from ..graph import Graph, Root, Node, Link, Option, Field, Nothing
+from ..graph import GraphTransformer
+from ..types import TypeRef, String, Sequence, Boolean, Optional, TypeVisitor
+from ..compat import text_type, async_wrapper
 
 
 LIST = namedtuple('LIST', 'of_type')
@@ -275,17 +275,14 @@ class BindToGraph(GraphTransformer):
 
 class MakeAsync(GraphTransformer):
 
-    def __init__(self, async_wrapper):
-        self.async_wrapper = async_wrapper
-
     def visit_field(self, obj):
         field = super(MakeAsync, self).visit_field(obj)
-        field.func = self.async_wrapper(field.func)
+        field.func = async_wrapper(field.func)
         return field
 
     def visit_link(self, obj):
         link = super(MakeAsync, self).visit_link(obj)
-        link.func = self.async_wrapper(link.func)
+        link.func = async_wrapper(link.func)
         return link
 
 
@@ -315,28 +312,39 @@ class AddIntrospection(GraphTransformer):
         return graph
 
 
-def add_introspection(graph):
-    introspection_graph = BindToGraph(graph).visit(GRAPH)
+class GraphQLIntrospection(GraphTransformer):
 
-    def type_name_field_factory(node_name):
+    def __type_name__(self, node_name):
         return Field('__typename', String,
                      partial(type_name_field_func, node_name))
 
-    return AddIntrospection(introspection_graph,
-                            type_name_field_factory).visit(graph)
+    def __introspection_graph__(self, graph):
+        return BindToGraph(graph).visit(GRAPH)
+
+    def visit_node(self, obj):
+        node = super(GraphQLIntrospection, self).visit_node(obj)
+        node.fields.append(self.__type_name__(obj.name))
+        return node
+
+    def visit_root(self, obj):
+        root = super(GraphQLIntrospection, self).visit_root(obj)
+        root.fields.append(self.__type_name__(ROOT_NAME))
+        return root
+
+    def visit_graph(self, obj):
+        introspection_graph = self.__introspection_graph__(obj)
+        graph = super(GraphQLIntrospection, self).visit_graph(obj)
+        graph.items.extend(introspection_graph.items)
+        return graph
 
 
-def add_introspection_async(graph):
-    from ._graphql import async_wrapper
+class AsyncGraphQLIntrospection(GraphQLIntrospection):
 
-    introspection_graph = BindToGraph(graph).visit(GRAPH)
-    introspection_graph = MakeAsync(async_wrapper)\
-        .visit(introspection_graph)
-
-    def type_name_field_factory(node_name):
+    def __type_name__(self, node_name):
         return Field('__typename', String,
-                     async_wrapper(partial(type_name_field_func,
-                                           node_name)))
+                     async_wrapper(partial(type_name_field_func, node_name)))
 
-    return AddIntrospection(introspection_graph,
-                            type_name_field_factory).visit(graph)
+    def __introspection_graph__(self, graph):
+        introspection_graph = BindToGraph(graph).visit(GRAPH)
+        introspection_graph = MakeAsync().visit(introspection_graph)
+        return introspection_graph

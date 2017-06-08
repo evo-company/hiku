@@ -7,6 +7,7 @@
 
 """
 from abc import ABCMeta, abstractmethod
+from functools import reduce
 from itertools import chain
 from collections import OrderedDict
 
@@ -386,11 +387,6 @@ class AbstractGraphVisitor(with_metaclass(ABCMeta, object)):
     def visit_field(self, obj):
         pass
 
-    # FIXME: remove after Expr/SubGraph refactoring
-    @abstractmethod
-    def visit_expr(self, obj):
-        pass
-
     @abstractmethod
     def visit_link(self, obj):
         pass
@@ -419,10 +415,6 @@ class GraphVisitor(AbstractGraphVisitor):
     def visit_field(self, obj):
         for option in obj.options:
             self.visit(option)
-
-    # FIXME: remove after Expr/SubGraph refactoring
-    def visit_expr(self, obj):
-        self.visit_field(obj)
 
     def visit_link(self, obj):
         for option in obj.options:
@@ -454,12 +446,6 @@ class GraphTransformer(AbstractGraphVisitor):
                      options=[self.visit(op) for op in obj.options],
                      description=obj.description)
 
-    # FIXME: remove after Expr/SubGraph refactoring
-    def visit_expr(self, obj):
-        return type(obj)(obj.name, obj.func, obj.type, obj.expr,
-                         options=[self.visit(op) for op in obj.options],
-                         description=obj.description)
-
     def visit_link(self, obj):
         return Link(obj.name, obj.type, obj.func,
                     requires=obj.requires,
@@ -475,3 +461,7 @@ class GraphTransformer(AbstractGraphVisitor):
 
     def visit_graph(self, obj):
         return Graph([self.visit(node) for node in obj.items])
+
+
+def apply(graph, transformers):
+    return reduce(lambda g, t: t.visit(g), transformers, graph)

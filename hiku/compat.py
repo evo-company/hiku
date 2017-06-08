@@ -83,3 +83,12 @@ else:
             return '{}.{}'.format(fn.im_class.__name__, fn.im_func.__name__)
         else:
             return fn.__name__
+
+
+if PY35:
+    from ._compat import async_wrapper
+
+    async_wrapper = async_wrapper
+else:
+    def async_wrapper(func):
+        raise RuntimeError('Can not use async/await in Python < 3.5')

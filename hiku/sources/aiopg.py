@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-from hiku.sources import sqlalchemy as _sa
+from . import sqlalchemy as _sa
 
 
 class FieldsQuery(_sa.FieldsQuery):

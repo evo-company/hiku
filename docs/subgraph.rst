@@ -81,9 +81,9 @@ exposes all of our data sources. High-level graph is used to express our
 business-logic based on low-level graph, and hides it's implementation details.
 
 .. literalinclude:: test_subgraph.py
-    :lines: 110-134
+    :lines: 110-137
     :linenos:
-    :emphasize-lines: 5-6,10,15,17-19
+    :emphasize-lines: 5-6,10,15,17-20
 
 Hold on, as there are lots of new things in the high-level graph definition
 above.
@@ -144,7 +144,7 @@ of the standard "no-photo" image :sup:`[19]`. Without using
 Testing our high-level graph:
 
 .. literalinclude:: test_subgraph.py
-    :lines: 139-149
+    :lines: 142-152
     :dedent: 4
 
 As you can see, the goal is achieved.

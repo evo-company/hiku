@@ -19,6 +19,9 @@ class _DotHandler(object):
     def __init__(self, obj):
         self.obj = obj
 
+    def __repr__(self):
+        return repr(self.obj)
+
     def __getattr__(self, name):
         return _DotHandler(Tuple([Symbol('get'), self.obj, Symbol(name)]))
 

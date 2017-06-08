@@ -47,7 +47,7 @@ class ExpressionCompiler(object):
         compiler = cls()
         with compiler.env.push(['this'] + args):
             body = compiler.visit(node)
-        py_args = [py.arg('this'), py.arg(cls.env_var), py.arg(cls.ctx_var)]
+        py_args = [py.arg(cls.env_var), py.arg('this'), py.arg(cls.ctx_var)]
         py_args += [py.arg(name) for name in args]
         expr = py.Lambda(py.arguments(py_args, None, None, []), body)
         py.fix_missing_locations(expr)

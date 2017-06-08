@@ -1,14 +1,14 @@
-from hiku.graph import Graph, Root, Field, Node, Link
+from hiku.graph import Graph, Root, Field, Node, Link, apply
 from hiku.types import String, Integer, Sequence, TypeRef, Boolean
 from hiku.result import denormalize
 from hiku.engine import Engine
 from hiku.expr.core import S
-from hiku.sources.graph import SubGraph, Expr
+from hiku.sources.graph import SubGraph
 from hiku.executors.sync import SyncExecutor
 from hiku.validate.graph import GraphValidator
 from hiku.validate.query import QueryValidator
 from hiku.readers.graphql import read
-from hiku.introspection.graphql import add_introspection
+from hiku.introspection.graphql import GraphQLIntrospection
 
 
 def field_func():
@@ -29,7 +29,7 @@ flexed_sg = SubGraph(_GRAPH, 'flexed')
 
 GRAPH = Graph([
     Node('flexed', [
-        Expr('yari', flexed_sg, Boolean, S.this.yari),
+        Field('yari', Boolean, flexed_sg.c(S.this.yari)),
     ]),
     Node('decian', [
         Field('dogme', Integer, field_func),
@@ -225,24 +225,8 @@ RESULT = {
 }
 
 
-def test_graph_transformer():
-    old_flexed = GRAPH.nodes_map['flexed']
-    graph = add_introspection(GRAPH)
-    new_flexed = graph.nodes_map['flexed']
-
-    old_yari = old_flexed.fields_map['yari']
-    new_yari = new_flexed.fields_map['yari']
-
-    assert isinstance(new_yari, Expr)
-    assert old_yari is not new_yari
-    assert old_yari.name == new_yari.name
-    assert old_yari.type is new_yari.type
-    assert old_yari.func is new_yari.func
-    assert old_yari.expr is new_yari.expr
-
-
 def test_typename():
-    graph = add_introspection(GRAPH)
+    graph = apply(GRAPH, [GraphQLIntrospection()])
     assert graph.root.fields_map['__typename'].type is String
     assert graph.root.fields_map['__typename'].func([None]) == ['Root']
 
@@ -257,7 +241,7 @@ def test_typename():
 
 def test_introspection_query():
     engine = Engine(SyncExecutor())
-    graph = add_introspection(GRAPH)
+    graph = apply(GRAPH, [GraphQLIntrospection()])
 
     graph_validator = GraphValidator(graph)
     graph_validator.visit(graph)

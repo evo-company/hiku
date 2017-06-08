@@ -5,11 +5,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from hiku.graph import Graph, Node, Link, Field, Option, Root
+from hiku.graph import Graph, Node, Link, Field, Option, Root, apply
 from hiku.types import Record, Sequence, Unknown, TypeRef
 from hiku.engine import Engine
 from hiku.expr.core import define, S, each
-from hiku.sources.graph import SubGraph, Expr
+from hiku.sources.graph import SubGraph, ExpressionsChecker
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
 
@@ -114,26 +114,28 @@ sg_y = SubGraph(_GRAPH, 'y')
 # TODO: refactor
 GRAPH = Graph([
     Node('x1', [
-        Expr('id', sg_x, S.this.id),
-        Expr('a', sg_x, S.this.a),
-        Expr('f', sg_x, S.f1),
-        Expr('foo', sg_x, foo(S.this, S.this.y)),
-        Expr('bar', sg_x, bar(S.this)),
-        Expr('baz', sg_x, baz(S.this.y)),
-        Expr('buz', sg_x, buz(S.this, S.size),
-             options=[Option('size', None, default=None)]),
-        Expr('buz2', sg_x, buz(S.this, S.size),
-             options=[Option('size', None, default=100)]),
-        Expr('buz3', sg_x, buz(S.this, S.size),
-             options=[Option('size', None)]),
+        Field('id', None, sg_x.compile(S.this.id)),
+        Field('a', None, sg_x.compile(S.this.a)),
+        Field('f', None, sg_x.compile(S.f1)),
+        Field('foo', None, sg_x.compile(foo(S.this, S.this.y))),
+        Field('bar', None, sg_x.compile(bar(S.this))),
+        Field('baz', None, sg_x.compile(baz(S.this.y))),
+        Field('buz', None, sg_x.compile(buz(S.this, S.size)),
+              options=[Option('size', None, default=None)]),
+        Field('buz2', None, sg_x.compile(buz(S.this, S.size)),
+              options=[Option('size', None, default=100)]),
+        Field('buz3', None, sg_x.compile(buz(S.this, S.size)),
+              options=[Option('size', None)]),
     ]),
     Node('y1', [
-        Expr('id', sg_y, S.this.id),
-        Expr('c', sg_y, S.this.c),
-        Expr('f', sg_y, S.f2),
-        Expr('foo', sg_y, each(S.x, S.this.xs, foo(S.x, S.this))),
-        Expr('bar', sg_y, each(S.x, S.this.xs, bar(S.x))),
-        Expr('baz', sg_y, baz(S.this)),
+        Field('id', None, sg_y.compile(S.this.id)),
+        Field('c', None, sg_y.compile(S.this.c)),
+        Field('f', None, sg_y.compile(S.f2)),
+        Field('foo', None, sg_y.compile(
+            each(S.x, S.this.xs, foo(S.x, S.this))
+        )),
+        Field('bar', None, sg_y.compile(each(S.x, S.this.xs, bar(S.x)))),
+        Field('baz', None, sg_y.compile(baz(S.this))),
     ]),
     Root([
         Link('x1s', Sequence[TypeRef['x1']], to_x, requires=None),
@@ -147,8 +149,13 @@ def _engine():
     return Engine(ThreadsExecutor(ThreadPoolExecutor(2)))
 
 
-def test_field(engine):
-    result = engine.execute(GRAPH, read('[{:x1s [:a :f]}]'))
+@pytest.fixture(name='graph')
+def _graph():
+    return apply(GRAPH, [ExpressionsChecker()])
+
+
+def test_field(engine, graph):
+    result = engine.execute(graph, read('[{:x1s [:a :f]}]'))
     check_result(result, {'x1s': [
         {'a': 'a1', 'f': 7},
         {'a': 'a3', 'f': 7},
@@ -156,8 +163,8 @@ def test_field(engine):
     ]})
 
 
-def test_field_options(engine):
-    result = engine.execute(GRAPH, read('[{:x1s [(:buz {:size "100"})]}]'))
+def test_field_options(engine, graph):
+    result = engine.execute(graph, read('[{:x1s [(:buz {:size "100"})]}]'))
     check_result(result, {'x1s': [
         {'buz': 'a1 - 100'},
         {'buz': 'a3 - 100'},
@@ -165,8 +172,8 @@ def test_field_options(engine):
     ]})
 
 
-def test_field_without_options(engine):
-    result = engine.execute(GRAPH, read('[{:x1s [:buz]}]'))
+def test_field_without_options(engine, graph):
+    result = engine.execute(graph, read('[{:x1s [:buz]}]'))
     check_result(result, {'x1s': [
         {'buz': 'a1 - None'},
         {'buz': 'a3 - None'},
@@ -174,20 +181,20 @@ def test_field_without_options(engine):
     ]})
 
 
-def test_field_without_required_option(engine):
+def test_field_without_required_option(engine, graph):
     with pytest.raises(TypeError) as err:
-        engine.execute(GRAPH, read('[{:x1s [:buz3]}]'))
+        engine.execute(graph, read('[{:x1s [:buz3]}]'))
     err.match('^Required option "size" for (.*)buz3(.*) was not provided$')
 
 
-def test_field_option_defaults(engine):
-    result = engine.execute(GRAPH, read('[{:x1s [:buz2]}]'))
+def test_field_option_defaults(engine, graph):
+    result = engine.execute(graph, read('[{:x1s [:buz2]}]'))
     check_result(result, {'x1s': [
         {'buz2': 'a1 - 100'},
         {'buz2': 'a3 - 100'},
         {'buz2': 'a2 - 100'},
     ]})
-    result = engine.execute(GRAPH, read('[{:x1s [(:buz2 {:size 200})]}]'))
+    result = engine.execute(graph, read('[{:x1s [(:buz2 {:size 200})]}]'))
     check_result(result, {'x1s': [
         {'buz2': 'a1 - 200'},
         {'buz2': 'a3 - 200'},
@@ -195,14 +202,14 @@ def test_field_option_defaults(engine):
     ]})
 
 
-def test_sequence_in_arg_type(engine):
-    result = engine.execute(GRAPH, read('[{:x1s [:baz]}]'))
+def test_sequence_in_arg_type(engine, graph):
+    result = engine.execute(graph, read('[{:x1s [:baz]}]'))
     check_result(result, {'x1s': [
         {'baz': 'D3 [B1]'},
         {'baz': 'D1 [B3]'},
         {'baz': 'D2 [B2]'},
     ]})
-    result = engine.execute(GRAPH, read('[{:y1s [:baz]}]'))
+    result = engine.execute(graph, read('[{:y1s [:baz]}]'))
     check_result(result, {'y1s': [
         {'baz': 'D3 [B1]'},
         {'baz': 'D1 [B3]'},

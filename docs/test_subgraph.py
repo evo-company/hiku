@@ -36,7 +36,7 @@ sa_engine.execute(character_table.insert().values([
 
 # define low-level graph
 
-from hiku.graph import Graph, Root, Node, Link
+from hiku.graph import Graph, Root, Node, Field, Link, apply
 from hiku.types import TypeRef, Sequence, Optional
 from hiku.engine import pass_context, Nothing
 from hiku.sources import sqlalchemy as sa
@@ -107,9 +107,9 @@ def test_low_level():
 
 # define high-level graph
 
-from hiku.expr.core import S, define, if_some
 from hiku.types import Record, Integer, String
-from hiku.sources.graph import SubGraph, Expr
+from hiku.expr.core import S, define, if_some
+from hiku.sources.graph import SubGraph, ExpressionsChecker
 
 @define(Record[{'id': Integer, 'name': String}])
 def image_url(image):
@@ -120,18 +120,21 @@ character_sg = SubGraph(_GRAPH, 'character')
 
 GRAPH = Graph([
     Node('character', [
-        Expr('id', character_sg, S.this.id),
-        Expr('name', character_sg, S.this.name),
-        Expr('image-url', character_sg,
-             if_some([S.img, S.this.image],
-                     image_url(S.img),
-                     'http://example.com/no-photo.jpg')),
+        Field('id', None, character_sg.c(S.this.id)),
+        Field('name', None, character_sg.c(S.this.name)),
+        Field('image-url', None, character_sg.c(
+            if_some([S.img, S.this.image],
+                    image_url(S.img),
+                    'http://example.com/no-photo.jpg'),
+        )),
     ]),
     Root([
         Link('characters', Sequence[TypeRef['character']],
              to_characters_query, requires=None),
     ]),
 ])
+
+GRAPH = apply(GRAPH, [ExpressionsChecker()])
 
 # test high-level graph
 

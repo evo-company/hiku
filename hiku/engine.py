@@ -127,16 +127,19 @@ def link_result_to_ids(is_list, link_type, result):
     raise TypeError(repr([is_list, link_type]))
 
 
-def get_options(graph_obj, query_obj):
-    _options = query_obj.options or {}
-    options = {}
-    for opt in graph_obj.options:
-        opt_value = _options.get(opt.name, opt.default)
-        if opt_value is Nothing:
+def _yield_options(graph_obj, query_obj):
+    options = query_obj.options or {}
+    for option in graph_obj.options:
+        value = options.get(option.name, option.default)
+        if value is Nothing:
             raise TypeError('Required option "{}" for {!r} was not provided'
-                            .format(opt.name, graph_obj))
-        options[opt.name] = opt_value
-    return options
+                            .format(option.name, graph_obj))
+        else:
+            yield option.name, value
+
+
+def get_options(graph_obj, query_obj):
+    return dict(_yield_options(graph_obj, query_obj))
 
 
 class Query(Workflow):
@@ -166,37 +169,49 @@ class Query(Workflow):
 
         to_func = {}
         from_func = defaultdict(list)
+        from_sq = defaultdict(list)
         for graph_field, query_field in fields:
-            to_func[graph_field.name] = graph_field.func
-            from_func[graph_field.func].append(query_field)
+            sq = getattr(graph_field.func, '__subquery__', None)
+            if sq is None:
+                to_func[graph_field.name] = graph_field.func
+                from_func[graph_field.func].append(query_field)
+            else:
+                to_func[graph_field.name] = sq
+                from_sq[sq].append((graph_field, query_field))
 
         # schedule fields resolve
         to_fut = {}
         for func, func_fields in from_func.items():
-            if _is_subquery(func):
-                task_set = self._queue.fork(self._task_set)
-                if ids is not None:
-                    result_proc = func(self._queue, self._ctx, task_set,
-                                       node, func_fields, ids)
-                else:
-                    result_proc = func(self._queue, self._ctx, task_set,
-                                       node, func_fields)
-                to_fut[func] = task_set
-                self._queue.add_callback(task_set, (
-                    lambda:
-                    result_proc(self._result)
-                ))
+            if ids is not None:
+                fut = self._submit(func, func_fields, ids)
             else:
-                if ids is not None:
-                    fut = self._submit(func, func_fields, ids)
-                else:
-                    fut = self._submit(func, func_fields)
-                to_fut[func] = fut
-                self._queue.add_callback(fut, (
-                    lambda _fut=fut, _func_fields=func_fields:
-                    store_fields(self._result, node, _func_fields, ids,
-                                 _fut.result())
-                ))
+                fut = self._submit(func, func_fields)
+
+            to_fut[func] = fut
+            self._queue.add_callback(fut, (
+                lambda _func_fields=func_fields, _result_proc=fut.result:
+                store_fields(self._result, node, _func_fields, ids,
+                             _result_proc())
+            ))
+
+        for func, func_fields in from_sq.items():
+            assert ids is not None, 'Sub-queries without ids not supported yet'
+            graph_fields, query_fields = zip(*func_fields) \
+                if func_fields else ([], [])
+
+            options = [[v for _, v in _yield_options(gf, qf)]
+                       for gf, qf in fields]
+
+            task_set = self._queue.fork(self._task_set)
+            result_proc = func(graph_fields, query_fields, options, ids,
+                               self._queue, self._ctx, task_set)
+
+            to_fut[func] = task_set
+            self._queue.add_callback(task_set, (
+                lambda _query_fields=query_fields, _result_proc=result_proc:
+                store_fields(self._result, node, _query_fields, ids,
+                             _result_proc())
+            ))
 
         # schedule link resolve
         for graph_link, query_link in links:
@@ -248,15 +263,6 @@ def pass_context(func):
 
 def _do_pass_context(func):
     return getattr(func, '__pass_context__', False)
-
-
-def subquery(func):
-    func.__subquery__ = True
-    return func
-
-
-def _is_subquery(func):
-    return getattr(func, '__subquery__', False)
 
 
 class Context(object):

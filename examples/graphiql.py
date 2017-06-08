@@ -3,13 +3,14 @@ from flask import Flask, request, jsonify
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
+from hiku.graph import apply
 from hiku.engine import Engine
 from hiku.result import denormalize
 from hiku.sources import sqlalchemy as sa
 from hiku.executors.sync import SyncExecutor
 from hiku.validate.query import QueryValidator
 from hiku.readers.graphql import read
-from hiku.introspection.graphql import add_introspection
+from hiku.introspection.graphql import GraphQLIntrospection
 
 from tests.test_source_sqlalchemy import setup_db, get_graph, get_queries
 from tests.test_source_sqlalchemy import SA_ENGINE_KEY, SyncQueries
@@ -49,7 +50,7 @@ if __name__ == "__main__":
     app.config['HIKU_CTX'] = {SA_ENGINE_KEY: sa_engine}
 
     graph = get_graph(sa, get_queries(sa, SA_ENGINE_KEY, SyncQueries))
-    graph = add_introspection(graph)
+    graph = apply(graph, [GraphQLIntrospection()])
     app.config['GRAPH'] = graph
 
     app.run()

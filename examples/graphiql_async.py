@@ -3,13 +3,13 @@ import asyncio
 from aiohttp import web
 
 from hiku.types import String
-from hiku.graph import Graph, Root, Field
+from hiku.graph import Graph, Root, Field, apply
 from hiku.engine import Engine
 from hiku.result import denormalize
 from hiku.validate.query import QueryValidator
 from hiku.readers.graphql import read
 from hiku.executors.asyncio import AsyncIOExecutor
-from hiku.introspection.graphql import add_introspection_async
+from hiku.introspection.graphql import AsyncGraphQLIntrospection
 
 
 async def foo_field_func(fields):
@@ -45,5 +45,5 @@ if __name__ == "__main__":
     app = web.Application()
     app.router.add_post('/', handler)
     app['HIKU_ENGINE'] = Engine(AsyncIOExecutor(asyncio.get_event_loop()))
-    app['GRAPH'] = add_introspection_async(GRAPH)
+    app['GRAPH'] = apply(GRAPH, [AsyncGraphQLIntrospection()])
     web.run_app(app)
