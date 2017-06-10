@@ -16,12 +16,14 @@ library:
 - query documents with single query operation
 - selection sets
 - fields with arguments
+- fragments
+- variables
 
 **Probably will be supported in the future**
 
 - mutations and other non-query operations
 - field aliases
-- variables
+
 
 Reading GraphQL queries
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -29,10 +31,29 @@ Reading GraphQL queries
 Minimal graph definition:
 
 .. literalinclude:: test_graphql.py
-    :lines: 9-23
+    :lines: 11-25
 
 `GraphQL` query execution:
 
 .. literalinclude:: test_graphql.py
-    :lines: 29-32
+    :lines: 31-34
+    :dedent: 4
+
+
+Introspection
+~~~~~~~~~~~~~
+
+Hiku's graph by default doesn't contain a built-in introspection,
+but it can be added.
+
+For synchronous graphs:
+
+.. literalinclude:: test_graphql.py
+    :lines: 40-48
+    :dedent: 4
+
+For asynchronous graphs:
+
+.. literalinclude:: test_graphql.py
+    :lines: 59-67
     :dedent: 4
