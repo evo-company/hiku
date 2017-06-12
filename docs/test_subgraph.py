@@ -40,6 +40,7 @@ from hiku.graph import Graph, Root, Node, Field, Link, apply
 from hiku.types import TypeRef, Sequence, Optional
 from hiku.engine import pass_context, Nothing
 from hiku.sources import sqlalchemy as sa
+from hiku.sources.sqlalchemy import TypingFromSQLTypes
 
 SA_ENGINE_KEY = 'sa-engine'
 
@@ -61,13 +62,13 @@ def to_characters_query(ctx):
 
 _GRAPH = Graph([
     Node('image', [
-        sa.Field('id', image_query),
-        sa.Field('name', image_query),
+        Field('id', None, image_query),
+        Field('name', None, image_query),
     ]),
     Node('character', [
-        sa.Field('id', character_query),
-        sa.Field('image_id', character_query),
-        sa.Field('name', character_query),
+        Field('id', None, character_query),
+        Field('image_id', None, character_query),
+        Field('name', None, character_query),
         Link('image', Optional[TypeRef['image']],
              maybe_direct_link, requires='image_id'),
     ]),
@@ -76,6 +77,8 @@ _GRAPH = Graph([
              to_characters_query, requires=None),
     ]),
 ])
+
+_GRAPH = apply(_GRAPH, [TypingFromSQLTypes()])
 
 # test low-level graph
 

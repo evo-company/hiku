@@ -49,7 +49,7 @@ if __name__ == "__main__":
     app.config['HIKU_ENGINE'] = Engine(SyncExecutor())
     app.config['HIKU_CTX'] = {SA_ENGINE_KEY: sa_engine}
 
-    graph = get_graph(sa, get_queries(sa, SA_ENGINE_KEY, SyncQueries))
+    graph = get_graph(get_queries(sa, SA_ENGINE_KEY, SyncQueries))
     graph = apply(graph, [GraphQLIntrospection()])
     app.config['GRAPH'] = graph
 

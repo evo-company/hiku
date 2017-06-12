@@ -1,6 +1,8 @@
 Using AsyncIO :sup:`feat. aiopg`
 ================================
 
+.. FIXME: line numbers
+
 Hiku has several executors, previous examples were using
 :py:class:`hiku.executors.sync.SyncExecutor` and they can also be used with
 :py:class:`hiku.executors.threads.ThreadsExecutor` to execute query

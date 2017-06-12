@@ -22,7 +22,7 @@ if __name__ == '__main__':
     )
     setup_db(sa_engine)
 
-    graph = get_graph(sa, get_queries(sa, SA_ENGINE_KEY, SyncQueries))
+    graph = get_graph(get_queries(sa, SA_ENGINE_KEY, SyncQueries))
 
     app = ConsoleApplication(graph, engine, {SA_ENGINE_KEY: sa_engine},
                              debug=True)

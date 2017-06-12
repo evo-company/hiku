@@ -16,7 +16,7 @@ from .test_source_sqlalchemy import get_queries, get_graph
 
 engine = Engine(SyncExecutor())
 
-GRAPH = get_graph(sa, get_queries(sa, SA_ENGINE_KEY, SyncQueries))
+GRAPH = get_graph(get_queries(sa, SA_ENGINE_KEY, SyncQueries))
 
 
 def request(app, method, path_info, script_name='', payload=None):

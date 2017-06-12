@@ -80,7 +80,7 @@ def db_dsn_fixture(request):
 
 # define graph
 
-from hiku.graph import Graph, Root, Node, Link
+from hiku.graph import Graph, Root, Node, Link, Field
 from hiku.types import TypeRef, Sequence
 from hiku.engine import pass_context
 from hiku.sources import aiopg as sa
@@ -91,9 +91,11 @@ character_query = sa.FieldsQuery(SA_ENGINE_KEY, character_table)
 
 actor_query = sa.FieldsQuery(SA_ENGINE_KEY, actor_table)
 
-character_to_actors_query = sa.LinkQuery(Sequence[TypeRef['actor']], SA_ENGINE_KEY,
-                                         from_column=actor_table.c.character_id,
-                                         to_column=actor_table.c.id)
+character_to_actors_query = sa.LinkSequenceQuery(
+    SA_ENGINE_KEY,
+    from_column=actor_table.c.character_id,
+    to_column=actor_table.c.id,
+)
 
 async def direct_link(ids):
     return ids
@@ -114,15 +116,16 @@ async def to_actors_query(ctx):
 
 GRAPH = Graph([
     Node('character', [
-        sa.Field('id', character_query),
-        sa.Field('name', character_query),
-        sa.Field('species', character_query),
-        sa.Link('actors', character_to_actors_query, requires='id'),
+        Field('id', None, character_query),
+        Field('name', None, character_query),
+        Field('species', None, character_query),
+        Link('actors', Sequence[TypeRef['actor']], character_to_actors_query,
+             requires='id'),
     ]),
     Node('actor', [
-        sa.Field('id', actor_query),
-        sa.Field('name', actor_query),
-        sa.Field('character_id', actor_query),
+        Field('id', None, actor_query),
+        Field('name', None, actor_query),
+        Field('character_id', None, actor_query),
         Link('character', TypeRef['character'],
              direct_link, requires='character_id'),
     ]),

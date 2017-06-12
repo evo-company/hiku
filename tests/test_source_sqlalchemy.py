@@ -11,7 +11,7 @@ from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
 from hiku.types import IntegerMeta, StringMeta, TypeRef, Sequence, Optional
-from hiku.graph import Graph, Node, Link, Root
+from hiku.graph import Graph, Node, Field, Link, Root, apply
 from hiku.utils import cached_property
 from hiku.compat import with_metaclass
 from hiku.engine import Engine
@@ -104,34 +104,39 @@ def get_queries(source_module, ctx_var, base_cls):
 
         bar_query = _sm.FieldsQuery(ctx_var, bar_table)
 
-        to_foo_query = _sm.LinkQuery(Sequence[TypeRef['foo']], ctx_var,
-                                     from_column=foo_table.c.bar_id,
-                                     to_column=foo_table.c.id)
+        to_foo_query = _sm.LinkSequenceQuery(
+            ctx_var,
+            from_column=foo_table.c.bar_id,
+            to_column=foo_table.c.id,
+        )
 
-        to_bar_query = _sm.LinkQuery(Optional[TypeRef['bar']], ctx_var,
-                                     from_column=bar_table.c.id,
-                                     to_column=bar_table.c.id)
+        to_bar_query = _sm.LinkOptionalQuery(
+            ctx_var,
+            from_column=bar_table.c.id,
+            to_column=bar_table.c.id,
+        )
 
     return Queries()
 
 
-def get_graph(source_module, queries):
-    _sm = source_module
+def get_graph(queries):
     _q = queries
 
-    return Graph([
+    graph = Graph([
         Node(foo_table.name, [
-            _sm.Field('id', _q.foo_query),
-            _sm.Field('name', _q.foo_query),
-            _sm.Field('count', _q.foo_query),
-            _sm.Field('bar_id', _q.foo_query),
-            _sm.Link('bar', _q.to_bar_query, requires='bar_id'),
+            Field('id', None, _q.foo_query),
+            Field('name', None, _q.foo_query),
+            Field('count', None, _q.foo_query),
+            Field('bar_id', None, _q.foo_query),
+            Link('bar', Optional[TypeRef['bar']], _q.to_bar_query,
+                 requires='bar_id'),
         ]),
         Node(bar_table.name, [
-            _sm.Field('id', _q.bar_query),
-            _sm.Field('name', _q.bar_query),
-            _sm.Field('type', _q.bar_query),
-            _sm.Link('foo_s', _q.to_foo_query, requires='id'),
+            Field('id', None, _q.bar_query),
+            Field('name', None, _q.bar_query),
+            Field('type', None, _q.bar_query),
+            Link('foo_s', Sequence[TypeRef['foo']], _q.to_foo_query,
+                 requires='id'),
         ]),
         Root([
             Link('foo_list', Sequence[TypeRef['foo']],
@@ -144,6 +149,8 @@ def get_graph(source_module, queries):
                  _q.not_found_list, requires=None),
         ]),
     ])
+    graph = apply(graph, [sa.TypingFromSQLTypes()])
+    return graph
 
 
 def setup_db(db_engine):
@@ -177,7 +184,7 @@ class SourceSQLAlchemyTestBase(with_metaclass(ABCMeta, object)):
 
     @cached_property
     def graph(self):
-        return get_graph(sa, self.queries)
+        return get_graph(self.queries)
 
     def test_types(self):
         assert isinstance(
@@ -191,15 +198,10 @@ class SourceSQLAlchemyTestBase(with_metaclass(ABCMeta, object)):
 
     def test_same_table(self):
         with pytest.raises(ValueError) as e:
-            sa.LinkQuery(Sequence[TypeRef['bar']], SA_ENGINE_KEY,
-                         from_column=foo_table.c.id,
-                         to_column=bar_table.c.id)
+            sa.LinkOneQuery(SA_ENGINE_KEY,
+                            from_column=foo_table.c.id,
+                            to_column=bar_table.c.id)
         e.match('should belong')
-
-    def test_missing_column(self):
-        with pytest.raises(ValueError) as e:
-            sa.Field('unknown', self.queries.foo_query)
-        e.match('does not have a column')
 
     def test_many_to_one(self):
         self.check(

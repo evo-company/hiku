@@ -1,6 +1,8 @@
 Using Database :sup:`feat. SQLAlchemy`
 ======================================
 
+.. FIXME: line numbers
+
 Hiku provides support for loading data from SQL databases using SQLAlchemy_
 library, but Hiku doesn't requires to use it's ORM layer, it requires only Core
 SQLAlchemy_ functionality - tables definition and expression language to
