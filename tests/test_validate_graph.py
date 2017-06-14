@@ -1,6 +1,8 @@
+import pytest
+
 from hiku.graph import Graph, Node, Field, Root, Link, Option
 from hiku.types import TypeRef, Sequence
-from hiku.validate.graph import GraphValidator
+from hiku.validate.graph import GraphValidationError
 
 
 def _fields_func(fields, ids):
@@ -11,28 +13,28 @@ def _link_func(ids):
     pass
 
 
-def check_errors(graph, errors):
-    validator = GraphValidator(graph)
-    validator.visit(graph)
-    assert validator.errors.list == errors
+def check_errors(graph_items, errors):
+    with pytest.raises(GraphValidationError) as err:
+        Graph(graph_items)
+    assert err.value.errors == errors
 
 
 def test_graph_contain_duplicate_nodes():
     check_errors(
-        Graph([
+        [
             Node('foo', []),
             Node('foo', []),
-        ]),
-        ['Duplicated node names found in the graph: "foo"'],
+        ],
+        ['Duplicated nodes found in the graph: "foo"'],
     )
 
 
 def test_graph_contain_invalid_types():
     check_errors(
-        Graph([
+        [
             1,
             Node('foo', []),
-        ]),
+        ],
         [('Graph can not contain these types: {!r}'
           .format(int))],
     )
@@ -40,7 +42,7 @@ def test_graph_contain_invalid_types():
 
 def test_node_contain_duplicate_fields():
     check_errors(
-        Graph([
+        [
             Root([
                 Field('b', None, _fields_func),
             ]),
@@ -51,7 +53,7 @@ def test_node_contain_duplicate_fields():
             Root([
                 Field('b', None, _fields_func),
             ]),
-        ]),
+        ],
         ['Duplicated names found in the "root" node: "b"',
          'Duplicated names found in the "foo" node: "a"'],
     )
@@ -59,7 +61,7 @@ def test_node_contain_duplicate_fields():
 
 def test_node_contain_node():
     check_errors(
-        Graph([
+        [
             Root([
                 # this is ok
                 Node('foo', []),
@@ -68,19 +70,19 @@ def test_node_contain_node():
                 # this is wrong
                 Node('baz', []),
             ]),
-        ]),
+        ],
         ['Node can not be defined in the non-root node: "baz" in "bar"'],
     )
 
 
 def test_node_contain_invalid_types():
     check_errors(
-        Graph([
+        [
             Node('foo', [
                 1,
                 Field('bar', None, _fields_func),
             ]),
-        ]),
+        ],
         [('Node can not contain these types: {!r} in node "foo"'
           .format(int))],
     )
@@ -88,19 +90,19 @@ def test_node_contain_invalid_types():
 
 def test_link_missing_node():
     check_errors(
-        Graph([
+        [
             Node('bar', [
                 Link('link', Sequence[TypeRef['missing']],
                      _link_func, requires=None),
             ]),
-        ]),
+        ],
         ['Link "bar.link" points to the missing node "missing"'],
     )
 
 
 def test_link_requires_missing_field():
     check_errors(
-        Graph([
+        [
             Node('foo', []),
             Node('bar', [
                 Link('link1', Sequence[TypeRef['foo']],
@@ -110,7 +112,7 @@ def test_link_requires_missing_field():
                 Link('link2', Sequence[TypeRef['foo']],
                      _link_func, requires='missing2'),
             ]),
-        ]),
+        ],
         ['Link "link2" requires missing field "missing2" in the "root" node',
          'Link "link1" requires missing field "missing1" in the "bar" node'],
     )
@@ -118,7 +120,7 @@ def test_link_requires_missing_field():
 
 def test_link_contain_invalid_types():
     check_errors(
-        Graph([
+        [
             Node('foo', []),
             Node('bar', [
                 Field('id', None, _fields_func),
@@ -126,7 +128,7 @@ def test_link_contain_invalid_types():
                      _link_func, requires='id',
                      options=[Option('size', None), 1]),
             ]),
-        ]),
+        ],
         [('Invalid types provided as link "bar.baz" options: {!r}'
           .format(int))],
     )

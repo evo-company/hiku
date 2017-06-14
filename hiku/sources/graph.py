@@ -1,7 +1,7 @@
 from functools import partial
 
 from .. import query
-from ..graph import Link, Nothing, GraphTransformer
+from ..graph import Link, Nothing
 from ..types import TypeRef, Sequence
 from ..query import merge
 from ..types import Unknown
@@ -41,26 +41,25 @@ class BoundExpr(object):
         self.sub_graph = sub_graph
         self.expr = expr
 
-    def check(self, options):
+    def __postprocess__(self, field):
         expr, funcs = to_expr(self.expr)
 
         types = self.sub_graph.types.copy()
         types.update(fn_types(funcs))
-        types.update((opt.name, Unknown) for opt in options)
+        types.update((opt.name, Unknown) for opt in field.options)
 
         expr = check(expr, types)
 
-        option_names_set = set(opt.name for opt in options)
+        option_names_set = set(opt.name for opt in field.options)
         reqs = RequirementsExtractor.extract(types, expr)
         reqs = query.Node([f for f in reqs.fields
                            if f.name not in option_names_set])
 
-        option_names = [opt.name for opt in options]
+        option_names = [opt.name for opt in field.options]
         code = ExpressionCompiler.compile_lambda_expr(expr, option_names)
         proc = partial(eval(compile(code, '<expr>', 'eval')),
                        {f.__def_name__: f.__def_body__ for f in funcs})
-
-        return CheckedExpr(self.sub_graph, reqs, proc)
+        field.func = CheckedExpr(self.sub_graph, reqs, proc)
 
     def __call__(self, *args, **kwargs):
         raise TypeError('Expression is not checked: {!r}'.format(self.expr))
@@ -72,9 +71,6 @@ class CheckedExpr(object):
         self.sub_graph = sub_graph
         self.reqs = reqs
         self.proc = proc
-
-    def __group_key__(self):
-        return hash(self.sub_graph)
 
     @property
     def __subquery__(self):
@@ -113,12 +109,3 @@ class SubGraph(object):
 
     def c(self, expr):
         return self.compile(expr)
-
-
-class ExpressionsChecker(GraphTransformer):
-
-    def visit_field(self, obj):
-        field = super(ExpressionsChecker, self).visit_field(obj)
-        if isinstance(field.func, BoundExpr):
-            field.func = field.func.check(field.options)
-        return field

@@ -7,9 +7,18 @@ import sqlalchemy
 
 from ..utils import kw_only
 from ..types import String, Integer
-from ..graph import Nothing, GraphTransformer
+from ..graph import Nothing
 from ..engine import pass_context
 from ..compat import with_metaclass
+
+
+def _translate_type(column):
+    if isinstance(column.type, sqlalchemy.Integer):
+        return Integer
+    elif isinstance(column.type, sqlalchemy.Unicode):
+        return String
+    else:
+        return None
 
 
 @pass_context
@@ -26,7 +35,12 @@ class FieldsQuery(object):
             # currently only one column supported
             self.primary_key, = from_clause.primary_key
 
-    def __select_expr__(self, fields_, ids):
+    def __postprocess__(self, field):
+        if field.type is None:
+            column = self.from_clause.c[field.name]
+            field.type = _translate_type(column)
+
+    def select_expr(self, fields_, ids):
         columns = [self.from_clause.c[f.name] for f in fields_]
         expr = (
             sqlalchemy.select([self.primary_key] + columns)
@@ -47,7 +61,7 @@ class FieldsQuery(object):
         if not ids:
             return []
 
-        expr, result_proc = self.__select_expr__(fields_, ids)
+        expr, result_proc = self.select_expr(fields_, ids)
 
         sa_engine = ctx[self.sa_engine_ctx_var]
         with sa_engine.connect() as connection:
@@ -71,10 +85,10 @@ class LinkQueryBase(with_metaclass(ABCMeta, object)):
         self.to_column = to_column
 
     @abstractmethod
-    def __result_proc__(self, pairs, ids):
+    def result_proc(self, pairs, ids):
         pass
 
-    def __select_expr__(self, ids):
+    def select_expr(self, ids):
         # TODO: make this optional, but enabled by default
         filtered_ids = frozenset(filter(None, ids))
         if filtered_ids:
@@ -87,52 +101,34 @@ class LinkQueryBase(with_metaclass(ABCMeta, object)):
             return None
 
     def __call__(self, ctx, ids):
-        expr = self.__select_expr__(ids)
+        expr = self.select_expr(ids)
         if expr is None:
             pairs = []
         else:
             sa_engine = ctx[self.sa_engine_ctx_var]
             with sa_engine.connect() as connection:
                 pairs = connection.execute(expr).fetchall()
-        return self.__result_proc__(pairs, ids)
+        return self.result_proc(pairs, ids)
 
 
 class LinkOneQuery(LinkQueryBase):
 
-    def __result_proc__(self, pairs, values):
+    def result_proc(self, pairs, values):
         mapping = dict(pairs)
         return [mapping[value] for value in values]
 
 
 class LinkOptionalQuery(LinkQueryBase):
 
-    def __result_proc__(self, pairs, values):
+    def result_proc(self, pairs, values):
         mapping = dict(pairs)
         return [mapping.get(value, Nothing) for value in values]
 
 
 class LinkSequenceQuery(LinkQueryBase):
 
-    def __result_proc__(self, pairs, values):
+    def result_proc(self, pairs, values):
         mapping = defaultdict(list)
         for from_value, to_value in pairs:
             mapping[from_value].append(to_value)
         return [mapping[value] for value in values]
-
-
-class TypingFromSQLTypes(GraphTransformer):
-
-    def _translate_type(self, column):
-        if isinstance(column.type, sqlalchemy.Integer):
-            return Integer
-        elif isinstance(column.type, sqlalchemy.Unicode):
-            return String
-        else:
-            return None
-
-    def visit_field(self, obj):
-        field = super(TypingFromSQLTypes, self).visit_field(obj)
-        if field.type is None and isinstance(field.func, FieldsQuery):
-            column = field.func.from_clause.c[field.name]
-            field.type = self._translate_type(column)
-        return field

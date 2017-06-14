@@ -26,14 +26,14 @@ Many = const('Many')
 Nothing = const('Nothing')
 
 
-class AbstractNode(with_metaclass(ABCMeta)):
+class AbstractBase(with_metaclass(ABCMeta)):
 
     @abstractmethod
     def accept(self, visitor):
         pass
 
 
-class AbstractOption(AbstractNode):
+class AbstractOption(AbstractBase):
     pass
 
 
@@ -70,7 +70,7 @@ class Option(AbstractOption):
         return visitor.visit_option(self)
 
 
-class AbstractField(AbstractNode):
+class AbstractField(AbstractBase):
     pass
 
 
@@ -138,7 +138,7 @@ class Field(AbstractField):
         return visitor.visit_field(self)
 
 
-class AbstractLink(AbstractNode):
+class AbstractLink(AbstractBase):
     pass
 
 
@@ -258,7 +258,7 @@ class Link(AbstractLink):
         return visitor.visit_link(self)
 
 
-class AbstractNode(AbstractNode):
+class AbstractNode(AbstractBase):
     pass
 
 
@@ -331,7 +331,7 @@ class Root(Node):
         return visitor.visit_root(self)
 
 
-class AbstractGraph(AbstractNode):
+class AbstractGraph(AbstractBase):
     pass
 
 
@@ -351,7 +351,11 @@ class Graph(AbstractGraph):
         """
         :param items: list of nodes
         """
-        self.items = items
+        from .validate.graph import GraphValidator
+
+        GraphValidator.validate(items)
+
+        self.items = GraphInit.init(items)
 
     def __repr__(self):
         return '{}({!r})'.format(self.__class__.__name__, self.items)
@@ -465,3 +469,18 @@ class GraphTransformer(AbstractGraphVisitor):
 
 def apply(graph, transformers):
     return reduce(lambda g, t: t.visit(g), transformers, graph)
+
+
+class GraphInit(GraphTransformer):
+
+    @classmethod
+    def init(cls, items):
+        graph_init = cls()
+        return [graph_init.visit(i) for i in items]
+
+    def visit_field(self, obj):
+        field = super(GraphInit, self).visit_field(obj)
+        postprocess = getattr(field.func, '__postprocess__', None)
+        if postprocess is not None:
+            postprocess(field)
+        return field

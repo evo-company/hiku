@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from abc import ABCMeta, abstractproperty, abstractmethod
+from abc import ABCMeta, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -11,7 +11,7 @@ from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
 from hiku.types import IntegerMeta, StringMeta, TypeRef, Sequence, Optional
-from hiku.graph import Graph, Node, Field, Link, Root, apply
+from hiku.graph import Graph, Node, Field, Link, Root
 from hiku.utils import cached_property
 from hiku.compat import with_metaclass
 from hiku.engine import Engine
@@ -48,19 +48,23 @@ thread_pool = ThreadPoolExecutor(2)
 
 class AbstractQueries(with_metaclass(ABCMeta)):
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def foo_query(self):
         pass
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def bar_query(self):
         pass
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def to_foo_query(self):
         pass
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def to_bar_query(self):
         pass
 
@@ -149,7 +153,6 @@ def get_graph(queries):
                  _q.not_found_list, requires=None),
         ]),
     ])
-    graph = apply(graph, [sa.TypingFromSQLTypes()])
     return graph
 
 
@@ -174,7 +177,8 @@ def setup_db(db_engine):
 
 class SourceSQLAlchemyTestBase(with_metaclass(ABCMeta, object)):
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def queries(self):
         pass
 

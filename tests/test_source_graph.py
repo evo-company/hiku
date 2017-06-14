@@ -5,11 +5,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from hiku.graph import Graph, Node, Link, Field, Option, Root, apply
+from hiku.graph import Graph, Node, Link, Field, Option, Root
 from hiku.types import Record, Sequence, Unknown, TypeRef
 from hiku.engine import Engine
 from hiku.expr.core import define, S, each
-from hiku.sources.graph import SubGraph, ExpressionsChecker
+from hiku.sources.graph import SubGraph
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
 
@@ -151,7 +151,7 @@ def _engine():
 
 @pytest.fixture(name='graph')
 def _graph():
-    return apply(GRAPH, [ExpressionsChecker()])
+    return GRAPH
 
 
 def test_field(engine, graph):

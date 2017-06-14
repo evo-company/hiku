@@ -36,11 +36,10 @@ sa_engine.execute(character_table.insert().values([
 
 # define low-level graph
 
-from hiku.graph import Graph, Root, Node, Field, Link, apply
+from hiku.graph import Graph, Root, Node, Field, Link
 from hiku.types import TypeRef, Sequence, Optional
 from hiku.engine import pass_context, Nothing
 from hiku.sources import sqlalchemy as sa
-from hiku.sources.sqlalchemy import TypingFromSQLTypes
 
 SA_ENGINE_KEY = 'sa-engine'
 
@@ -78,8 +77,6 @@ _GRAPH = Graph([
     ]),
 ])
 
-_GRAPH = apply(_GRAPH, [TypingFromSQLTypes()])
-
 # test low-level graph
 
 from hiku.engine import Engine
@@ -112,7 +109,7 @@ def test_low_level():
 
 from hiku.types import Record, Integer, String
 from hiku.expr.core import S, define, if_some
-from hiku.sources.graph import SubGraph, ExpressionsChecker
+from hiku.sources.graph import SubGraph
 
 @define(Record[{'id': Integer, 'name': String}])
 def image_url(image):
@@ -136,8 +133,6 @@ GRAPH = Graph([
              to_characters_query, requires=None),
     ]),
 ])
-
-GRAPH = apply(GRAPH, [ExpressionsChecker()])
 
 # test high-level graph
 

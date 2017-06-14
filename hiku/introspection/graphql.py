@@ -333,9 +333,9 @@ class GraphQLIntrospection(GraphTransformer):
 
     def visit_graph(self, obj):
         introspection_graph = self.__introspection_graph__(obj)
-        graph = super(GraphQLIntrospection, self).visit_graph(obj)
-        graph.items.extend(introspection_graph.items)
-        return graph
+        items = [self.visit(node) for node in obj.items]
+        items.extend(introspection_graph.items)
+        return Graph(items)
 
 
 class AsyncGraphQLIntrospection(GraphQLIntrospection):

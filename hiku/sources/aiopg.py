@@ -9,7 +9,7 @@ class FieldsQuery(_sa.FieldsQuery):
         if not ids:
             return []
 
-        expr, result_proc = self.__select_expr__(fields_, ids)
+        expr, result_proc = self.select_expr(fields_, ids)
 
         sa_engine = ctx[self.sa_engine_ctx_var]
         async with sa_engine.acquire() as connection:
@@ -22,7 +22,7 @@ class FieldsQuery(_sa.FieldsQuery):
 class AsyncLinkQueryMixin:
 
     async def __call__(self, ctx, ids):
-        expr = self.__select_expr__(ids)
+        expr = self.select_expr(ids)
         if expr is None:
             pairs = []
         else:
@@ -31,7 +31,7 @@ class AsyncLinkQueryMixin:
                 res = await connection.execute(expr)
                 rows = await res.fetchall()
             pairs = [(r.from_column, r.to_column) for r in rows]
-        return self.__result_proc__(pairs, ids)
+        return self.result_proc(pairs, ids)
 
 
 class LinkOneQuery(AsyncLinkQueryMixin, _sa.LinkOneQuery):

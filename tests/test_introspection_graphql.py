@@ -5,7 +5,6 @@ from hiku.engine import Engine
 from hiku.expr.core import S
 from hiku.sources.graph import SubGraph
 from hiku.executors.sync import SyncExecutor
-from hiku.validate.graph import GraphValidator
 from hiku.validate.query import QueryValidator
 from hiku.readers.graphql import read
 from hiku.introspection.graphql import GraphQLIntrospection
@@ -242,10 +241,6 @@ def test_typename():
 def test_introspection_query():
     engine = Engine(SyncExecutor())
     graph = apply(GRAPH, [GraphQLIntrospection()])
-
-    graph_validator = GraphValidator(graph)
-    graph_validator.visit(graph)
-    assert not graph_validator.errors.list
 
     query = read(QUERY)
 
