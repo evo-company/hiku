@@ -6,6 +6,8 @@ Changes in 0.3
 
   - Added ability to specify option's default value as None
   - Fixed two-level graph introspection
+  - AsyncIOExecutor now checks that function returns awaitable object and will
+    raise TypeError to fail faster
 
 0.3.8
 ~~~~~
