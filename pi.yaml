@@ -71,9 +71,9 @@
   name: test
   requires: [pg]
   params:
-    - !Argument {name: tests, default: "tests3 docs"}
+    - !Argument {name: tests, default: "tests_py3_pg docs"}
   image: env
-  run: py.test -q --tb=native {{tests}}
+  run: py.test {{tests}}
 
 - !Command
   name: build docs

@@ -1,3 +1,5 @@
+import inspect
+
 from asyncio import wait, FIRST_COMPLETED
 
 
@@ -7,7 +9,11 @@ class AsyncIOExecutor(object):
         self._loop = loop
 
     def submit(self, fn, *args, **kwargs):
-        return self._loop.create_task(fn(*args, **kwargs))
+        coro = fn(*args, **kwargs)
+        if not inspect.isawaitable(coro):
+            raise TypeError('{!r} returned non-awaitable object {!r}'
+                            .format(fn, coro))
+        return self._loop.create_task(coro)
 
     async def process(self, queue, workflow):
         while queue.__futures__:
