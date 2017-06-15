@@ -6,6 +6,8 @@ Changes in 0.4
 
   - Refactored data sources to be simpler to setup and more consistent
   - Graph validation now performed automatically
+  - Added :py:func:`hiku.graph.apply` function to apply graph transformers
+
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -84,3 +86,19 @@ Backward-incompatible changes
     it was refactored to support validation of the graph before it would be
     actually created, by validating items, passed to the
     :py:class:`hiku.graph.Graph` constructor.
+
+  - Replaced :py:func:`~hiku.introspection.graphql.add_introspection` and
+    :py:func:`~hiku.introspection.graphql.add_introspection_async` functions with
+    :py:class:`~hiku.introspection.graphql.GraphQLIntrospection` and
+    :py:class:`~hiku.introspection.graphql.AsyncGraphQLIntrospection`
+    respectively:
+
+    .. code-block:: python
+
+      graph = add_introspection_async(graph)
+
+    Changed to:
+
+    .. code-block:: python
+
+      graph = apply(graph, [GraphQLIntrospection()])
