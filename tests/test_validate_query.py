@@ -3,7 +3,7 @@ import pytest
 from hiku import query as q
 from hiku.graph import Graph, Node, Field, Link, Option, Root
 from hiku.types import Integer, Record, Sequence, Optional, TypeRef
-from hiku.validate.query import QueryValidator
+from hiku.validate.query import validate
 
 
 def _():
@@ -47,9 +47,7 @@ GRAPH = Graph([
 
 
 def check_errors(query, errors):
-    validator = QueryValidator(GRAPH)
-    validator.visit(query)
-    assert validator.errors.list == errors
+    assert validate(GRAPH, query) == errors
 
 
 def test_field():

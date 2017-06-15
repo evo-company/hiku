@@ -6,7 +6,7 @@ from hiku.types import String
 from hiku.graph import Graph, Root, Field, apply
 from hiku.engine import Engine
 from hiku.result import denormalize
-from hiku.validate.query import QueryValidator
+from hiku.validate.query import validate
 from hiku.readers.graphql import read
 from hiku.executors.asyncio import AsyncIOExecutor
 from hiku.introspection.graphql import AsyncGraphQLIntrospection
@@ -28,11 +28,9 @@ async def handler(request):
     data = await request.json()
     try:
         query = read(data['query'], data.get('variables'))
-        validator = QueryValidator(request.app['GRAPH'])
-        validator.visit(query)
-        if validator.errors.list:
-            result = {'errors': [{'message': e}
-                                 for e in validator.errors.list]}
+        errors = validate(request.app['GRAPH'], query)
+        if errors:
+            result = {'errors': [{'message': e} for e in errors]}
         else:
             result = await hiku_engine.execute(request.app['GRAPH'], query)
             result = {'data': denormalize(request.app['GRAPH'], result, query)}

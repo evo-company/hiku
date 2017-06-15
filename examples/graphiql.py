@@ -9,7 +9,7 @@ from hiku.graph import apply
 from hiku.engine import Engine
 from hiku.result import denormalize
 from hiku.executors.sync import SyncExecutor
-from hiku.validate.query import QueryValidator
+from hiku.validate.query import validate
 from hiku.readers.graphql import read
 from hiku.introspection.graphql import GraphQLIntrospection
 
@@ -26,11 +26,9 @@ def handler():
     data = request.get_json()
     try:
         query = read(data['query'], data.get('variables'))
-        validator = QueryValidator(app.config['GRAPH'])
-        validator.visit(query)
-        if validator.errors.list:
-            result = {'errors': [{'message': e}
-                                 for e in validator.errors.list]}
+        errors = validate(app.config['GRAPH'], query)
+        if errors:
+            result = {'errors': [{'message': e} for e in errors]}
         else:
             result = hiku_engine.execute(app.config['GRAPH'],
                                          query,

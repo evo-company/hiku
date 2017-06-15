@@ -6,7 +6,7 @@ import traceback
 from ..result import denormalize
 from ..typedef.kinko import dumps as dumps_typedef
 from ..readers.simple import read
-from ..validate.query import QueryValidator
+from ..validate.query import validate
 
 
 ERROR_CODES = {
@@ -116,10 +116,9 @@ class ConsoleApplication(object):
             # TODO: implement query validation
             query = read(_decode(pattern))
 
-            validator = QueryValidator(self.root)
-            validator.visit(query)
-            if validator.errors.list:
-                result = {'errors': validator.errors.list}
+            errors = validate(self.root, query)
+            if errors:
+                result = {'errors': errors}
                 status = '400 Bad Request'
             else:
                 result = self.engine.execute(self.root, query, ctx=self.ctx)

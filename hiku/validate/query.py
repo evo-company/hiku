@@ -215,3 +215,9 @@ class QueryValidator(QueryVisitor):
                                .format(obj.name, node.name or 'root'))
         else:
             raise TypeError(repr(graph_obj))
+
+
+def validate(graph, query):
+    query_validator = QueryValidator(graph)
+    query_validator.visit(query)
+    return query_validator.errors.list

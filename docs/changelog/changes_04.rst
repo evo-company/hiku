@@ -7,6 +7,8 @@ Changes in 0.4
   - Refactored data sources to be simpler to setup and more consistent
   - Graph validation now performed automatically
   - Added :py:func:`hiku.graph.apply` function to apply graph transformers
+  - Added :py:func:`hiku.validate.query.validate` function to simplify query
+    validation
 
 
 Backward-incompatible changes
