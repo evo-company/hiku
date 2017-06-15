@@ -1,0 +1,4 @@
+/* https://github.com/rtfd/sphinx_rtd_theme/issues/381 */
+.rst-content .highlight > pre, .rst-content .linenodiv > pre {
+    line-height: normal;
+}
