@@ -484,3 +484,10 @@ class GraphInit(GraphTransformer):
         if postprocess is not None:
             postprocess(field)
         return field
+
+    def visit_link(self, obj):
+        link = super(GraphInit, self).visit_link(obj)
+        postprocess = getattr(link.func, '__postprocess__', None)
+        if postprocess is not None:
+            postprocess(link)
+        return link

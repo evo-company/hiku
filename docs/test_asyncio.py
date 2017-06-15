@@ -91,7 +91,7 @@ character_query = sa.FieldsQuery(SA_ENGINE_KEY, character_table)
 
 actor_query = sa.FieldsQuery(SA_ENGINE_KEY, actor_table)
 
-character_to_actors_query = sa.LinkSequenceQuery(
+character_to_actors_query = sa.LinkQuery(
     SA_ENGINE_KEY,
     from_column=actor_table.c.character_id,
     to_column=actor_table.c.id,

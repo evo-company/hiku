@@ -19,9 +19,9 @@ class FieldsQuery(_sa.FieldsQuery):
         return result_proc(rows)
 
 
-class AsyncLinkQueryMixin:
+class LinkQuery(_sa.LinkQuery):
 
-    async def __call__(self, ctx, ids):
+    async def __call__(self, result_proc, ctx, ids):
         expr = self.select_expr(ids)
         if expr is None:
             pairs = []
@@ -31,16 +31,4 @@ class AsyncLinkQueryMixin:
                 res = await connection.execute(expr)
                 rows = await res.fetchall()
             pairs = [(r.from_column, r.to_column) for r in rows]
-        return self.result_proc(pairs, ids)
-
-
-class LinkOneQuery(AsyncLinkQueryMixin, _sa.LinkOneQuery):
-    pass
-
-
-class LinkOptionalQuery(AsyncLinkQueryMixin, _sa.LinkOptionalQuery):
-    pass
-
-
-class LinkSequenceQuery(AsyncLinkQueryMixin, _sa.LinkSequenceQuery):
-    pass
+        return result_proc(pairs, ids)

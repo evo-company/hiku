@@ -108,13 +108,13 @@ def get_queries(source_module, ctx_var, base_cls):
 
         bar_query = _sm.FieldsQuery(ctx_var, bar_table)
 
-        to_foo_query = _sm.LinkSequenceQuery(
+        to_foo_query = _sm.LinkQuery(
             ctx_var,
             from_column=foo_table.c.bar_id,
             to_column=foo_table.c.id,
         )
 
-        to_bar_query = _sm.LinkOptionalQuery(
+        to_bar_query = _sm.LinkQuery(
             ctx_var,
             from_column=bar_table.c.id,
             to_column=bar_table.c.id,
@@ -202,9 +202,8 @@ class SourceSQLAlchemyTestBase(with_metaclass(ABCMeta, object)):
 
     def test_same_table(self):
         with pytest.raises(ValueError) as e:
-            sa.LinkOneQuery(SA_ENGINE_KEY,
-                            from_column=foo_table.c.id,
-                            to_column=bar_table.c.id)
+            sa.LinkQuery(SA_ENGINE_KEY, from_column=foo_table.c.id,
+                         to_column=bar_table.c.id)
         e.match('should belong')
 
     def test_many_to_one(self):

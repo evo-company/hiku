@@ -26,10 +26,8 @@ Backward-incompatible changes
 
       hiku.graph.Field('foo', None, fields_query)
 
-  - :py:class:`hiku.sources.sqlalchemy.LinkQuery` replaced with
-    :py:class:`hiku.sources.sqlalchemy.LinkOneQuery`,
-    :py:class:`hiku.sources.sqlalchemy.LinkOptionalQuery` and
-    :py:class:`hiku.sources.sqlalchemy.LinkSequenceQuery`:
+  - :py:class:`hiku.sources.sqlalchemy.LinkQuery` now doesn't needs a first
+    ``type`` argument:
 
     .. code-block:: python
 
@@ -44,7 +42,7 @@ Backward-incompatible changes
 
     .. code-block:: python
 
-      character_to_actors_query = LinkSequenceQuery(
+      character_to_actors_query = LinkQuery(
           SA_ENGINE_KEY,
           from_column=actor_table.c.character_id,
           to_column=actor_table.c.id,

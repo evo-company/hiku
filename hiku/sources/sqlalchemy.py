@@ -1,13 +1,14 @@
 from __future__ import absolute_import
 
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
+from functools import partial
 from collections import defaultdict
 
 import sqlalchemy
 
 from ..utils import kw_only
 from ..types import String, Integer
-from ..graph import Nothing
+from ..graph import Nothing, Maybe, One, Many
 from ..engine import pass_context
 from ..compat import with_metaclass
 
@@ -70,8 +71,24 @@ class FieldsQuery(object):
         return result_proc(rows)
 
 
-@pass_context
-class LinkQueryBase(with_metaclass(ABCMeta, object)):
+def _to_maybe_mapper(pairs, values):
+    mapping = dict(pairs)
+    return [mapping.get(value, Nothing) for value in values]
+
+
+def _to_one_mapper(pairs, values):
+    mapping = dict(pairs)
+    return [mapping[value] for value in values]
+
+
+def _to_many_mapper(pairs, values):
+    mapping = defaultdict(list)
+    for from_value, to_value in pairs:
+        mapping[from_value].append(to_value)
+    return [mapping[value] for value in values]
+
+
+class LinkQuery(with_metaclass(ABCMeta, object)):
 
     def __init__(self, sa_engine_ctx_var, **kwargs):
         from_column, to_column = kw_only(self.__init__, kwargs,
@@ -84,9 +101,16 @@ class LinkQueryBase(with_metaclass(ABCMeta, object)):
         self.from_column = from_column
         self.to_column = to_column
 
-    @abstractmethod
-    def result_proc(self, pairs, ids):
-        pass
+    def __postprocess__(self, link):
+        if link.type_enum is One:
+            func = partial(self, _to_one_mapper)
+        elif link.type_enum is Maybe:
+            func = partial(self, _to_maybe_mapper)
+        elif link.type_enum is Many:
+            func = partial(self, _to_many_mapper)
+        else:
+            raise TypeError(repr(link.type_enum))
+        link.func = pass_context(func)
 
     def select_expr(self, ids):
         # TODO: make this optional, but enabled by default
@@ -100,7 +124,7 @@ class LinkQueryBase(with_metaclass(ABCMeta, object)):
         else:
             return None
 
-    def __call__(self, ctx, ids):
+    def __call__(self, result_proc, ctx, ids):
         expr = self.select_expr(ids)
         if expr is None:
             pairs = []
@@ -108,27 +132,4 @@ class LinkQueryBase(with_metaclass(ABCMeta, object)):
             sa_engine = ctx[self.sa_engine_ctx_var]
             with sa_engine.connect() as connection:
                 pairs = connection.execute(expr).fetchall()
-        return self.result_proc(pairs, ids)
-
-
-class LinkOneQuery(LinkQueryBase):
-
-    def result_proc(self, pairs, values):
-        mapping = dict(pairs)
-        return [mapping[value] for value in values]
-
-
-class LinkOptionalQuery(LinkQueryBase):
-
-    def result_proc(self, pairs, values):
-        mapping = dict(pairs)
-        return [mapping.get(value, Nothing) for value in values]
-
-
-class LinkSequenceQuery(LinkQueryBase):
-
-    def result_proc(self, pairs, values):
-        mapping = defaultdict(list)
-        for from_value, to_value in pairs:
-            mapping[from_value].append(to_value)
-        return [mapping[value] for value in values]
+        return result_proc(pairs, ids)
