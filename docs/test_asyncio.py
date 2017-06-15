@@ -83,15 +83,15 @@ def db_dsn_fixture(request):
 from hiku.graph import Graph, Root, Node, Link, Field
 from hiku.types import TypeRef, Sequence
 from hiku.engine import pass_context
-from hiku.sources import aiopg as sa
+from hiku.sources.aiopg import FieldsQuery, LinkQuery
 
 SA_ENGINE_KEY = 'sa-engine'
 
-character_query = sa.FieldsQuery(SA_ENGINE_KEY, character_table)
+character_query = FieldsQuery(SA_ENGINE_KEY, character_table)
 
-actor_query = sa.FieldsQuery(SA_ENGINE_KEY, actor_table)
+actor_query = FieldsQuery(SA_ENGINE_KEY, actor_table)
 
-character_to_actors_query = sa.LinkQuery(
+character_to_actors_query = LinkQuery(
     SA_ENGINE_KEY,
     from_column=actor_table.c.character_id,
     to_column=actor_table.c.id,

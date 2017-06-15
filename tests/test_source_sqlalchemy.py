@@ -10,14 +10,16 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
+import hiku.sources.sqlalchemy
+
 from hiku.types import IntegerMeta, StringMeta, TypeRef, Sequence, Optional
 from hiku.graph import Graph, Node, Field, Link, Root
 from hiku.utils import cached_property
 from hiku.compat import with_metaclass
 from hiku.engine import Engine
-from hiku.sources import sqlalchemy as sa
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
+from hiku.sources.sqlalchemy import LinkQuery
 
 from .base import check_result
 
@@ -202,8 +204,8 @@ class SourceSQLAlchemyTestBase(with_metaclass(ABCMeta, object)):
 
     def test_same_table(self):
         with pytest.raises(ValueError) as e:
-            sa.LinkQuery(SA_ENGINE_KEY, from_column=foo_table.c.id,
-                         to_column=bar_table.c.id)
+            LinkQuery(SA_ENGINE_KEY, from_column=foo_table.c.id,
+                      to_column=bar_table.c.id)
         e.match('should belong')
 
     def test_many_to_one(self):
@@ -256,7 +258,7 @@ class TestSourceSQLAlchemy(SourceSQLAlchemyTestBase):
 
     @cached_property
     def queries(self):
-        return get_queries(sa, SA_ENGINE_KEY, SyncQueries)
+        return get_queries(hiku.sources.sqlalchemy, SA_ENGINE_KEY, SyncQueries)
 
     def check(self, src, value):
         sa_engine = create_engine(

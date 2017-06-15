@@ -1,12 +1,14 @@
 import json
+
 from io import BytesIO
 from wsgiref.util import setup_testing_defaults
 
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
+import hiku.sources.sqlalchemy
+
 from hiku.engine import Engine
-from hiku.sources import sqlalchemy as sa
 from hiku.console.ui import ConsoleApplication
 from hiku.executors.sync import SyncExecutor
 
@@ -16,7 +18,8 @@ from .test_source_sqlalchemy import get_queries, get_graph
 
 engine = Engine(SyncExecutor())
 
-GRAPH = get_graph(get_queries(sa, SA_ENGINE_KEY, SyncQueries))
+GRAPH = get_graph(get_queries(hiku.sources.sqlalchemy, SA_ENGINE_KEY,
+                              SyncQueries))
 
 
 def request(app, method, path_info, script_name='', payload=None):

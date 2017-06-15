@@ -3,8 +3,9 @@ from wsgiref.simple_server import make_server
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
+import hiku.sources.sqlalchemy
+
 from hiku.engine import Engine
-from hiku.sources import sqlalchemy as sa
 from hiku.console.ui import ConsoleApplication
 from hiku.executors.sync import SyncExecutor
 
@@ -22,7 +23,8 @@ if __name__ == '__main__':
     )
     setup_db(sa_engine)
 
-    graph = get_graph(get_queries(sa, SA_ENGINE_KEY, SyncQueries))
+    graph = get_graph(get_queries(hiku.sources.sqlalchemy, SA_ENGINE_KEY,
+                                  SyncQueries))
 
     app = ConsoleApplication(graph, engine, {SA_ENGINE_KEY: sa_engine},
                              debug=True)

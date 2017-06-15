@@ -8,9 +8,10 @@ import psycopg2.extensions
 
 from pytest_asyncio.plugin import ForbiddenEventLoopPolicy
 
+import hiku.sources.aiopg
+
 from hiku.utils import cached_property
 from hiku.engine import Engine
-from hiku.sources import aiopg as sa
 from hiku.readers.simple import read
 from hiku.executors.asyncio import AsyncIOExecutor
 
@@ -75,7 +76,7 @@ class TestSourceAIOPG(SourceSQLAlchemyTestBase):
 
     @cached_property
     def queries(self):
-        return get_queries(sa, SA_ENGINE_KEY, AsyncQueries)
+        return get_queries(hiku.sources.aiopg, SA_ENGINE_KEY, AsyncQueries)
 
     async def _check(self, src, value, event_loop):
         sa_engine = await aiopg.sa.create_engine(self.db_dsn, minsize=0,

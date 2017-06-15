@@ -39,13 +39,13 @@ sa_engine.execute(character_table.insert().values([
 from hiku.graph import Graph, Root, Node, Field, Link
 from hiku.types import TypeRef, Sequence, Optional
 from hiku.engine import pass_context, Nothing
-from hiku.sources import sqlalchemy as sa
+from hiku.sources.sqlalchemy import FieldsQuery
 
 SA_ENGINE_KEY = 'sa-engine'
 
-image_query = sa.FieldsQuery(SA_ENGINE_KEY, image_table)
+image_query = FieldsQuery(SA_ENGINE_KEY, image_table)
 
-character_query = sa.FieldsQuery(SA_ENGINE_KEY, character_table)
+character_query = FieldsQuery(SA_ENGINE_KEY, character_table)
 
 def direct_link(ids):
     return ids
