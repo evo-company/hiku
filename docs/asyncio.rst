@@ -1,8 +1,6 @@
 Using AsyncIO :sup:`feat. aiopg`
 ================================
 
-.. FIXME: line numbers
-
 Hiku has several executors, previous examples were using
 :py:class:`hiku.executors.sync.SyncExecutor` and they can also be used with
 :py:class:`hiku.executors.threads.ThreadsExecutor` to execute query
@@ -31,14 +29,14 @@ Graph definition
 ~~~~~~~~~~~~~~~~
 
 .. literalinclude:: test_asyncio.py
-    :lines: 83-135
+    :lines: 83-138
     :linenos:
-    :emphasize-lines: 4,16,20,27
+    :emphasize-lines: 4,18,22,29
 
 Note that we are using :py:mod:`hiku.sources.aiopg` source :sup:`[4]`
 in our graph definition, instead of :py:mod:`hiku.sources.sqlalchemy`.
 
-All our custom data loading functions :sup:`[16,20,27]` are coroutine
+All our custom data loading functions :sup:`[18,22,29]` are coroutine
 functions now and using :py:class:`aiopg:aiopg.sa.Engine` instead of
 :py:class:`sqlalchemy:sqlalchemy.engine.Engine` to execute SQL queries.
 
@@ -48,7 +46,7 @@ Querying graph
 For testing purposes let's define helper coroutine function ``execute``:
 
 .. literalinclude:: test_asyncio.py
-    :lines: 139-149
+    :lines: 142-152
     :linenos:
     :emphasize-lines: 10
 
@@ -58,19 +56,19 @@ returns "awaitable" object, when it is using with
 should be constructed:
 
 .. literalinclude:: test_asyncio.py
-    :lines: 153
+    :lines: 156
     :dedent: 4
 
 Testing one to many link:
 
 .. literalinclude:: test_asyncio.py
-    :lines: 154-181
+    :lines: 157-184
     :dedent: 4
 
 Testing many to one link:
 
 .. literalinclude:: test_asyncio.py
-    :lines: 186-216
+    :lines: 189-219
     :dedent: 4
 
 .. _aiopg: http://aiopg.readthedocs.io/en/stable/

@@ -1,8 +1,6 @@
 Building Two-Level Graph
 ========================
 
-.. FIXME: line numbers
-
 Two-level graph is a way to express business-logic once and provide it
 on-demand.
 
@@ -85,7 +83,7 @@ business-logic based on low-level graph, and hides it's implementation details.
 .. literalinclude:: test_subgraph.py
     :lines: 110-137
     :linenos:
-    :emphasize-lines: 5-6,10,15,17-20
+    :emphasize-lines: 5-6,10,15,17-19
 
 Hold on, as there are lots of new things in the high-level graph definition
 above.
@@ -146,7 +144,7 @@ of the standard "no-photo" image :sup:`[19]`. Without using
 Testing our high-level graph:
 
 .. literalinclude:: test_subgraph.py
-    :lines: 142-152
+    :lines: 140-150
     :dedent: 4
 
 As you can see, the goal is achieved.
