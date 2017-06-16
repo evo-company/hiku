@@ -7,7 +7,7 @@ from ..query import merge
 from ..types import Unknown
 from ..engine import Query
 from ..expr.refs import RequirementsExtractor
-from ..expr.core import to_expr
+from ..expr.core import to_expr, S
 from ..expr.checker import check, graph_types, fn_types
 from ..expr.compiler import ExpressionCompiler
 
@@ -86,6 +86,13 @@ class SubGraph(object):
         types = graph_types(graph)
         types['this'] = types[node]  # make an alias
         self.types = types
+
+    @property
+    def __subquery__(self):
+        return self
+
+    def __postprocess__(self, field):
+        BoundExpr(self, getattr(S.this, field.name)).__postprocess__(field)
 
     def __call__(self, graph_fields, query_fields, option_values, ids,
                  queue, ctx, task_set):

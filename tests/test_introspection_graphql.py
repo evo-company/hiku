@@ -2,7 +2,6 @@ from hiku.graph import Graph, Root, Field, Node, Link, apply
 from hiku.types import String, Integer, Sequence, TypeRef, Boolean
 from hiku.result import denormalize
 from hiku.engine import Engine
-from hiku.expr.core import S
 from hiku.sources.graph import SubGraph
 from hiku.executors.sync import SyncExecutor
 from hiku.validate.query import validate
@@ -28,7 +27,7 @@ flexed_sg = SubGraph(_GRAPH, 'flexed')
 
 GRAPH = Graph([
     Node('flexed', [
-        Field('yari', Boolean, flexed_sg.c(S.this.yari)),
+        Field('yari', Boolean, flexed_sg),
     ]),
     Node('decian', [
         Field('dogme', Integer, field_func),

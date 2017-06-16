@@ -83,6 +83,12 @@ Backward-incompatible changes
 
       Field('foo', String, entity_sg.c(S.this.foo))
 
+    Or even to:
+
+    .. code-block:: python
+
+      Field('foo', String, entity_sg)
+
   - Signature of the :py:meth:`hiku.validate.graph.GraphValidator.__init__`
     method changed. Graph validation now is not meant to be done manually and
     it was refactored to support validation of the graph before it would be

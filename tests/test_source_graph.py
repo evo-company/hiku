@@ -114,28 +114,28 @@ sg_y = SubGraph(_GRAPH, 'y')
 # TODO: refactor
 GRAPH = Graph([
     Node('x1', [
-        Field('id', None, sg_x.compile(S.this.id)),
-        Field('a', None, sg_x.compile(S.this.a)),
-        Field('f', None, sg_x.compile(S.f1)),
-        Field('foo', None, sg_x.compile(foo(S.this, S.this.y))),
-        Field('bar', None, sg_x.compile(bar(S.this))),
-        Field('baz', None, sg_x.compile(baz(S.this.y))),
-        Field('buz', None, sg_x.compile(buz(S.this, S.size)),
+        Field('id', None, sg_x),
+        Field('a', None, sg_x),
+        Field('f', None, sg_x.c(S.f1)),
+        Field('foo', None, sg_x.c(foo(S.this, S.this.y))),
+        Field('bar', None, sg_x.c(bar(S.this))),
+        Field('baz', None, sg_x.c(baz(S.this.y))),
+        Field('buz', None, sg_x.c(buz(S.this, S.size)),
               options=[Option('size', None, default=None)]),
-        Field('buz2', None, sg_x.compile(buz(S.this, S.size)),
+        Field('buz2', None, sg_x.c(buz(S.this, S.size)),
               options=[Option('size', None, default=100)]),
-        Field('buz3', None, sg_x.compile(buz(S.this, S.size)),
+        Field('buz3', None, sg_x.c(buz(S.this, S.size)),
               options=[Option('size', None)]),
     ]),
     Node('y1', [
-        Field('id', None, sg_y.compile(S.this.id)),
-        Field('c', None, sg_y.compile(S.this.c)),
-        Field('f', None, sg_y.compile(S.f2)),
-        Field('foo', None, sg_y.compile(
+        Field('id', None, sg_y),
+        Field('c', None, sg_y),
+        Field('f', None, sg_y.c(S.f2)),
+        Field('foo', None, sg_y.c(
             each(S.x, S.this.xs, foo(S.x, S.this))
         )),
-        Field('bar', None, sg_y.compile(each(S.x, S.this.xs, bar(S.x)))),
-        Field('baz', None, sg_y.compile(baz(S.this))),
+        Field('bar', None, sg_y.c(each(S.x, S.this.xs, bar(S.x)))),
+        Field('baz', None, sg_y.c(baz(S.this))),
     ]),
     Root([
         Link('x1s', Sequence[TypeRef['x1']], to_x, requires=None),

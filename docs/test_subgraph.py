@@ -120,8 +120,8 @@ character_sg = SubGraph(_GRAPH, 'character')
 
 GRAPH = Graph([
     Node('character', [
-        Field('id', None, character_sg.c(S.this.id)),
-        Field('name', None, character_sg.c(S.this.name)),
+        Field('id', None, character_sg),
+        Field('name', None, character_sg),
         Field('image-url', None, character_sg.c(
             if_some([S.img, S.this.image],
                     image_url(S.img),
