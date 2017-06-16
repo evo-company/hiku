@@ -109,4 +109,4 @@ Backward-incompatible changes
 
     .. code-block:: python
 
-      graph = apply(graph, [GraphQLIntrospection()])
+      graph = apply(graph, [AsyncGraphQLIntrospection()])
