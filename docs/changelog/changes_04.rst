@@ -109,4 +109,4 @@ Backward-incompatible changes
 
     .. code-block:: python
 
-      graph = apply(graph, [AsyncGraphQLIntrospection()])
+      graph = hiku.graph.apply(graph, [AsyncGraphQLIntrospection()])
