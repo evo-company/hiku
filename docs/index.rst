@@ -1,7 +1,7 @@
 Hiku
 ====
 
-Release v0.3 - :doc:`What's new <changelog/changes_03>`
+Release v0.4 - :doc:`What's new <changelog/changes_04>`
 
 Hiku is a library to design Graph APIs. Why graphs? – They are simple,
 predictable, flexible, easy to compose and because of that, they are easy
