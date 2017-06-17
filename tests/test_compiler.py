@@ -8,7 +8,7 @@ from collections import OrderedDict
 import astor
 import pytest
 
-from hiku.types import Optional, String, Record, Unknown, TypeRef, Sequence
+from hiku.types import Optional, String, Record, Any, TypeRef, Sequence
 from hiku.graph import Graph, Field, Node, Link, Root
 from hiku.compat import PY3, PY35
 from hiku.expr.core import define, S, if_, each, to_expr, if_some
@@ -20,17 +20,17 @@ pytestmark = pytest.mark.skipif(PY35, reason='Waiting for Astor 0.6 release '
                                              'with Python 3.5 support')
 
 
-@define(Unknown, _name='foo')
+@define(Any, _name='foo')
 def foo(value):
     pass
 
 
-@define(Unknown, _name='bar')
+@define(Any, _name='bar')
 def bar(value):
     pass
 
 
-@define(Unknown, Record[{'c': Unknown}], _name='baz')
+@define(Any, Record[{'c': Any}], _name='baz')
 def baz(a, y):
     pass
 

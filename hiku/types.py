@@ -13,13 +13,13 @@ class GenericMeta(type):
         raise NotImplementedError
 
 
-class UnknownMeta(GenericMeta):
+class AnyMeta(GenericMeta):
 
     def accept(cls, visitor):
-        return visitor.visit_unknown(cls)
+        return visitor.visit_any(cls)
 
 
-class Unknown(with_metaclass(UnknownMeta, object)):
+class Any(with_metaclass(AnyMeta, object)):
     pass
 
 

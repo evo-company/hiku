@@ -4,7 +4,7 @@ from collections import namedtuple
 
 from ..edn import loads
 from ..query import Node, Link, Field
-from ..types import Record, Callable, Unknown
+from ..types import Record, Callable, Any
 from ..compat import text_type, string_types
 from ..readers.simple import transform
 
@@ -64,7 +64,7 @@ def _query_to_types(obj):
     elif isinstance(obj, Link):
         return _query_to_types(obj.node)
     elif isinstance(obj, Field):
-        return Unknown
+        return Any
     else:
         raise TypeError(type(obj))
 
@@ -86,7 +86,7 @@ def define(*requires, **kwargs):
         if len(requires) == 1 and isinstance(requires[0], string_types):
             reqs_list = loads(text_type(requires[0]))
             expr.__def_type__ = Callable[[(_query_to_types(transform(r))
-                                           if r is not None else Unknown)
+                                           if r is not None else Any)
                                           for r in reqs_list]]
         else:
             expr.__def_type__ = Callable[requires]
@@ -95,16 +95,16 @@ def define(*requires, **kwargs):
     return decorator
 
 
-@define(Unknown, Unknown, Unknown, _name='each')
+@define(Any, Any, Any, _name='each')
 def each(var, col, expr):
     pass
 
 
-@define(Unknown, Unknown, Unknown, _name='if')
+@define(Any, Any, Any, _name='if')
 def if_(test, then, else_):
     pass
 
 
-@define(Unknown, Unknown, Unknown, _name='if_some')
+@define(Any, Any, Any, _name='if_some')
 def if_some(bind, then, else_):
     pass

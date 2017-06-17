@@ -4,7 +4,7 @@ from .. import query
 from ..graph import Link, Nothing
 from ..types import TypeRef, Sequence
 from ..query import merge
-from ..types import Unknown
+from ..types import Any
 from ..engine import Query
 from ..expr.refs import RequirementsExtractor
 from ..expr.core import to_expr, S
@@ -46,7 +46,7 @@ class BoundExpr(object):
 
         types = self.sub_graph.types.copy()
         types.update(fn_types(funcs))
-        types.update((opt.name, Unknown) for opt in field.options)
+        types.update((opt.name, Any) for opt in field.options)
 
         expr = check(expr, types)
 

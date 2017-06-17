@@ -2,7 +2,7 @@ from unittest import skip
 
 from hiku import graph as g
 from hiku.query import Node, Field, Link
-from hiku.types import Record, Unknown, TypeRef, Sequence, Optional
+from hiku.types import Record, Any, TypeRef, Sequence, Optional
 from hiku.expr.core import define, S, each, to_expr, if_some
 from hiku.expr.refs import Ref, NamedRef, ref_to_req, RequirementsExtractor
 from hiku.expr.checker import check, graph_types, fn_types
@@ -151,11 +151,11 @@ def test_query_each_root_node_link_field():
 
 def test_query_tuple_with_node():
 
-    @define(Record[{'clacks': Unknown, 'panicle': Unknown}])
+    @define(Record[{'clacks': Any, 'panicle': Any}])
     def foo():
         pass
 
-    @define(Record[{'oloroso': Unknown, 'gashes': Unknown}])
+    @define(Record[{'oloroso': Any, 'gashes': Any}])
     def bar():
         pass
 
@@ -196,9 +196,9 @@ def test_query_tuple_with_node():
 
 def test_query_tuple_with_nested_one_node():
 
-    @define(Record[{'clacks': Unknown,
-                    'apatite': Record[{'oloroso': Unknown,
-                                       'gashes': Unknown}]}])
+    @define(Record[{'clacks': Any,
+                    'apatite': Record[{'oloroso': Any,
+                                       'gashes': Any}]}])
     def foo():
         pass
 
@@ -219,9 +219,9 @@ def test_query_tuple_with_nested_one_node():
 @skip('fn_types() lacks information about links (one or many)')
 def test_query_tuple_with_nested_many_node():
 
-    @define(Record[{'panicle': Unknown,
-                    'jakies': Record[{'oloroso': Unknown,
-                                      'gashes': Unknown}]}])
+    @define(Record[{'panicle': Any,
+                    'jakies': Record[{'oloroso': Any,
+                                      'gashes': Any}]}])
     def foo():
         pass
 
@@ -241,10 +241,10 @@ def test_query_tuple_with_nested_many_node():
 
 def test_query_tuple_with_simple_args():
 
-    @define(Record[{'clacks': Unknown, 'panicle': Unknown}],
-            Unknown,
-            Record[{'oloroso': Unknown, 'gashes': Unknown}],
-            Unknown)
+    @define(Record[{'clacks': Any, 'panicle': Any}],
+            Any,
+            Record[{'oloroso': Any, 'gashes': Any}],
+            Any)
     def foo():
         pass
 
@@ -261,7 +261,7 @@ def test_query_tuple_with_simple_args():
 
 def test_query_list():
 
-    @define(Record[{'clacks': Unknown, 'panicle': Unknown}])
+    @define(Record[{'clacks': Any, 'panicle': Any}])
     def foo():
         pass
 
@@ -274,7 +274,7 @@ def test_query_list():
 
 def test_query_dict():
 
-    @define(Record[{'clacks': Unknown, 'panicle': Unknown}])
+    @define(Record[{'clacks': Any, 'panicle': Any}])
     def foo():
         pass
 
@@ -295,7 +295,7 @@ def test_query_if_some():
 
 def test_query_optional_arg():
 
-    @define(Optional[Record[{'clacks': Unknown}]])
+    @define(Optional[Record[{'clacks': Any}]])
     def foo(arg):
         pass
 
@@ -307,7 +307,7 @@ def test_query_optional_arg():
 
 def test_query_nested_optional_arg():
 
-    @define(Record[{'una': Optional[Record[{'oloroso': Unknown}]]}])
+    @define(Record[{'una': Optional[Record[{'oloroso': Any}]]}])
     def foo(arg):
         pass
 

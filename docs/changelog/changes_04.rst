@@ -10,12 +10,13 @@ Changes in 0.4
   - Added :py:func:`hiku.validate.query.validate` function to simplify query
     validation
 
-
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
   - ``primary_key`` argument in :py:class:`hiku.sources.sqlalchemy.FieldsQuery`
     now is keyword-only
+
+  - Renamed :py:class:`hiku.types.Unknown` into :py:class:`hiku.types.Any`
 
   - :py:class:`hiku.sources.sqlalchemy.Field` removed, use
     :py:class:`hiku.graph.Field` instead:

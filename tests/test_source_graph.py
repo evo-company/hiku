@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 from hiku.graph import Graph, Node, Link, Field, Option, Root
-from hiku.types import Record, Sequence, Unknown, TypeRef
+from hiku.types import Record, Sequence, Any, TypeRef
 from hiku.engine import Engine
 from hiku.expr.core import define, S, each
 from hiku.sources.graph import SubGraph
@@ -85,23 +85,23 @@ _GRAPH = Graph([
 ])
 
 
-@define(Record[{'b': Unknown}], Record[{'d': Unknown}])
+@define(Record[{'b': Any}], Record[{'d': Any}])
 def foo(x, y):
     return '{x[y]} {y[d]}'.format(x=x, y=y).upper()
 
 
-@define(Record[{'b': Unknown, 'y': Record[{'d': Unknown}]}])
+@define(Record[{'b': Any, 'y': Record[{'d': Any}]}])
 def bar(x):
     return '{x[b]} {x[y][d]}'.format(x=x).upper()
 
 
-@define(Record[{'d': Unknown, 'xs': Sequence[Record[{'b': Unknown}]]}])
+@define(Record[{'d': Any, 'xs': Sequence[Record[{'b': Any}]]}])
 def baz(y):
     xs = ', '.join('{x[b]}'.format(x=x) for x in y['xs'])
     return '{y[d]} [{xs}]'.format(y=y, xs=xs).upper()
 
 
-@define(Record[{'a': Unknown}], Unknown)
+@define(Record[{'a': Any}], Any)
 def buz(x, size):
     return '{x[a]} - {size}'.format(x=x, size=size)
 

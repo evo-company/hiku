@@ -3,7 +3,7 @@ from collections import deque, OrderedDict
 
 from .. import graph
 from ..types import Sequence, SequenceMeta, Record, RecordMeta, Optional
-from ..types import MappingMeta, OptionalMeta, Unknown, UnknownMeta
+from ..types import MappingMeta, OptionalMeta, Any, AnyMeta
 from ..types import TypeRef, TypeRefMeta
 
 from .refs import NamedRef, Ref
@@ -34,7 +34,7 @@ class GraphTypes(graph.GraphVisitor):
             raise TypeError(repr(obj.type_enum))
 
     def visit_field(self, obj):
-        return obj.type or Unknown
+        return obj.type or Any
 
 
 def graph_types(graph_):
@@ -88,7 +88,7 @@ def node_type(types, node):
 def check_type(types, t1, t2):
     t1 = get_type(types, t1)
     t2 = get_type(types, t2)
-    if isinstance(t2, UnknownMeta):
+    if isinstance(t2, AnyMeta):
         pass
     else:
         if isinstance(t1, type(t2)):
@@ -125,7 +125,7 @@ class Checker(NodeTransformer):
         assert hasattr(obj, '__ref__'), 'Object does not have a reference'
 
         ref_to = node_type(self.types, obj)
-        check_type(self.types, ref_to, Record[{name.name: Unknown}])
+        check_type(self.types, ref_to, Record[{name.name: Any}])
 
         res = ref_to.__field_types__.get(name.name)
         assert res is not None, 'Undefined field name: {}'.format(name.name)
@@ -178,7 +178,7 @@ class Checker(NodeTransformer):
             if ref is not None:
                 check_type(self.types, node_type(self.types, arg), arg_type)
             else:
-                check_type(self.types, Unknown, arg_type)
+                check_type(self.types, Any, arg_type)
         return Tuple([sym] + args)
 
     def visit_tuple(self, node):

@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from contextlib import contextmanager
 
 from ..types import Record, RecordMeta, OptionalMeta, SequenceMeta, MappingMeta
-from ..types import GenericMeta, Unknown
+from ..types import GenericMeta, Any
 from ..expr.checker import GraphTypes
 
 from .types import TypeDef
@@ -39,17 +39,17 @@ class GraphTypesEx(GraphTypes):
     def visit_graph(self, obj):
         types_map = super(GraphTypesEx, self).visit_graph(obj)
         return [TypeDef[n, t] for n, t in types_map.items()
-                if t is not Unknown]
+                if t is not Any]
 
     def visit_node(self, obj):
         record = super(GraphTypesEx, self).visit_node(obj)
         return Record[[(n, t) for n, t in record.__field_types__.items()
-                       if t is not Unknown]]
+                       if t is not Any]]
 
     def visit_root(self, obj):
         record = super(GraphTypesEx, self).visit_root(obj)
         return Record[[(n, t) for n, t in record.__field_types__.items()
-                       if t is not Unknown]]
+                       if t is not Any]]
 
 
 class _LinePrinter(object):
@@ -69,7 +69,7 @@ class _LinePrinter(object):
     def visit_typeref(self, type_):
         return type_.__type_name__
 
-    def visit_unknown(self, type_):
+    def visit_any(self, type_):
         return 'Unknown'
 
 
