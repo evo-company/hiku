@@ -1,4 +1,7 @@
+import collections
+
 from itertools import repeat
+from contextlib import contextmanager
 
 from ..types import AbstractTypeVisitor
 from ..query import QueryVisitor
@@ -63,33 +66,90 @@ class _AssumeField(GraphVisitor):
         raise AssertionError('Root node is not expected here')
 
 
-class _TypeError(TypeError):
-    pass
+class _OptionError(TypeError):
+
+    def __init__(self, description):
+        self.description = description
+        super(_OptionError, self).__init__(description)
+
+
+class _OptionTypeError(_OptionError):
+
+    def __init__(self, value, expected):
+        description = '"{}" instead of {!r}'.format(type(value).__name__,
+                                                    expected)
+        super(_OptionTypeError, self).__init__(description)
 
 
 class _OptionTypeValidator(object):
 
     def __init__(self, value):
-        self.value = value
+        self._value = [value]
+
+    @property
+    def value(self):
+        return self._value[-1]
+
+    @contextmanager
+    def push(self, value):
+        self._value.append(value)
+        try:
+            yield
+        finally:
+            self._value.pop()
 
     def visit(self, type_):
         type_.accept(self)
 
     def visit_boolean(self, type_):
         if not isinstance(self.value, bool):
-            raise _TypeError('Invalid type')
+            raise _OptionTypeError(self.value, type_)
 
     def visit_string(self, type_):
         if not isinstance(self.value, text_type):
-            raise _TypeError('Invalid type')
+            raise _OptionTypeError(self.value, type_)
 
     def visit_integer(self, type_):
         if not isinstance(self.value, int):
-            raise _TypeError('Invalid type')
+            raise _OptionTypeError(self.value, type_)
 
     def visit_optional(self, type_):
         if self.value is not None:
             self.visit(type_.__type__)
+
+    def visit_sequence(self, type_):
+        if not isinstance(self.value, collections.Sequence):
+            raise _OptionTypeError(self.value, type_)
+        for item in self.value:
+            with self.push(item):
+                self.visit(type_.__item_type__)
+
+    def visit_mapping(self, type_):
+        if not isinstance(self.value, collections.Mapping):
+            raise _OptionTypeError(self.value, type_)
+        for key, value in self.value.items():
+            with self.push(key):
+                self.visit(type_.__key_type__)
+            with self.push(value):
+                self.visit(type_.__value_type__)
+
+    def visit_record(self, type_):
+        if not isinstance(self.value, collections.Mapping):
+            raise _OptionTypeError(self.value, type_)
+
+        unknown = set(self.value).difference(type_.__field_types__)
+        if unknown:
+            fields = ', '.join(sorted(map(repr, unknown)))
+            raise _OptionError('unknown fields: {}'.format(fields))
+
+        missing = set(type_.__field_types__).difference(self.value)
+        if missing:
+            fields = ', '.join(sorted(missing))
+            raise _OptionError('missing fields: {}'.format(fields))
+
+        for key, value_type in type_.__field_types__.items():
+            with self.push(self.value[key]):
+                self.visit(value_type)
 
 
 class _ValidateOptions(GraphVisitor):
@@ -119,12 +179,11 @@ class _ValidateOptions(GraphVisitor):
         elif obj.type is not None:
             try:
                 _OptionTypeValidator(value).visit(obj.type)
-            except _TypeError:
+            except _OptionError as err:
                 node, field = self.for_
-                type_name = type(value).__name__
-                self.errors.report('Invalid type "{}" for option "{}.{}:{}" '
-                                   'provided'
-                                   .format(type_name, node, field, obj.name))
+                self.errors.report('Invalid value for option "{}.{}:{}", {}'
+                                   .format(node, field, obj.name,
+                                           err.description))
 
     def visit_node(self, obj):
         assert self.options is None, 'Node can not have options'

@@ -2,12 +2,19 @@ import pytest
 
 from hiku import query as q
 from hiku.graph import Graph, Node, Field, Link, Option, Root
-from hiku.types import Integer, Record, Sequence, Optional, TypeRef
+from hiku.types import Integer, Record, Sequence, Optional, TypeRef, Boolean
+from hiku.types import String, Mapping
 from hiku.validate.query import validate
 
 
 def _():
     return 1/0
+
+
+class Invalid(object):
+
+    def __repr__(self):
+        return '<invalid>'
 
 
 GRAPH = Graph([
@@ -48,6 +55,13 @@ GRAPH = Graph([
 
 def check_errors(query, errors):
     assert validate(GRAPH, query) == errors
+
+
+def check_option_errors(options, query_options, errors):
+    graph = Graph([Root([Field('glinty', None, _, options=options)])])
+    query = q.Node([q.Field('glinty', options=query_options)])
+    assert validate(graph, query) == [e.format(field='root.glinty')
+                                      for e in errors]
 
 
 def test_field():
@@ -119,7 +133,8 @@ def test_field_options():
     ])
     check_errors(mk('wreche', options={'cierra': 1}), [])
     check_errors(mk('wreche', options={'cierra': '1'}), [
-        'Invalid type "str" for option "root.wreche:cierra" provided',
+        'Invalid value for option "root.wreche:cierra", '
+        '"str" instead of Integer',
     ])
     check_errors(mk('wreche', options={'cierra': 1, 'invalid': 1}), [
         'Unknown options for "root.wreche": invalid',
@@ -129,7 +144,8 @@ def test_field_options():
     check_errors(mk('hunter', options={}), [])
     check_errors(mk('hunter', options={'fried': 1}), [])
     check_errors(mk('hunter', options={'fried': '1'}), [
-        'Invalid type "str" for option "root.hunter:fried" provided',
+        'Invalid value for option "root.hunter:fried", '
+        '"str" instead of Integer',
     ])
     check_errors(mk('hunter', options={'fried': 1, 'invalid': 1}), [
         'Unknown options for "root.hunter": invalid',
@@ -140,7 +156,8 @@ def test_field_options():
     check_errors(mk('tapioca', options={'arbour': None}), [])
     check_errors(mk('tapioca', options={'arbour': 123}), [])
     check_errors(mk('tapioca', options={'arbour': '123'}), [
-        'Invalid type "str" for option "root.tapioca:arbour" provided',
+        'Invalid value for option "root.tapioca:arbour", '
+        '"str" instead of Integer',
     ])
 
 
@@ -192,7 +209,8 @@ def test_link_options():
     ])
     check_errors(mk('pouria', options={'flunk': 1}), [])
     check_errors(mk('pouria', options={'flunk': '1'}), [
-        'Invalid type "str" for option "root.pouria:flunk" provided',
+        'Invalid value for option "root.pouria:flunk", '
+        '"str" instead of Integer',
     ])
     check_errors(mk('pouria', options={'flunk': 1, 'invalid': 1}), [
         'Unknown options for "root.pouria": invalid',
@@ -202,7 +220,8 @@ def test_link_options():
     check_errors(mk('secants', options={}), [])
     check_errors(mk('secants', options={'monadic': 1}), [])
     check_errors(mk('secants', options={'monadic': '1'}), [
-        'Invalid type "str" for option "root.secants:monadic" provided',
+        'Invalid value for option "root.secants:monadic", '
+        '"str" instead of Integer',
     ])
     check_errors(mk('secants', options={'monadic': 1, 'invalid': 1}), [
         'Unknown options for "root.secants": invalid',
@@ -212,5 +231,139 @@ def test_link_options():
     check_errors(mk('hackled', options={'lawing': None}), [])
     check_errors(mk('hackled', options={'lawing': 123}), [])
     check_errors(mk('hackled', options={'lawing': '123'}), [
-        'Invalid type "str" for option "root.hackled:lawing" provided',
+        'Invalid value for option "root.hackled:lawing", '
+        '"str" instead of Integer',
     ])
+
+
+def test_missing_options():
+    check_option_errors(
+        [Option('lawing', Integer)],
+        {},
+        ['Required option "{field}:lawing" is not specified'],
+    )
+    check_option_errors(
+        [Option('lawing', Integer, default=1)],
+        {},
+        [],
+    )
+    check_option_errors(
+        [Option('lawing', Optional[Integer])],
+        {},
+        ['Required option "{field}:lawing" is not specified'],
+    )
+    check_option_errors(
+        [Option('lawing', Optional[Integer], default=None)],
+        {},
+        [],
+    )
+
+
+def test_scalar_option_type_errors():
+    check_option_errors([Option('lawing', Boolean)], {'lawing': True}, [])
+    check_option_errors([Option('lawing', Boolean)], {'lawing': Invalid()}, [
+        'Invalid value for option "{field}:lawing", '
+        '"Invalid" instead of Boolean'
+    ])
+    check_option_errors([Option('lawing', Integer)], {'lawing': 123}, [])
+    check_option_errors([Option('lawing', Integer)], {'lawing': Invalid()}, [
+        'Invalid value for option "{field}:lawing", '
+        '"Invalid" instead of Integer'
+    ])
+    check_option_errors([Option('lawing', String)], {'lawing': u"raundon"}, [])
+    check_option_errors([Option('lawing', String)], {'lawing': Invalid()}, [
+        'Invalid value for option "{field}:lawing", '
+        '"Invalid" instead of String'
+    ])
+
+
+def test_optional_option_type_errors():
+    check_option_errors(
+        [Option('lawing', Optional[Integer])],
+        {'lawing': None},
+        [],
+    )
+    check_option_errors(
+        [Option('lawing', Optional[Integer])],
+        {'lawing': Invalid()},
+        ['Invalid value for option "{field}:lawing", '
+         '"Invalid" instead of Integer'],
+    )
+
+
+def test_sequence_option_type_errors():
+    check_option_errors(
+        [Option('lawing', Sequence[Integer])],
+        {'lawing': [123]},
+        [],
+    )
+    check_option_errors(
+        [Option('lawing', Sequence[Integer])],
+        {'lawing': Invalid()},
+        ['Invalid value for option "{field}:lawing", '
+         '"Invalid" instead of Sequence[Integer]'],
+    )
+    check_option_errors(
+        [Option('lawing', Sequence[Integer])],
+        {'lawing': [Invalid()]},
+        ['Invalid value for option "{field}:lawing", '
+         '"Invalid" instead of Integer'],
+    )
+
+
+def test_mapping_option_type_errors():
+    check_option_errors(
+        [Option('lawing', Mapping[Integer, String])],
+        {'lawing': {123: u"oik"}},
+        [],
+    )
+    check_option_errors(
+        [Option('lawing', Mapping[Integer, String])],
+        {'lawing': Invalid()},
+        ['Invalid value for option "{field}:lawing", '
+         '"Invalid" instead of Mapping[Integer, String]'],
+    )
+    check_option_errors(
+        [Option('lawing', Mapping[Integer, String])],
+        {'lawing': {Invalid(): u"oik"}},
+        ['Invalid value for option "{field}:lawing", '
+         '"Invalid" instead of Integer'],
+    )
+    check_option_errors(
+        [Option('lawing', Mapping[Integer, String])],
+        {'lawing': {123: Invalid()}},
+        ['Invalid value for option "{field}:lawing", '
+         '"Invalid" instead of String'],
+    )
+
+
+def test_record_option_type_errors():
+    check_option_errors(
+        [Option('lawing', Record[{'tingent': Integer}])],
+        {'lawing': {'tingent': 123}},
+        [],
+    )
+    check_option_errors(
+        [Option('lawing', Record[{'tingent': Integer}])],
+        {'lawing': Invalid()},
+        ['Invalid value for option "{field}:lawing", '
+         '"Invalid" instead of Record[{{\'tingent\': Integer}}]'],
+    )
+    check_option_errors(
+        [Option('lawing', Record[{'tingent': Integer}])],
+        {'lawing': {}},
+        ['Invalid value for option "{field}:lawing", '
+         'missing fields: tingent'],
+    )
+    check_option_errors(
+        [Option('lawing', Record[{'tingent': Integer}])],
+        {'lawing': {Invalid(): 1}},
+        ['Invalid value for option "{field}:lawing", '
+         'unknown fields: <invalid>'],
+    )
+    check_option_errors(
+        [Option('lawing', Record[{'tingent': Integer}])],
+        {'lawing': {'tingent': Invalid()}},
+        ['Invalid value for option "{field}:lawing", '
+         '"Invalid" instead of Integer'],
+    )

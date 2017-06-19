@@ -9,6 +9,7 @@ Changes in 0.4
   - Added :py:func:`hiku.graph.apply` function to apply graph transformers
   - Added :py:func:`hiku.validate.query.validate` function to simplify query
     validation
+  - Implemented complete options validation in the :py:mod:`hiku.validate.query`
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
