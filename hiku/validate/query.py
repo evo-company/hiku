@@ -26,8 +26,8 @@ class _AssumeRecord(AbstractTypeVisitor):
     def _false(self, obj):
         pass
 
-    visit_boolean, visit_string, visit_integer, visit_mapping, \
-        visit_callable, visit_typeref = repeat(_false, 6)
+    visit_boolean, visit_string, visit_integer, visit_float, visit_mapping, \
+        visit_callable, visit_typeref = repeat(_false, 7)
 
     def visit_optional(self, obj):
         if not self._nested:
@@ -111,6 +111,10 @@ class _OptionTypeValidator(object):
 
     def visit_integer(self, type_):
         if not isinstance(self.value, int):
+            raise _OptionTypeError(self.value, type_)
+
+    def visit_float(self, type_):
+        if not isinstance(self.value, float):
             raise _OptionTypeError(self.value, type_)
 
     def visit_optional(self, type_):

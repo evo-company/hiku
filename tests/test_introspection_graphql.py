@@ -1,5 +1,5 @@
 from hiku.graph import Graph, Root, Field, Node, Link, apply
-from hiku.types import String, Integer, Sequence, TypeRef, Boolean
+from hiku.types import String, Integer, Sequence, TypeRef, Boolean, Float
 from hiku.result import denormalize
 from hiku.engine import Engine
 from hiku.sources.graph import SubGraph
@@ -36,6 +36,7 @@ GRAPH = Graph([
     ]),
     Root([
         Field('cowered', String, field_func),
+        Field('entero', Float, field_func),
         Link('toma', Sequence[TypeRef['decian']], link_func,
              requires=None),
     ]),
@@ -129,6 +130,7 @@ def _non_null(t):
 _INT = {'kind': 'SCALAR', 'name': 'Int', 'ofType': None}
 _STR = {'kind': 'SCALAR', 'name': 'String', 'ofType': None}
 _BOOL = {'kind': 'SCALAR', 'name': 'Boolean', 'ofType': None}
+_FLOAT = {'kind': 'SCALAR', 'name': 'Float', 'ofType': None}
 
 
 def _seq_of(name):
@@ -198,6 +200,14 @@ RESULT = {
                     {
                         'name': 'cowered',
                         'type': _non_null(_STR),
+                        'description': None,
+                        'isDeprecated': False,
+                        'deprecationReason': None,
+                        'args': [],
+                    },
+                    {
+                        'name': 'entero',
+                        'type': _non_null(_FLOAT),
                         'description': None,
                         'isDeprecated': False,
                         'deprecationReason': None,

@@ -38,6 +38,9 @@ class TypeIdent(TypeVisitor):
     def visit_integer(self, obj):
         return NON_NULL('Int')
 
+    def visit_float(self, obj):
+        return NON_NULL('Float')
+
     def visit_boolean(self, obj):
         return NON_NULL('Boolean')
 
@@ -90,7 +93,7 @@ def type_info(graph, fields, ids):
             info = {'id': ident,
                     'kind': 'LIST'}
         else:
-            assert ident in {'String', 'Int', 'Boolean'}, ident
+            assert ident in {'String', 'Int', 'Boolean', 'Float'}, ident
             info = {'id': ident,
                     'name': ident,
                     'kind': 'SCALAR'}

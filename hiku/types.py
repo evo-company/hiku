@@ -53,6 +53,16 @@ class Integer(with_metaclass(IntegerMeta, object)):
     pass
 
 
+class FloatMeta(GenericMeta):
+
+    def accept(cls, visitor):
+        return visitor.visit_float(cls)
+
+
+class Float(with_metaclass(FloatMeta, object)):
+    pass
+
+
 class TypingMeta(GenericMeta):
     __final__ = False
 
@@ -194,6 +204,10 @@ class AbstractTypeVisitor(with_metaclass(ABCMeta, object)):
         pass
 
     @abstractmethod
+    def visit_float(self, obj):
+        pass
+
+    @abstractmethod
     def visit_typeref(self, obj):
         pass
 
@@ -230,6 +244,9 @@ class TypeVisitor(AbstractTypeVisitor):
         pass
 
     def visit_integer(self, obj):
+        pass
+
+    def visit_float(self, obj):
         pass
 
     def visit_typeref(self, obj):

@@ -66,6 +66,9 @@ class _LinePrinter(object):
     def visit_integer(self, type_):
         return 'Integer'
 
+    def visit_float(self, type_):
+        return 'Unknown'
+
     def visit_typeref(self, type_):
         return type_.__type_name__
 
