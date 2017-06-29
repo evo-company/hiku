@@ -33,32 +33,20 @@ Backward-incompatible changes
 
       hiku.graph.Field('foo', None, fields_query)
 
-  - :py:class:`hiku.sources.sqlalchemy.LinkQuery` now doesn't needs a first
-    ``type`` argument:
+  - :py:class:`hiku.sources.sqlalchemy.LinkQuery` now works with regular
+    :py:class:`hiku.graph.Link` class, so :py:class:`hiku.sources.sqlalchemy.Link`
+    was removed:
 
     .. code-block:: python
 
-      character_to_actors_query = LinkQuery(
+      character_to_actors_query = hiku.sources.sqlalchemy.LinkQuery(
           Sequence[TypeRef['actor'],
           SA_ENGINE_KEY,
           from_column=actor_table.c.character_id,
           to_column=actor_table.c.id,
       )
 
-    Changed to:
-
-    .. code-block:: python
-
-      character_to_actors_query = LinkQuery(
-          SA_ENGINE_KEY,
-          from_column=actor_table.c.character_id,
-          to_column=actor_table.c.id,
-      )
-
-  - :py:class:`hiku.sources.sqlalchemy.Link` removed, use
-    :py:class:`hiku.graph.Link` instead:
-
-    .. code-block:: python
+      ... snip ...
 
       hiku.sources.sqlalchemy.Link('actors', character_to_actors_query,
                                    requires='id')
@@ -66,6 +54,14 @@ Backward-incompatible changes
     Changed to:
 
     .. code-block:: python
+
+      character_to_actors_query = hiku.sources.sqlalchemy.LinkQuery(
+          SA_ENGINE_KEY,
+          from_column=actor_table.c.character_id,
+          to_column=actor_table.c.id,
+      )
+
+      ... snip ...
 
       hiku.graph.Link('actors', Sequence[TypeRef['actor']],
                       character_to_actors_query, requires='id')
