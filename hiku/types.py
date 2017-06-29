@@ -10,7 +10,7 @@ class GenericMeta(type):
         return cls.__name__
 
     def accept(cls, visitor):
-        raise NotImplementedError
+        raise NotImplementedError(type(cls))
 
 
 class AnyMeta(GenericMeta):
@@ -67,10 +67,10 @@ class TypingMeta(GenericMeta):
     __final__ = False
 
     def __cls_init__(cls, *args):
-        raise NotImplementedError
+        raise NotImplementedError(type(cls))
 
     def __cls_repr__(cls):
-        raise NotImplementedError
+        raise NotImplementedError(type(cls))
 
     def __getitem__(cls, parameters):
         if cls.__final__:

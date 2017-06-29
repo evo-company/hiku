@@ -46,7 +46,7 @@ class TypeIdent(TypeVisitor):
 
 
 def not_implemented(*args, **kwargs):
-    raise NotImplementedError
+    raise NotImplementedError(args, kwargs)
 
 
 def na_maybe(graph):

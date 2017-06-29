@@ -1,7 +1,7 @@
 class Node(object):
 
     def accept(self, visitor):
-        raise NotImplementedError
+        raise NotImplementedError(type(self))
 
 
 class Symbol(Node):

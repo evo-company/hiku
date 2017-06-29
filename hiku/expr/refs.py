@@ -59,7 +59,7 @@ def ref_to_req(types, ref, add_req=None):
             return ref_to_req(types, ref.backref,
                               Node([Link(ref.name, node)]))
         else:
-            raise NotImplementedError
+            raise NotImplementedError(type(item_type))
 
     elif isinstance(ref_type, GenericMeta):
         assert not isinstance(ref_type, _CONTAINER_TYPES)
@@ -84,7 +84,7 @@ def type_to_query(type_):
             if isinstance(f_type.__item_type__, RecordMeta):
                 fields.append(Link(f_name, type_to_query(f_type.__item_type__)))
             else:
-                raise NotImplementedError
+                raise NotImplementedError(type(f_type.__item_type__))
         else:
             fields.append(Field(f_name))
     return Node(fields)

@@ -62,15 +62,15 @@ class FragmentsCollector(NodeVisitor):
 class SelectionSetVisitMixin(object):
 
     def transform_fragment(self, name):
-        raise NotImplementedError
+        raise NotImplementedError(type(self))
 
     @property
     def query_variables(self):
-        raise NotImplementedError
+        raise NotImplementedError(type(self))
 
     @property
     def query_name(self):
-        raise NotImplementedError
+        raise NotImplementedError(type(self))
 
     def lookup_variable(self, name):
         try:

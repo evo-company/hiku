@@ -5,7 +5,7 @@ from collections import defaultdict
 class Workflow(object):
 
     def result(self):
-        raise NotImplementedError
+        raise NotImplementedError(type(self))
 
 
 class TaskSet(object):
