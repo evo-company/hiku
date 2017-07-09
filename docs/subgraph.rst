@@ -81,7 +81,7 @@ exposes all of our data sources. High-level graph is used to express our
 business-logic based on low-level graph, and hides it's implementation details.
 
 .. literalinclude:: test_subgraph.py
-    :lines: 110-137
+    :lines: 110-135
     :linenos:
     :emphasize-lines: 5-6,10,15,17-19
 
@@ -90,8 +90,8 @@ above.
 
 :py:class:`~hiku.sources.graph.SubGraph` source :sup:`[10]` is used to refer to
 low-level node. Low-level node and it's high-level counterpart are basically
-refer to the same logical entity (`character`) and they share same unique
-identifiers (``character.id``), used to identify every instance of the entity.
+refer to the same logical entity (`Character`) and they share same unique
+identifiers (``Character.id``), used to identify every instance of the entity.
 
 :py:class:`~hiku.sources.graph.SubGraph` is used along with
 :py:class:`~hiku.sources.graph.Expr` fields to define expressions, which
@@ -103,7 +103,7 @@ unbound symbols.
 
 ``S.this`` is a special case, it refers to the low-level counterpart of the
 current node. So ``S.this.name`` :sup:`[15]` is a ``name`` field of the
-``character`` node from the low-level graph. As you can see, to expose low-level
+``Character`` node from the low-level graph. As you can see, to expose low-level
 fields in the high-level node without modification, you just need to refer them
 using symbols with their names.
 

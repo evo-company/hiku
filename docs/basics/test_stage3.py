@@ -1,12 +1,12 @@
 # data
 
 data = {
-    'character': {
+    'Character': {
         1: dict(id=1, name='James T. Kirk', species='Human'),
         2: dict(id=2, name='Spock', species='Vulcan/Human'),
         3: dict(id=3, name='Leonard McCoy', species='Human'),
     },
-    'actor': {
+    'Actor': {
         1: dict(id=1, character_id=1, name='William Shatner'),
         2: dict(id=2, character_id=2, name='Leonard Nimoy'),
         3: dict(id=3, character_id=3, name='DeForest Kelley'),
@@ -26,26 +26,26 @@ from hiku.types import TypeRef, Sequence
 def character_data(fields, ids):
     result = []
     for id_ in ids:
-        character = data['character'][id_]
+        character = data['Character'][id_]
         result.append([character[field.name] for field in fields])
     return result
 
 def actor_data(fields, ids):
     result = []
     for id_ in ids:
-        actor = data['actor'][id_]
+        actor = data['Actor'][id_]
         result.append([actor[field.name] for field in fields])
     return result
 
 def character_to_actors_link(ids):
     mapping = defaultdict(list)
-    for row in data['actor'].values():
+    for row in data['Actor'].values():
         mapping[row['character_id']].append(row['id'])
     return [mapping[id_] for id_ in ids]
 
 def actor_to_character_link(ids):
     mapping = {}
-    for row in data['actor'].values():
+    for row in data['Actor'].values():
         mapping[row['id']] = row['character_id']
     return [mapping[id_] for id_ in ids]
 
@@ -53,21 +53,21 @@ def to_characters_link():
     return [1, 2, 3]
 
 GRAPH = Graph([
-    Node('character', [
+    Node('Character', [
         Field('id', None, character_data),
         Field('name', None, character_data),
         Field('species', None, character_data),
-        Link('actors', Sequence[TypeRef['actor']],
+        Link('actors', Sequence[TypeRef['Actor']],
              character_to_actors_link, requires='id'),
     ]),
-    Node('actor', [
+    Node('Actor', [
         Field('id', None, actor_data),
         Field('name', None, actor_data),
-        Link('character', TypeRef['character'],
+        Link('character', TypeRef['Character'],
              actor_to_character_link, requires='id'),
     ]),
     Root([
-        Link('characters', Sequence[TypeRef['character']],
+        Link('characters', Sequence[TypeRef['Character']],
              to_characters_link, requires=None),
     ]),
 ])

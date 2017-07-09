@@ -36,12 +36,12 @@ def characters_link():
 
 
 GRAPH = Graph([
-    Node('character', [
+    Node('Character', [
         Field('name', String, character_loader),
         Field('species', String, character_loader),
     ]),
     Root([
-        Link('characters', Sequence[TypeRef['character']],
+        Link('characters', Sequence[TypeRef['Character']],
              characters_link, requires=None),
     ]),
 ])

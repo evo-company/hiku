@@ -60,19 +60,19 @@ def to_characters_query(ctx):
     return [row.id for row in ctx[SA_ENGINE_KEY].execute(query)]
 
 _GRAPH = Graph([
-    Node('image', [
+    Node('Image', [
         Field('id', None, image_query),
         Field('name', None, image_query),
     ]),
-    Node('character', [
+    Node('Character', [
         Field('id', None, character_query),
         Field('image_id', None, character_query),
         Field('name', None, character_query),
-        Link('image', Optional[TypeRef['image']],
+        Link('image', Optional[TypeRef['Image']],
              maybe_direct_link, requires='image_id'),
     ]),
     Root([
-        Link('characters', Sequence[TypeRef['character']],
+        Link('characters', Sequence[TypeRef['Character']],
              to_characters_query, requires=None),
     ]),
 ])
@@ -116,10 +116,10 @@ def image_url(image):
     return 'http://example.com/{id}-{name}'.format(id=image['id'],
                                                    name=image['name'])
 
-character_sg = SubGraph(_GRAPH, 'character')
+character_sg = SubGraph(_GRAPH, 'Character')
 
 GRAPH = Graph([
-    Node('character', [
+    Node('Character', [
         Field('id', None, character_sg),
         Field('name', None, character_sg),
         Field('image-url', None, character_sg.c(
@@ -129,7 +129,7 @@ GRAPH = Graph([
         )),
     ]),
     Root([
-        Link('characters', Sequence[TypeRef['character']],
+        Link('characters', Sequence[TypeRef['Character']],
              to_characters_query, requires=None),
     ]),
 ])

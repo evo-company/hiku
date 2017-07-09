@@ -1,5 +1,5 @@
-Ⅱ - Using Database, `with sqlalchemy`
-=====================================
+Ⅱ - Using Database :sup:`with SQLAlchemy`
+=========================================
 
 Hiku provides support for loading data from SQL databases using SQLAlchemy_
 library, but Hiku doesn't requires to use it's ORM layer, it requires only Core
@@ -26,7 +26,7 @@ Defined tables can be exposed as graph of nodes:
 .. _guide-database-graph:
 
 .. literalinclude:: test_database.py
-    :lines: 43-91
+    :lines: 43-94
     :linenos:
     :emphasize-lines: 6,8,12-16,18,21,22,24,43-44
 
@@ -72,7 +72,7 @@ looking like this:
 
 List of ``character_ids`` we already know (it is an ``id`` field of the current
 node), all we need is to fetch ``actor.id`` column to make a link from
-``character`` node to the ``actor`` node.
+``Character`` node to the ``Actor`` node.
 :py:class:`~hiku.sources.sqlalchemy.LinkQuery` does this for you.
 
 Querying graph
@@ -81,18 +81,18 @@ Querying graph
 For testing purposes let's define helper function ``execute``:
 
 .. literalinclude:: test_database.py
-    :lines: 95-105
+    :lines: 98-108
 
 Testing one to many link:
 
 .. literalinclude:: test_database.py
-    :lines: 108-133
+    :lines: 111-136
     :dedent: 4
 
 Testing many to one link:
 
 .. literalinclude:: test_database.py
-    :lines: 136-164
+    :lines: 139-167
     :dedent: 4
 
 .. _SQLAlchemy: http://www.sqlalchemy.org

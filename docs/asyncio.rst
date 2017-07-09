@@ -1,5 +1,5 @@
-Using AsyncIO, `with aiopg`
-===========================
+Using AsyncIO :sup:`with aiopg`
+===============================
 
 Hiku has several executors, previous examples were using
 :py:class:`hiku.executors.sync.SyncExecutor` and they can also be used with

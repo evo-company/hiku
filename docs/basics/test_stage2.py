@@ -1,7 +1,7 @@
 # data
 
 data = {
-    'character': {
+    'Character': {
         1: dict(name='James T. Kirk', species='Human'),
         2: dict(name='Spock', species='Vulcan/Human'),
         3: dict(name='Leonard McCoy', species='Human'),
@@ -20,7 +20,7 @@ from hiku.executors.sync import SyncExecutor
 def character_data(fields, ids):
     result = []
     for id_ in ids:
-        character = data['character'][id_]
+        character = data['Character'][id_]
         result.append([character[field.name] for field in fields])
     return result
 
@@ -28,12 +28,12 @@ def to_characters_link():
     return [1, 2, 3]
 
 GRAPH = Graph([
-    Node('character', [
+    Node('Character', [
         Field('name', None, character_data),
         Field('species', None, character_data),
     ]),
     Root([
-        Link('characters', Sequence[TypeRef['character']],
+        Link('characters', Sequence[TypeRef['Character']],
              to_characters_link, requires=None),
     ]),
 ])

@@ -40,7 +40,7 @@ Backward-incompatible changes
     .. code-block:: python
 
       character_to_actors_query = hiku.sources.sqlalchemy.LinkQuery(
-          Sequence[TypeRef['actor'],
+          Sequence[TypeRef['Actor'],
           SA_ENGINE_KEY,
           from_column=actor_table.c.character_id,
           to_column=actor_table.c.id,
@@ -63,7 +63,7 @@ Backward-incompatible changes
 
       ... snip ...
 
-      hiku.graph.Link('actors', Sequence[TypeRef['actor']],
+      hiku.graph.Link('actors', Sequence[TypeRef['Actor']],
                       character_to_actors_query, requires='id')
 
   - All the changes in :py:mod:`hiku.sources.sqlalchemy` are the same for

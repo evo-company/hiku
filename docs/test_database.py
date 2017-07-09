@@ -71,24 +71,24 @@ def to_actors_query(ctx):
     return [row.id for row in ctx[SA_ENGINE_KEY].execute(query)]
 
 GRAPH = Graph([
-    Node('character', [
+    Node('Character', [
         Field('id', None, character_query),
         Field('name', None, character_query),
         Field('species', None, character_query),
-        Link('actors', Sequence[TypeRef['actor']], character_to_actors_query,
+        Link('actors', Sequence[TypeRef['Actor']], character_to_actors_query,
              requires='id'),
     ]),
-    Node('actor', [
+    Node('Actor', [
         Field('id', None, actor_query),
         Field('name', None, actor_query),
         Field('character_id', None, actor_query),
-        Link('character', TypeRef['character'],
+        Link('character', TypeRef['Character'],
              direct_link, requires='character_id'),
     ]),
     Root([
-        Link('characters', Sequence[TypeRef['character']],
+        Link('characters', Sequence[TypeRef['Character']],
              to_characters_query, requires=None),
-        Link('actors', Sequence[TypeRef['actor']],
+        Link('actors', Sequence[TypeRef['Actor']],
              to_actors_query, requires=None),
     ]),
 ])

@@ -79,7 +79,7 @@ Then lets define our graph with one :py:class:`~hiku.graph.Node` and one
     :emphasize-lines: 8,15,20-21,24-25
 
 ``character_data`` function :sup:`[8]` is used to resolve values for two fields
-in the ``character`` node. As you can see, it returns basically a list of lists
+in the ``Character`` node. As you can see, it returns basically a list of lists
 with values in the same order as it was requested in arguments (order of ids and
 fields should be preserved).
 
@@ -93,7 +93,7 @@ one simple function (when possible) to efficiently load data without introducing
 lots of queries (to eliminate ``N+1`` problem, for example).
 
 ``to_characters_link`` function :sup:`[15]` is used to make a link
-:sup:`[24-25]` from the :py:class:`~hiku.graph.Root` node to the ``character``
+:sup:`[24-25]` from the :py:class:`~hiku.graph.Root` node to the ``Character``
 node. This function should return character ids.
 
 So now you are able to try this query in the console:
@@ -114,7 +114,7 @@ Linking node to node
 .. note:: Source code of this example can be found
     `on GitHub <https://github.com/vmagamedov/hiku/blob/master/docs/basics/test_stage3.py>`_.
 
-Let's extend our data with one more entity - ``actor``:
+Let's extend our data with one more entity - ``Actor``:
 
 .. literalinclude:: basics/test_stage3.py
     :lines: 3-17
@@ -131,9 +131,9 @@ Here is our extended graph definition:
     :emphasize-lines: 20,26,36,37,40-41,43,46-47
 
 Here ``actors`` :py:class:`~hiku.graph.Link` :sup:`[40-41]`, defined in the
-``character`` node :sup:`[36]`, requires ``id`` field :sup:`[37]` to map
+``Character`` node :sup:`[36]`, requires ``id`` field :sup:`[37]` to map
 characters to actors. That's why ``id`` field :sup:`[37]` was added to the
-``character`` node :sup:`[36]`. The same work should be done in the ``actor``
+``Character`` node :sup:`[36]`. The same work should be done in the ``Actor``
 node :sup:`[43]` to implement backward ``character`` link :sup:`[46-47]`.
 
 ``character_to_actors_link`` function :sup:`[20]` accepts ids of the characters
@@ -151,8 +151,8 @@ So now we can include linked node fields in our query:
     :lines: 90-103
     :dedent: 4
 
-We can go further and follow ``character`` link from the ``actor`` node and
-return fields from ``character`` node. This is an example of the cyclic links,
+We can go further and follow ``character`` link from the ``Actor`` node and
+return fields from ``Character`` node. This is an example of the cyclic links,
 which is normal when this feature is desired, as long as query is a hierarchical
 finite structure and result follows it's structure.
 
