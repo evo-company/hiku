@@ -1,4 +1,4 @@
-from hiku.graph import Graph, Root, Field, Node, Link, apply
+from hiku.graph import Graph, Root, Field, Node, Link, apply, Option
 from hiku.types import String, Integer, Sequence, TypeRef, Boolean, Float
 from hiku.result import denormalize
 from hiku.engine import Engine
@@ -27,7 +27,9 @@ flexed_sg = SubGraph(_GRAPH, 'flexed')
 
 GRAPH = Graph([
     Node('flexed', [
-        Field('yari', Boolean, flexed_sg),
+        Field('yari', Boolean, flexed_sg, options=[
+            Option('membuka', Sequence[String], default=['frayed']),
+        ]),
     ]),
     Node('decian', [
         Field('dogme', Integer, field_func),
@@ -133,12 +135,15 @@ _BOOL = {'kind': 'SCALAR', 'name': 'Boolean', 'ofType': None}
 _FLOAT = {'kind': 'SCALAR', 'name': 'Float', 'ofType': None}
 
 
-def _seq_of(name):
+def _obj(name):
+    return {'kind': 'OBJECT', 'name': name, 'ofType': None}
+
+
+def _seq_of(_type):
     return {'kind': 'NON_NULL', 'name': None,
             'ofType': {'kind': 'LIST', 'name': None,
                        'ofType': {'kind': 'NON_NULL', 'name': None,
-                                  'ofType': {'kind': 'OBJECT', 'name': name,
-                                             'ofType': None}}}}
+                                  'ofType': _type}}}
 
 
 RESULT = {
@@ -157,7 +162,14 @@ RESULT = {
                         'description': None,
                         'isDeprecated': False,
                         'deprecationReason': None,
-                        'args': [],
+                        'args': [
+                            {
+                                'name': 'membuka',
+                                'type': _seq_of(_STR),
+                                'description': None,
+                                'defaultValue': '["frayed"]',
+                            },
+                        ],
                     },
                 ],
                 'description': None,
@@ -180,7 +192,7 @@ RESULT = {
                     },
                     {
                         'name': 'clarkia',
-                        'type': _seq_of('flexed'),
+                        'type': _seq_of(_obj('flexed')),
                         'description': None,
                         'isDeprecated': False,
                         'deprecationReason': None,
@@ -215,7 +227,7 @@ RESULT = {
                     },
                     {
                         'name': 'toma',
-                        'type': _seq_of('decian'),
+                        'type': _seq_of(_obj('decian')),
                         'description': None,
                         'isDeprecated': False,
                         'deprecationReason': None,

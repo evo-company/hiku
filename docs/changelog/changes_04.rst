@@ -11,6 +11,7 @@ Changes in 0.4
     validation
   - Implemented complete options validation in the :py:mod:`hiku.validate.query`
   - Added :py:class:`hiku.types.Float` type
+  - Fixed GraphQL introspection to properly encode default values
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

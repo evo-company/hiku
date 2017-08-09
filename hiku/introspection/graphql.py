@@ -1,13 +1,17 @@
+from __future__ import absolute_import
+
 import re
 
 from itertools import chain
 from functools import partial
 from collections import namedtuple, OrderedDict
 
+from graphql import print_ast, ast_from_value
+
 from ..graph import Graph, Root, Node, Link, Option, Field, Nothing
 from ..graph import GraphTransformer
 from ..types import TypeRef, String, Sequence, Boolean, Optional, TypeVisitor
-from ..compat import text_type, async_wrapper
+from ..compat import async_wrapper
 
 
 LIST = namedtuple('LIST', 'of_type')
@@ -159,11 +163,14 @@ def input_value_info(graph, fields, ids):
         node = nodes_map[ident.node]
         field = node.fields_map[ident.field]
         option = field.options_map[ident.name]
+        if option.default is Nothing:
+            default = None
+        else:
+            default = print_ast(ast_from_value(option.default))
         info = {'id': ident,
                 'name': option.name,
                 'description': None,
-                'defaultValue': (None if option.default is Nothing
-                                 else text_type(option.default))}
+                'defaultValue': default}
         yield [info[f.name] for f in fields]
 
 
