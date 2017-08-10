@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from itertools import chain
 
 from graphql.language import ast
+from graphql.language.ast import NonNullType
 from graphql.language.parser import parse
 
 from ..query import Node, Field, Link
@@ -207,13 +208,15 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
         for var_defn in obj.variable_definitions or ():
             name = var_defn.variable.name.value
             try:
-                value = variables[name]
+                value = variables[name]  # TODO: check variable type
             except KeyError:
                 if var_defn.default_value is not None:
                     value = self.visit(var_defn.default_value)
-                else:
+                elif isinstance(var_defn.type, NonNullType):
                     raise TypeError('Variable "{}" is not provided for query {}'
                                     .format(name, query_name))
+                else:
+                    value = None
             query_variables[name] = value
 
         self.query_name = query_name

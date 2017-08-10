@@ -184,30 +184,30 @@ def test_duplicated_fragment_names():
 def test_variables_in_query():
     check_read(
         """
-        query Milks($barwin: String, $alpacas: Int = 123) {
-          inlined(finn: $barwin, buccina: $alpacas)
+        query Milks($oba: Int, $barwin: Int!, $alpacas: Int! = 123) {
+          inlined(crapper: $oba, finn: $barwin, buccina: $alpacas)
         }
         """,
         Node([Field('inlined',
-                    options={'finn': 'fanless', 'buccina': 123})]),
-        {'barwin': 'fanless'},
+                    options={'crapper': None, 'finn': 123, 'buccina': 123})]),
+        {'barwin': 123},
     )
 
 
 def test_variables_in_fragment():
     check_read(
         """
-        query Jester($popedom: String, $tookies: Int = 234) {
+        query Jester($pushy: Int, $popedom: Int!, $tookies: Int! = 234) {
           ...Pujari
         }
 
         fragment Pujari on Ashlee {
-          inlined(bankit: $popedom, riuer: $tookies)
+          fibbery(baps: $pushy, bankit: $popedom, riuer: $tookies)
         }
         """,
-        Node([Field('inlined',
-                    options={'bankit': 'halle', 'riuer': 234})]),
-        {'popedom': 'halle'},
+        Node([Field('fibbery',
+                    options={'baps': None, 'bankit': 123, 'riuer': 234})]),
+        {'popedom': 123},
     )
 
 
@@ -244,7 +244,7 @@ def test_undefined_variables():
 def test_missing_variables():
     with pytest.raises(TypeError) as err:
         read("""
-        query Belinda($asides: Int) {
+        query Belinda($asides: Int!) {
           ebonics
         }
         """)
