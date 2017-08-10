@@ -1,5 +1,6 @@
 from hiku.graph import Graph, Root, Field, Node, Link, apply, Option
 from hiku.types import String, Integer, Sequence, TypeRef, Boolean, Float
+from hiku.types import Optional
 from hiku.result import denormalize
 from hiku.engine import Engine
 from hiku.sources.graph import SubGraph
@@ -29,6 +30,7 @@ GRAPH = Graph([
     Node('flexed', [
         Field('yari', Boolean, flexed_sg, options=[
             Option('membuka', Sequence[String], default=['frayed']),
+            Option('modist', Optional[Integer], default=None),
         ]),
     ]),
     Node('decian', [
@@ -168,6 +170,12 @@ RESULT = {
                                 'type': _seq_of(_STR),
                                 'description': None,
                                 'defaultValue': '["frayed"]',
+                            },
+                            {
+                                'name': 'modist',
+                                'type': _INT,
+                                'description': None,
+                                'defaultValue': 'null',
                             },
                         ],
                     },

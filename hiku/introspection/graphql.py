@@ -165,6 +165,9 @@ def input_value_info(graph, fields, ids):
         option = field.options_map[ident.name]
         if option.default is Nothing:
             default = None
+        elif option.default is None:
+            # graphql-core currently can't parse/print "null" values
+            default = 'null'
         else:
             default = print_ast(ast_from_value(option.default))
         info = {'id': ident,
