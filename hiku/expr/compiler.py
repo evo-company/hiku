@@ -97,10 +97,10 @@ class ExpressionCompiler(object):
             load_bind_sym = py.Name(self.env[bind_sym.name], py.Load())
             test = py.Compare(load_bind_sym, [py.IsNot()], [none])
             store_bind_sym = py.Name(self.env[bind_sym.name], py.Store())
+            comp_extra = [0] if PY36 else []  # comprehension:is_async
             comp = py.comprehension(
-                store_bind_sym,
-                py.Tuple([self.visit(bind_expr)], py.Load()),
-                [],
+                store_bind_sym, py.Tuple([self.visit(bind_expr)], py.Load()),
+                [], *comp_extra
             )
             expr = py.IfExp(test, self.visit(then_), self.visit(else_))
         gen = py.GeneratorExp(expr, [comp])

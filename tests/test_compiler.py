@@ -6,7 +6,6 @@ from textwrap import dedent
 from collections import OrderedDict
 
 import astor
-import pytest
 
 from hiku.types import Optional, String, Record, Any, TypeRef, Sequence
 from hiku.graph import Graph, Field, Node, Link, Root
@@ -14,10 +13,6 @@ from hiku.compat import PY3, PY35
 from hiku.expr.core import define, S, if_, each, to_expr, if_some
 from hiku.expr.checker import check, graph_types, fn_types
 from hiku.expr.compiler import ExpressionCompiler
-
-
-pytestmark = pytest.mark.skipif(PY35, reason='Waiting for Astor 0.6 release '
-                                             'with Python 3.5 support')
 
 
 @define(Any, _name='foo')
@@ -74,6 +69,14 @@ def check_compiles(dsl_expr, code):
 
     expr = check(expr, types)
 
+    # test eval
+    lambda_expr = ExpressionCompiler.compile_lambda_expr(expr)
+    eval(compile(lambda_expr, '<expr>', 'eval'))
+
+    if PY35:
+        return  # Astor doesn't support Python >= 3.5
+
+    # test compile
     py_expr = ExpressionCompiler.compile_expr(expr)
 
     first = astor.to_source(py_expr)
@@ -85,10 +88,6 @@ def check_compiles(dsl_expr, code):
                .format('\n'.join(difflib.ndiff(first.splitlines(),
                                                second.splitlines()))))
         raise AssertionError(msg)
-
-    # test eval
-    lambda_expr = ExpressionCompiler.compile_lambda_expr(expr)
-    eval(compile(lambda_expr, '<expr>', 'eval'))
 
 
 def test_tuple():
