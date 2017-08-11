@@ -56,11 +56,16 @@ class Option(AbstractOption):
         :param name: name of the option
         :param type_: type of the option or ``None``
         :param kw-only,optional default: default option value
+        :param kw-only,optional description: description of the option
         """
+        default, description = kw_only(self.__init__, kwargs, [],
+                                       [('default', Nothing),
+                                        ('description', None)])
+
         self.name = name
         self.type = type_
-        self.default, = kw_only(self.__init__, kwargs, [],
-                                [('default', Nothing)])
+        self.default = default
+        self.description = description
 
     def __repr__(self):
         return '{}({!r}, {!r}, ...)'.format(self.__class__.__name__,
@@ -443,7 +448,8 @@ class GraphTransformer(AbstractGraphVisitor):
         return obj.accept(self)
 
     def visit_option(self, obj):
-        return Option(obj.name, obj.type, default=obj.default)
+        return Option(obj.name, obj.type, default=obj.default,
+                      description=obj.description)
 
     def visit_field(self, obj):
         return Field(obj.name, obj.type, obj.func,

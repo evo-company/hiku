@@ -172,7 +172,7 @@ def input_value_info(graph, fields, ids):
             default = print_ast(ast_from_value(option.default))
         info = {'id': ident,
                 'name': option.name,
-                'description': None,
+                'description': option.description,
                 'defaultValue': default}
         yield [info[f.name] for f in fields]
 

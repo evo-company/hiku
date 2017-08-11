@@ -30,7 +30,8 @@ GRAPH = Graph([
     Node('flexed', [
         Field('yari', Boolean, flexed_sg, options=[
             Option('membuka', Sequence[String], default=['frayed']),
-            Option('modist', Optional[Integer], default=None),
+            Option('modist', Optional[Integer], default=None,
+                   description='callow'),
         ]),
     ]),
     Node('decian', [
@@ -174,7 +175,7 @@ RESULT = {
                             {
                                 'name': 'modist',
                                 'type': _INT,
-                                'description': None,
+                                'description': 'callow',
                                 'defaultValue': 'null',
                             },
                         ],
