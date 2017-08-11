@@ -4,6 +4,9 @@
 Two-level graph is a way to express business-logic once and provide it
 on-demand.
 
+Expressions in Hiku is a DSL, which is used to expose data from a low-level
+graph (internal) into a high-level graph (public).
+
 Prerequisites
 ~~~~~~~~~~~~~
 
@@ -97,9 +100,9 @@ identifiers (``Character.id``), used to identify every instance of the entity.
 :py:class:`~hiku.sources.graph.Expr` fields to define expressions, which
 represent how to compute high-level representation of data from low-level graph.
 
-``S`` - is a special factory object, used to create symbols on the fly.
-``S.foo`` means just ``foo``. It exists only because Python doesn't support
-unbound symbols.
+:py:const:`hiku.expr.core.S` - is a special factory object, used to create
+symbols on the fly. ``S.foo`` means just ``foo``. It exists only because Python
+doesn't support unbound symbols.
 
 ``S.this`` is a special case, it refers to the low-level counterpart of the
 current node. So ``S.this.name`` :sup:`[15]` is a ``name`` field of the
@@ -116,7 +119,7 @@ use in the `Hiku's` expressions.
 
 As you can see, we defined ``image_url`` function :sup:`[6]` to compute image
 url, and we declared argument types, which this function should accept, using
-:py:func:`hiku.expr.core.define` decorator. Here ``@define(Record[...])`` :sup:`[7]`
+:py:func:`~hiku.expr.core.define` decorator. Here ``@define(Record[...])`` :sup:`[7]`
 means that decorated function accepts one argument (only positional arguments
 are supported), which should be a record with at least two fields -- ``id`` and
 ``name``, and these fields should be with specified types:

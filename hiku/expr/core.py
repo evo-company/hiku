@@ -1,3 +1,10 @@
+"""
+    hiku.expr.core
+    ~~~~~~~~~~~~~~
+
+    Expression building blocks
+
+"""
 from functools import wraps
 from itertools import chain
 from collections import namedtuple
@@ -31,7 +38,8 @@ class _S(object):
     def __getattr__(self, name):
         return _DotHandler(Symbol(name))
 
-
+#: Helper object to represent symbols in expressions. ``S.foo.bar`` in
+#: expressions is equivalent to ``foo.bar`` in the regular Python.
 S = _S()
 
 
@@ -69,7 +77,29 @@ def _query_to_types(obj):
         raise TypeError(type(obj))
 
 
-def define(*requires, **kwargs):
+def define(*types, **kwargs):
+    """Annotates function arguments with types.
+
+    These annotations are used to type-check expressions and to analyze,
+    which data is used from provided arguments.
+
+    Example:
+
+    .. code-block:: python
+
+        @define(Record[{'id': Integer, 'name': String}])
+        def image_url(image):
+            return 'http://example.com/{id}-{name}'.format(id=image['id'],
+                                                           name=image['name'])
+
+    Here ``image_url`` function accepts an object as argument, and is using two
+    of it's fields: ``id`` field of type ``Integer`` and ``name`` field of type
+    ``String``. Hiku will check that this function will be used only with
+    objects having at least such two fields.
+
+    This annotation also gives ability for Hiku to build a query for low-level
+    graph.
+    """
     def decorator(fn):
         _name = kwargs.pop('_name', None)
         assert not kwargs, repr(kwargs)
@@ -83,13 +113,13 @@ def define(*requires, **kwargs):
         expr.__def_name__ = name
         expr.__def_body__ = fn
 
-        if len(requires) == 1 and isinstance(requires[0], string_types):
-            reqs_list = loads(text_type(requires[0]))
+        if len(types) == 1 and isinstance(types[0], string_types):
+            reqs_list = loads(text_type(types[0]))
             expr.__def_type__ = Callable[[(_query_to_types(transform(r))
                                            if r is not None else Any)
                                           for r in reqs_list]]
         else:
-            expr.__def_type__ = Callable[requires]
+            expr.__def_type__ = Callable[types]
 
         return expr
     return decorator
@@ -97,14 +127,73 @@ def define(*requires, **kwargs):
 
 @define(Any, Any, Any, _name='each')
 def each(var, col, expr):
-    pass
+    """Returns a list of the results of the expression evaluation for every
+    item of the sequence provided.
+
+    Example:
+
+    .. code-block:: python
+
+      each(S.x, S.collection, S.x.name)
+
+    Equivalent in the regular Python (only for reference):
+
+    .. code-block:: python
+
+      [x.name for x in collection]
+
+    """
 
 
 @define(Any, Any, Any, _name='if')
 def if_(test, then, else_):
-    pass
+    """Checks condition and continues to evaluate one of the two expressions
+    provided.
+
+    Example:
+
+    .. code-block:: python
+
+      if_(S.value, 'truish', 'falsish')
+
+    Equivalent in the regular Python (only for reference):
+
+    .. code-block:: python
+
+      if value:
+          return 'truish'
+      else:
+          return 'falsish'
+
+    """
 
 
 @define(Any, Any, Any, _name='if_some')
 def if_some(bind, then, else_):
-    pass
+    """Used to unpack values with ``Optional`` types and using them safely in
+    expressions.
+
+    Example:
+
+    .. code-block:: python
+
+      if_some([S.img, S.this.image],
+              image_url(S.img),
+              'http://example.com/no-photo.jpg')
+
+    Equivalent in the regular Python (only for reference):
+
+    .. code-block:: python
+
+      if this.image is not None:
+          img = this.image
+          return image_url(img)
+      else:
+          return 'http://example.com/no-photo.jpg'
+
+    If ``S.this.image`` has a type ``Optional[TypeRef['Image']]``, ``S.img``
+    variable will have a type ``TypeRef['Image']`` and it will be available only
+    in "then"-expression, which will be evaluated only if ``S.this.image``
+    wouldn't be ``None``. Otherwise "else"-expression will be
+    evaluated.
+    """
