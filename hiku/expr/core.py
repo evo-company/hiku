@@ -38,6 +38,7 @@ class _S(object):
     def __getattr__(self, name):
         return _DotHandler(Symbol(name))
 
+
 #: Helper object to represent symbols in expressions. ``S.foo.bar`` in
 #: expressions is equivalent to ``foo.bar`` in the regular Python.
 S = _S()
