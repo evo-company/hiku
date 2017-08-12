@@ -1,3 +1,10 @@
+"""
+    hiku.readers.protobuf
+    ~~~~~~~~~~~~~~~~~~~~~
+
+    Support for queries encoded using Protocol Buffers
+
+"""
 from ..query import Node, Link, Field
 from ..protobuf import query_pb2
 
@@ -39,5 +46,37 @@ def transform(pb_node):
 
 
 def read(data):
+    """Reads a query, encoded into binary Protocol Buffers format, using
+    message types from the ``hiku.protobuf.query`` package.
+
+    Proto-file location: ``hiku/protobuf/query.proto``
+
+    Generated message types: ``hiku.protobuf.query_pb2``
+
+    Example:
+
+    .. code-block:: python
+
+        from hiku.builder import Q, build
+        from hiku.export.protobuf import export
+
+        bin_query = export(build([
+            Q.characters(limit=100)[
+                Q.name,
+            ],
+        ])).SerializeToString()
+
+        assert bin_query == (
+            b'\\n(\\x12&\\n\\ncharacters\\x12\\n\\n\\x08\\n\\x06\\n\\x04'
+            b'name\\x1a\\x0c\\n\\x05limit\\x12\\x03\\x10\\xc8\\x01'
+        )
+
+        query = read(bin_query)  # reading binary message
+
+        result = engine.execute(graph, query)
+
+    :param bytes data: binary message representation
+    :return: :py:class:`hiku.query.Node`, ready to execute query object
+    """
     pb_value = query_pb2.Node.FromString(data)
     return transform(pb_value)

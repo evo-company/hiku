@@ -1,3 +1,10 @@
+"""
+    hiku.readers.graphql
+    ~~~~~~~~~~~~~~~~~~~~
+
+    Support for GraphQL queries
+
+"""
 from __future__ import absolute_import
 
 from itertools import chain
@@ -237,5 +244,28 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
 
 
 def read(src, variables=None):
+    """Reads a GraphQL query
+
+    Example:
+
+    .. code-block:: python
+
+        query = read(
+            '''
+            query Characters($limit: Int) {
+                characters(limit: $limit) {
+                    name
+                }
+            }
+            ''',
+            {'limit': 100},
+        )
+
+        result = engine.execute(graph, query)
+
+    :param str src: GraphQL query
+    :param dict variables: query variables
+    :return: :py:class:`hiku.query.Node`, ready to execute query object
+    """
     doc = parse(src)
     return GraphQLTransformer.transform(doc, variables)

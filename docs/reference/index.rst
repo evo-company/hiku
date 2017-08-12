@@ -2,9 +2,10 @@ Reference
 =========
 
 .. toctree::
-   :maxdepth: 2
+    :maxdepth: 2
 
-   graph
-   query
-   result
-   expr
+    graph
+    query
+    result
+    expr
+    readers

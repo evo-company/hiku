@@ -1,3 +1,10 @@
+"""
+    hiku.readers.simple
+    ~~~~~~~~~~~~~~~~~~~
+
+    Support for queries encoded using EDN format
+
+"""
 from ..edn import loads, Dict, List, Keyword, Tuple
 from ..query import Node, Link, Field
 from ..compat import text_type
@@ -61,5 +68,17 @@ def transform(value):
 
 
 def read(src):
+    """Reads a query, encoded using EDN format
+
+    Example:
+
+    .. code-block:: python
+
+        query = read('[{(:characters {:limit 100}) [:name]}]')
+        result = engine.execute(graph, query)
+
+    :param str src: EDN-encoded data structure
+    :return: :py:class:`hiku.query.Node`, ready to execute query object
+    """
     edn_ast = loads(src)
     return transform(edn_ast)

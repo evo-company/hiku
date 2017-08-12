@@ -135,13 +135,13 @@ def each(var, col, expr):
 
     .. code-block:: python
 
-      each(S.x, S.collection, S.x.name)
+        each(S.x, S.collection, S.x.name)
 
     Equivalent in the regular Python (only for reference):
 
     .. code-block:: python
 
-      [x.name for x in collection]
+        [x.name for x in collection]
 
     """
 
@@ -155,16 +155,16 @@ def if_(test, then, else_):
 
     .. code-block:: python
 
-      if_(S.value, 'truish', 'falsish')
+        if_(S.value, 'truish', 'falsish')
 
     Equivalent in the regular Python (only for reference):
 
     .. code-block:: python
 
-      if value:
-          return 'truish'
-      else:
-          return 'falsish'
+        if value:
+            return 'truish'
+        else:
+            return 'falsish'
 
     """
 
@@ -178,19 +178,19 @@ def if_some(bind, then, else_):
 
     .. code-block:: python
 
-      if_some([S.img, S.this.image],
-              image_url(S.img),
-              'http://example.com/no-photo.jpg')
+        if_some([S.img, S.this.image],
+                image_url(S.img),
+                'http://example.com/no-photo.jpg')
 
     Equivalent in the regular Python (only for reference):
 
     .. code-block:: python
 
-      if this.image is not None:
-          img = this.image
-          return image_url(img)
-      else:
-          return 'http://example.com/no-photo.jpg'
+        if this.image is not None:
+            img = this.image
+            return image_url(img)
+        else:
+            return 'http://example.com/no-photo.jpg'
 
     If ``S.this.image`` has a type ``Optional[TypeRef['Image']]``, ``S.img``
     variable will have a type ``TypeRef['Image']`` and it will be available only
