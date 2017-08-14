@@ -3,6 +3,8 @@ Hiku
 
 Release v0.4 - :doc:`What's new <changelog/changes_04>`
 
+Project on GitHub: https://github.com/vmagamedov/hiku
+
 Hiku is a library to design Graph APIs. Why graphs? – They are simple,
 predictable, flexible, easy to compose and because of that, they are easy
 to reuse.
