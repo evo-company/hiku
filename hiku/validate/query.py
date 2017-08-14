@@ -26,8 +26,8 @@ class _AssumeRecord(AbstractTypeVisitor):
     def _false(self, obj):
         pass
 
-    visit_boolean, visit_string, visit_integer, visit_float, visit_mapping, \
-        visit_callable, visit_typeref = repeat(_false, 7)
+    visit_any, visit_boolean, visit_string, visit_integer, visit_float, \
+        visit_mapping, visit_callable, visit_typeref = repeat(_false, 8)
 
     def visit_optional(self, obj):
         if not self._nested:

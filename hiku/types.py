@@ -192,6 +192,10 @@ class AbstractTypeVisitor(with_metaclass(ABCMeta, object)):
         pass
 
     @abstractmethod
+    def visit_any(self, obj):
+        pass
+
+    @abstractmethod
     def visit_boolean(self, obj):
         pass
 
@@ -236,6 +240,9 @@ class TypeVisitor(AbstractTypeVisitor):
 
     def visit(self, obj):
         return obj.accept(self)
+
+    def visit_any(self, obj):
+        pass
 
     def visit_boolean(self, obj):
         pass

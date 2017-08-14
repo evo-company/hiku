@@ -1,5 +1,5 @@
 from hiku.graph import Graph, Root, Field, Node, Link, apply, Option
-from hiku.types import String, Integer, Sequence, TypeRef, Boolean, Float
+from hiku.types import String, Integer, Sequence, TypeRef, Boolean, Float, Any
 from hiku.types import Optional
 from hiku.result import denormalize
 from hiku.engine import Engine
@@ -268,15 +268,37 @@ def test_typename():
     assert flexed.fields_map['__typename'].func([None]) == ['flexed']
 
 
-def test_introspection_query():
+def introspect(graph):
     engine = Engine(SyncExecutor())
-    graph = apply(GRAPH, [GraphQLIntrospection()])
+    graph = apply(graph, [GraphQLIntrospection()])
 
     query = read(QUERY)
-
     errors = validate(graph, query)
     assert not errors
 
     norm_result = engine.execute(graph, query)
-    result = denormalize(graph, norm_result, query)
-    assert result == RESULT
+    return denormalize(graph, norm_result, query)
+
+
+def test_introspection_query():
+    assert introspect(GRAPH) == RESULT
+
+
+def test_unsupported_field():
+    result = introspect(Graph([Root([Field('fall', Optional[Any], field_func),
+                                     Field('huss', Integer, field_func)])]))
+
+    assert result['__schema']['types'][0]['name'] == 'Root'
+    assert [f['name'] for f in result['__schema']['types'][0]['fields']] == \
+           ['huss']
+
+
+def test_unsupported_option():
+    result = introspect(Graph([Root([Field('huke', Integer, field_func,
+                                           options=[Option('orel',
+                                                           Optional[Any])]),
+                                     Field('terapin', Integer, field_func)])]))
+
+    assert result['__schema']['types'][0]['name'] == 'Root'
+    assert [f['name'] for f in result['__schema']['types'][0]['fields']] == \
+           ['terapin']

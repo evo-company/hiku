@@ -49,6 +49,25 @@ class TypeIdent(TypeVisitor):
         return NON_NULL('Boolean')
 
 
+class UnsupportedGraphQLType(TypeError):
+    pass
+
+
+class TypeValidator(TypeVisitor):
+
+    @classmethod
+    def is_valid(cls, type_):
+        try:
+            cls().visit(type_)
+        except UnsupportedGraphQLType:
+            return False
+        else:
+            return True
+
+    def visit_any(self, obj):
+        raise UnsupportedGraphQLType()
+
+
 def not_implemented(*args, **kwargs):
     raise NotImplementedError(args, kwargs)
 
@@ -104,12 +123,25 @@ def type_info(graph, fields, ids):
         yield [info.get(f.name) for f in fields]
 
 
+def validate_field(field):
+    if not NAME_RE.match(field.name):
+        return False
+    if field.type is None or not TypeValidator.is_valid(field.type):
+        return False
+    for option in field.options:
+        if not NAME_RE.match(option.name):
+            return False
+        if option.type is None or not TypeValidator.is_valid(option.type):
+            return False
+    return True
+
+
 def type_fields_link(graph, ids, options):
     nodes_map = _nodes_map(graph)
     for ident in ids:
         node = nodes_map[ident]
         field_idents = [FieldIdent(ident, f.name) for f in node.fields
-                        if NAME_RE.match(f.name) and f.type is not None]
+                        if validate_field(f)]
         if not field_idents:
             raise TypeError('Node "{}" does not contain any typed field, which '
                             'is not acceptable for GraphQL in order to define '
@@ -153,8 +185,7 @@ def field_args_link(graph, ids):
         node = nodes_map[ident.node]
         field = node.fields_map[ident.name]
         yield [ArgumentIdent(ident.node, field.name, option.name)
-               for option in field.options
-               if NAME_RE.match(option.name) and option.type is not None]
+               for option in field.options]
 
 
 def input_value_info(graph, fields, ids):
