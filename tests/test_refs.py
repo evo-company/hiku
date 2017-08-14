@@ -42,6 +42,7 @@ GRAPH = g.Graph([
 
 
 TYPES = graph_types(GRAPH)
+ROOT_TYPES = TYPES['__root__'].__field_types__
 
 
 def check_req(ref, req, add_req=None):
@@ -51,30 +52,30 @@ def check_req(ref, req, add_req=None):
 
 def check_query(dsl_expr, query):
     expr, functions = to_expr(dsl_expr)
-    types = TYPES.copy()
-    types.update(fn_types(functions))
-    expr = check(expr, types)
-    expr_reqs = RequirementsExtractor.extract(types, expr)
+    env = fn_types(functions)
+    env.update(ROOT_TYPES)
+    expr = check(expr, TYPES, env)
+    expr_reqs = RequirementsExtractor.extract(TYPES, expr)
     with reqs_eq_patcher():
         assert expr_reqs == query
 
 
 def test_ref_root_field():
-    check_req(NamedRef(None, 'sailed', TYPES['sailed']),
+    check_req(NamedRef(None, 'sailed', ROOT_TYPES['sailed']),
               Node([Field('sailed')]))
 
 
 def test_ref_root_node_field():
-    malatya_ref = NamedRef(None, 'malatya', TYPES['malatya'])
+    malatya_ref = NamedRef(None, 'malatya', ROOT_TYPES['malatya'])
     check_req(malatya_ref, Node([Link('malatya', Node([]))]))
 
     bartok_ref = NamedRef(malatya_ref, 'bartok',
-                          TYPES['malatya'].__field_types__['bartok'])
+                          ROOT_TYPES['malatya'].__field_types__['bartok'])
     check_req(bartok_ref, Node([Link('malatya', Node([Field('bartok')]))]))
 
 
 def test_ref_link_one_node_field():
-    weigh_ref = NamedRef(None, 'weigh', TYPES['weigh'])
+    weigh_ref = NamedRef(None, 'weigh', ROOT_TYPES['weigh'])
     check_req(weigh_ref, Node([Link('weigh', Node([]))]))
 
     patens_ref = Ref(weigh_ref, TYPES['patens'])
@@ -86,7 +87,7 @@ def test_ref_link_one_node_field():
 
 
 def test_ref_link_many_node_field():
-    comped_ref = NamedRef(None, 'comped', TYPES['comped'])
+    comped_ref = NamedRef(None, 'comped', ROOT_TYPES['comped'])
     check_req(comped_ref, Node([Link('comped', Node([]))]))
 
     patens_ref = Ref(comped_ref, TYPES['patens'])
@@ -98,7 +99,7 @@ def test_ref_link_many_node_field():
 
 
 def test_ref_link_maybe_node_field():
-    civics_ref = NamedRef(None, 'civics', TYPES['civics'])
+    civics_ref = NamedRef(None, 'civics', ROOT_TYPES['civics'])
     check_req(civics_ref, Node([Link('civics', Node([]))]))
 
     patens_ref = Ref(civics_ref, TYPES['patens'])
@@ -110,7 +111,7 @@ def test_ref_link_maybe_node_field():
 
 
 def test_ref_add_req():
-    check_req(NamedRef(None, 'comped', TYPES['comped']),
+    check_req(NamedRef(None, 'comped', ROOT_TYPES['comped']),
               Node([Link('comped', Node([Field('clacks'),
                                          Field('panicle')]))]),
               add_req=Node([Field('clacks'), Field('panicle')]))

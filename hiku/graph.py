@@ -8,7 +8,6 @@
 """
 from abc import ABCMeta, abstractmethod
 from functools import reduce
-from itertools import chain
 from collections import OrderedDict
 
 from .types import OptionalMeta, SequenceMeta, TypeRefMeta
@@ -365,18 +364,28 @@ class Graph(AbstractGraph):
     def __repr__(self):
         return '{}({!r})'.format(self.__class__.__name__, self.items)
 
+    def iter_root(self):
+        for node in self.items:
+            if node.name is None:
+                for field in node.fields:
+                    yield field
+
+    def iter_nodes(self):
+        for node in self.items:
+            if node.name is not None:
+                yield node
+
     @cached_property
     def root(self):
-        return Root(list(chain.from_iterable(e.fields for e in self.items
-                                             if e.name is None)))
+        return Root(list(self.iter_root()))
 
     @cached_property
     def nodes(self):
-        return [e for e in self.items if e.name is not None]
+        return list(self.iter_nodes())
 
     @cached_property
     def nodes_map(self):
-        return OrderedDict((e.name, e) for e in self.nodes)
+        return OrderedDict((e.name, e) for e in self.iter_nodes())
 
     def accept(self, visitor):
         return visitor.visit_graph(self)

@@ -44,14 +44,15 @@ class BoundExpr(object):
     def __postprocess__(self, field):
         expr, funcs = to_expr(self.expr)
 
-        types = self.sub_graph.types.copy()
-        types.update(fn_types(funcs))
-        types.update((opt.name, Any) for opt in field.options)
+        env = fn_types(funcs)
+        env.update(self.sub_graph.types['__root__'].__field_types__)
+        env.update((opt.name, opt.type or Any) for opt in field.options)
+        env['this'] = TypeRef[self.sub_graph.node]
 
-        expr = check(expr, types)
+        expr = check(expr, self.sub_graph.types, env)
 
         option_names_set = set(opt.name for opt in field.options)
-        reqs = RequirementsExtractor.extract(types, expr)
+        reqs = RequirementsExtractor.extract(self.sub_graph.types, expr)
         reqs = query.Node([f for f in reqs.fields
                            if f.name not in option_names_set])
 
@@ -83,9 +84,7 @@ class SubGraph(object):
         self.graph = graph
         self.node = node
 
-        types = graph_types(graph)
-        types['this'] = types[node]  # make an alias
-        self.types = types
+        self.types = graph_types(graph)
 
     @property
     def __subquery__(self):

@@ -38,8 +38,12 @@ class GraphTypesEx(GraphTypes):
 
     def visit_graph(self, obj):
         types_map = super(GraphTypesEx, self).visit_graph(obj)
-        return [TypeDef[n, t] for n, t in types_map.items()
-                if t is not Any]
+        root_types_map = types_map['__root__'].__field_types__
+        type_defs = [TypeDef[n, t] for n, t in types_map.items()
+                     if t is not Any if n != '__root__']
+        type_defs.extend(TypeDef[n, t] for n, t in root_types_map.items()
+                         if t is not Any)
+        return type_defs
 
     def visit_node(self, obj):
         record = super(GraphTypesEx, self).visit_node(obj)

@@ -2,9 +2,8 @@ from contextlib import contextmanager
 from collections import deque, OrderedDict
 
 from .. import graph
-from ..types import Sequence, SequenceMeta, Record, RecordMeta, Optional
-from ..types import MappingMeta, OptionalMeta, Any, AnyMeta
-from ..types import TypeRef, TypeRefMeta
+from ..types import Sequence, SequenceMeta, Record, RecordMeta
+from ..types import MappingMeta, OptionalMeta, Any, AnyMeta, TypeRefMeta
 
 from .refs import NamedRef, Ref
 from .nodes import NodeTransformer, Symbol, Keyword, Tuple, List
@@ -13,8 +12,9 @@ from .nodes import NodeTransformer, Symbol, Keyword, Tuple, List
 class GraphTypes(graph.GraphVisitor):
 
     def visit_graph(self, obj):
-        types = OrderedDict((node.name, self.visit(node)) for node in obj.nodes)
-        types.update(self.visit(obj.root).__field_types__)
+        types = OrderedDict((node.name, self.visit(node))
+                            for node in obj.iter_nodes())
+        types['__root__'] = self.visit(graph.Root(list(obj.iter_root())))
         return types
 
     def visit_node(self, obj):
@@ -24,14 +24,7 @@ class GraphTypes(graph.GraphVisitor):
         return Record[[(f.name, self.visit(f)) for f in obj.fields]]
 
     def visit_link(self, obj):
-        if obj.type_enum is graph.Maybe:
-            return Optional[TypeRef[obj.node]]
-        elif obj.type_enum is graph.One:
-            return TypeRef[obj.node]
-        elif obj.type_enum is graph.Many:
-            return Sequence[TypeRef[obj.node]]
-        else:
-            raise TypeError(repr(obj.type_enum))
+        return obj.type
 
     def visit_field(self, obj):
         return obj.type or Any
@@ -114,9 +107,9 @@ def check_type(types, t1, t2):
 
 class Checker(NodeTransformer):
 
-    def __init__(self, types):
+    def __init__(self, types, env):
         self.types = types
-        self.env = Environ(types)
+        self.env = Environ(env)
 
     def visit_get_expr(self, node):
         sym, obj, name = node.values
@@ -205,5 +198,5 @@ class Checker(NodeTransformer):
         return super(Checker, self).visit_dict(node)
 
 
-def check(expr, types):
-    return Checker(types).visit(expr)
+def check(expr, types, env):
+    return Checker(types, env).visit(expr)

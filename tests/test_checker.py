@@ -30,13 +30,14 @@ GRAPH = Graph([
 ])
 
 TYPES = graph_types(GRAPH)
+ROOT_TYPES = TYPES['__root__'].__field_types__
 
 
 def check_expr(expr):
     expr, functions = to_expr(expr)
-    types = TYPES.copy()
-    types.update(fn_types(functions))
-    return check(expr, types)
+    env = fn_types(functions)
+    env.update(ROOT_TYPES)
+    return check(expr, TYPES, env)
 
 
 def check_ref(node, ref):
@@ -46,7 +47,7 @@ def check_ref(node, ref):
 
 def test_root_field():
     expr = check_expr(S.araneus)
-    check_ref(expr, NamedRef(None, 'araneus', TYPES['araneus']))
+    check_ref(expr, NamedRef(None, 'araneus', ROOT_TYPES['araneus']))
 
 
 def test_node_field():

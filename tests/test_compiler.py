@@ -62,12 +62,13 @@ ENV = Graph([
 
 
 def check_compiles(dsl_expr, code):
-    expr, functions = to_expr(dsl_expr)
-
     types = graph_types(ENV)
-    types.update(fn_types(functions))
 
-    expr = check(expr, types)
+    expr, functions = to_expr(dsl_expr)
+    env = fn_types(functions)
+    env.update(types['__root__'].__field_types__)
+
+    expr = check(expr, types, env)
 
     # test eval
     lambda_expr = ExpressionCompiler.compile_lambda_expr(expr)
