@@ -12,6 +12,11 @@ Changes in 0.4
   - Implemented complete options validation in the :py:mod:`hiku.validate.query`
   - Added :py:class:`hiku.types.Float` type
   - Fixed GraphQL introspection to properly encode default values
+  - Fixed if_some expression compilation in Python 3.6
+  - Fixed GraphQL query variables handling when they are optional
+  - Fixed GraphQL introspection to properly encode null values
+  - Added ability to specify option's description
+  - Refactored type checking
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
