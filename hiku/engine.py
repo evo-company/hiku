@@ -1,7 +1,7 @@
 import inspect
 
 from functools import partial
-from itertools import chain
+from itertools import chain, repeat
 from collections import defaultdict
 
 from . import query
@@ -93,6 +93,8 @@ def store_links(result, node, link, ids, query_result):
     field_val = partial(_LINK_REF_MAKER[link.type_enum], result, link)
     if node.name is not None:
         if ids is not None:
+            if link.requires is None:
+                query_result = repeat(query_result, len(ids))
             node_index = result.index.setdefault(node.name, {})
             for i, res in zip(ids, query_result):
                 node_data = node_index.setdefault(i, {})
@@ -104,8 +106,8 @@ def store_links(result, node, link, ids, query_result):
         result.root[link.name] = field_val(query_result)
 
 
-def link_result_to_ids(is_list, link_type, result):
-    if is_list:
+def link_result_to_ids(from_list, link_type, result):
+    if from_list:
         if link_type is Maybe:
             return [i for i in result if i is not Nothing]
         elif link_type is One:
@@ -124,7 +126,7 @@ def link_result_to_ids(is_list, link_type, result):
             return [result]
         elif link_type is Many:
             return result
-    raise TypeError(repr([is_list, link_type]))
+    raise TypeError(repr([from_list, link_type]))
 
 
 def _yield_options(graph_obj, query_obj):
@@ -249,8 +251,8 @@ class Query(Workflow):
         if inspect.isgenerator(result):
             result = list(result)
         store_links(self._result, node, graph_link, ids, result)
-        to_ids = link_result_to_ids(ids is not None, graph_link.type_enum,
-                                    result)
+        from_list = ids is not None and graph_link.requires is not None
+        to_ids = link_result_to_ids(from_list, graph_link.type_enum, result)
         if to_ids:
             self.process_node(self.graph.nodes_map[graph_link.node], query_node,
                               to_ids)

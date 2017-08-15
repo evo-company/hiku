@@ -40,6 +40,9 @@ def _patch(func):
 
 def get_graph():
     return Graph([
+        Node('ferulae', [
+            Field('trilled', None, query_fields1),
+        ]),
         Node('tergate', [
             # simple fields
             Field('arion', None, query_fields1),
@@ -51,6 +54,8 @@ def get_graph():
                   query_fields2),
             Field('ant', Sequence[Record[{'circlet': Integer}]],
                   query_fields3),
+            Link('traces', Sequence[TypeRef['ferulae']], query_link2,
+                 requires=None),
         ]),
         Root([
             Field('indice', None, query_fields1),
@@ -296,3 +301,25 @@ def test_pass_context_link():
             assert ctx['fibs'] == 'dossil_feuded'
             with pytest.raises(KeyError):
                 _ = ctx['invalid']  # noqa
+
+
+def test_node_link_without_requirements():
+    with \
+            _patch(query_fields1) as qf1, \
+            _patch(query_link1) as ql1,\
+            _patch(query_link2) as ql2:
+
+        ql1.return_value = [1]
+        ql2.return_value = [2]
+        qf1.return_value = [['arnhild_crewe']]
+        result = execute('[{:subaru [{:traces [:trilled]}]}]')
+        check_result(result,
+                     {'subaru': [{'traces': [{'trilled': 'arnhild_crewe'}]}]})
+        assert result.index == {
+            'tergate': {1: {'traces': [result.ref('ferulae', 2)]}},
+            'ferulae': {2: {'trilled': 'arnhild_crewe'}},
+        }
+        with reqs_eq_patcher():
+            ql1.assert_called_once_with()
+            ql2.assert_called_once_with()
+            qf1.assert_called_once_with([query.Field('trilled')], [2])
