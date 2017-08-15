@@ -2,7 +2,7 @@ from unittest import skip
 
 from hiku import graph as g
 from hiku.query import Node, Field, Link
-from hiku.types import Record, Any, TypeRef, Sequence, Optional
+from hiku.types import Record, Any, TypeRef, Sequence, Optional, String
 from hiku.expr.core import define, S, each, to_expr, if_some
 from hiku.expr.refs import Ref, NamedRef, ref_to_req, RequirementsExtractor
 from hiku.expr.checker import check, graph_types, fn_types
@@ -37,6 +37,7 @@ GRAPH = g.Graph([
         g.Link('civics', Optional[TypeRef['patens']], _, requires=None),
         g.Link('weigh', TypeRef['patens'], _, requires=None),
         g.Link('comped', Sequence[TypeRef['patens']], _, requires=None),
+        g.Field('dilo', Sequence[String], _),
     ]),
 ])
 
@@ -271,6 +272,10 @@ def test_query_list():
         Node([Link('comped', Node([Field('clacks'), Field('panicle')])),
               Link('weigh', Node([Field('clacks'), Field('panicle')]))]),
     )
+
+
+def test_query_list_scalar():
+    check_query(S.dilo, Node([Field('dilo')]))
 
 
 def test_query_dict():

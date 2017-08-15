@@ -59,10 +59,14 @@ def ref_to_req(types, ref, add_req=None):
             return ref_to_req(types, ref.backref,
                               Node([Link(ref.name, node)]))
         else:
-            raise NotImplementedError(type(item_type))
+            assert not isinstance(item_type, _CONTAINER_TYPES), ref_type
+            assert isinstance(ref, NamedRef), type(ref)
+            assert add_req is None, repr(add_req)
+            return ref_to_req(types, ref.backref,
+                              Node([Field(ref.name)]))
 
     elif isinstance(ref_type, GenericMeta):
-        assert not isinstance(ref_type, _CONTAINER_TYPES)
+        assert not isinstance(ref_type, _CONTAINER_TYPES), ref_type
         assert isinstance(ref, NamedRef), type(ref)
         assert add_req is None, repr(add_req)
         return ref_to_req(types, ref.backref,
