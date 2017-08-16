@@ -34,13 +34,6 @@ class _AST(object):
         def arg(arg):
             return _ast.arg(arg, None)
 
-        if PY35:
-            @staticmethod
-            def Call(func, args, keywords, starargs, kwargs):
-                return _ast.Call(func, args, keywords)
-        else:
-            Call = _ast.Call
-
     else:
         @staticmethod
         def Name(id, ctx):
@@ -58,7 +51,19 @@ class _AST(object):
         def arg(arg):
             return _ast.Name(str(arg), _ast.Param())
 
+    if PY35:
+        @staticmethod
+        def Call(func, args, keywords, starargs, kwargs):
+            return _ast.Call(func, args, keywords)
+    else:
         Call = _ast.Call
+
+    if PY36:
+        @staticmethod
+        def comprehension(target, iter, ifs, is_async=0):
+            return _ast.comprehension(target, iter, ifs, is_async)
+    else:
+        comprehension = _ast.comprehension
 
 
 ast = _AST()
