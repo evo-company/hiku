@@ -53,6 +53,17 @@ class Result(object):
         self.root = {}
         self.index = {}
 
+    def __repr__(self):
+        lines = ['<{}: {!r}'.format(self.__class__.__name__, self.root)]
+        if self.index:
+            lines.append('  index:')
+            for node, idx in self.index.items():
+                lines.append('    {}:'.format(node))
+                for id_, data in idx.items():
+                    lines.append('      {!r}: {!r}'.format(id_, data))
+        lines[-1] += '>'
+        return '\n'.join(lines)
+
     def __getitem__(self, key):
         return self.root[key]
 
