@@ -6,8 +6,6 @@ import aiopg.sa
 import sqlalchemy
 import psycopg2.extensions
 
-from pytest_asyncio.plugin import ForbiddenEventLoopPolicy
-
 import hiku.sources.aiopg
 
 from hiku.utils import cached_property
@@ -69,6 +67,11 @@ def _db_dsn(request):
 @pytest.fixture(autouse=True)
 def fixture_setter(request, _db_dsn):
     request.instance.db_dsn = _db_dsn
+
+
+class ForbiddenEventLoopPolicy(asyncio.AbstractEventLoopPolicy):
+    """An event loop policy that raises errors on any operation."""
+    pass
 
 
 @pytest.mark.usefixtures('fixture_setter')
