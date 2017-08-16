@@ -41,6 +41,11 @@ class BoundExpr(object):
         self.sub_graph = sub_graph
         self.expr = expr
 
+    def __repr__(self):
+        expr, _ = to_expr(self.expr)
+        return ('<{}: sub_graph={!r}, expr={!r}>'
+                .format(self.__class__.__name__, self.sub_graph, expr))
+
     def __postprocess__(self, field):
         expr, funcs = to_expr(self.expr)
 
@@ -60,7 +65,7 @@ class BoundExpr(object):
         code = ExpressionCompiler.compile_lambda_expr(expr, option_names)
         proc = partial(eval(compile(code, '<expr>', 'eval')),
                        {f.__def_name__: f.__def_body__ for f in funcs})
-        field.func = CheckedExpr(self.sub_graph, reqs, proc)
+        field.func = CheckedExpr(self.sub_graph, expr, reqs, proc)
 
     def __call__(self, *args, **kwargs):
         raise TypeError('Expression is not checked: {!r}'.format(self.expr))
@@ -68,10 +73,16 @@ class BoundExpr(object):
 
 class CheckedExpr(object):
 
-    def __init__(self, sub_graph, reqs, proc):
+    def __init__(self, sub_graph, expr, reqs, proc):
         self.sub_graph = sub_graph
+        self.expr = expr
         self.reqs = reqs
         self.proc = proc
+
+    def __repr__(self):
+        return ('<{}: sub_graph={!r}, expr={!r}, reqs={!r}>'
+                .format(self.__class__.__name__,
+                        self.sub_graph, self.expr, self.reqs))
 
     @property
     def __subquery__(self):
@@ -85,6 +96,9 @@ class SubGraph(object):
         self.node = node
 
         self.types = graph_types(graph)
+
+    def __repr__(self):
+        return '<{}: node={!r}>'.format(self.__class__.__name__, self.node)
 
     @property
     def __subquery__(self):
