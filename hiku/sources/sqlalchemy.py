@@ -22,19 +22,35 @@ def _translate_type(column):
         return None
 
 
+def _table_repr(table):
+    return 'Table({})'.format(', '.join(
+        [repr(table.name), repr(table.metadata), '...',
+         'schema={!r}'.format(table.schema)]
+    ))
+
+
 @pass_context
 class FieldsQuery(object):
 
-    def __init__(self, sa_engine_ctx_var, from_clause, **kwargs):
+    def __init__(self, engine_key, from_clause, **kwargs):
         primary_key, = \
             kw_only(self.__init__, kwargs, [], [('primary_key', None)])
-        self.sa_engine_ctx_var = sa_engine_ctx_var
+        self.engine_key = engine_key
         self.from_clause = from_clause
         if primary_key is not None:
             self.primary_key = primary_key
         else:
             # currently only one column supported
             self.primary_key, = from_clause.primary_key
+
+    def __repr__(self):
+        if isinstance(self.from_clause, sqlalchemy.Table):
+            from_clause_repr = _table_repr(self.from_clause)
+        else:
+            from_clause_repr = repr(self.from_clause)
+        return ('<{}.{}: engine_key={!r}, from_clause={}, primary_key={!r}>'
+                .format(self.__class__.__module__, self.__class__.__name__,
+                        self.engine_key, from_clause_repr, self.primary_key))
 
     def __postprocess__(self, field):
         if field.type is None:
@@ -64,7 +80,7 @@ class FieldsQuery(object):
 
         expr, result_proc = self.select_expr(fields_, ids)
 
-        sa_engine = ctx[self.sa_engine_ctx_var]
+        sa_engine = ctx[self.engine_key]
         with sa_engine.connect() as connection:
             rows = connection.execute(expr).fetchall()
 
@@ -90,16 +106,21 @@ def _to_many_mapper(pairs, values):
 
 class LinkQuery(with_metaclass(ABCMeta, object)):
 
-    def __init__(self, sa_engine_ctx_var, **kwargs):
+    def __init__(self, engine_key, **kwargs):
         from_column, to_column = kw_only(self.__init__, kwargs,
                                          ['from_column', 'to_column'])
         if from_column.table is not to_column.table:
             raise ValueError('from_column and to_column should belong to '
                              'one table')
 
-        self.sa_engine_ctx_var = sa_engine_ctx_var
+        self.engine_key = engine_key
         self.from_column = from_column
         self.to_column = to_column
+
+    def __repr__(self):
+        return ('<{}.{}: engine_key={!r}, from_column={!r}, to_column={!r}>'
+                .format(self.__class__.__module__, self.__class__.__name__,
+                        self.engine_key, self.from_column, self.to_column))
 
     def __postprocess__(self, link):
         if link.type_enum is One:
@@ -129,7 +150,7 @@ class LinkQuery(with_metaclass(ABCMeta, object)):
         if expr is None:
             pairs = []
         else:
-            sa_engine = ctx[self.sa_engine_ctx_var]
+            sa_engine = ctx[self.engine_key]
             with sa_engine.connect() as connection:
                 pairs = connection.execute(expr).fetchall()
         return result_proc(pairs, ids)

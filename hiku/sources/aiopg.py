@@ -11,7 +11,7 @@ class FieldsQuery(_sa.FieldsQuery):
 
         expr, result_proc = self.select_expr(fields_, ids)
 
-        sa_engine = ctx[self.sa_engine_ctx_var]
+        sa_engine = ctx[self.engine_key]
         async with sa_engine.acquire() as connection:
             res = await connection.execute(expr)
             rows = await res.fetchall()
@@ -26,7 +26,7 @@ class LinkQuery(_sa.LinkQuery):
         if expr is None:
             pairs = []
         else:
-            sa_engine = ctx[self.sa_engine_ctx_var]
+            sa_engine = ctx[self.engine_key]
             async with sa_engine.acquire() as connection:
                 res = await connection.execute(expr)
                 rows = await res.fetchall()
