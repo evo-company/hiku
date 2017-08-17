@@ -7,8 +7,8 @@ Query format
 It is possible to serialize queries using `Protocol Buffers`_ in binary form,
 instead of sending it as a text in edn_ or GraphQL_ format.
 
-Hiku has a ``hiku/protobuf/query.proto`` file, which describes message types
-for query serialization.
+Hiku has a :doc:`hiku/protobuf/query.proto <reference/protobuf/query>` file,
+which describes message types for query serialization.
 
 Here is how they can be used to build query:
 
