@@ -13,172 +13,20 @@ from google.protobuf import descriptor_pb2
 _sym_db = _symbol_database.Default()
 
 
+from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='hiku/protobuf/query.proto',
   package='hiku.protobuf.query',
   syntax='proto3',
-  serialized_pb=_b('\n\x19hiku/protobuf/query.proto\x12\x13hiku.protobuf.query\"\x1f\n\x0eRepeatedString\x12\r\n\x05items\x18\x01 \x03(\t\" \n\x0fRepeatedInteger\x12\r\n\x05items\x18\x01 \x03(\x11\"\xb8\x01\n\x06Option\x12\x10\n\x06string\x18\x01 \x01(\tH\x00\x12\x11\n\x07integer\x18\x02 \x01(\x11H\x00\x12>\n\x0frepeated_string\x18\x03 \x01(\x0b\x32#.hiku.protobuf.query.RepeatedStringH\x00\x12@\n\x10repeated_integer\x18\x04 \x01(\x0b\x32$.hiku.protobuf.query.RepeatedIntegerH\x00\x42\x07\n\x05value\"\x9c\x01\n\x05\x46ield\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x38\n\x07options\x18\x02 \x03(\x0b\x32\'.hiku.protobuf.query.Field.OptionsEntry\x1aK\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12*\n\x05value\x18\x02 \x01(\x0b\x32\x1b.hiku.protobuf.query.Option:\x02\x38\x01\"\xc3\x01\n\x04Link\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\'\n\x04node\x18\x02 \x01(\x0b\x32\x19.hiku.protobuf.query.Node\x12\x37\n\x07options\x18\x03 \x03(\x0b\x32&.hiku.protobuf.query.Link.OptionsEntry\x1aK\n\x0cOptionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12*\n\x05value\x18\x02 \x01(\x0b\x32\x1b.hiku.protobuf.query.Option:\x02\x38\x01\"g\n\x04Item\x12+\n\x05\x66ield\x18\x01 \x01(\x0b\x32\x1a.hiku.protobuf.query.FieldH\x00\x12)\n\x04link\x18\x02 \x01(\x0b\x32\x19.hiku.protobuf.query.LinkH\x00\x42\x07\n\x05value\"0\n\x04Node\x12(\n\x05items\x18\x01 \x03(\x0b\x32\x19.hiku.protobuf.query.Itemb\x06proto3')
-)
+  serialized_pb=_b('\n\x19hiku/protobuf/query.proto\x12\x13hiku.protobuf.query\x1a\x1cgoogle/protobuf/struct.proto\"?\n\x05\x46ield\x12\x0c\n\x04name\x18\x01 \x01(\t\x12(\n\x07options\x18\x03 \x01(\x0b\x32\x17.google.protobuf.Struct\"g\n\x04Link\x12\x0c\n\x04name\x18\x01 \x01(\t\x12(\n\x07options\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\'\n\x04node\x18\x02 \x01(\x0b\x32\x19.hiku.protobuf.query.Node\"g\n\x04Item\x12+\n\x05\x66ield\x18\x01 \x01(\x0b\x32\x1a.hiku.protobuf.query.FieldH\x00\x12)\n\x04link\x18\x02 \x01(\x0b\x32\x19.hiku.protobuf.query.LinkH\x00\x42\x07\n\x05value\"0\n\x04Node\x12(\n\x05items\x18\x01 \x03(\x0b\x32\x19.hiku.protobuf.query.Itemb\x06proto3')
+  ,
+  dependencies=[google_dot_protobuf_dot_struct__pb2.DESCRIPTOR,])
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
 
-
-_REPEATEDSTRING = _descriptor.Descriptor(
-  name='RepeatedString',
-  full_name='hiku.protobuf.query.RepeatedString',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='items', full_name='hiku.protobuf.query.RepeatedString.items', index=0,
-      number=1, type=9, cpp_type=9, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=50,
-  serialized_end=81,
-)
-
-
-_REPEATEDINTEGER = _descriptor.Descriptor(
-  name='RepeatedInteger',
-  full_name='hiku.protobuf.query.RepeatedInteger',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='items', full_name='hiku.protobuf.query.RepeatedInteger.items', index=0,
-      number=1, type=17, cpp_type=1, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=83,
-  serialized_end=115,
-)
-
-
-_OPTION = _descriptor.Descriptor(
-  name='Option',
-  full_name='hiku.protobuf.query.Option',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='string', full_name='hiku.protobuf.query.Option.string', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='integer', full_name='hiku.protobuf.query.Option.integer', index=1,
-      number=2, type=17, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='repeated_string', full_name='hiku.protobuf.query.Option.repeated_string', index=2,
-      number=3, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='repeated_integer', full_name='hiku.protobuf.query.Option.repeated_integer', index=3,
-      number=4, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-    _descriptor.OneofDescriptor(
-      name='value', full_name='hiku.protobuf.query.Option.value',
-      index=0, containing_type=None, fields=[]),
-  ],
-  serialized_start=118,
-  serialized_end=302,
-)
-
-
-_FIELD_OPTIONSENTRY = _descriptor.Descriptor(
-  name='OptionsEntry',
-  full_name='hiku.protobuf.query.Field.OptionsEntry',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='key', full_name='hiku.protobuf.query.Field.OptionsEntry.key', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='value', full_name='hiku.protobuf.query.Field.OptionsEntry.value', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=_descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001')),
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=386,
-  serialized_end=461,
-)
 
 _FIELD = _descriptor.Descriptor(
   name='Field',
@@ -196,45 +44,7 @@ _FIELD = _descriptor.Descriptor(
       options=None),
     _descriptor.FieldDescriptor(
       name='options', full_name='hiku.protobuf.query.Field.options', index=1,
-      number=2, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[_FIELD_OPTIONSENTRY, ],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=305,
-  serialized_end=461,
-)
-
-
-_LINK_OPTIONSENTRY = _descriptor.Descriptor(
-  name='OptionsEntry',
-  full_name='hiku.protobuf.query.Link.OptionsEntry',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='key', full_name='hiku.protobuf.query.Link.OptionsEntry.key', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='value', full_name='hiku.protobuf.query.Link.OptionsEntry.value', index=1,
-      number=2, type=11, cpp_type=10, label=1,
+      number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -245,15 +55,16 @@ _LINK_OPTIONSENTRY = _descriptor.Descriptor(
   nested_types=[],
   enum_types=[
   ],
-  options=_descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001')),
+  options=None,
   is_extendable=False,
   syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=386,
-  serialized_end=461,
+  serialized_start=80,
+  serialized_end=143,
 )
+
 
 _LINK = _descriptor.Descriptor(
   name='Link',
@@ -270,23 +81,23 @@ _LINK = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='node', full_name='hiku.protobuf.query.Link.node', index=1,
-      number=2, type=11, cpp_type=10, label=1,
+      name='options', full_name='hiku.protobuf.query.Link.options', index=1,
+      number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='options', full_name='hiku.protobuf.query.Link.options', index=2,
-      number=3, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
+      name='node', full_name='hiku.protobuf.query.Link.node', index=2,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
   ],
   extensions=[
   ],
-  nested_types=[_LINK_OPTIONSENTRY, ],
+  nested_types=[],
   enum_types=[
   ],
   options=None,
@@ -295,8 +106,8 @@ _LINK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=464,
-  serialized_end=659,
+  serialized_start=145,
+  serialized_end=248,
 )
 
 
@@ -336,8 +147,8 @@ _ITEM = _descriptor.Descriptor(
       name='value', full_name='hiku.protobuf.query.Item.value',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=661,
-  serialized_end=764,
+  serialized_start=250,
+  serialized_end=353,
 )
 
 
@@ -367,31 +178,13 @@ _NODE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=766,
-  serialized_end=814,
+  serialized_start=355,
+  serialized_end=403,
 )
 
-_OPTION.fields_by_name['repeated_string'].message_type = _REPEATEDSTRING
-_OPTION.fields_by_name['repeated_integer'].message_type = _REPEATEDINTEGER
-_OPTION.oneofs_by_name['value'].fields.append(
-  _OPTION.fields_by_name['string'])
-_OPTION.fields_by_name['string'].containing_oneof = _OPTION.oneofs_by_name['value']
-_OPTION.oneofs_by_name['value'].fields.append(
-  _OPTION.fields_by_name['integer'])
-_OPTION.fields_by_name['integer'].containing_oneof = _OPTION.oneofs_by_name['value']
-_OPTION.oneofs_by_name['value'].fields.append(
-  _OPTION.fields_by_name['repeated_string'])
-_OPTION.fields_by_name['repeated_string'].containing_oneof = _OPTION.oneofs_by_name['value']
-_OPTION.oneofs_by_name['value'].fields.append(
-  _OPTION.fields_by_name['repeated_integer'])
-_OPTION.fields_by_name['repeated_integer'].containing_oneof = _OPTION.oneofs_by_name['value']
-_FIELD_OPTIONSENTRY.fields_by_name['value'].message_type = _OPTION
-_FIELD_OPTIONSENTRY.containing_type = _FIELD
-_FIELD.fields_by_name['options'].message_type = _FIELD_OPTIONSENTRY
-_LINK_OPTIONSENTRY.fields_by_name['value'].message_type = _OPTION
-_LINK_OPTIONSENTRY.containing_type = _LINK
+_FIELD.fields_by_name['options'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
+_LINK.fields_by_name['options'].message_type = google_dot_protobuf_dot_struct__pb2._STRUCT
 _LINK.fields_by_name['node'].message_type = _NODE
-_LINK.fields_by_name['options'].message_type = _LINK_OPTIONSENTRY
 _ITEM.fields_by_name['field'].message_type = _FIELD
 _ITEM.fields_by_name['link'].message_type = _LINK
 _ITEM.oneofs_by_name['value'].fields.append(
@@ -401,64 +194,24 @@ _ITEM.oneofs_by_name['value'].fields.append(
   _ITEM.fields_by_name['link'])
 _ITEM.fields_by_name['link'].containing_oneof = _ITEM.oneofs_by_name['value']
 _NODE.fields_by_name['items'].message_type = _ITEM
-DESCRIPTOR.message_types_by_name['RepeatedString'] = _REPEATEDSTRING
-DESCRIPTOR.message_types_by_name['RepeatedInteger'] = _REPEATEDINTEGER
-DESCRIPTOR.message_types_by_name['Option'] = _OPTION
 DESCRIPTOR.message_types_by_name['Field'] = _FIELD
 DESCRIPTOR.message_types_by_name['Link'] = _LINK
 DESCRIPTOR.message_types_by_name['Item'] = _ITEM
 DESCRIPTOR.message_types_by_name['Node'] = _NODE
 
-RepeatedString = _reflection.GeneratedProtocolMessageType('RepeatedString', (_message.Message,), dict(
-  DESCRIPTOR = _REPEATEDSTRING,
-  __module__ = 'hiku.protobuf.query_pb2'
-  # @@protoc_insertion_point(class_scope:hiku.protobuf.query.RepeatedString)
-  ))
-_sym_db.RegisterMessage(RepeatedString)
-
-RepeatedInteger = _reflection.GeneratedProtocolMessageType('RepeatedInteger', (_message.Message,), dict(
-  DESCRIPTOR = _REPEATEDINTEGER,
-  __module__ = 'hiku.protobuf.query_pb2'
-  # @@protoc_insertion_point(class_scope:hiku.protobuf.query.RepeatedInteger)
-  ))
-_sym_db.RegisterMessage(RepeatedInteger)
-
-Option = _reflection.GeneratedProtocolMessageType('Option', (_message.Message,), dict(
-  DESCRIPTOR = _OPTION,
-  __module__ = 'hiku.protobuf.query_pb2'
-  # @@protoc_insertion_point(class_scope:hiku.protobuf.query.Option)
-  ))
-_sym_db.RegisterMessage(Option)
-
 Field = _reflection.GeneratedProtocolMessageType('Field', (_message.Message,), dict(
-
-  OptionsEntry = _reflection.GeneratedProtocolMessageType('OptionsEntry', (_message.Message,), dict(
-    DESCRIPTOR = _FIELD_OPTIONSENTRY,
-    __module__ = 'hiku.protobuf.query_pb2'
-    # @@protoc_insertion_point(class_scope:hiku.protobuf.query.Field.OptionsEntry)
-    ))
-  ,
   DESCRIPTOR = _FIELD,
   __module__ = 'hiku.protobuf.query_pb2'
   # @@protoc_insertion_point(class_scope:hiku.protobuf.query.Field)
   ))
 _sym_db.RegisterMessage(Field)
-_sym_db.RegisterMessage(Field.OptionsEntry)
 
 Link = _reflection.GeneratedProtocolMessageType('Link', (_message.Message,), dict(
-
-  OptionsEntry = _reflection.GeneratedProtocolMessageType('OptionsEntry', (_message.Message,), dict(
-    DESCRIPTOR = _LINK_OPTIONSENTRY,
-    __module__ = 'hiku.protobuf.query_pb2'
-    # @@protoc_insertion_point(class_scope:hiku.protobuf.query.Link.OptionsEntry)
-    ))
-  ,
   DESCRIPTOR = _LINK,
   __module__ = 'hiku.protobuf.query_pb2'
   # @@protoc_insertion_point(class_scope:hiku.protobuf.query.Link)
   ))
 _sym_db.RegisterMessage(Link)
-_sym_db.RegisterMessage(Link.OptionsEntry)
 
 Item = _reflection.GeneratedProtocolMessageType('Item', (_message.Message,), dict(
   DESCRIPTOR = _ITEM,
@@ -475,8 +228,4 @@ Node = _reflection.GeneratedProtocolMessageType('Node', (_message.Message,), dic
 _sym_db.RegisterMessage(Node)
 
 
-_FIELD_OPTIONSENTRY.has_options = True
-_FIELD_OPTIONSENTRY._options = _descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001'))
-_LINK_OPTIONSENTRY.has_options = True
-_LINK_OPTIONSENTRY._options = _descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001'))
 # @@protoc_insertion_point(module_scope)

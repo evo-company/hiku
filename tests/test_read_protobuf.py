@@ -26,8 +26,8 @@ def test_node_field_options():
     node = t.Node()
     item = node.items.add()
     item.field.name = 'sprayed'
-    item.field.options['treason'].integer = 123
-    item.field.options['prizren'].string = 'stager'
+    item.field.options['treason'] = 123
+    item.field.options['prizren'] = 'stager'
     check_read(node, Node([Field('sprayed', {'treason': 123,
                                              'prizren': 'stager'})]))
 
@@ -45,28 +45,12 @@ def test_link_options():
     node = t.Node()
     link_item = node.items.add()
     link_item.link.name = 'dubiety'
-    link_item.link.options['squat'].integer = 234
-    link_item.link.options['liquid'].string = 'ravages'
-    link_item.link.options['schlitt'].repeated_integer.items[:] = [345, 456]
-    link_item.link.options['nuntius'].repeated_string.items[:] = ['queue',
-                                                                  'ylem']
+    link_item.link.options['squat'] = 234
+    link_item.link.options['liquid'] = 'ravages'
     field_item = link_item.link.node.items.add()
     field_item.field.name = 'gits'
     check_read(node, Node([Link('dubiety', Node([Field('gits')]),
-                                {'squat': 234,
-                                 'liquid': 'ravages',
-                                 'schlitt': [345, 456],
-                                 'nuntius': ['queue', 'ylem']})]))
-
-
-def test_empty_option():
-    node = t.Node()
-    link_item = node.items.add()
-    link_item.link.name = 'dubiety'
-    assert link_item.link.options['wud']
-    with pytest.raises(TypeError) as err:
-        check_read(node, Node([]))
-    err.match('Option value is not set')
+                                {'squat': 234, 'liquid': 'ravages'})]))
 
 
 def test_no_field_name():
