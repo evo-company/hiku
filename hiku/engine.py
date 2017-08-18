@@ -2,7 +2,7 @@ import inspect
 
 from functools import partial
 from itertools import chain, repeat
-from collections import defaultdict
+from collections import defaultdict, Sequence
 
 from . import query
 from .graph import Link, Node, Maybe, One, Many, Nothing, Field
@@ -44,7 +44,35 @@ class SplitPattern(query.QueryVisitor):
             self._fields.append((graph_obj, obj))
 
 
+def _check_store_fields(node, fields, ids, result):
+    if node.name is not None and ids is not None:
+        if (
+            isinstance(result, Sequence)
+            and len(result) == len(ids)
+            and all(isinstance(r, Sequence) and len(r) == len(fields)
+                    for r in result)
+        ):
+            return
+        else:
+            expected = ('list (len: {}) of lists (len: {})'
+                        .format(len(ids), len(fields)))
+    else:
+        if isinstance(result, Sequence) and len(result) == len(fields):
+            return
+        else:
+            expected = 'list (len: {})'.format(len(fields))
+    raise TypeError('Can\'t store field values, node: {!r}, fields: {!r}, '
+                    'expected: {}, returned: {!r}'
+                    .format(node.name or '__root__', [f.name for f in fields],
+                            expected, result))
+
+
 def store_fields(result, node, fields, ids, query_result):
+    if inspect.isgenerator(query_result):
+        query_result = list(query_result)
+
+    _check_store_fields(node, fields, ids, query_result)
+
     names = [f.name for f in fields]
     if node.name is not None:
         if ids is not None:
@@ -89,7 +117,43 @@ _LINK_REF_MAKER = {
 }
 
 
+def _check_store_links(node, link, ids, result):
+    if node.name is not None and ids is not None and link.requires is not None:
+        if link.type_enum is Maybe or link.type_enum is One:
+            if isinstance(result, Sequence) and len(result) == len(ids):
+                return
+            else:
+                expected = 'list (len: {})'.format(len(ids))
+        elif link.type_enum is Many:
+            if (
+                isinstance(result, Sequence)
+                and len(result) == len(ids)
+                and all(isinstance(r, Sequence) for r in result)
+            ):
+                return
+            else:
+                expected = 'list (len: {}) of lists'.format(len(ids))
+        else:
+            raise TypeError(link.type_enum)
+    else:
+        if link.type_enum is Maybe or link.type_enum is One:
+            return
+        elif link.type_enum is Many:
+            if isinstance(result, Sequence):
+                return
+            else:
+                expected = 'list'
+        else:
+            raise TypeError(link.type_enum)
+    raise TypeError('Can\'t store link values, node: {!r}, link: {!r}, '
+                    'expected: {}, returned: {!r}'
+                    .format(node.name or '__root__', link.name,
+                            expected, result))
+
+
 def store_links(result, node, link, ids, query_result):
+    _check_store_links(node, link, ids, query_result)
+
     field_val = partial(_LINK_REF_MAKER[link.type_enum], result, link)
     if node.name is not None:
         if ids is not None:

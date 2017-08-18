@@ -1,10 +1,11 @@
-from __future__ import unicode_literals
+import re
 
 import pytest
 
 from hiku import query
 from hiku.graph import Graph, Node, Field, Link, Option, Root
 from hiku.types import Record, Sequence, Integer, Optional, TypeRef
+from hiku.compat import text_type
 from hiku.engine import Engine, pass_context, Context
 from hiku.executors.sync import SyncExecutor
 from hiku.readers.simple import read
@@ -14,7 +15,7 @@ from .base import reqs_eq_patcher, check_result, ANY, Mock
 
 def execute(graph, query_, ctx=None):
     engine = Engine(SyncExecutor())
-    return engine.execute(graph, read(query_), ctx=ctx)
+    return engine.execute(graph, read(text_type(query_)), ctx=ctx)
 
 
 def test_root_fields():
@@ -356,3 +357,136 @@ def test_node_link_without_requirements():
     f2.assert_called_once_with()
     with reqs_eq_patcher():
         f3.assert_called_once_with([query.Field('c')], [2])
+
+
+@pytest.mark.parametrize('value', [1, [], [1, 2]])
+def test_root_field_func_result_validation(value):
+    with pytest.raises(TypeError) as err:
+        execute(
+            Graph([
+                Root([
+                    Field('a', None, Mock(return_value=value)),
+                ]),
+            ]),
+            '[:a]',
+        )
+    err.match(re.escape(
+        "Can't store field values, node: '__root__', fields: [{a!r}], "
+        "expected: list (len: 1), returned: {value!r}"
+        .format(a=text_type('a'), value=value)
+    ))
+
+
+@pytest.mark.parametrize('value', [1, [], [1, 2], [[], []], [[1], []],
+                                   [[], [2]]])
+def test_node_field_func_result_validation(value):
+    with pytest.raises(TypeError) as err:
+        execute(
+            Graph([
+                Node('a', [
+                    Field('b', None, Mock(return_value=value)),
+                ]),
+                Root([
+                    Link('c', Sequence[TypeRef['a']], Mock(return_value=[1, 2]),
+                         requires=None),
+                ]),
+            ]),
+            '[{:c [:b]}]',
+        )
+    err.match(re.escape(
+        "Can't store field values, node: 'a', fields: [{b!r}], "
+        "expected: list (len: 2) of lists (len: 1), returned: {value!r}"
+        .format(b=text_type('b'), value=value)
+    ))
+
+
+@pytest.mark.parametrize('value', [1, [], [1, 2]])
+def test_root_node_field_func_result_validation(value):
+    with pytest.raises(TypeError) as err:
+        execute(
+            Graph([
+                Root([
+                    Node('a', [
+                        Field('b', None, Mock(return_value=value))
+                    ]),
+                ]),
+            ]),
+            '[{:a [:b]}]',
+        )
+    err.match(re.escape(
+        "Can't store field values, node: 'a', fields: [{b!r}], "
+        "expected: list (len: 1), returned: {value!r}"
+        .format(b=text_type('b'), value=value)
+    ))
+
+
+def test_root_link_many_func_result_validation():
+    with pytest.raises(TypeError) as err:
+        execute(
+            Graph([
+                Node('a', [
+                    Field('b', None, Mock(return_value=[[3], [4]])),
+                ]),
+                Root([
+                    Link('c', Sequence[TypeRef['a']], Mock(return_value=123),
+                         requires=None),
+                ]),
+            ]),
+            '[{:c [:b]}]',
+        )
+    err.match(re.escape(
+        "Can't store link values, node: '__root__', link: 'c', "
+        "expected: list, returned: 123"
+    ))
+
+
+@pytest.mark.parametrize('value', [1, [], [1, 2, 3]])
+def test_node_link_one_func_result_validation(value):
+    with pytest.raises(TypeError) as err:
+        execute(
+            Graph([
+                Node('a', [
+                    Field('b', None, Mock(return_value=[[1], [2]]))
+                ]),
+                Node('c', [
+                    Field('d', None, Mock(return_value=[[3], [4]])),
+                    Link('e', TypeRef['a'], Mock(return_value=value),
+                         requires='d'),
+                ]),
+                Root([
+                    Link('f', Sequence[TypeRef['c']], Mock(return_value=[1, 2]),
+                         requires=None),
+                ]),
+            ]),
+            '[{:f [{:e [:b]}]}]',
+        )
+    err.match(re.escape(
+        "Can't store link values, node: 'c', link: 'e', expected: "
+        "list (len: 2), returned: {!r}".format(value)
+    ))
+
+
+@pytest.mark.parametrize('value', [1, [], [1, []], [[], 2], [[], [], []]])
+def test_node_link_many_func_result_validation(value):
+    with pytest.raises(TypeError) as err:
+        execute(
+            Graph([
+                Node('a', [
+                    Field('b', None, Mock(return_value=[[1], [2]]))
+                ]),
+                Node('c', [
+                    Field('d', None, Mock(return_value=[[3], [4]])),
+                    Link('e', Sequence[TypeRef['a']], Mock(return_value=value),
+                         requires='d'),
+                ]),
+                Root([
+                    Link('f', Sequence[TypeRef['c']], Mock(return_value=[1, 2]),
+                         requires=None),
+                ]),
+            ]),
+            '[{:f [{:e [:b]}]}]',
+        )
+    err.match(re.escape(
+        "Can't store link values, node: 'c', link: 'e', expected: "
+        "list (len: 2) of lists, returned: {!r}".format(value)
+    ))
