@@ -1,325 +1,358 @@
 from __future__ import unicode_literals
 
-from concurrent.futures import ThreadPoolExecutor
-
 import pytest
 
 from hiku import query
 from hiku.graph import Graph, Node, Field, Link, Option, Root
 from hiku.types import Record, Sequence, Integer, Optional, TypeRef
 from hiku.engine import Engine, pass_context, Context
+from hiku.executors.sync import SyncExecutor
 from hiku.readers.simple import read
-from hiku.executors.threads import ThreadsExecutor
 
-from .base import patch, reqs_eq_patcher, check_result, ANY
-
-
-def query_fields1(*args, **kwargs):
-    raise NotImplementedError
+from .base import reqs_eq_patcher, check_result, ANY, Mock
 
 
-def query_fields2(*args, **kwargs):
-    raise NotImplementedError
-
-
-def query_fields3(*args, **kwargs):
-    raise NotImplementedError
-
-
-def query_link1(*args, **kwargs):
-    raise NotImplementedError
-
-
-def query_link2(*args, **kwargs):
-    raise NotImplementedError
-
-
-def _patch(func):
-    return patch('{}.{}'.format(__name__, getattr(func, '__name__')))
-
-
-def get_graph():
-    return Graph([
-        Node('ferulae', [
-            Field('trilled', None, query_fields1),
-        ]),
-        Node('tergate', [
-            # simple fields
-            Field('arion', None, query_fields1),
-            Field('bhaga', None, query_fields2),
-            # complex fields
-            Field('eches', Optional[Record[{'gone': Integer}]],
-                  query_fields1),
-            Field('lappin', Record[{'sodden': Integer}],
-                  query_fields2),
-            Field('ant', Sequence[Record[{'circlet': Integer}]],
-                  query_fields3),
-            Link('traces', Sequence[TypeRef['ferulae']], query_link2,
-                 requires=None),
-        ]),
-        Root([
-            Field('indice', None, query_fields1),
-            Field('unmined', None, query_fields2),
-            Node('kameron', [
-                Field('buran', None, query_fields1),
-                Field('updated', None, query_fields2),
-            ]),
-            Link('subaru', Sequence[TypeRef['tergate']],
-                 query_link1, requires=None),
-            Link('jessie', Sequence[TypeRef['tergate']],
-                 query_link2, requires=None),
-            # with options
-            Link('zovirax', Sequence[TypeRef['tergate']],
-                 query_link1, requires=None,
-                 options=[Option('busload', None)]),
-            Link('lungs', Sequence[TypeRef['tergate']],
-                 query_link1, requires=None,
-                 options=[Option('tiding', None, default=None)]),
-            Link('doubled', Sequence[TypeRef['tergate']],
-                 query_link1, requires=None,
-                 options=[Option('empower', None, default='deedily_reaving')]),
-        ]),
-    ])
-
-
-thread_pool = ThreadPoolExecutor(2)
-
-
-def execute(query_, ctx=None):
-    engine = Engine(ThreadsExecutor(thread_pool))
-    return engine.execute(get_graph(), read(query_), ctx=ctx)
+def execute(graph, query_, ctx=None):
+    engine = Engine(SyncExecutor())
+    return engine.execute(graph, read(query_), ctx=ctx)
 
 
 def test_root_fields():
-    with _patch(query_fields1) as qf1, _patch(query_fields2) as qf2:
-        qf1.return_value = ['boiardo_sansei']
-        qf2.return_value = ['isolde_bust_up']
-        check_result(execute('[:indice :unmined]'),
-                     {'indice': 'boiardo_sansei',
-                      'unmined': 'isolde_bust_up'})
-        with reqs_eq_patcher():
-            qf1.assert_called_once_with([query.Field('indice')])
-            qf2.assert_called_once_with([query.Field('unmined')])
+    f1 = Mock(return_value=['boiardo'])
+    f2 = Mock(return_value=['isolde'])
+
+    graph = Graph([
+        Root([
+            Field('a', None, f1),
+            Field('b', None, f2),
+        ]),
+    ])
+
+    result = execute(graph, '[:a :b]')
+    check_result(result, {'a': 'boiardo', 'b': 'isolde'})
+
+    with reqs_eq_patcher():
+        f1.assert_called_once_with([query.Field('a')])
+        f2.assert_called_once_with([query.Field('b')])
 
 
 def test_root_node_fields():
-    with _patch(query_fields1) as qf1, _patch(query_fields2) as qf2:
-        qf1.return_value = ['khios_iid']
-        qf2.return_value = ['cambay_cricket']
-        check_result(execute('[{:kameron [:buran :updated]}]'),
-                     {'kameron': {'buran': 'khios_iid',
-                                  'updated': 'cambay_cricket'}})
-        with reqs_eq_patcher():
-            qf1.assert_called_once_with([query.Field('buran')])
-            qf2.assert_called_once_with([query.Field('updated')])
+    f1 = Mock(return_value=['khios'])
+    f2 = Mock(return_value=['cambay'])
+
+    graph = Graph([
+        Root([
+            Node('a', [
+                Field('b', None, f1),
+                Field('c', None, f2),
+            ]),
+        ]),
+    ])
+
+    result = execute(graph, '[{:a [:b :c]}]')
+    check_result(result, {'a': {'b': 'khios', 'c': 'cambay'}})
+
+    with reqs_eq_patcher():
+        f1.assert_called_once_with([query.Field('b')])
+        f2.assert_called_once_with([query.Field('c')])
 
 
 def test_node_fields():
-    with \
-            _patch(query_fields1) as qf1,\
-            _patch(query_fields2) as qf2,\
-            _patch(query_link1) as ql1:
+    f1 = Mock(return_value=[1])
+    f2 = Mock(return_value=[['harkis']])
+    f3 = Mock(return_value=[['slits']])
 
-        ql1.return_value = [1]
-        qf1.return_value = [['harkis_sanest']]
-        qf2.return_value = [['slits_smiddy']]
-        result = execute('[{:subaru [:arion :bhaga]}]')
-        check_result(result,
-                     {'subaru': [{'arion': 'harkis_sanest',
-                                  'bhaga': 'slits_smiddy'}]})
-        assert result.index == {'tergate': {1: {'arion': 'harkis_sanest',
-                                                'bhaga': 'slits_smiddy'}}}
-        with reqs_eq_patcher():
-            ql1.assert_called_once_with()
-            qf1.assert_called_once_with([query.Field('arion')], [1])
-            qf2.assert_called_once_with([query.Field('bhaga')], [1])
+    graph = Graph([
+        Node('a', [
+            Field('b', None, f2),
+            Field('c', None, f3),
+        ]),
+        Root([
+            Link('d', Sequence[TypeRef['a']], f1, requires=None),
+        ]),
+    ])
+
+    result = execute(graph, '[{:d [:b :c]}]')
+    check_result(result, {'d': [{'b': 'harkis', 'c': 'slits'}]})
+    assert result.index == {'a': {1: {'b': 'harkis', 'c': 'slits'}}}
+
+    f1.assert_called_once_with()
+    with reqs_eq_patcher():
+        f2.assert_called_once_with([query.Field('b')], [1])
+        f3.assert_called_once_with([query.Field('c')], [1])
 
 
 def test_node_complex_fields():
-    with \
-            _patch(query_link1) as ql1,\
-            _patch(query_fields1) as qf1,\
-            _patch(query_fields2) as qf2,\
-            _patch(query_fields3) as qf3:
+    f1 = Mock(return_value=[1])
+    f2 = Mock(return_value=[[{'f': 'marshes'}]])
+    f3 = Mock(return_value=[[{'g': 'colline'}]])
+    f4 = Mock(return_value=[[[{'h': 'magi'}]]])
 
-        ql1.return_value = [1]
-        qf1.return_value = [[{'gone': 'marshes_welted'}]]
-        qf2.return_value = [[{'sodden': 'colline_inlined'}]]
-        qf3.return_value = [[[{'circlet': 'magi_syght'}]]]
+    graph = Graph([
+        Node('a', [
+            Field('b', Optional[Record[{'f': Integer}]], f2),
+            Field('c', Record[{'g': Integer}], f3),
+            Field('d', Sequence[Record[{'h': Integer}]], f4),
+        ]),
+        Root([
+            Link('e', Sequence[TypeRef['a']], f1, requires=None),
+        ]),
+    ])
 
-        check_result(
-            execute(
-                """
-                [{:subaru [{:eches [:gone]}
-                           {:lappin [:sodden]}
-                           {:ant [:circlet]}]}]
-                """
-            ),
-            {'subaru': [{'eches': {'gone': 'marshes_welted'},
-                         'lappin': {'sodden': 'colline_inlined'},
-                         'ant': [{'circlet': 'magi_syght'}]}]},
+    check_result(
+        execute(graph, """
+        [{:e [{:b [:f]} {:c [:g]} {:d [:h]}]}]
+        """),
+        {'e': [{'b': {'f': 'marshes'},
+                'c': {'g': 'colline'},
+                'd': [{'h': 'magi'}]}]},
+    )
+
+    f1.assert_called_once_with()
+    with reqs_eq_patcher():
+        f2.assert_called_once_with(
+            [query.Link('b', query.Node([query.Field('f')]))], [1],
         )
-
-        with reqs_eq_patcher():
-            ql1.assert_called_once_with()
-            qf1.assert_called_once_with([
-                query.Link('eches',
-                           query.Node([query.Field('gone')]))],
-                [1],
-            )
-            qf2.assert_called_once_with([
-                query.Link('lappin',
-                           query.Node([query.Field('sodden')]))],
-                [1],
-            )
-            qf3.assert_called_once_with([
-                query.Link('ant',
-                           query.Node([query.Field('circlet')]))],
-                [1],
-            )
+        f3.assert_called_once_with(
+            [query.Link('c', query.Node([query.Field('g')]))], [1],
+        )
+        f4.assert_called_once_with(
+            [query.Link('d', query.Node([query.Field('h')]))], [1],
+        )
 
 
 def test_links():
-    with \
-            _patch(query_fields1) as qf1,\
-            _patch(query_fields2) as qf2,\
-            _patch(query_link1) as ql1,\
-            _patch(query_link2) as ql2:
+    f1 = Mock(return_value=[1])
+    f2 = Mock(return_value=[2])
+    f3 = Mock(return_value=[['boners']])
+    f4 = Mock(return_value=[['julio']])
 
-        ql1.return_value = [1]
-        qf1.return_value = [['boners_friezes']]
-        ql2.return_value = [2]
-        qf2.return_value = [['julio_mousy']]
-        result = execute('[{:subaru [:arion]} {:jessie [:bhaga]}]')
-        check_result(result, {'subaru': [{'arion': 'boners_friezes'}],
-                              'jessie': [{'bhaga': 'julio_mousy'}]})
-        assert result.index == {'tergate': {1: {'arion': 'boners_friezes'},
-                                            2: {'bhaga': 'julio_mousy'}}}
-        with reqs_eq_patcher():
-            ql1.assert_called_once_with()
-            qf1.assert_called_once_with([query.Field('arion')], [1])
-            ql2.assert_called_once_with()
-            qf2.assert_called_once_with([query.Field('bhaga')], [2])
+    graph = Graph([
+        Node('a', [
+            Field('d', None, f3),
+            Field('e', None, f4),
+        ]),
+        Root([
+            Link('b', Sequence[TypeRef['a']], f1, requires=None),
+            Link('c', Sequence[TypeRef['a']], f2, requires=None),
+        ]),
+    ])
+
+    result = execute(graph, '[{:b [:d]} {:c [:e]}]')
+    check_result(result, {'b': [{'d': 'boners'}],
+                          'c': [{'e': 'julio'}]})
+    assert result.index == {'a': {1: {'d': 'boners'},
+                                  2: {'e': 'julio'}}}
+
+    f1.assert_called_once_with()
+    f2.assert_called_once_with()
+    with reqs_eq_patcher():
+        f3.assert_called_once_with([query.Field('d')], [1])
+        f4.assert_called_once_with([query.Field('e')], [2])
 
 
 def test_field_options():
-    with _patch(query_fields1) as qf1:
-        qf1.return_value = ['baking_murse']
-        result = execute('[(:indice {:staithe "maria_bubkus"})]')
-        check_result(result, {'indice': 'baking_murse'})
-        with reqs_eq_patcher():
-            qf1.assert_called_once_with([
-                query.Field('indice', options={'staithe': 'maria_bubkus'}),
-            ])
+    f = Mock(return_value=['baking'])
+
+    graph = Graph([
+        Root([
+            Field('a', None, f),
+        ]),
+    ])
+
+    # FIXME: options should be defined and validated
+    check_result(execute(graph, '[(:a {:b "bubkus"})]'),
+                 {'a': 'baking'})
+
+    with reqs_eq_patcher():
+        f.assert_called_once_with([
+            query.Field('a', options={'b': 'bubkus'}),
+        ])
 
 
 def test_link_option():
-    with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
-        ql1.return_value = [1]
-        qf1.return_value = [['aunder_hagg']]
-        result = execute('[{(:zovirax {:busload "heaven_duncery"}) [:arion]}]')
-        check_result(result, {'zovirax': [{'arion': 'aunder_hagg'}]})
-        with reqs_eq_patcher():
-            ql1.assert_called_once_with({'busload': 'heaven_duncery'})
-            qf1.assert_called_once_with([query.Field('arion')], [1])
+    f1 = Mock(return_value=[1])
+    f2 = Mock(return_value=[['aunder']])
+
+    graph = Graph([
+        Node('a', [
+            Field('c', None, f2),
+        ]),
+        Root([
+            Link('b', Sequence[TypeRef['a']], f1, requires=None,
+                 options=[Option('d', None)]),
+        ]),
+    ])
+
+    check_result(execute(graph, '[{(:b {:d "duncery"}) [:c]}]'),
+                 {'b': [{'c': 'aunder'}]})
+
+    f1.assert_called_once_with({'d': 'duncery'})
+    with reqs_eq_patcher():
+        f2.assert_called_once_with([query.Field('c')], [1])
 
 
 def test_link_option_missing():
+    f = Mock()
+
+    graph = Graph([
+        Node('a', [
+            Field('d', None, f),
+        ]),
+        Root([
+            Link('b', Sequence[TypeRef['a']], f, requires=None,
+                 options=[Option('d', None)]),
+        ]),
+    ])
+
     with pytest.raises(TypeError) as err:
-        execute('[{:zovirax [:arion]}]')
-    err.match('^Required option "busload" for (.*)zovirax(.*) was not '
-              'provided$')
+        execute(graph, '[{:b [:d]}]')
+    err.match('^Required option "d" for (.*)b(.*) was not provided$')
 
 
 def test_link_option_default_none():
-    with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
-        ql1.return_value = [1]
-        qf1.return_value = [['jonty_kaitlin']]
-        result = execute('[{:lungs [:arion]}]')
-        check_result(result, {'lungs': [{'arion': 'jonty_kaitlin'}]})
-        with reqs_eq_patcher():
-            ql1.assert_called_once_with({'tiding': None})
-            qf1.assert_called_once_with([query.Field('arion')], [1])
+    f1 = Mock(return_value=[1])
+    f2 = Mock(return_value=[['kaitlin']])
+
+    graph = Graph([
+        Node('a', [
+            Field('c', None, f2),
+        ]),
+        Root([
+            Link('b', Sequence[TypeRef['a']], f1, requires=None,
+                 options=[Option('d', None, default=None)]),
+        ]),
+    ])
+
+    check_result(execute(graph, '[{:b [:c]}]'),
+                 {'b': [{'c': 'kaitlin'}]})
+
+    f1.assert_called_once_with({'d': None})
+    with reqs_eq_patcher():
+        f2.assert_called_once_with([query.Field('c')], [1])
 
 
 def test_link_option_default_string():
-    with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
-        ql1.return_value = [1]
-        qf1.return_value = [['lend_rounded']]
-        result = execute('[{:doubled [:arion]}]')
-        check_result(result, {'doubled': [{'arion': 'lend_rounded'}]})
-        with reqs_eq_patcher():
-            ql1.assert_called_once_with({'empower': 'deedily_reaving'})
-            qf1.assert_called_once_with([query.Field('arion')], [1])
+    f1 = Mock(return_value=[1])
+    f2 = Mock(return_value=[['rounded']])
+
+    graph = Graph([
+        Node('a', [
+            Field('c', None, f2),
+        ]),
+        Root([
+            Link('b', Sequence[TypeRef['a']], f1, requires=None,
+                 options=[Option('d', None, default='reaving')]),
+        ]),
+    ])
+
+    check_result(execute(graph, '[{:b [:c]}]'),
+                 {'b': [{'c': 'rounded'}]})
+
+    f1.assert_called_once_with({'d': 'reaving'})
+    with reqs_eq_patcher():
+        f2.assert_called_once_with([query.Field('c')], [1])
 
 
 def test_link_option_unknown():
-    with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
-        ql1.return_value = [1]
-        qf1.return_value = [['tarweed_tolled']]
-        result = execute(
-            """
-            [{(:doubled {:empower "hanna_gourds"
-                         :varying "dread_linty"})
-              [:arion]}]
-            """
-        )
-        check_result(result, {'doubled': [{'arion': 'tarweed_tolled'}]})
-        with reqs_eq_patcher():
-            ql1.assert_called_once_with({'empower': 'hanna_gourds'})
-            qf1.assert_called_once_with([query.Field('arion')], [1])
+    f1 = Mock(return_value=[1])
+    f2 = Mock(return_value=[['tarweed']])
+
+    graph = Graph([
+        Node('a', [
+            Field('c', None, f2),
+        ]),
+        Root([
+            Link('b', Sequence[TypeRef['a']], f1, requires=None,
+                 options=[Option('d', None, default='gerry')]),
+        ]),
+    ])
+
+    result = execute(graph, '[{(:b {:d "hanna" :unknown "linty"}) [:c]}]')
+    check_result(result, {'b': [{'c': 'tarweed'}]})
+
+    f1.assert_called_once_with({'d': 'hanna'})
+    with reqs_eq_patcher():
+        f2.assert_called_once_with([query.Field('c')], [1])
 
 
 def test_pass_context_field():
-    with _patch(query_fields1) as qf1:
-        qf1.return_value = ['boiardo_sansei']
-        pass_context(qf1)
-        check_result(execute('[:indice]', {'vetch': 'ringed_shadier'}),
-                     {'indice': 'boiardo_sansei'})
-        with reqs_eq_patcher():
-            qf1.assert_called_once_with(ANY, [query.Field('indice')])
-            ctx = qf1.call_args[0][0]
-            assert isinstance(ctx, Context)
-            assert ctx['vetch'] == 'ringed_shadier'
-            with pytest.raises(KeyError):
-                _ = ctx['invalid']  # noqa
+    f = pass_context(Mock(return_value=['boiardo']))
+
+    graph = Graph([
+        Root([
+            Field('a', None, f),
+        ]),
+    ])
+
+    check_result(execute(graph, '[:a]', {'vetch': 'shadier'}),
+                 {'a': 'boiardo'})
+
+    with reqs_eq_patcher():
+        f.assert_called_once_with(ANY, [query.Field('a')])
+
+    ctx = f.call_args[0][0]
+    assert isinstance(ctx, Context)
+    assert ctx['vetch'] == 'shadier'
+    with pytest.raises(KeyError) as err:
+        _ = ctx['invalid']  # noqa
+    err.match('is not specified in the query context')
 
 
 def test_pass_context_link():
-    with _patch(query_link1) as ql1, _patch(query_fields1) as qf1:
-        ql1.return_value = [1]
-        pass_context(ql1)
-        qf1.return_value = [['boners_friezes']]
-        result = execute('[{:subaru [:arion]}]', {'fibs': 'dossil_feuded'})
-        check_result(result, {'subaru': [{'arion': 'boners_friezes'}]})
-        assert result.index == {'tergate': {1: {'arion': 'boners_friezes'}}}
-        with reqs_eq_patcher():
-            ql1.assert_called_once_with(ANY)
-            qf1.assert_called_once_with([query.Field('arion')], [1])
-            ctx = ql1.call_args[0][0]
-            assert isinstance(ctx, Context)
-            assert ctx['fibs'] == 'dossil_feuded'
-            with pytest.raises(KeyError):
-                _ = ctx['invalid']  # noqa
+    f1 = pass_context(Mock(return_value=[1]))
+    f2 = Mock(return_value=[['boners']])
+
+    graph = Graph([
+        Node('a', [
+            Field('b', None, f2),
+        ]),
+        Root([
+            Link('c', Sequence[TypeRef['a']], f1, requires=None),
+        ]),
+    ])
+
+    result = execute(graph, '[{:c [:b]}]', {'fibs': 'dossil'})
+    check_result(result, {'c': [{'b': 'boners'}]})
+    assert result.index == {'a': {1: {'b': 'boners'}}}
+
+    f1.assert_called_once_with(ANY)
+    with reqs_eq_patcher():
+        f2.assert_called_once_with([query.Field('b')], [1])
+
+    ctx = f1.call_args[0][0]
+    assert isinstance(ctx, Context)
+    assert ctx['fibs'] == 'dossil'
+    with pytest.raises(KeyError) as err:
+        _ = ctx['invalid']  # noqa
+    err.match('is not specified in the query context')
 
 
 def test_node_link_without_requirements():
-    with \
-            _patch(query_fields1) as qf1, \
-            _patch(query_link1) as ql1,\
-            _patch(query_link2) as ql2:
+    f1 = Mock(return_value=[1])
+    f2 = Mock(return_value=[2])
+    f3 = Mock(return_value=[['arnhild']])
 
-        ql1.return_value = [1]
-        ql2.return_value = [2]
-        qf1.return_value = [['arnhild_crewe']]
-        result = execute('[{:subaru [{:traces [:trilled]}]}]')
-        check_result(result,
-                     {'subaru': [{'traces': [{'trilled': 'arnhild_crewe'}]}]})
-        assert result.index == {
-            'tergate': {1: {'traces': [result.ref('ferulae', 2)]}},
-            'ferulae': {2: {'trilled': 'arnhild_crewe'}},
-        }
-        with reqs_eq_patcher():
-            ql1.assert_called_once_with()
-            ql2.assert_called_once_with()
-            qf1.assert_called_once_with([query.Field('trilled')], [2])
+    graph = Graph([
+        Node('a', [
+            Field('c', None, f3),
+        ]),
+        Node('b', [
+            Link('d', Sequence[TypeRef['a']], f2, requires=None),
+        ]),
+        Root([
+            Link('e', Sequence[TypeRef['b']], f1, requires=None),
+        ]),
+    ])
+
+    result = execute(graph, '[{:e [{:d [:c]}]}]')
+    check_result(result, {'e': [{'d': [{'c': 'arnhild'}]}]})
+    assert result.index == {
+        'a': {2: {'c': 'arnhild'}},
+        'b': {1: {'d': [result.ref('a', 2)]}},
+    }
+
+    f1.assert_called_once_with()
+    f2.assert_called_once_with()
+    with reqs_eq_patcher():
+        f3.assert_called_once_with([query.Field('c')], [2])
