@@ -17,6 +17,12 @@ Changes in 0.4
   - Fixed GraphQL introspection to properly encode null values
   - Added ability to specify option's description
   - Refactored type checking
+  - Fixed linking from node to node without requirements
+  - Changed options encoding format in ``hiku/protobuf/query.proto`` by using
+    message types from ``google/protobuf/struct.proto`` instead of using custom
+    types
+  - Implemented result validation for the functions, used to load fields and
+    links data
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -115,3 +121,9 @@ Backward-incompatible changes
     .. code-block:: python
 
       graph = hiku.graph.apply(graph, [AsyncGraphQLIntrospection()])
+
+  - Due to changes in ``hiku/protobuf/query.proto``, field and link options,
+    encoded using old format, will be ignored in the newer versions. Backward
+    compatibility can be implemented on demand. Please create an Issue on
+    GitHub, if you are using query encoding using Protocol Buffers and you will
+    need a smooth upgrade path.

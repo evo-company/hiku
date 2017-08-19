@@ -195,22 +195,26 @@ class Link(AbstractLink):
 
     Identifiers loading function protocol::
 
-        # requires is None and type is TypeRef['foo']
+        # From root node or if requires is None:
+
+        # ... if type is TypeRef['foo']
         def func() -> T
 
-        # requires is None and type is Optional[TypeRef['foo']]
+        # ... if type is Optional[TypeRef['foo']]
         def func() -> Union[T, Nothing]
 
-        # requires is None and type is Sequence[TypeRef['foo']]
+        # ... if type is Sequence[TypeRef['foo']]
         def func() -> List[T]
 
-        # requires is not None and type is TypeRef['foo']
+        # From non-root node and requires is not None:
+
+        # ... if type is TypeRef['foo']
         def func(ids) -> List[T]
 
-        # requires is not None and type is Optional[TypeRef['foo']]
+        # ... if type is Optional[TypeRef['foo']]
         def func(ids) -> List[Union[T, Nothing]]
 
-        # requires is not None and type is Sequence[TypeRef['foo']]
+        # ... if type is Sequence[TypeRef['foo']]
         def func(ids) -> List[List[T]]
 
     See also :py:const:`hiku.graph.Nothing`.
@@ -483,6 +487,15 @@ class GraphTransformer(AbstractGraphVisitor):
 
 
 def apply(graph, transformers):
+    """Helper function to apply graph transformations
+
+    Example:
+
+    .. code-block:: python
+
+        graph = hiku.graph.apply(graph, [AsyncGraphQLIntrospection()])
+
+    """
     return reduce(lambda g, t: t.visit(g), transformers, graph)
 
 
