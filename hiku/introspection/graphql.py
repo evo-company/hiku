@@ -97,7 +97,8 @@ def type_link(graph, options):
 
 
 def types_link(graph):
-    return [n for n in _nodes_map(graph) if NAME_RE.match(n)]
+    scalars = ['String', 'Int', 'Boolean', 'Float']
+    return scalars + [n for n in _nodes_map(graph) if NAME_RE.match(n)]
 
 
 def type_info(graph, fields, ids):
@@ -139,6 +140,10 @@ def validate_field(field):
 def type_fields_link(graph, ids, options):
     nodes_map = _nodes_map(graph)
     for ident in ids:
+        if ident not in nodes_map:
+            yield []
+            continue
+
         node = nodes_map[ident]
         field_idents = [FieldIdent(ident, f.name) for f in node.fields
                         if validate_field(f)]

@@ -156,6 +156,46 @@ RESULT = {
         'directives': [],
         'types': [
             {
+                'name': 'String',
+                'kind': 'SCALAR',
+                'fields': [],
+                'description': None,
+                'enumValues': [],
+                'inputFields': [],
+                'interfaces': [],
+                'possibleTypes': [],
+            },
+            {
+                'name': 'Int',
+                'kind': 'SCALAR',
+                'fields': [],
+                'description': None,
+                'enumValues': [],
+                'inputFields': [],
+                'interfaces': [],
+                'possibleTypes': [],
+            },
+            {
+                'name': 'Boolean',
+                'kind': 'SCALAR',
+                'fields': [],
+                'description': None,
+                'enumValues': [],
+                'inputFields': [],
+                'interfaces': [],
+                'possibleTypes': [],
+            },
+            {
+                'name': 'Float',
+                'kind': 'SCALAR',
+                'fields': [],
+                'description': None,
+                'enumValues': [],
+                'inputFields': [],
+                'interfaces': [],
+                'possibleTypes': [],
+            },
+            {
                 'name': 'flexed',
                 'kind': 'OBJECT',
                 'fields': [
@@ -288,8 +328,8 @@ def test_unsupported_field():
     result = introspect(Graph([Root([Field('fall', Optional[Any], field_func),
                                      Field('huss', Integer, field_func)])]))
 
-    assert result['__schema']['types'][0]['name'] == 'Root'
-    assert [f['name'] for f in result['__schema']['types'][0]['fields']] == \
+    assert result['__schema']['types'][-1]['name'] == 'Root'
+    assert [f['name'] for f in result['__schema']['types'][-1]['fields']] == \
            ['huss']
 
 
@@ -299,6 +339,6 @@ def test_unsupported_option():
                                                            Optional[Any])]),
                                      Field('terapin', Integer, field_func)])]))
 
-    assert result['__schema']['types'][0]['name'] == 'Root'
-    assert [f['name'] for f in result['__schema']['types'][0]['fields']] == \
+    assert result['__schema']['types'][-1]['name'] == 'Root'
+    assert [f['name'] for f in result['__schema']['types'][-1]['fields']] == \
            ['terapin']
