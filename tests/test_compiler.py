@@ -185,10 +185,13 @@ def test_generic_bool():
     )
 
 
-def test_generic_py2_long():
+def test_generic_long():
+    expected = '18446744073709551616'
+    if not PY3:
+        expected = '{}L'.format(expected)
     check_compiles(
         2 ** 64,
-        "18446744073709551616L"
+        expected
     )
 
 
@@ -196,13 +199,4 @@ def test_generic_float():
     check_compiles(
         1.1,
         "1.1"
-    )
-
-
-def test_generic_tuple():
-    check_compiles(
-        (None, True, False, 3, 4.2, ('test', 'nested')),
-        """
-        (None, True, False, 3, 4.2, ('test', 'nested'))
-        """
     )

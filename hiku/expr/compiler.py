@@ -81,8 +81,6 @@ class ExpressionCompiler(object):
             return py.Num(node)
         elif isinstance(node, text_type):
             return py.Str(node)
-        elif isinstance(node, tuple):
-            return py.Tuple([self.generic_visit(n) for n in node], py.Load())
         else:
             raise NotImplementedError(type(node))
 
