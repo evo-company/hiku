@@ -169,3 +169,40 @@ def test_dict():
         {'foo-value': env['foo'](1), 'bar-value': env['bar'](2), }
         """
     )
+
+
+def test_generic_none():
+    check_compiles(
+        None,
+        "None"
+    )
+
+
+def test_generic_bool():
+    check_compiles(
+        True,
+        "True"
+    )
+
+
+def test_generic_py2_long():
+    check_compiles(
+        2 ** 64,
+        "18446744073709551616L"
+    )
+
+
+def test_generic_float():
+    check_compiles(
+        1.1,
+        "1.1"
+    )
+
+
+def test_generic_tuple():
+    check_compiles(
+        (None, True, False, 3, 4.2, ('test', 'nested')),
+        """
+        (None, True, False, 3, 4.2, ('test', 'nested'))
+        """
+    )

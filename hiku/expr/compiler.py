@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from collections import Counter
 
 from ..types import CallableMeta
-from ..compat import ast as py, text_type
+from ..compat import ast as py, integer_types, text_type
 
 from .nodes import Symbol, Keyword
 
@@ -71,10 +71,18 @@ class ExpressionCompiler(object):
             return self.generic_visit(node)
 
     def generic_visit(self, node):
-        if isinstance(node, int):
+        if node is None:
+            return py.NameConstant(node)
+        elif isinstance(node, bool):
+            return py.NameConstant(node)
+        elif isinstance(node, integer_types):
+            return py.Num(node)
+        elif isinstance(node, float):
             return py.Num(node)
         elif isinstance(node, text_type):
             return py.Str(node)
+        elif isinstance(node, tuple):
+            return py.Tuple([self.generic_visit(n) for n in node], py.Load())
         else:
             raise NotImplementedError(type(node))
 
@@ -93,7 +101,7 @@ class ExpressionCompiler(object):
         _, bind, then_, else_ = node.values
         bind_sym, bind_expr = bind.values
         with self.env.push([bind_sym.name]):
-            none = py.Name('None', py.Load())
+            none = py.NameConstant(None)
             load_bind_sym = py.Name(self.env[bind_sym.name], py.Load())
             test = py.Compare(load_bind_sym, [py.IsNot()], [none])
             store_bind_sym = py.Name(self.env[bind_sym.name], py.Store())
