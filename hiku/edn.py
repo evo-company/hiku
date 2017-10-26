@@ -271,24 +271,24 @@ def parser(target, tag_handlers, stop=None):
                     handler = tag_handler(c2, tag_handlers)
                     continue
             end_char = _END_CHARS[c]
-            l = []
-            p = parser(appender(l), tag_handlers, stop=end_char)
+            lst = []
+            p = parser(appender(lst), tag_handlers, stop=end_char)
             try:
                 while 1:
                     p.send((yield))
             except StopIteration:
                 pass
             if c == '[':
-                target.send(List(l))
+                target.send(List(lst))
             elif c == '(':
-                target.send(Tuple(l))
+                target.send(Tuple(lst))
             elif c == '{':
-                if len(l) % 2:
+                if len(lst) % 2:
                     raise Exception("Map literal must contain an even "
                                     "number of elements")
-                target.send(Dict(zip(l[::2], l[1::2])))
+                target.send(Dict(zip(lst[::2], lst[1::2])))
             else:
-                target.send(Set(l))
+                target.send(Set(lst))
         else:
             raise ValueError("Unexpected character in edn", c)
 
@@ -297,15 +297,15 @@ def loads(s, tag_handlers=None):
     if not isinstance(s, text_type):
         raise TypeError('The EDN value must be {!r}, not {!r}'
                         .format(text_type.__name__, type(s).__name__))
-    l = []
-    target = parser(appender(l), dict(tag_handlers or (), **TAG_HANDLERS))
+    lst = []
+    target = parser(appender(lst), dict(tag_handlers or (), **TAG_HANDLERS))
     for c in s:
         target.send(c)
     target.send(' ')
-    if len(l) != 1:
+    if len(lst) != 1:
         raise ValueError("Expected exactly one top-level element "
                          "in edn string", s)
-    return l[0]
+    return lst[0]
 
 
 def _iterencode_items(items, default, encoder):

@@ -40,6 +40,10 @@ class _AST(object):
             return _ast.Name(str(id), ctx)
 
         @staticmethod
+        def NameConstant(id):
+            return _ast.Name(str(id), _ast.Load())
+
+        @staticmethod
         def Attribute(value, attr, ctx):
             return _ast.Attribute(value, str(attr), ctx)
 
@@ -72,6 +76,7 @@ ast = _AST()
 if PY3:
     text_type = str
     string_types = str,
+    integer_types = int,
 
     def qualname(fn):
         if inspect.ismethod(fn):
@@ -82,6 +87,7 @@ if PY3:
 else:
     text_type = unicode  # noqa
     string_types = basestring,  # noqa
+    integer_types = int, long  # noqa
 
     def qualname(fn):
         if inspect.ismethod(fn):

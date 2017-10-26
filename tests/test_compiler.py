@@ -169,3 +169,34 @@ def test_dict():
         {'foo-value': env['foo'](1), 'bar-value': env['bar'](2), }
         """
     )
+
+
+def test_generic_none():
+    check_compiles(
+        None,
+        "None"
+    )
+
+
+def test_generic_bool():
+    check_compiles(
+        True,
+        "True"
+    )
+
+
+def test_generic_long():
+    expected = '18446744073709551616'
+    if not PY3:
+        expected = '{}L'.format(expected)
+    check_compiles(
+        2 ** 64,
+        expected
+    )
+
+
+def test_generic_float():
+    check_compiles(
+        1.1,
+        "1.1"
+    )
