@@ -12,11 +12,11 @@ class Exporter(QueryVisitor):
         return f
 
     def visit_link(self, obj):
-        l = Keyword(obj.name)
+        lnk = Keyword(obj.name)
         if obj.options is not None:
-            l = Tuple([l, Dict((Keyword(k), v)
-                               for k, v in obj.options.items())])
-        return Dict([(l, self.visit(obj.node))])
+            lnk = Tuple([lnk, Dict((Keyword(k), v)
+                                   for k, v in obj.options.items())])
+        return Dict([(lnk, self.visit(obj.node))])
 
     def visit_node(self, obj):
         return List(self.visit(f) for f in obj.fields)

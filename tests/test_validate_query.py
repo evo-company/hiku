@@ -162,17 +162,17 @@ def test_field_options():
 
 
 def test_link():
-    l = q.Link('invalid', q.Node([]))
+    lnk = q.Link('invalid', q.Node([]))
     # link in the root node
-    check_errors(q.Node([l]), [
+    check_errors(q.Node([lnk]), [
         'Link "invalid" is not implemented in the "root" node',
     ])
     # link in the global node
-    check_errors(q.Node([q.Link('decants', q.Node([l]))]), [
+    check_errors(q.Node([q.Link('decants', q.Node([lnk]))]), [
         'Link "invalid" is not implemented in the "decants" node',
     ])
     # link in the linked node
-    check_errors(q.Node([q.Link('amyls', q.Node([l]))]), [
+    check_errors(q.Node([q.Link('amyls', q.Node([lnk]))]), [
         'Link "invalid" is not implemented in the "hooted" node',
     ])
 
