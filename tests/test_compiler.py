@@ -9,7 +9,7 @@ import astor
 
 from hiku.types import Optional, String, Record, Any, TypeRef, Sequence
 from hiku.graph import Graph, Field, Node, Link, Root
-from hiku.compat import PY3, PY35
+from hiku.compat import PY3
 from hiku.expr.core import define, S, if_, each, to_expr, if_some
 from hiku.expr.checker import check, graph_types, fn_types
 from hiku.expr.compiler import ExpressionCompiler
@@ -74,13 +74,10 @@ def check_compiles(dsl_expr, code):
     lambda_expr = ExpressionCompiler.compile_lambda_expr(expr)
     eval(compile(lambda_expr, '<expr>', 'eval'))
 
-    if PY35:
-        return  # Astor doesn't support Python >= 3.5
-
     # test compile
     py_expr = ExpressionCompiler.compile_expr(expr)
 
-    first = astor.to_source(py_expr)
+    first = astor.to_source(py_expr).strip()
     if not PY3:
         first = first.replace("u'", "'")
     second = dedent(code).strip()
@@ -127,8 +124,7 @@ def test_if_expr():
 def test_if_some_expr():
     check_compiles(
         if_some([S.x, S.nitrox], S.x, 'nothing'),
-        "next(((x if (x is not None) else 'nothing') for x in "
-        "(ctx['nitrox'],)))"
+        "next(x if x is not None else 'nothing' for x in (ctx['nitrox'],)) "
     )
 
 
@@ -166,7 +162,7 @@ def test_dict():
         OrderedDict([('foo-value', foo(1)),
                      ('bar-value', bar(2))]),
         """
-        {'foo-value': env['foo'](1), 'bar-value': env['bar'](2), }
+        {'foo-value': env['foo'](1), 'bar-value': env['bar'](2)}
         """
     )
 
@@ -191,12 +187,12 @@ def test_generic_long():
         expected = '{}L'.format(expected)
     check_compiles(
         2 ** 64,
-        expected
+        '({})'.format(expected)
     )
 
 
 def test_generic_float():
     check_compiles(
         1.1,
-        "1.1"
+        "(1.1)"
     )
