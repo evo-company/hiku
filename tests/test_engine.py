@@ -5,17 +5,26 @@ import pytest
 from hiku import query
 from hiku.graph import Graph, Node, Field, Link, Option, Root
 from hiku.types import Record, Sequence, Integer, Optional, TypeRef
-from hiku.compat import text_type
 from hiku.engine import Engine, pass_context, Context
+from hiku.builder import build, Q
 from hiku.executors.sync import SyncExecutor
-from hiku.readers.simple import read
 
 from .base import reqs_eq_patcher, check_result, ANY, Mock
 
 
+OPTION_BEHAVIOUR = [
+    (Option('op', None), {'op': 1812}, {'op': 1812}),
+    (Option('op', None, default=None), {}, {'op': None}),
+    (Option('op', None, default=None), {'op': 2340}, {'op': 2340}),
+    (Option('op', None, default=3914), {}, {'op': 3914}),
+    (Option('op', None, default=4254), {'op': None}, {'op': None}),
+    (Option('op', None, default=1527), {'op': 8361}, {'op': 8361}),
+]
+
+
 def execute(graph, query_, ctx=None):
     engine = Engine(SyncExecutor())
-    return engine.execute(graph, read(text_type(query_)), ctx=ctx)
+    return engine.execute(graph, query_, ctx=ctx)
 
 
 def test_root_fields():
@@ -29,7 +38,7 @@ def test_root_fields():
         ]),
     ])
 
-    result = execute(graph, '[:a :b]')
+    result = execute(graph, build([Q.a, Q.b]))
     check_result(result, {'a': 'boiardo', 'b': 'isolde'})
 
     with reqs_eq_patcher():
@@ -50,7 +59,7 @@ def test_root_node_fields():
         ]),
     ])
 
-    result = execute(graph, '[{:a [:b :c]}]')
+    result = execute(graph, build([Q.a[Q.b, Q.c]]))
     check_result(result, {'a': {'b': 'khios', 'c': 'cambay'}})
 
     with reqs_eq_patcher():
@@ -73,7 +82,7 @@ def test_node_fields():
         ]),
     ])
 
-    result = execute(graph, '[{:d [:b :c]}]')
+    result = execute(graph, build([Q.d[Q.b, Q.c]]))
     check_result(result, {'d': [{'b': 'harkis', 'c': 'slits'}]})
     assert result.index == {'a': {1: {'b': 'harkis', 'c': 'slits'}}}
 
@@ -101,9 +110,7 @@ def test_node_complex_fields():
     ])
 
     check_result(
-        execute(graph, """
-        [{:e [{:b [:f]} {:c [:g]} {:d [:h]}]}]
-        """),
+        execute(graph, build([Q.e[Q.b[Q.f], Q.c[Q.g], Q.d[Q.h]]])),
         {'e': [{'b': {'f': 'marshes'},
                 'c': {'g': 'colline'},
                 'd': [{'h': 'magi'}]}]},
@@ -139,7 +146,7 @@ def test_links():
         ]),
     ])
 
-    result = execute(graph, '[{:b [:d]} {:c [:e]}]')
+    result = execute(graph, build([Q.b[Q.d], Q.c[Q.e]]))
     check_result(result, {'b': [{'d': 'boners'}],
                           'c': [{'e': 'julio'}]})
     assert result.index == {'a': {1: {'d': 'boners'},
@@ -152,129 +159,78 @@ def test_links():
         f4.assert_called_once_with([query.Field('e')], [2])
 
 
-def test_field_options():
+@pytest.mark.parametrize('option, args, result', OPTION_BEHAVIOUR)
+def test_field_option_valid(option, args, result):
     f = Mock(return_value=['baking'])
-
     graph = Graph([
         Root([
-            Field('a', None, f),
+            Field('auslese', None, f, options=[option]),
         ]),
     ])
-
-    # FIXME: options should be defined and validated
-    check_result(execute(graph, '[(:a {:b "bubkus"})]'),
-                 {'a': 'baking'})
-
+    check_result(execute(graph, build([Q.auslese(**args)])),
+                 {'auslese': 'baking'})
     with reqs_eq_patcher():
-        f.assert_called_once_with([
-            query.Field('a', options={'b': 'bubkus'}),
-        ])
+        f.assert_called_once_with([query.Field('auslese', options=result)])
 
 
-def test_link_option():
+def test_field_option_unknown():
+    test_field_option_valid(
+        Option('inked', None), {'inked': 2340, 'unknown': 8775}, {'inked': 2340}
+    )
+
+
+def test_field_option_missing():
+    graph = Graph([
+        Root([
+            Field('poofy', None, Mock(), options=[Option('mohism', None)]),
+        ]),
+    ])
+    with pytest.raises(TypeError) as err:
+        execute(graph, build([Q.poofy]))
+    err.match('^Required option "mohism" for Field\(\'poofy\', '
+              '(.*) was not provided$')
+
+
+@pytest.mark.parametrize('option, args, result', OPTION_BEHAVIOUR)
+def test_link_option_valid(option, args, result):
     f1 = Mock(return_value=[1])
     f2 = Mock(return_value=[['aunder']])
-
     graph = Graph([
         Node('a', [
             Field('c', None, f2),
         ]),
         Root([
             Link('b', Sequence[TypeRef['a']], f1, requires=None,
-                 options=[Option('d', None)]),
+                 options=[option]),
         ]),
     ])
-
-    check_result(execute(graph, '[{(:b {:d "duncery"}) [:c]}]'),
+    check_result(execute(graph, build([Q.b(**args)[Q.c]])),
                  {'b': [{'c': 'aunder'}]})
-
-    f1.assert_called_once_with({'d': 'duncery'})
-    with reqs_eq_patcher():
-        f2.assert_called_once_with([query.Field('c')], [1])
-
-
-def test_link_option_missing():
-    f = Mock()
-
-    graph = Graph([
-        Node('a', [
-            Field('d', None, f),
-        ]),
-        Root([
-            Link('b', Sequence[TypeRef['a']], f, requires=None,
-                 options=[Option('d', None)]),
-        ]),
-    ])
-
-    with pytest.raises(TypeError) as err:
-        execute(graph, '[{:b [:d]}]')
-    err.match('^Required option "d" for (.*)b(.*) was not provided$')
-
-
-def test_link_option_default_none():
-    f1 = Mock(return_value=[1])
-    f2 = Mock(return_value=[['kaitlin']])
-
-    graph = Graph([
-        Node('a', [
-            Field('c', None, f2),
-        ]),
-        Root([
-            Link('b', Sequence[TypeRef['a']], f1, requires=None,
-                 options=[Option('d', None, default=None)]),
-        ]),
-    ])
-
-    check_result(execute(graph, '[{:b [:c]}]'),
-                 {'b': [{'c': 'kaitlin'}]})
-
-    f1.assert_called_once_with({'d': None})
-    with reqs_eq_patcher():
-        f2.assert_called_once_with([query.Field('c')], [1])
-
-
-def test_link_option_default_string():
-    f1 = Mock(return_value=[1])
-    f2 = Mock(return_value=[['rounded']])
-
-    graph = Graph([
-        Node('a', [
-            Field('c', None, f2),
-        ]),
-        Root([
-            Link('b', Sequence[TypeRef['a']], f1, requires=None,
-                 options=[Option('d', None, default='reaving')]),
-        ]),
-    ])
-
-    check_result(execute(graph, '[{:b [:c]}]'),
-                 {'b': [{'c': 'rounded'}]})
-
-    f1.assert_called_once_with({'d': 'reaving'})
+    f1.assert_called_once_with(result)
     with reqs_eq_patcher():
         f2.assert_called_once_with([query.Field('c')], [1])
 
 
 def test_link_option_unknown():
-    f1 = Mock(return_value=[1])
-    f2 = Mock(return_value=[['tarweed']])
+    test_link_option_valid(
+        Option('oleic', None), {'oleic': 2340, 'unknown': 8775}, {'oleic': 2340}
+    )
 
+
+def test_link_option_missing():
     graph = Graph([
-        Node('a', [
-            Field('c', None, f2),
+        Node('slices', [
+            Field('papeete', None, Mock()),
         ]),
         Root([
-            Link('b', Sequence[TypeRef['a']], f1, requires=None,
-                 options=[Option('d', None, default='gerry')]),
+            Link('eclairs', Sequence[TypeRef['slices']], Mock(), requires=None,
+                 options=[Option('nocks', None)]),
         ]),
     ])
-
-    result = execute(graph, '[{(:b {:d "hanna" :unknown "linty"}) [:c]}]')
-    check_result(result, {'b': [{'c': 'tarweed'}]})
-
-    f1.assert_called_once_with({'d': 'hanna'})
-    with reqs_eq_patcher():
-        f2.assert_called_once_with([query.Field('c')], [1])
+    with pytest.raises(TypeError) as err:
+        execute(graph, build([Q.eclairs[Q.papeete]]))
+    err.match('^Required option "nocks" for Link\(\'eclairs\', '
+              '(.*) was not provided$')
 
 
 def test_pass_context_field():
@@ -286,7 +242,7 @@ def test_pass_context_field():
         ]),
     ])
 
-    check_result(execute(graph, '[:a]', {'vetch': 'shadier'}),
+    check_result(execute(graph, build([Q.a]), {'vetch': 'shadier'}),
                  {'a': 'boiardo'})
 
     with reqs_eq_patcher():
@@ -313,7 +269,7 @@ def test_pass_context_link():
         ]),
     ])
 
-    result = execute(graph, '[{:c [:b]}]', {'fibs': 'dossil'})
+    result = execute(graph, build([Q.c[Q.b]]), {'fibs': 'dossil'})
     check_result(result, {'c': [{'b': 'boners'}]})
     assert result.index == {'a': {1: {'b': 'boners'}}}
 
@@ -346,7 +302,7 @@ def test_node_link_without_requirements():
         ]),
     ])
 
-    result = execute(graph, '[{:e [{:d [:c]}]}]')
+    result = execute(graph, build([Q.e[Q.d[Q.c]]]))
     check_result(result, {'e': [{'d': [{'c': 'arnhild'}]}]})
     assert result.index == {
         'a': {2: {'c': 'arnhild'}},
@@ -368,12 +324,12 @@ def test_root_field_func_result_validation(value):
                     Field('a', None, Mock(return_value=value)),
                 ]),
             ]),
-            '[:a]',
+            build([Q.a]),
         )
     err.match(re.escape(
-        "Can't store field values, node: '__root__', fields: [{a!r}], "
+        "Can't store field values, node: '__root__', fields: ['a'], "
         "expected: list (len: 1), returned: {value!r}"
-        .format(a=text_type('a'), value=value)
+        .format(value=value)
     ))
 
 
@@ -391,12 +347,12 @@ def test_node_field_func_result_validation(value):
                          requires=None),
                 ]),
             ]),
-            '[{:c [:b]}]',
+            build([Q.c[Q.b]]),
         )
     err.match(re.escape(
-        "Can't store field values, node: 'a', fields: [{b!r}], "
+        "Can't store field values, node: 'a', fields: ['b'], "
         "expected: list (len: 2) of lists (len: 1), returned: {value!r}"
-        .format(b=text_type('b'), value=value)
+        .format(value=value)
     ))
 
 
@@ -411,12 +367,12 @@ def test_root_node_field_func_result_validation(value):
                     ]),
                 ]),
             ]),
-            '[{:a [:b]}]',
+            build([Q.a[Q.b]]),
         )
     err.match(re.escape(
-        "Can't store field values, node: 'a', fields: [{b!r}], "
+        "Can't store field values, node: 'a', fields: ['b'], "
         "expected: list (len: 1), returned: {value!r}"
-        .format(b=text_type('b'), value=value)
+        .format(value=value)
     ))
 
 
@@ -432,7 +388,7 @@ def test_root_link_many_func_result_validation():
                          requires=None),
                 ]),
             ]),
-            '[{:c [:b]}]',
+            build([Q.c[Q.b]]),
         )
     err.match(re.escape(
         "Can't store link values, node: '__root__', link: 'c', "
@@ -458,7 +414,7 @@ def test_node_link_one_func_result_validation(value):
                          requires=None),
                 ]),
             ]),
-            '[{:f [{:e [:b]}]}]',
+            build([Q.f[Q.e[Q.b]]]),
         )
     err.match(re.escape(
         "Can't store link values, node: 'c', link: 'e', expected: "
@@ -484,7 +440,7 @@ def test_node_link_many_func_result_validation(value):
                          requires=None),
                 ]),
             ]),
-            '[{:f [{:e [:b]}]}]',
+            build([Q.f[Q.e[Q.b]]]),
         )
     err.match(re.escape(
         "Can't store link values, node: 'c', link: 'e', expected: "

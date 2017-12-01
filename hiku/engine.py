@@ -240,7 +240,7 @@ class Query(Workflow):
             sq = getattr(graph_field.func, '__subquery__', None)
             if sq is None:
                 to_func[graph_field.name] = graph_field.func
-                from_func[graph_field.func].append(query_field)
+                from_func[graph_field.func].append((graph_field, query_field))
             else:
                 to_func[graph_field.name] = sq
                 from_sq[sq].append((graph_field, query_field))
@@ -248,15 +248,18 @@ class Query(Workflow):
         # schedule fields resolve
         to_fut = {}
         for func, func_fields in from_func.items():
+            query_fields = [query.Field(qf.name, options=get_options(gf, qf))
+                            if gf.options else qf for gf, qf in func_fields]
+
             if ids is not None:
-                fut = self._submit(func, func_fields, ids)
+                fut = self._submit(func, query_fields, ids)
             else:
-                fut = self._submit(func, func_fields)
+                fut = self._submit(func, query_fields)
 
             to_fut[func] = fut
             self._queue.add_callback(fut, (
-                lambda _func_fields=func_fields, _result_proc=fut.result:
-                store_fields(self._result, node, _func_fields, ids,
+                lambda _query_fields=query_fields, _result_proc=fut.result:
+                store_fields(self._result, node, _query_fields, ids,
                              _result_proc())
             ))
 
