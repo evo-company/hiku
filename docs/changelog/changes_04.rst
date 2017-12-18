@@ -1,6 +1,14 @@
 Changes in 0.4
 ==============
 
+0.4.1
+~~~~~
+
+  - Fixed GraphQL introspection to describe also scalar types
+  - Implemented expressions compilation for more scalar Python types, pull
+    request courtesy Alex Koval
+  - Fixed field options normalization, now with proper default values
+
 0.4.0
 ~~~~~
 
