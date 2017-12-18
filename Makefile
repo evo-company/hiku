@@ -8,6 +8,6 @@ proto:
 
 release:
 	./scripts/release_check.sh
-	rm hiku/console/assets/*.js
+	rm -f hiku/console/assets/*.js
 	pi build static
 	python setup.py sdist
