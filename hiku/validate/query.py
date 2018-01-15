@@ -199,21 +199,21 @@ class _ValidateOptions(GraphVisitor):
 
 class _RecordFieldsValidator(QueryVisitor):
 
-    def __init__(self, fields, errors):
-        self._fields = fields
+    def __init__(self, field_types, errors):
+        self._field_types = field_types
         self._errors = errors
 
     def visit_field(self, obj):
-        if obj.name not in self._fields:
+        if obj.name not in self._field_types:
             self._errors.report('Unknown field name')
         elif obj.options is not None:
             self._errors.report('Options are not expected')
-        elif _AssumeRecord().visit(self._fields[obj.name]):
+        elif _AssumeRecord().visit(self._field_types[obj.name]):
             self._errors.report('Trying to query "{}" link as it was a field'
                                 .format(obj.name))
 
     def visit_link(self, obj):
-        field_types = _AssumeRecord().visit(self._fields[obj.name])
+        field_types = _AssumeRecord().visit(self._field_types[obj.name])
         if field_types is not None:
             fields_validator = _RecordFieldsValidator(field_types,
                                                       self._errors)
