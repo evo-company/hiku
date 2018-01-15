@@ -288,6 +288,7 @@ def test_optional():
                  {'flossy': {'daur': {'doghead': 'satsuma_mks'},
                              'carf': None}})
 
+
 def test_nested_records():
     check_result(
         '[{:rlyeh [{:priest [:name]}]}]',

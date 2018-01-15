@@ -71,8 +71,25 @@ class Result(object):
         return Ref(self.index, node, ident)
 
 
-def _filter_fields(result, node):
-    return {f.name: result[f.name] for f in node.fields}
+def _denormalize_type(type_, result, query_obj):
+    if isinstance(query_obj, Field):
+        return result
+    elif isinstance(query_obj, Link):
+        if isinstance(type_, SequenceMeta):
+            return [_denormalize_type(type_.__item_type__, item, query_obj)
+                    for item in result]
+        elif isinstance(type_, OptionalMeta):
+            return (_denormalize_type(type_.__type__, result, query_obj)
+                    if result is not None else None)
+        else:
+            assert isinstance(type_, RecordMeta), type(type_)
+            field_types = type_.__field_types__
+            return {
+                f.name: _denormalize_type(
+                    field_types[f.name], result[f.name], f)
+                for f in query_obj.node.fields
+            }
+    assert False, (type_, query_obj)
 
 
 def _denormalize(graph, graph_obj, result, query_obj):
@@ -87,14 +104,7 @@ def _denormalize(graph, graph_obj, result, query_obj):
     elif isinstance(query_obj, Link):
         if isinstance(graph_obj, GraphField):
             type_ = graph_obj.type
-            if isinstance(type_, SequenceMeta):
-                return [_filter_fields(item, query_obj.node) for item in result]
-            elif isinstance(type_, OptionalMeta):
-                return (_filter_fields(result, query_obj.node)
-                        if result is not None else None)
-            else:
-                assert isinstance(type_, RecordMeta), repr(type_)
-                return _filter_fields(result, query_obj.node)
+            return _denormalize_type(type_, result, query_obj)
 
         elif isinstance(graph_obj, GraphLink):
             graph_node = graph.nodes_map[graph_obj.node]
