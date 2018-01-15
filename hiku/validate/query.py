@@ -38,7 +38,8 @@ class _AssumeRecord(AbstractTypeVisitor):
             return _AssumeRecord(_nested=True).visit(obj.__item_type__)
 
     def visit_record(self, obj):
-        return list(obj.__field_types__)
+        # return fields alongside type definitions
+        return obj.__field_types__
 
 
 class _AssumeField(GraphVisitor):
@@ -198,18 +199,28 @@ class _ValidateOptions(GraphVisitor):
 
 class _RecordFieldsValidator(QueryVisitor):
 
-    def __init__(self, field_names, errors):
-        self._field_names = set(field_names)
+    def __init__(self, field_types, errors):
+        self._field_types = field_types
         self._errors = errors
 
     def visit_field(self, obj):
-        if obj.name not in self._field_names:
+        if obj.name not in self._field_types:
             self._errors.report('Unknown field name')
         elif obj.options is not None:
             self._errors.report('Options are not expected')
+        elif _AssumeRecord().visit(self._field_types[obj.name]):
+            self._errors.report('Trying to query "{}" link as it was a field'
+                                .format(obj.name))
 
     def visit_link(self, obj):
-        self._errors.report('Not a link')
+        field_types = _AssumeRecord().visit(self._field_types[obj.name])
+        if field_types is not None:
+            fields_validator = _RecordFieldsValidator(field_types,
+                                                      self._errors)
+            for field in obj.node.fields:
+                fields_validator.visit(field)
+        else:
+            self._errors.report('"{}" is not a link'.format(obj.name))
 
     def visit_node(self, obj):
         raise AssertionError('Node is not expected here')

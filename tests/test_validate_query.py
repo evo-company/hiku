@@ -28,6 +28,10 @@ GRAPH = Graph([
         Field('wounded', Optional[Record[{'attr': Integer}]], _),
         Field('annuals', Record[{'attr': Integer}], _),
         Field('hialeah', Sequence[Record[{'attr': Integer}]], _),
+
+        # nested records
+        Field('rlyeh', Record[{'cthulhu': Record[{'fhtagn': Integer}]}], _),
+
         # with options
         Field('motown', None, _, options=[Option('prine', None)]),
         Field('nyerere', None, _, options=[Option('epaule', None, default=1)]),
@@ -90,6 +94,23 @@ def test_field_complex(field_name):
         'Unknown field name',
     ])
     check_errors(q.Node([q.Link(field_name, q.Node([q.Field('attr')]))]), [])
+
+
+def test_nested_records():
+    query = q.Node([q.Link('rlyeh', q.Node([
+        q.Link('cthulhu', q.Node([q.Field('fhtagn')]))
+    ]))])
+    check_errors(query, [])
+
+    query = q.Node([q.Link('rlyeh', q.Node([q.Field('cthulhu')]))])
+    check_errors(query, ['Trying to query "cthulhu" link as it was a field'])
+
+    query = q.Node([q.Link('rlyeh', q.Node([
+        q.Link('cthulhu', q.Node([
+            q.Link('fhtagn', q.Node([q.Field('error')]))
+        ]))
+    ]))])
+    check_errors(query, ['"fhtagn" is not a link'])
 
 
 def test_non_field():
