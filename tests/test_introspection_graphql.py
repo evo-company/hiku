@@ -1,6 +1,6 @@
 from hiku.graph import Graph, Root, Field, Node, Link, apply, Option
 from hiku.types import String, Integer, Sequence, TypeRef, Boolean, Float, Any
-from hiku.types import Optional
+from hiku.types import Optional, Record
 from hiku.result import denormalize
 from hiku.engine import Engine
 from hiku.sources.graph import SubGraph
@@ -325,8 +325,14 @@ def test_introspection_query():
 
 
 def test_unsupported_field():
-    result = introspect(Graph([Root([Field('fall', Optional[Any], field_func),
-                                     Field('huss', Integer, field_func)])]))
+    result = introspect(Graph([
+        Root([
+            Field('fall', Optional[Any], field_func),
+            Field('bayman', Optional[Record[{'foo': Optional[Integer]}]],
+                  field_func),
+            Field('huss', Integer, field_func),
+        ]),
+    ]))
 
     assert result['__schema']['types'][-1]['name'] == 'Root'
     assert [f['name'] for f in result['__schema']['types'][-1]['fields']] == \
@@ -334,10 +340,13 @@ def test_unsupported_field():
 
 
 def test_unsupported_option():
-    result = introspect(Graph([Root([Field('huke', Integer, field_func,
-                                           options=[Option('orel',
-                                                           Optional[Any])]),
-                                     Field('terapin', Integer, field_func)])]))
+    result = introspect(Graph([
+        Root([
+            Field('huke', Integer, field_func,
+                  options=[Option('orel', Optional[Any])]),
+            Field('terapin', Integer, field_func),
+        ]),
+    ]))
 
     assert result['__schema']['types'][-1]['name'] == 'Root'
     assert [f['name'] for f in result['__schema']['types'][-1]['fields']] == \

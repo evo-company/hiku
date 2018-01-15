@@ -67,6 +67,10 @@ class TypeValidator(TypeVisitor):
     def visit_any(self, obj):
         raise UnsupportedGraphQLType()
 
+    def visit_record(self, obj):
+        # inline Record type can't be directly matched to GraphQL type system
+        raise UnsupportedGraphQLType()
+
 
 def not_implemented(*args, **kwargs):
     raise NotImplementedError(args, kwargs)
