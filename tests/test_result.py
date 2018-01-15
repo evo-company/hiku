@@ -12,6 +12,12 @@ def _(*args):
     raise NotImplementedError('Data loading not implemented')
 
 
+CharacterRecord = Record[{'name': String, 'stories': Sequence[String]}]
+cthulhu_data = {'name': 'Cthulhu',
+                'stories': ['Call of Cthulhu', 'The Dunwich Horror']}
+zoth_ommog_data = {'name': 'Zoth-Ommog',
+                   'stories': ['The Dweller in the Tomb', 'Out of the Ages']}
+
 GRAPH = Graph([
     Node('cosies', [
         Field('nerv', String, _),
@@ -34,6 +40,15 @@ GRAPH = Graph([
         Field('slotted', String, _),
         Field('tatler', Optional[Record[{'orudis': String}]], _),
         Field('coom', Record[{'yappers': String}], _),
+        Field('lovecraft', Record[{'characters': Record[{
+            'cthulhu': Optional[CharacterRecord],
+            'dagon': Optional[CharacterRecord],
+        }]}], _),
+        Field('rlyeh', Record[{'priest': CharacterRecord}], _),
+        Field('elemental', Record[{
+            'air': Sequence[CharacterRecord],
+            'water': Sequence[CharacterRecord],
+        }], _),
         Field('barbary', Sequence[Record[{'betty': String}]], _),
         Node('flossy', [
             Field('demoing', String, _),
@@ -55,6 +70,15 @@ RESULT.root.update({
     'slotted': 'quoy_ushered',
     'tatler': {'orudis': 'fhp_musterd'},
     'coom': {'yappers': 'idaho_golok'},
+    'lovecraft': {'characters': {
+        'cthulhu': cthulhu_data,
+        'dagon': None,
+    }},
+    'rlyeh': {'priest': cthulhu_data},
+    'elemental': {
+        'air': [],
+        'water': [cthulhu_data, zoth_ommog_data],
+    },
     'barbary': [{'betty': 'japheth_ophir'}],
     'flossy': {
         'demoing': 'judaea_bhutani',
@@ -263,3 +287,34 @@ def test_optional():
     check_result('[{:flossy [{:daur [:doghead]} {:carf [:nerv]}]}]',
                  {'flossy': {'daur': {'doghead': 'satsuma_mks'},
                              'carf': None}})
+
+def test_nested_records():
+    check_result(
+        '[{:rlyeh [{:priest [:name]}]}]',
+        {'rlyeh': {'priest': {'name': 'Cthulhu'}}}
+    )
+    check_result(
+        '[{:lovecraft [{:characters [{:cthulhu [:name]}]}]}]',
+        {'lovecraft': {
+            'characters': {
+                'cthulhu': {'name': 'Cthulhu'}
+             }
+        }}
+    )
+    check_result(
+        '[{:elemental [{:air [:name]} {:water [:name :stories]}]}]',
+        {'elemental': {
+            'air': [],
+            'water': [
+                {
+                    'name': 'Cthulhu',
+                    'stories': ['Call of Cthulhu', 'The Dunwich Horror']
+                },
+                {
+                    'name': 'Zoth-Ommog',
+                    'stories': ['The Dweller in the Tomb',
+                                'Out of the Ages']
+                }
+            ]
+        }}
+    )
