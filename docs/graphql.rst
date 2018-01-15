@@ -39,6 +39,12 @@ Introspection
 Hiku's graph by default doesn't contain a built-in introspection,
 but it can be added.
 
+.. note:: Hiku types are optional and are not fully compatible with GraphQL type
+  system. For example, if the field contains :py:class:`~hiku.types.Any` or
+  :py:class:`~hiku.types.Record` types, such fields will be ignored. You still
+  will be able to query such fields, but they wouldn't be available for
+  introspection.
+
 For synchronous graphs:
 
 .. literalinclude:: test_graphql.py
