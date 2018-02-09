@@ -355,7 +355,7 @@ class Graph(AbstractGraph):
         ])
 
     """
-    def __init__(self, items):
+    def __init__(self, items, types=None):
         """
         :param items: list of nodes
         """
@@ -364,6 +364,7 @@ class Graph(AbstractGraph):
         GraphValidator.validate(items)
 
         self.items = GraphInit.init(items)
+        self.types = types or {}
 
     def __repr__(self):
         return '{}({!r})'.format(self.__class__.__name__, self.items)
