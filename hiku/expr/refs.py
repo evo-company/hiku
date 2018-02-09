@@ -20,12 +20,18 @@ class Ref(object):
         self.backref = backref
         self.to = to
 
+    def __repr__(self):
+        return '({!r}) > {!r}'.format(self.to, self.backref)
+
 
 class NamedRef(Ref):
 
     def __init__(self, backref, name, to):
         super(NamedRef, self).__init__(backref, to)
         self.name = name
+
+    def __repr__(self):
+        return '{}({!r}) > {!r}'.format(self.name, self.to, self.backref)
 
 
 def get_type(types, type_):
