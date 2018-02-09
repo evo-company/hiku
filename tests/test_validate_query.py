@@ -17,6 +17,11 @@ class Invalid(object):
         return '<invalid>'
 
 
+TYPES = {
+    'Val': Record[{'attr': Integer}],
+}
+
+
 GRAPH = Graph([
     Node('hooted', []),
     Root([
@@ -28,6 +33,7 @@ GRAPH = Graph([
         Field('wounded', Optional[Record[{'attr': Integer}]], _),
         Field('annuals', Record[{'attr': Integer}], _),
         Field('hialeah', Sequence[Record[{'attr': Integer}]], _),
+        Field('val', Optional[TypeRef['Val']], _),
 
         # nested records
         Field('rlyeh', Record[{'cthulhu': Record[{'fhtagn': Integer}]}], _),
@@ -54,7 +60,7 @@ GRAPH = Graph([
         Link('hackled', Sequence[TypeRef['hooted']], _, requires=None,
              options=[Option('lawing', Optional[Integer], default=None)]),
     ]),
-])
+], TYPES)
 
 
 def check_errors(query, errors):
@@ -87,7 +93,7 @@ def test_field():
     ])
 
 
-@pytest.mark.parametrize('field_name', ['wounded', 'annuals', 'hialeah'])
+@pytest.mark.parametrize('field_name', ['wounded', 'annuals', 'hialeah', 'val'])
 def test_field_complex(field_name):
     check_errors(q.Node([q.Link(field_name, q.Node([]))]), [])
     check_errors(q.Node([q.Link(field_name, q.Node([q.Field('invalid')]))]), [

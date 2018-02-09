@@ -1,6 +1,5 @@
 import collections
 
-from itertools import repeat
 from contextlib import contextmanager
 
 from ..types import AbstractTypeVisitor
@@ -16,8 +15,12 @@ _undefined = object()
 
 class _AssumeRecord(AbstractTypeVisitor):
 
-    def __init__(self, _nested=False):
+    def __init__(self, data_types, _nested=False):
+        self._data_types = data_types
         self._nested = _nested
+
+    def _get_nested(self):
+        return _AssumeRecord(self._data_types, _nested=True)
 
     def visit(self, obj):
         if obj is not None:
@@ -26,20 +29,28 @@ class _AssumeRecord(AbstractTypeVisitor):
     def _false(self, obj):
         pass
 
-    visit_any, visit_boolean, visit_string, visit_integer, visit_float, \
-        visit_mapping, visit_callable, visit_typeref = repeat(_false, 8)
+    visit_any = _false
+    visit_boolean = _false
+    visit_string = _false
+    visit_integer = _false
+    visit_float = _false
+    visit_mapping = _false
+    visit_callable = _false
 
     def visit_optional(self, obj):
         if not self._nested:
-            return _AssumeRecord(_nested=True).visit(obj.__type__)
+            return self._get_nested().visit(obj.__type__)
 
     def visit_sequence(self, obj):
         if not self._nested:
-            return _AssumeRecord(_nested=True).visit(obj.__item_type__)
+            return self._get_nested().visit(obj.__item_type__)
 
     def visit_record(self, obj):
         # return fields alongside type definitions
         return obj.__field_types__
+
+    def visit_typeref(self, obj):
+        return self.visit(self._data_types[obj.__type_name__])
 
 
 class _AssumeField(GraphVisitor):
@@ -199,7 +210,8 @@ class _ValidateOptions(GraphVisitor):
 
 class _RecordFieldsValidator(QueryVisitor):
 
-    def __init__(self, field_types, errors):
+    def __init__(self, data_types, field_types, errors):
+        self._data_types = data_types
         self._field_types = field_types
         self._errors = errors
 
@@ -208,14 +220,16 @@ class _RecordFieldsValidator(QueryVisitor):
             self._errors.report('Unknown field name')
         elif obj.options is not None:
             self._errors.report('Options are not expected')
-        elif _AssumeRecord().visit(self._field_types[obj.name]):
+        elif _AssumeRecord(self._data_types).visit(self._field_types[obj.name]):
             self._errors.report('Trying to query "{}" link as it was a field'
                                 .format(obj.name))
 
     def visit_link(self, obj):
-        field_types = _AssumeRecord().visit(self._field_types[obj.name])
+        field_types = _AssumeRecord(self._data_types) \
+            .visit(self._field_types[obj.name])
         if field_types is not None:
-            fields_validator = _RecordFieldsValidator(field_types,
+            fields_validator = _RecordFieldsValidator(self._data_types,
+                                                      field_types,
                                                       self._errors)
             for field in obj.node.fields:
                 fields_validator.visit(field)
@@ -229,7 +243,7 @@ class _RecordFieldsValidator(QueryVisitor):
 class QueryValidator(QueryVisitor):
 
     def __init__(self, graph):
-        self.map = graph.nodes_map
+        self.graph = graph
         self.path = [graph.root]
         self.errors = Errors()
 
@@ -252,9 +266,10 @@ class QueryValidator(QueryVisitor):
             for_ = (node.name or 'root', obj.name)
             _ValidateOptions(obj.options, for_, self.errors).visit(graph_obj)
 
-            field_types = _AssumeRecord().visit(graph_obj.type)
+            field_types = _AssumeRecord(self.graph.types).visit(graph_obj.type)
             if field_types is not None:
-                fields_validator = _RecordFieldsValidator(field_types,
+                fields_validator = _RecordFieldsValidator(self.graph.types,
+                                                          field_types,
                                                           self.errors)
                 for field in obj.node.fields:
                     fields_validator.visit(field)
@@ -264,7 +279,7 @@ class QueryValidator(QueryVisitor):
                                    .format(node.name or 'root', obj.name))
 
         elif isinstance(graph_obj, Link):
-            linked_node = self.map[graph_obj.node]
+            linked_node = self.graph.nodes_map[graph_obj.node]
             for_ = (node.name or 'root', obj.name)
             _ValidateOptions(obj.options, for_, self.errors).visit(graph_obj)
 
