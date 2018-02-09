@@ -96,7 +96,7 @@ def check_type(types, t1, t2):
                 for key, v2 in t2.__field_types__.items():
                     v1 = t1.__field_types__.get(key)
                     if v1 is None:
-                        raise TypeError('Missing field {}'.format(key))
+                        raise TypeError('Missing field "{}"'.format(key))
                     v1 = get_type(types, v1)
                     check_type(types, v1, v2)
         elif isinstance(t2, OptionalMeta):
@@ -186,8 +186,9 @@ class Checker(NodeTransformer):
             return self.visit_tuple_generic(node)
 
     def visit_symbol(self, node):
+        if node.name not in self.env:
+            raise TypeError('Unknown symbol "{}"'.format(node.name))
         sym = Symbol(node.name)
-        assert node.name in self.env, 'Unknown symbol {}'.format(node.name)
         sym.__ref__ = self.env[node.name]
         return sym
 

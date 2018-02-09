@@ -1,95 +1,122 @@
+from functools import reduce
+
 import pytest
 
-from hiku.graph import Graph, Field, Node, Root, Link
-from hiku.types import Integer, String, Record, Optional, TypeRef
-from hiku.expr.core import S, to_expr, if_some, define
+from hiku.types import Integer, Record, Optional, TypeRef, Sequence
+from hiku.expr.core import S, to_expr, if_some, define, each
 from hiku.expr.refs import NamedRef, Ref
-from hiku.expr.nodes import List, Symbol
-from hiku.expr.checker import check, graph_types, fn_types
+from hiku.expr.checker import check, fn_types
 
 from .base import ref_eq_patcher, type_eq_patcher
 
 
-def _(*args, **kwargs):
-    raise NotImplementedError
+def reducer(backref, ref):
+    name, to = ref
+    if name is None:
+        return Ref(backref, to)
+    else:
+        return NamedRef(backref, name, to)
 
 
-GRAPH = Graph([
-    Node('thalweg', [
-        Field('pinout', Integer, _),
-    ]),
-    Root([
-        Field('araneus', Integer, _),
-        Field('peen', Optional[Record[{'copies': Integer}]], _),
-        Node('guida', [
-            Field('canette', String, _),
-        ]),
-        Link('faulds', TypeRef['thalweg'], _, requires=None),
-        Link('rakyats', Optional[TypeRef['thalweg']], _, requires=None),
-    ]),
-])
-
-TYPES = graph_types(GRAPH)
-ROOT_TYPES = TYPES['__root__'].__field_types__
-
-
-def check_expr(expr):
-    expr, functions = to_expr(expr)
-    env = fn_types(functions)
-    env.update(ROOT_TYPES)
-    return check(expr, TYPES, env)
-
-
-def check_ref(node, ref):
+def check_ref(node, chain):
+    ref = reduce(reducer, reversed(chain), None)
     with ref_eq_patcher(), type_eq_patcher():
         assert node.__ref__ == ref
 
 
-def test_root_field():
-    expr = check_expr(S.araneus)
-    check_ref(expr, NamedRef(None, 'araneus', ROOT_TYPES['araneus']))
+def check_expr(types, expr):
+    ast, functions = to_expr(expr)
+    env = fn_types(functions)
+    env.update(types['__root__'].__field_types__)
+    return check(ast, types, env)
 
 
-def test_node_field():
-    expr = check_expr(S.guida.canette)
-    guida_ref = NamedRef(None, 'guida', Record[{'canette': String}])
-    check_ref(expr, NamedRef(guida_ref, 'canette', String))
+def test_simple_and_get():
+    types = {
+        'Bar': Record[{'baz': Integer}],
+        'Foo': Record[{'bar': TypeRef['Bar']}],
+        '__root__': Record[{'foo': TypeRef['Foo']}],
+    }
+    ast = check_expr(types, S.foo.bar.baz)
+    check_ref(ast, [
+        ('baz', Integer),
+        ('bar', TypeRef['Bar']),
+        ('foo', TypeRef['Foo']),
+    ])
 
 
-def test_optional_field():
-    expr = check_expr(if_some([S.x, S.peen], S.x.copies, 0))
-    if_some_bind = expr.values[1]
-    assert isinstance(if_some_bind, List)
-    x = if_some_bind.values[0]
-    assert isinstance(x, Symbol)
-    peen_ref = NamedRef(None, 'peen', Optional[Record[{'copies': Integer}]])
-    check_ref(x, Ref(peen_ref, Record[{'copies': Integer}]))
+def test_sequence_and_each():
+    types = {
+        'Bar': Record[{'baz': Integer}],
+        'Foo': Record[{'bar': TypeRef['Bar']}],
+        '__root__': Record[{'foo': Sequence[TypeRef['Foo']]}],
+    }
+    ast = check_expr(types, each(S.x, S.foo, S.x.bar.baz))
+    _, _, _, x_bar_baz = ast.values
+    check_ref(x_bar_baz, [
+        ('baz', Integer),
+        ('bar', TypeRef['Bar']),
+        (None, TypeRef['Foo']),
+        ('foo', Sequence[TypeRef['Foo']]),
+    ])
 
 
-def test_optional_link():
-    expr = check_expr(if_some([S.x, S.rakyats], S.x.pinout, ''))
-    if_some_bind = expr.values[1]
-    assert isinstance(if_some_bind, List)
-    x = if_some_bind.values[0]
-    assert isinstance(x, Symbol)
-    rakyats_ref = NamedRef(None, 'rakyats', Optional[TypeRef['thalweg']])
-    check_ref(x, Ref(rakyats_ref, TypeRef['thalweg']))
+def test_optional_and_if_some():
+    types = {
+        'Bar': Record[{'baz': Integer}],
+        'Foo': Record[{'bar': Sequence[TypeRef['Bar']]}],
+        '__root__': Record[{'foo': Optional[TypeRef['Foo']]}],
+    }
+    ast = check_expr(types, if_some([S.x, S.foo],
+                                    each(S.y, S.x.bar,
+                                         S.y.baz), None))
+    _, _, each_ast, _ = ast.values
+    _, _, _, y_baz = each_ast.values
+    check_ref(y_baz, [
+        ('baz', Integer),
+        (None, TypeRef['Bar']),
+        ('bar', Sequence[TypeRef['Bar']]),
+        (None, TypeRef['Foo']),
+        ('foo', Optional[TypeRef['Foo']]),
+    ])
 
 
-def test_optional_arg():
+def test_optional_args():
+    types = {
+        'Foo': Record[{'bar': Integer}],
+        '__root__': Record[{'foo': Optional[TypeRef['Foo']]}],
+    }
 
-    @define(Optional[Record[{'pinout': Integer}]])
-    def foo():
+    @define(Optional[Record[{'bar': Integer}]])
+    def requires_bar(_):
         pass
 
-    @define(Optional[Record[{'invalid': Integer}]])
-    def bar():
+    @define(Optional[Record[{'baz': Integer}]])
+    def requires_unknown(_):
         pass
 
-    check_expr(foo(S.faulds))
-    check_expr(foo(S.rakyats))
-
+    check_expr(types, requires_bar(S.foo))
     with pytest.raises(TypeError) as err:
-        check_expr(bar(S.rakyats))
+        check_expr(types, requires_unknown(S.foo))
+    err.match('Missing field "baz"')
 
-    assert err.match('Missing field invalid')
+
+def test_unknown_symbol():
+    types = {
+        '__root__': Record[{'foo': Integer}],
+    }
+    check_expr(types, S.foo)
+    with pytest.raises(TypeError) as err:
+        check_expr(types, S.bar)
+    err.match('Unknown symbol "bar"')
+
+
+def test_missing_field():
+    types = {
+        '__root__': Record[{'foo': Record[{'bar': Integer}]}],
+    }
+    check_expr(types, S.foo)
+    check_expr(types, S.foo.bar)
+    with pytest.raises(TypeError) as err:
+        check_expr(types, S.foo.baz)
+    err.match('Missing field "baz"')
