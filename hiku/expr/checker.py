@@ -132,7 +132,7 @@ class Checker(NodeTransformer):
         col = self.visit(col)
         assert hasattr(col, '__ref__'), 'Object does not have a reference'
         col_type = node_type(self.types, col)
-        check_type(self.types, col_type, Sequence[Record[{}]])
+        check_type(self.types, col_type, Sequence[Any])
         var = Symbol(var.name)
         var.__ref__ = Ref(col.__ref__, col_type.__item_type__)
         with self.env.push({var.name: var.__ref__}):

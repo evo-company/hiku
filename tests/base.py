@@ -1,3 +1,4 @@
+from functools import reduce
 from contextlib import contextmanager
 try:
     from itertools import zip_longest
@@ -10,8 +11,7 @@ except ImportError:
 
 from hiku.types import GenericMeta
 from hiku.query import Field, Link, Node
-from hiku.expr.refs import Ref
-
+from hiku.expr.refs import Ref, NamedRef
 
 patch = _patch
 Mock = _Mock
@@ -94,3 +94,15 @@ def check_result(result, value):
                'path: {}, value: {!r}, expected: {!r}'
                .format(path_str, subres, subval))
         raise AssertionError(msg)
+
+
+def _ref_reducer(backref, item):
+    name, to = item
+    if name is None:
+        return Ref(backref, to)
+    else:
+        return NamedRef(backref, name, to)
+
+
+def ref(chain):
+    return reduce(_ref_reducer, reversed(chain), None)

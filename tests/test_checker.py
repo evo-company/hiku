@@ -1,27 +1,16 @@
-from functools import reduce
-
 import pytest
 
 from hiku.types import Integer, Record, Optional, TypeRef, Sequence
 from hiku.expr.core import S, to_expr, if_some, define, each
-from hiku.expr.refs import NamedRef, Ref
 from hiku.expr.checker import check, fn_types
 
-from .base import ref_eq_patcher, type_eq_patcher
-
-
-def reducer(backref, ref):
-    name, to = ref
-    if name is None:
-        return Ref(backref, to)
-    else:
-        return NamedRef(backref, name, to)
+from .base import ref_eq_patcher, type_eq_patcher, ref
 
 
 def check_ref(node, chain):
-    ref = reduce(reducer, reversed(chain), None)
+    ref_ = ref(chain)
     with ref_eq_patcher(), type_eq_patcher():
-        assert node.__ref__ == ref
+        assert node.__ref__ == ref_
 
 
 def check_expr(types, expr):
@@ -31,7 +20,7 @@ def check_expr(types, expr):
     return check(ast, types, env)
 
 
-def test_simple_and_get():
+def test_get_simple():
     types = {
         'Bar': Record[{'baz': Integer}],
         'Foo': Record[{'bar': TypeRef['Bar']}],
@@ -45,7 +34,21 @@ def test_simple_and_get():
     ])
 
 
-def test_sequence_and_each():
+def test_each_sequence_of_scalar():
+    types = {
+        '__root__': Record[{'foo': Sequence[Integer]}],
+    }
+    ast = check_expr(types, each(S.x, S.foo, S.x))
+    _, x1, _, x2 = ast.values
+    ref_chain = [
+        (None, Integer),
+        ('foo', Sequence[Integer]),
+    ]
+    check_ref(x1, ref_chain)
+    check_ref(x2, ref_chain)
+
+
+def test_each_sequence_of_record():
     types = {
         'Bar': Record[{'baz': Integer}],
         'Foo': Record[{'bar': TypeRef['Bar']}],
@@ -61,7 +64,7 @@ def test_sequence_and_each():
     ])
 
 
-def test_optional_and_if_some():
+def test_if_some_optional():
     types = {
         'Bar': Record[{'baz': Integer}],
         'Foo': Record[{'bar': Sequence[TypeRef['Bar']]}],
