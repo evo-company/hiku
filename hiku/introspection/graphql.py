@@ -11,6 +11,7 @@ from graphql import print_ast, ast_from_value
 from ..graph import Graph, Root, Node, Link, Option, Field, Nothing
 from ..graph import GraphTransformer
 from ..types import TypeRef, String, Sequence, Boolean, Optional, TypeVisitor
+from ..types import RecordMeta
 from ..compat import async_wrapper
 
 
@@ -102,7 +103,10 @@ def type_link(graph, options):
 
 def types_link(graph):
     scalars = ['String', 'Int', 'Boolean', 'Float']
-    return scalars + [n for n in _nodes_map(graph) if NAME_RE.match(n)]
+    objects = [n for n in _nodes_map(graph) if NAME_RE.match(n)]
+    interfaces = [k for k, v in graph.types.items()
+                  if isinstance(v, RecordMeta)]
+    return scalars + objects + interfaces
 
 
 def type_info(graph, fields, ids):
@@ -114,6 +118,11 @@ def type_info(graph, fields, ids):
                     'kind': 'OBJECT',
                     'name': ident,
                     'description': node.description}
+        elif ident in graph.types:
+            info = {'id': ident,
+                    'kind': 'INTERFACE',
+                    'name': ident,
+                    'description': None}
         elif isinstance(ident, NON_NULL):
             info = {'id': ident,
                     'kind': 'NON_NULL'}
@@ -141,21 +150,34 @@ def validate_field(field):
     return True
 
 
+def validate_field_type(name, type_):
+    if not NAME_RE.match(name):
+        return False
+    if not TypeValidator.is_valid(type_):
+        return False
+    return True
+
+
 def type_fields_link(graph, ids, options):
     nodes_map = _nodes_map(graph)
     for ident in ids:
-        if ident not in nodes_map:
+        if ident in nodes_map:
+            node = nodes_map[ident]
+            field_idents = [FieldIdent(ident, f.name) for f in node.fields
+                            if validate_field(f)]
+            if not field_idents:
+                raise TypeError('Node "{}" does not contain any typed field, '
+                                'which is not acceptable for GraphQL in order '
+                                'to define schema type'.format(ident))
+            yield field_idents
+        elif ident in graph.types:
+            type_ = graph.types[ident]
+            field_idents = [FieldIdent(ident, f_name)
+                            for f_name, f_type in type_.__field_types__.items()
+                            if validate_field_type(f_name, f_type)]
+            yield field_idents
+        else:
             yield []
-            continue
-
-        node = nodes_map[ident]
-        field_idents = [FieldIdent(ident, f.name) for f in node.fields
-                        if validate_field(f)]
-        if not field_idents:
-            raise TypeError('Node "{}" does not contain any typed field, which '
-                            'is not acceptable for GraphQL in order to define '
-                            'schema type'.format(ident))
-        yield field_idents
 
 
 def type_of_type_link(graph, ids):
@@ -169,13 +191,20 @@ def type_of_type_link(graph, ids):
 def field_info(graph, fields, ids):
     nodes_map = _nodes_map(graph)
     for ident in ids:
-        node = nodes_map[ident.node]
-        field = node.fields_map[ident.name]
-        info = {'id': ident,
-                'name': field.name,
-                'description': field.description,
-                'isDeprecated': False,
-                'deprecationReason': None}
+        if ident.node in nodes_map:
+            node = nodes_map[ident.node]
+            field = node.fields_map[ident.name]
+            info = {'id': ident,
+                    'name': field.name,
+                    'description': field.description,
+                    'isDeprecated': False,
+                    'deprecationReason': None}
+        else:
+            info = {'id': ident,
+                    'name': ident.name,
+                    'description': None,
+                    'isDeprecated': False,
+                    'deprecationReason': None}
         yield [info[f.name] for f in fields]
 
 
@@ -183,18 +212,25 @@ def field_type_link(graph, ids):
     nodes_map = _nodes_map(graph)
     type_ident = TypeIdent()
     for ident in ids:
-        node = nodes_map[ident.node]
-        field = node.fields_map[ident.name]
-        yield type_ident.visit(field.type)
+        if ident.node in nodes_map:
+            node = nodes_map[ident.node]
+            field = node.fields_map[ident.name]
+            yield type_ident.visit(field.type)
+        else:
+            type_ = graph.types[ident.node].__field_types__[ident.name]
+            yield type_ident.visit(type_)
 
 
 def field_args_link(graph, ids):
     nodes_map = _nodes_map(graph)
     for ident in ids:
-        node = nodes_map[ident.node]
-        field = node.fields_map[ident.name]
-        yield [ArgumentIdent(ident.node, field.name, option.name)
-               for option in field.options]
+        if ident.node in nodes_map:
+            node = nodes_map[ident.node]
+            field = node.fields_map[ident.name]
+            yield [ArgumentIdent(ident.node, field.name, option.name)
+                   for option in field.options]
+        else:
+            yield []
 
 
 def input_value_info(graph, fields, ids):

@@ -3,7 +3,6 @@ from hiku.types import String, Integer, Sequence, TypeRef, Boolean, Float, Any
 from hiku.types import Optional, Record
 from hiku.result import denormalize
 from hiku.engine import Engine
-from hiku.sources.graph import SubGraph
 from hiku.executors.sync import SyncExecutor
 from hiku.validate.query import validate
 from hiku.readers.graphql import read
@@ -18,17 +17,9 @@ def link_func():
     raise NotImplementedError
 
 
-_GRAPH = Graph([
-    Node('flexed', [
-        Field('yari', Boolean, field_func),
-    ]),
-])
-
-flexed_sg = SubGraph(_GRAPH, 'flexed')
-
 GRAPH = Graph([
     Node('flexed', [
-        Field('yari', Boolean, flexed_sg, options=[
+        Field('yari', Boolean, field_func, options=[
             Option('membuka', Sequence[String], default=['frayed']),
             Option('modist', Optional[Integer], default=None,
                    description='callow'),
@@ -142,6 +133,10 @@ def _obj(name):
     return {'kind': 'OBJECT', 'name': name, 'ofType': None}
 
 
+def _iface(name):
+    return {'kind': 'INTERFACE', 'name': name, 'ofType': None}
+
+
 def _seq_of(_type):
     return {'kind': 'NON_NULL', 'name': None,
             'ofType': {'kind': 'LIST', 'name': None,
@@ -149,52 +144,97 @@ def _seq_of(_type):
                                   'ofType': _type}}}
 
 
+def _field(name, type_, **kwargs):
+    data = {
+        'args': [],
+        'deprecationReason': None,
+        'description': None,
+        'isDeprecated': False,
+        'name': name,
+        'type': type_
+    }
+    data.update(kwargs)
+    return data
+
+
+def _type(name, kind, **kwargs):
+    data = {
+        'description': None,
+        'enumValues': [],
+        'fields': [],
+        'inputFields': [],
+        'interfaces': [],
+        'kind': kind,
+        'name': name,
+        'possibleTypes': [],
+    }
+    data.update(**kwargs)
+    return data
+
+
+def _schema(types):
+    names = [t['name'] for t in types]
+    assert 'Root' in names, names
+    return {
+        '__schema': {
+            'directives': [],
+            'mutationType': None,
+            'queryType': {'name': 'Root'},
+            'types': SCALARS + types,
+        }
+    }
+
+
+SCALARS = [
+    {
+        'name': 'String',
+        'kind': 'SCALAR',
+        'fields': [],
+        'description': None,
+        'enumValues': [],
+        'inputFields': [],
+        'interfaces': [],
+        'possibleTypes': [],
+    },
+    {
+        'name': 'Int',
+        'kind': 'SCALAR',
+        'fields': [],
+        'description': None,
+        'enumValues': [],
+        'inputFields': [],
+        'interfaces': [],
+        'possibleTypes': [],
+    },
+    {
+        'name': 'Boolean',
+        'kind': 'SCALAR',
+        'fields': [],
+        'description': None,
+        'enumValues': [],
+        'inputFields': [],
+        'interfaces': [],
+        'possibleTypes': [],
+    },
+    {
+        'name': 'Float',
+        'kind': 'SCALAR',
+        'fields': [],
+        'description': None,
+        'enumValues': [],
+        'inputFields': [],
+        'interfaces': [],
+        'possibleTypes': [],
+    },
+]
+
+
 RESULT = {
     '__schema': {
         'queryType': {'name': 'Root'},
         'mutationType': None,
         'directives': [],
-        'types': [
-            {
-                'name': 'String',
-                'kind': 'SCALAR',
-                'fields': [],
-                'description': None,
-                'enumValues': [],
-                'inputFields': [],
-                'interfaces': [],
-                'possibleTypes': [],
-            },
-            {
-                'name': 'Int',
-                'kind': 'SCALAR',
-                'fields': [],
-                'description': None,
-                'enumValues': [],
-                'inputFields': [],
-                'interfaces': [],
-                'possibleTypes': [],
-            },
-            {
-                'name': 'Boolean',
-                'kind': 'SCALAR',
-                'fields': [],
-                'description': None,
-                'enumValues': [],
-                'inputFields': [],
-                'interfaces': [],
-                'possibleTypes': [],
-            },
-            {
-                'name': 'Float',
-                'kind': 'SCALAR',
-                'fields': [],
-                'description': None,
-                'enumValues': [],
-                'inputFields': [],
-                'interfaces': [],
-                'possibleTypes': [],
-            },
+        'types': SCALARS + [
             {
                 'name': 'flexed',
                 'kind': 'OBJECT',
@@ -351,3 +391,24 @@ def test_unsupported_option():
     assert result['__schema']['types'][-1]['name'] == 'Root'
     assert [f['name'] for f in result['__schema']['types'][-1]['fields']] == \
            ['terapin']
+
+
+def test_interface():
+    data_types = {
+        'Foo': Record[{
+            'bar': Integer,
+            'invalid_type': Any,
+            'invalid-name': Integer,
+        }],
+    }
+    graph = Graph([Root([
+        Field('foo', TypeRef['Foo'], field_func),
+    ])], data_types)
+    assert introspect(graph) == _schema([
+        _type('Root', 'OBJECT', fields=[
+            _field('foo', _non_null(_iface('Foo'))),
+        ]),
+        _type('Foo', 'INTERFACE', fields=[
+            _field('bar', _non_null(_INT)),
+        ]),
+    ])
