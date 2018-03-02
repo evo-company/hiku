@@ -9,34 +9,8 @@ from hiku.readers.graphql import read
 from hiku.introspection.graphql import GraphQLIntrospection
 
 
-def field_func():
+def _noop():
     raise NotImplementedError
-
-
-def link_func():
-    raise NotImplementedError
-
-
-GRAPH = Graph([
-    Node('flexed', [
-        Field('yari', Boolean, field_func, options=[
-            Option('membuka', Sequence[String], default=['frayed']),
-            Option('modist', Optional[Integer], default=None,
-                   description='callow'),
-        ]),
-    ]),
-    Node('decian', [
-        Field('dogme', Integer, field_func),
-        Link('clarkia', Sequence[TypeRef['flexed']], link_func,
-             requires=None),
-    ]),
-    Root([
-        Field('cowered', String, field_func),
-        Field('entero', Float, field_func),
-        Link('toma', Sequence[TypeRef['decian']], link_func,
-             requires=None),
-    ]),
-])
 
 
 QUERY = """
@@ -185,167 +159,23 @@ def _schema(types):
     }
 
 
+def _arg(name, type_, **kwargs):
+    data = {
+        'name': name,
+        'type': type_,
+        'description': None,
+        'defaultValue': 'null',
+    }
+    data.update(kwargs)
+    return data
+
+
 SCALARS = [
-    {
-        'name': 'String',
-        'kind': 'SCALAR',
-        'fields': [],
-        'description': None,
-        'enumValues': [],
-        'inputFields': [],
-        'interfaces': [],
-        'possibleTypes': [],
-    },
-    {
-        'name': 'Int',
-        'kind': 'SCALAR',
-        'fields': [],
-        'description': None,
-        'enumValues': [],
-        'inputFields': [],
-        'interfaces': [],
-        'possibleTypes': [],
-    },
-    {
-        'name': 'Boolean',
-        'kind': 'SCALAR',
-        'fields': [],
-        'description': None,
-        'enumValues': [],
-        'inputFields': [],
-        'interfaces': [],
-        'possibleTypes': [],
-    },
-    {
-        'name': 'Float',
-        'kind': 'SCALAR',
-        'fields': [],
-        'description': None,
-        'enumValues': [],
-        'inputFields': [],
-        'interfaces': [],
-        'possibleTypes': [],
-    },
+    _type('String', 'SCALAR'),
+    _type('Int', 'SCALAR'),
+    _type('Boolean', 'SCALAR'),
+    _type('Float', 'SCALAR'),
 ]
-
-
-RESULT = {
-    '__schema': {
-        'queryType': {'name': 'Root'},
-        'mutationType': None,
-        'directives': [],
-        'types': SCALARS + [
-            {
-                'name': 'flexed',
-                'kind': 'OBJECT',
-                'fields': [
-                    {
-                        'name': 'yari',
-                        'type': _non_null(_BOOL),
-                        'description': None,
-                        'isDeprecated': False,
-                        'deprecationReason': None,
-                        'args': [
-                            {
-                                'name': 'membuka',
-                                'type': _seq_of(_STR),
-                                'description': None,
-                                'defaultValue': '["frayed"]',
-                            },
-                            {
-                                'name': 'modist',
-                                'type': _INT,
-                                'description': 'callow',
-                                'defaultValue': 'null',
-                            },
-                        ],
-                    },
-                ],
-                'description': None,
-                'enumValues': [],
-                'inputFields': [],
-                'interfaces': [],
-                'possibleTypes': [],
-            },
-            {
-                'name': 'decian',
-                'kind': 'OBJECT',
-                'fields': [
-                    {
-                        'name': 'dogme',
-                        'type': _non_null(_INT),
-                        'description': None,
-                        'isDeprecated': False,
-                        'deprecationReason': None,
-                        'args': [],
-                    },
-                    {
-                        'name': 'clarkia',
-                        'type': _seq_of(_obj('flexed')),
-                        'description': None,
-                        'isDeprecated': False,
-                        'deprecationReason': None,
-                        'args': [],
-                    },
-                ],
-                'description': None,
-                'enumValues': [],
-                'inputFields': [],
-                'interfaces': [],
-                'possibleTypes': [],
-            },
-            {
-                'name': 'Root',
-                'kind': 'OBJECT',
-                'fields': [
-                    {
-                        'name': 'cowered',
-                        'type': _non_null(_STR),
-                        'description': None,
-                        'isDeprecated': False,
-                        'deprecationReason': None,
-                        'args': [],
-                    },
-                    {
-                        'name': 'entero',
-                        'type': _non_null(_FLOAT),
-                        'description': None,
-                        'isDeprecated': False,
-                        'deprecationReason': None,
-                        'args': [],
-                    },
-                    {
-                        'name': 'toma',
-                        'type': _seq_of(_obj('decian')),
-                        'description': None,
-                        'isDeprecated': False,
-                        'deprecationReason': None,
-                        'args': [],
-                    },
-                ],
-                'description': None,
-                'enumValues': [],
-                'inputFields': [],
-                'interfaces': [],
-                'possibleTypes': [],
-            },
-        ],
-    },
-}
-
-
-def test_typename():
-    graph = apply(GRAPH, [GraphQLIntrospection()])
-    assert graph.root.fields_map['__typename'].type is String
-    assert graph.root.fields_map['__typename'].func([None]) == ['Root']
-
-    decian = graph.nodes_map['decian']
-    assert decian.fields_map['__typename'].type is String
-    assert decian.fields_map['__typename'].func([None]) == ['decian']
-
-    flexed = graph.nodes_map['flexed']
-    assert flexed.fields_map['__typename'].type is String
-    assert flexed.fields_map['__typename'].func([None]) == ['flexed']
 
 
 def introspect(graph):
@@ -361,36 +191,73 @@ def introspect(graph):
 
 
 def test_introspection_query():
-    assert introspect(GRAPH) == RESULT
+    graph = Graph([
+        Node('flexed', [
+            Field('yari', Boolean, _noop, options=[
+                Option('membuka', Sequence[String], default=['frayed']),
+                Option('modist', Optional[Integer], default=None,
+                       description='callow'),
+            ]),
+        ]),
+        Node('decian', [
+            Field('dogme', Integer, _noop),
+            Link('clarkia', Sequence[TypeRef['flexed']], _noop, requires=None),
+        ]),
+        Root([
+            Field('cowered', String, _noop),
+            Field('entero', Float, _noop),
+            Link('toma', Sequence[TypeRef['decian']], _noop, requires=None),
+        ]),
+    ])
+
+    assert introspect(graph) == _schema([
+        _type('flexed', 'OBJECT', fields=[
+            _field('yari', _non_null(_BOOL), args=[
+                _arg('membuka', _seq_of(_STR), defaultValue='["frayed"]'),
+                _arg('modist', _INT, description='callow'),
+            ]),
+        ]),
+        _type('decian', 'OBJECT', fields=[
+            _field('dogme', _non_null(_INT)),
+            _field('clarkia', _seq_of(_obj('flexed'))),
+        ]),
+        _type('Root', 'OBJECT', fields=[
+            _field('cowered', _non_null(_STR)),
+            _field('entero', _non_null(_FLOAT)),
+            _field('toma', _seq_of(_obj('decian'))),
+        ]),
+    ])
 
 
 def test_unsupported_field():
-    result = introspect(Graph([
+    graph = Graph([
         Root([
-            Field('fall', Optional[Any], field_func),
+            Field('fall', Optional[Any], _noop),
             Field('bayman', Optional[Record[{'foo': Optional[Integer]}]],
-                  field_func),
-            Field('huss', Integer, field_func),
+                  _noop),
+            Field('huss', Integer, _noop),
         ]),
-    ]))
-
-    assert result['__schema']['types'][-1]['name'] == 'Root'
-    assert [f['name'] for f in result['__schema']['types'][-1]['fields']] == \
-           ['huss']
+    ])
+    assert introspect(graph) == _schema([
+        _type('Root', 'OBJECT', fields=[
+            _field('huss', _non_null(_INT)),
+        ]),
+    ])
 
 
 def test_unsupported_option():
-    result = introspect(Graph([
+    graph = Graph([
         Root([
-            Field('huke', Integer, field_func,
+            Field('huke', Integer, _noop,
                   options=[Option('orel', Optional[Any])]),
-            Field('terapin', Integer, field_func),
+            Field('terapin', Integer, _noop),
         ]),
-    ]))
-
-    assert result['__schema']['types'][-1]['name'] == 'Root'
-    assert [f['name'] for f in result['__schema']['types'][-1]['fields']] == \
-           ['terapin']
+    ])
+    assert introspect(graph) == _schema([
+        _type('Root', 'OBJECT', fields=[
+            _field('terapin', _non_null(_INT)),
+        ]),
+    ])
 
 
 def test_interface():
@@ -402,7 +269,7 @@ def test_interface():
         }],
     }
     graph = Graph([Root([
-        Field('foo', TypeRef['Foo'], field_func),
+        Field('foo', TypeRef['Foo'], _noop),
     ])], data_types)
     assert introspect(graph) == _schema([
         _type('Root', 'OBJECT', fields=[
