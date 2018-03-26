@@ -7,8 +7,6 @@
 """
 from __future__ import absolute_import
 
-from itertools import chain
-
 from graphql.language import ast
 from graphql.language.ast import NonNullType
 from graphql.language.parser import parse
@@ -52,6 +50,42 @@ class NodeVisitor(object):
         self.visit(obj.selection_set)
 
 
+class OperationGetter(NodeVisitor):
+
+    def __init__(self, operation_name=None):
+        self._operations = {}
+        self._operation_name = operation_name
+
+    @classmethod
+    def get(cls, doc, operation_name=None):
+        self = cls(operation_name=operation_name)
+        self.visit(doc)
+        if not self._operations:
+            raise TypeError('No operations in the document')
+
+        if self._operation_name is None:
+            if len(self._operations) > 1:
+                raise TypeError('Document should contain exactly one operation '
+                                'when no operation name was provided')
+            return next(iter(self._operations.values()))
+        else:
+            try:
+                return self._operations[self._operation_name]
+            except KeyError:
+                raise ValueError('Undefined operation name: {!r}'
+                                 .format(self._operation_name))
+
+    def visit_FragmentDefinition(self, obj):
+        pass  # skip visit here
+
+    def visit_OperationDefinition(self, obj):
+        name = obj.name.value if obj.name is not None else None
+        if name in self._operations:
+            raise TypeError('Duplicate operation definition: {!r}'
+                            .format(name))
+        self._operations[name] = obj
+
+
 class FragmentsCollector(NodeVisitor):
 
     def __init__(self):
@@ -85,7 +119,7 @@ class SelectionSetVisitMixin(object):
             return self.query_variables[name]
         except KeyError:
             raise TypeError('Variable ${} is not defined in query {}'
-                            .format(name, self.query_name))
+                            .format(name, self.query_name or '<unnamed>'))
 
     def visit_SelectionSet(self, obj):
         for i in obj.selections:
@@ -186,29 +220,14 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
         self.variables = variables
 
     @classmethod
-    def transform(cls, document, variables=None):
+    def transform(cls, document, op, variables=None):
         visitor = cls(document, variables)
-        return visitor.visit(document)
+        return visitor.visit(op)
 
     def transform_fragment(self, name):
         return self.fragments_transformer.transform_fragment(name)
 
-    def visit_Document(self, obj):
-        queries = list(chain.from_iterable(self.visit(i)
-                                           for i in obj.definitions))
-        if len(queries) != 1:
-            raise TypeError('Only single operation per document is '
-                            'supported, {} operations was provided'
-                            .format(len(obj.definitions)))
-        return queries[0]
-
     def visit_OperationDefinition(self, obj):
-        if obj.operation != 'query':
-            raise TypeError('Only "query" operations are supported, '
-                            '"{}" operation was provided'
-                            .format(obj.operation))
-        assert obj.operation == 'query', obj.operation
-
         variables = self.variables or {}
         query_name = obj.name.value if obj.name else '<unnamed>'
         query_variables = {}
@@ -237,13 +256,10 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
             self.query_name = None
             self.query_variables = None
             self.fragments_transformer = None
-        yield node
-
-    def visit_FragmentDefinition(self, obj):
-        return []  # not interested in fragments here
+        return node
 
 
-def read(src, variables=None):
+def read(src, variables=None, operation_name=None):
     """Reads a GraphQL query
 
     Example:
@@ -265,7 +281,14 @@ def read(src, variables=None):
 
     :param str src: GraphQL query
     :param dict variables: query variables
+    :param str operation_name: Name of the operation to execute
     :return: :py:class:`hiku.query.Node`, ready to execute query object
     """
     doc = parse(src)
-    return GraphQLTransformer.transform(doc, variables)
+    op = OperationGetter.get(doc, operation_name=operation_name)
+    if op.operation != 'query':
+        raise TypeError('Only "query" operations are supported, '
+                        '"{}" operation was provided'
+                        .format(op.operation))
+
+    return GraphQLTransformer.transform(doc, op, variables)

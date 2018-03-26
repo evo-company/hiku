@@ -1,7 +1,9 @@
 import pytest
 
+from graphql.language.parser import parse
+
 from hiku.query import Node, Field, Link
-from hiku.readers.graphql import read
+from hiku.readers.graphql import read, OperationGetter
 
 from .base import reqs_eq_patcher
 
@@ -10,6 +12,51 @@ def check_read(source, query, variables=None):
     parsed_query = read(source, variables)
     with reqs_eq_patcher():
         assert parsed_query == query
+
+
+def test_operation_getter_no_ops():
+    with pytest.raises(TypeError) as err:
+        OperationGetter.get(parse('fragment Foo on Bar { id }'))
+    err.match('No operations in the document')
+
+
+def test_operation_getter_no_name():
+    query = OperationGetter.get(parse('{ foo }'))
+    assert query.name is None
+    assert query.operation == 'query'
+
+    named_query = OperationGetter.get(parse('query Foo { foo }'))
+    assert named_query.name.value == 'Foo'
+    assert named_query.operation == 'query'
+
+    mutation = OperationGetter.get(parse('mutation Foo { foo }'), None)
+    assert mutation.name.value == 'Foo'
+    assert mutation.operation == 'mutation'
+
+    with pytest.raises(TypeError) as err:
+        OperationGetter.get(parse('query Foo { foo } query Bar { bar }'))
+    err.match('Document should contain exactly one operation')
+
+
+def test_operation_getter_duplicates():
+    with pytest.raises(TypeError) as e1:
+        OperationGetter.get(parse('{ foo } { bar }'))
+    assert e1.match('Duplicate operation definition: None')
+
+    with pytest.raises(TypeError) as e2:
+        OperationGetter.get(parse('query Foo { foo } query Foo { bar }'))
+    assert e2.match('Duplicate operation definition: {!r}'.format('Foo'))
+
+
+def test_operation_getter_by_name():
+    q1 = OperationGetter.get(parse('query Foo { foo } query Bar { bar }'),
+                             'Bar')
+    assert q1.name.value == 'Bar'
+    assert q1.operation == 'query'
+
+    q2 = OperationGetter.get(parse('query Foo { foo } mutation Bar { bar }'),
+                             'Bar')
+    assert q2.operation == 'mutation'
 
 
 def test_field():
@@ -84,8 +131,7 @@ def test_complex_field_args():
 def test_multiple_operations():
     with pytest.raises(TypeError) as err:
         read('{ gummed } { calce } { aaron }')
-    err.match('Only single operation per document is supported, '
-              '3 operations was provided')
+    err.match('Duplicate operation definition: None')
 
 
 def test_mutation_operation():
