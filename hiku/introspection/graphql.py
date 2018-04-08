@@ -104,7 +104,7 @@ def type_link(graph, options):
 def types_link(graph):
     scalars = ['String', 'Int', 'Boolean', 'Float']
     objects = [n for n in _nodes_map(graph) if NAME_RE.match(n)]
-    interfaces = [k for k, v in graph.types.items()
+    interfaces = [k for k, v in graph.data_types.items()
                   if isinstance(v, RecordMeta)]
     return scalars + objects + interfaces
 
@@ -118,7 +118,7 @@ def type_info(graph, fields, ids):
                     'kind': 'OBJECT',
                     'name': ident,
                     'description': node.description}
-        elif ident in graph.types:
+        elif ident in graph.data_types:
             info = {'id': ident,
                     'kind': 'INTERFACE',
                     'name': ident,
@@ -170,8 +170,8 @@ def type_fields_link(graph, ids, options):
                                 'which is not acceptable for GraphQL in order '
                                 'to define schema type'.format(ident))
             yield field_idents
-        elif ident in graph.types:
-            type_ = graph.types[ident]
+        elif ident in graph.data_types:
+            type_ = graph.data_types[ident]
             field_idents = [FieldIdent(ident, f_name)
                             for f_name, f_type in type_.__field_types__.items()
                             if validate_field_type(f_name, f_type)]
@@ -217,7 +217,7 @@ def field_type_link(graph, ids):
             field = node.fields_map[ident.name]
             yield type_ident.visit(field.type)
         else:
-            type_ = graph.types[ident.node].__field_types__[ident.name]
+            type_ = graph.data_types[ident.node].__field_types__[ident.name]
             yield type_ident.visit(type_)
 
 

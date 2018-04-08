@@ -355,7 +355,7 @@ class Graph(AbstractGraph):
         ])
 
     """
-    def __init__(self, items, types=None):
+    def __init__(self, items, data_types=None):
         """
         :param items: list of nodes
         """
@@ -364,7 +364,7 @@ class Graph(AbstractGraph):
         GraphValidator.validate(items)
 
         self.items = GraphInit.init(items)
-        self.types = types or {}
+        self.data_types = data_types or {}
 
     def __repr__(self):
         return '{}({!r})'.format(self.__class__.__name__, self.items)
@@ -484,7 +484,8 @@ class GraphTransformer(AbstractGraphVisitor):
         return Root([self.visit(f) for f in obj.fields])
 
     def visit_graph(self, obj):
-        return Graph([self.visit(node) for node in obj.items])
+        return Graph([self.visit(node) for node in obj.items],
+                     obj.data_types)
 
 
 def apply(graph, transformers):

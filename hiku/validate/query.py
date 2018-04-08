@@ -266,9 +266,10 @@ class QueryValidator(QueryVisitor):
             for_ = (node.name or 'root', obj.name)
             _ValidateOptions(obj.options, for_, self.errors).visit(graph_obj)
 
-            field_types = _AssumeRecord(self.graph.types).visit(graph_obj.type)
+            field_types = _AssumeRecord(self.graph.data_types)\
+                .visit(graph_obj.type)
             if field_types is not None:
-                fields_validator = _RecordFieldsValidator(self.graph.types,
+                fields_validator = _RecordFieldsValidator(self.graph.data_types,
                                                           field_types,
                                                           self.errors)
                 for field in obj.node.fields:
