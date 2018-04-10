@@ -14,7 +14,10 @@ from ..types import TypeRef, String, Sequence, Boolean, Optional, TypeVisitor
 from ..types import RecordMeta
 from ..compat import async_wrapper
 
-
+SCALAR = namedtuple('SCALAR', 'name')
+OBJECT = namedtuple('OBJECT', 'name')
+INPUT_OBJECT = namedtuple('INPUT_OBJECT', 'alias, name')
+INTERFACE = namedtuple('INTERFACE', 'name')
 LIST = namedtuple('LIST', 'of_type')
 NON_NULL = namedtuple('NON_NULL', 'of_type')
 
@@ -28,6 +31,9 @@ ROOT_NAME = 'Root'
 
 class TypeIdent(TypeVisitor):
 
+    def __init__(self, graph):
+        self._graph = graph
+
     def visit_sequence(self, obj):
         return NON_NULL(LIST(self.visit(obj.__item_type__)))
 
@@ -35,19 +41,22 @@ class TypeIdent(TypeVisitor):
         return self.visit(obj.__type__).of_type
 
     def visit_typeref(self, obj):
-        return NON_NULL(obj.__type_name__)
+        if obj.__type_name__ in self._graph.nodes_map:
+            return NON_NULL(OBJECT(obj.__type_name__))
+        else:
+            return NON_NULL(INTERFACE(obj.__type_name__))
 
     def visit_string(self, obj):
-        return NON_NULL('String')
+        return NON_NULL(SCALAR('String'))
 
     def visit_integer(self, obj):
-        return NON_NULL('Int')
+        return NON_NULL(SCALAR('Int'))
 
     def visit_float(self, obj):
-        return NON_NULL('Float')
+        return NON_NULL(SCALAR('Float'))
 
     def visit_boolean(self, obj):
-        return NON_NULL('Boolean')
+        return NON_NULL(SCALAR('Boolean'))
 
 
 class UnsupportedGraphQLType(TypeError):
@@ -96,32 +105,49 @@ def _nodes_map(graph):
 def type_link(graph, options):
     name = options['name']
     if name in _nodes_map(graph):
-        return name
+        return OBJECT(name)
     else:
         return Nothing
 
 
-def types_link(graph):
-    scalars = ['String', 'Int', 'Boolean', 'Float']
-    objects = [n for n in _nodes_map(graph) if NAME_RE.match(n)]
-    interfaces = [k for k, v in graph.data_types.items()
-                  if isinstance(v, RecordMeta)]
-    return scalars + objects + interfaces
+def root_schema_types(graph):
+    yield SCALAR('String')
+    yield SCALAR('Int')
+    yield SCALAR('Boolean')
+    yield SCALAR('Float')
+    for name in _nodes_map(graph):
+        if NAME_RE.match(name):
+            yield OBJECT(name)
+    for name, type_ in graph.data_types.items():
+        if isinstance(type_, RecordMeta):
+            yield INTERFACE(name)
+            yield INPUT_OBJECT('I{}'.format(name), name)
+
+
+def root_schema_query_type(graph):
+    return OBJECT(ROOT_NAME)
 
 
 def type_info(graph, fields, ids):
-    nodes_map = _nodes_map(graph)
     for ident in ids:
-        if ident in nodes_map:
-            node = nodes_map[ident]
+        if isinstance(ident, OBJECT):
+            if ident.name == ROOT_NAME:
+                node = graph.root
+            else:
+                node = graph.nodes_map[ident.name]
             info = {'id': ident,
                     'kind': 'OBJECT',
-                    'name': ident,
+                    'name': ident.name,
                     'description': node.description}
-        elif ident in graph.data_types:
+        elif isinstance(ident, INTERFACE):
             info = {'id': ident,
                     'kind': 'INTERFACE',
-                    'name': ident,
+                    'name': ident.name,
+                    'description': None}
+        elif isinstance(ident, INPUT_OBJECT):
+            info = {'id': ident,
+                    'kind': 'INPUT_OBJECT',
+                    'name': ident.alias,
                     'description': None}
         elif isinstance(ident, NON_NULL):
             info = {'id': ident,
@@ -129,11 +155,12 @@ def type_info(graph, fields, ids):
         elif isinstance(ident, LIST):
             info = {'id': ident,
                     'kind': 'LIST'}
-        else:
-            assert ident in {'String', 'Int', 'Boolean', 'Float'}, ident
+        elif isinstance(ident, SCALAR):
             info = {'id': ident,
-                    'name': ident,
+                    'name': ident.name,
                     'kind': 'SCALAR'}
+        else:
+            raise TypeError(repr(ident))
         yield [info.get(f.name) for f in fields]
 
 
@@ -161,18 +188,18 @@ def validate_field_type(name, type_):
 def type_fields_link(graph, ids, options):
     nodes_map = _nodes_map(graph)
     for ident in ids:
-        if ident in nodes_map:
-            node = nodes_map[ident]
-            field_idents = [FieldIdent(ident, f.name) for f in node.fields
+        if isinstance(ident, OBJECT):
+            node = nodes_map[ident.name]
+            field_idents = [FieldIdent(ident.name, f.name) for f in node.fields
                             if validate_field(f)]
             if not field_idents:
                 raise TypeError('Node "{}" does not contain any typed field, '
                                 'which is not acceptable for GraphQL in order '
-                                'to define schema type'.format(ident))
+                                'to define schema type'.format(ident.name))
             yield field_idents
-        elif ident in graph.data_types:
-            type_ = graph.data_types[ident]
-            field_idents = [FieldIdent(ident, f_name)
+        elif isinstance(ident, (INTERFACE, INPUT_OBJECT)):
+            type_ = graph.data_types[ident.name]
+            field_idents = [FieldIdent(ident.name, f_name)
                             for f_name, f_type in type_.__field_types__.items()
                             if validate_field_type(f_name, f_type)]
             yield field_idents
@@ -210,7 +237,7 @@ def field_info(graph, fields, ids):
 
 def field_type_link(graph, ids):
     nodes_map = _nodes_map(graph)
-    type_ident = TypeIdent()
+    type_ident = TypeIdent(graph)
     for ident in ids:
         if ident.node in nodes_map:
             node = nodes_map[ident.node]
@@ -255,7 +282,7 @@ def input_value_info(graph, fields, ids):
 
 def input_value_type_link(graph, ids):
     nodes_map = _nodes_map(graph)
-    type_ident = TypeIdent()
+    type_ident = TypeIdent(graph)
     for ident in ids:
         node = nodes_map[ident.node]
         field = node.fields_map[ident.field]
@@ -272,7 +299,7 @@ GRAPH = Graph([
 
         # OBJECT and INTERFACE only
         Link('fields', Sequence[TypeRef['__Field']], type_fields_link,
-             requires='name',
+             requires='id',
              options=[Option('includeDeprecated', Boolean, default=False)]),
 
         # OBJECT only
@@ -329,9 +356,9 @@ GRAPH = Graph([
     ]),
     Root([
         Node('__schema', [
-            Link('types', Sequence[TypeRef['__Type']], types_link,
+            Link('types', Sequence[TypeRef['__Type']], root_schema_types,
                  requires=None),
-            Link('queryType', TypeRef['__Type'], lambda graph: ROOT_NAME,
+            Link('queryType', TypeRef['__Type'], root_schema_query_type,
                  requires=None),
             Link('directives', Sequence[TypeRef['__Directive']], na_many,
                  requires=None),

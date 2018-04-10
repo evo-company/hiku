@@ -260,7 +260,7 @@ def test_unsupported_option():
     ])
 
 
-def test_interface():
+def test_data_types():
     data_types = {
         'Foo': Record[{
             'bar': Integer,
@@ -276,6 +276,9 @@ def test_interface():
             _field('foo', _non_null(_iface('Foo'))),
         ]),
         _type('Foo', 'INTERFACE', fields=[
+            _field('bar', _non_null(_INT)),
+        ]),
+        _type('IFoo', 'INPUT_OBJECT', fields=[
             _field('bar', _non_null(_INT)),
         ]),
     ])
