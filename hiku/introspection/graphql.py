@@ -9,9 +9,9 @@ from collections import namedtuple, OrderedDict
 from graphql import print_ast, ast_from_value
 
 from ..graph import Graph, Root, Node, Link, Option, Field, Nothing
-from ..graph import GraphTransformer
+from ..graph import GraphVisitor, GraphTransformer
 from ..types import TypeRef, String, Sequence, Boolean, Optional, TypeVisitor
-from ..types import RecordMeta
+from ..types import RecordMeta, AbstractTypeVisitor
 from ..compat import async_wrapper
 
 SCALAR = namedtuple('SCALAR', 'name')
@@ -24,15 +24,25 @@ NON_NULL = namedtuple('NON_NULL', 'of_type')
 FieldIdent = namedtuple('FieldIdent', 'node, name')
 ArgumentIdent = namedtuple('ArgumentIdent', 'node, field, name')
 
-NAME_RE = re.compile('^[a-zA-Z]\w*$')
-
 ROOT_NAME = 'Root'
 
 
-class TypeIdent(TypeVisitor):
+class TypeIdent(AbstractTypeVisitor):
 
     def __init__(self, graph):
         self._graph = graph
+
+    def visit_any(self, obj):
+        return NON_NULL(SCALAR('Any'))
+
+    def visit_mapping(self, obj):
+        return NON_NULL(SCALAR('Any'))
+
+    def visit_record(self, obj):
+        return NON_NULL(SCALAR('Any'))
+
+    def visit_callable(self, obj):
+        raise TypeError('Not expected here: {!r}'.format(obj))
 
     def visit_sequence(self, obj):
         return NON_NULL(LIST(self.visit(obj.__item_type__)))
@@ -115,9 +125,9 @@ def root_schema_types(graph):
     yield SCALAR('Int')
     yield SCALAR('Boolean')
     yield SCALAR('Float')
+    yield SCALAR('Any')
     for name in _nodes_map(graph):
-        if NAME_RE.match(name):
-            yield OBJECT(name)
+        yield OBJECT(name)
     for name, type_ in graph.data_types.items():
         if isinstance(type_, RecordMeta):
             yield INTERFACE(name)
@@ -164,34 +174,12 @@ def type_info(graph, fields, ids):
         yield [info.get(f.name) for f in fields]
 
 
-def validate_field(field):
-    if not NAME_RE.match(field.name):
-        return False
-    if field.type is None or not TypeValidator.is_valid(field.type):
-        return False
-    for option in field.options:
-        if not NAME_RE.match(option.name):
-            return False
-        if option.type is None or not TypeValidator.is_valid(option.type):
-            return False
-    return True
-
-
-def validate_field_type(name, type_):
-    if not NAME_RE.match(name):
-        return False
-    if not TypeValidator.is_valid(type_):
-        return False
-    return True
-
-
 def type_fields_link(graph, ids, options):
     nodes_map = _nodes_map(graph)
     for ident in ids:
         if isinstance(ident, OBJECT):
             node = nodes_map[ident.name]
-            field_idents = [FieldIdent(ident.name, f.name) for f in node.fields
-                            if validate_field(f)]
+            field_idents = [FieldIdent(ident.name, f.name) for f in node.fields]
             if not field_idents:
                 raise TypeError('Node "{}" does not contain any typed field, '
                                 'which is not acceptable for GraphQL in order '
@@ -200,8 +188,7 @@ def type_fields_link(graph, ids, options):
         elif isinstance(ident, (INTERFACE, INPUT_OBJECT)):
             type_ = graph.data_types[ident.name]
             field_idents = [FieldIdent(ident.name, f_name)
-                            for f_name, f_type in type_.__field_types__.items()
-                            if validate_field_type(f_name, f_type)]
+                            for f_name, f_type in type_.__field_types__.items()]
             yield field_idents
         else:
             yield []
@@ -373,6 +360,63 @@ GRAPH = Graph([
 ])
 
 
+class ValidateGraph(GraphVisitor):
+    _name_re = re.compile('^[a-zA-Z]\w*$')
+
+    def __init__(self):
+        self._path = []
+        self._errors = []
+
+    def _add_error(self, name, description):
+        path = '.'.join(self._path + [name])
+        self._errors.append('{}: {}'.format(path, description))
+
+    @classmethod
+    def validate(cls, graph):
+        self = cls()
+        self.visit(graph)
+        if self._errors:
+            raise ValueError('Invalid GraphQL graph:\n{}'
+                             .format('\n'.join('- {}'.format(err)
+                                               for err in self._errors)))
+
+    def visit_node(self, obj):
+        if obj.fields:
+            self._path.append(obj.name)
+            super(ValidateGraph, self).visit_node(obj)
+            self._path.pop()
+        else:
+            self._add_error(obj.name,
+                            'No fields in the {} node'.format(obj.name))
+
+    def visit_root(self, obj):
+        if obj.fields:
+            self._path.append('Root')
+            super(ValidateGraph, self).visit_root(obj)
+            self._path.pop()
+        else:
+            self._add_error('Root',
+                            'No fields in the Root node'.format(obj.name))
+
+    def visit_field(self, obj):
+        if not self._name_re.match(obj.name):
+            self._add_error(obj.name,
+                            'Invalid field name: {}'.format(obj.name))
+        super(ValidateGraph, self).visit_field(obj)
+
+    def visit_link(self, obj):
+        if not self._name_re.match(obj.name):
+            self._add_error(obj.name,
+                            'Invalid link name: {}'.format(obj.name))
+        super(ValidateGraph, self).visit_link(obj)
+
+    def visit_option(self, obj):
+        if not self._name_re.match(obj.name):
+            self._add_error(obj.name,
+                            'Invalid option name: {}'.format(obj.name))
+        super(ValidateGraph, self).visit_option(obj)
+
+
 class BindToGraph(GraphTransformer):
 
     def __init__(self, graph):
@@ -448,10 +492,11 @@ class GraphQLIntrospection(GraphTransformer):
         return root
 
     def visit_graph(self, obj):
+        ValidateGraph.validate(obj)
         introspection_graph = self.__introspection_graph__(obj)
         items = [self.visit(node) for node in obj.items]
         items.extend(introspection_graph.items)
-        return Graph(items)
+        return Graph(items, data_types=obj.data_types)
 
 
 class AsyncGraphQLIntrospection(GraphQLIntrospection):

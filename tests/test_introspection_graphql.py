@@ -1,3 +1,5 @@
+import pytest
+
 from hiku.graph import Graph, Root, Field, Node, Link, apply, Option
 from hiku.types import String, Integer, Sequence, TypeRef, Boolean, Float, Any
 from hiku.types import Optional, Record
@@ -101,6 +103,7 @@ _INT = {'kind': 'SCALAR', 'name': 'Int', 'ofType': None}
 _STR = {'kind': 'SCALAR', 'name': 'String', 'ofType': None}
 _BOOL = {'kind': 'SCALAR', 'name': 'Boolean', 'ofType': None}
 _FLOAT = {'kind': 'SCALAR', 'name': 'Float', 'ofType': None}
+_ANY = {'kind': 'SCALAR', 'name': 'Any', 'ofType': None}
 
 
 def _obj(name):
@@ -175,6 +178,7 @@ SCALARS = [
     _type('Int', 'SCALAR'),
     _type('Boolean', 'SCALAR'),
     _type('Float', 'SCALAR'),
+    _type('Any', 'SCALAR'),
 ]
 
 
@@ -229,7 +233,38 @@ def test_introspection_query():
     ])
 
 
-def test_unsupported_field():
+def test_invalid_names():
+    graph = Graph([
+        Node('Baz', [
+            Field('bzz-bzz', Integer, _noop),
+        ]),
+        Root([
+            Field('foo-foo', Integer, _noop,
+                  options=[Option('bar-bar', Integer)]),
+            Link('baz-baz', Sequence[TypeRef['Baz']], _noop,
+                 requires='foo-foo'),
+        ]),
+    ])
+    with pytest.raises(ValueError) as err:
+        apply(graph, [GraphQLIntrospection()])
+    assert err.match('bzz-bzz')
+    assert err.match('foo-foo')
+    assert err.match('bar-bar')
+    assert err.match('baz-baz')
+
+
+def test_empty_nodes():
+    graph = Graph([
+        Node('Foo', []),
+        Root([]),
+    ])
+    with pytest.raises(ValueError) as err:
+        apply(graph, [GraphQLIntrospection()])
+    assert err.match('No fields in the Foo node')
+    assert err.match('No fields in the Root node')
+
+
+def test_unsupported_field_type():
     graph = Graph([
         Root([
             Field('fall', Optional[Any], _noop),
@@ -240,12 +275,14 @@ def test_unsupported_field():
     ])
     assert introspect(graph) == _schema([
         _type('Root', 'OBJECT', fields=[
+            _field('fall', _ANY),
+            _field('bayman', _ANY),
             _field('huss', _non_null(_INT)),
         ]),
     ])
 
 
-def test_unsupported_option():
+def test_unsupported_option_type():
     graph = Graph([
         Root([
             Field('huke', Integer, _noop,
@@ -255,6 +292,9 @@ def test_unsupported_option():
     ])
     assert introspect(graph) == _schema([
         _type('Root', 'OBJECT', fields=[
+            _field('huke', _non_null(_INT), args=[
+                _arg('orel', _ANY, defaultValue=None),
+            ]),
             _field('terapin', _non_null(_INT)),
         ]),
     ])
@@ -264,8 +304,6 @@ def test_data_types():
     data_types = {
         'Foo': Record[{
             'bar': Integer,
-            'invalid_type': Any,
-            'invalid-name': Integer,
         }],
     }
     graph = Graph([Root([

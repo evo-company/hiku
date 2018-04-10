@@ -187,9 +187,8 @@ class TypeRef(with_metaclass(TypeRefMeta, object)):
 
 class AbstractTypeVisitor(with_metaclass(ABCMeta, object)):
 
-    @abstractmethod
     def visit(self, obj):
-        pass
+        return obj.accept(self)
 
     @abstractmethod
     def visit_any(self, obj):
@@ -237,9 +236,6 @@ class AbstractTypeVisitor(with_metaclass(ABCMeta, object)):
 
 
 class TypeVisitor(AbstractTypeVisitor):
-
-    def visit(self, obj):
-        return obj.accept(self)
 
     def visit_any(self, obj):
         pass
