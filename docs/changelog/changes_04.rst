@@ -1,6 +1,14 @@
 Changes in 0.4
 ==============
 
+0.4.2
+~~~~~
+
+  - Fixed GraphQL introspection for the case when field has Record type
+  - Fixed query validation for nested Record types
+  - Fixed bug with options when Node contains fields with sub-graph source and
+    regular fields
+
 0.4.1
 ~~~~~
 
