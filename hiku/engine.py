@@ -269,7 +269,7 @@ class Query(Workflow):
                 if func_fields else ([], [])
 
             options = [[v for _, v in _yield_options(gf, qf)]
-                       for gf, qf in fields]
+                       for gf, qf in func_fields]
 
             task_set = self._queue.fork(self._task_set)
             result_proc = func(graph_fields, query_fields, options, ids,

@@ -28,6 +28,11 @@ DATA = {
         4: {'id': 4, 'c': 'c1', 'd': 'd1'},
         5: {'id': 5, 'c': 'c2', 'd': 'd2'},
         6: {'id': 6, 'c': 'c3', 'd': 'd3'},
+    },
+    'x1': {
+        1: {'with_option': 7},
+        2: {'with_option': 8},
+        3: {'with_option': 9},
     }
 }
 
@@ -46,6 +51,10 @@ def query_x(fields, ids):
 
 def query_y(fields, ids):
     return [[DATA['y'][id_][f.name] for f in fields] for id_ in ids]
+
+
+def query_x1(fields, ids):
+    return [[DATA['x1'][id_][f.name] for f in fields] for id_ in ids]
 
 
 def to_x():
@@ -126,6 +135,7 @@ GRAPH = Graph([
               options=[Option('size', None, default=100)]),
         Field('buz3', None, sg_x.c(buz(S.this, S.size)),
               options=[Option('size', None)]),
+        Field('with_option', None, query_x1, options=[Option('opt', None)]),
     ]),
     Node('y1', [
         Field('id', None, sg_y),
@@ -214,4 +224,15 @@ def test_sequence_in_arg_type(engine, graph):
         {'baz': 'D3 [B1]'},
         {'baz': 'D1 [B3]'},
         {'baz': 'D2 [B2]'},
+    ]})
+
+
+def test_mixed_query(engine, graph):
+    result = engine.execute(graph, read(
+        '[{:x1s [(:with_option {:opt 123}) :a]}]'
+    ))
+    check_result(result, {'x1s': [
+        {'a': 'a1', 'with_option': 7},
+        {'a': 'a3', 'with_option': 9},
+        {'a': 'a2', 'with_option': 8},
     ]})
