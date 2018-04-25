@@ -64,10 +64,12 @@ class Field(object):
 
     :param name: name of the field
     :param optional options: field options -- mapping of names to values
+    :param optional alias: field's name in result
     """
-    def __init__(self, name, options=None):
+    def __init__(self, name, options=None, alias=None):
         self.name = name
         self.options = options
+        self.alias = alias
 
     def __repr__(self):
         return _name_repr(self.name, self.options)
@@ -83,11 +85,13 @@ class Link(object):
     :param node: collection of fields and links --
                  :py:class:`~hiku.query.Node`
     :param optional options: link options -- mapping of names to values
+    :param optional alias: link's name in result
     """
-    def __init__(self, name, node, options=None):
+    def __init__(self, name, node, options=None, alias=None):
         self.name = name
         self.node = node
         self.options = options
+        self.alias = alias
 
     def __repr__(self):
         return '{{{} {!r}}}'.format(_name_repr(self.name, self.options),
