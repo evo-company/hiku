@@ -1,6 +1,5 @@
-graft hiku/console/assets
-recursive-exclude tests *
-recursive-exclude tests_py3 *
-recursive-exclude tests_py3_pg *
-recursive-exclude docs *
+recursive-include hiku *.js
+recursive-include hiku *.jsx
+recursive-include hiku *.css
+recursive-include hiku *.html
 recursive-include hiku *.proto
