@@ -63,15 +63,18 @@ def test_node_contain_node():
     check_errors(
         [
             Root([
-                # this is ok
                 Node('foo', []),
             ]),
             Node('bar', [
-                # this is wrong
                 Node('baz', []),
             ]),
         ],
-        ['Node can not be defined in the non-root node: "baz" in "bar"'],
+        [
+            'Node can not contain these types: '
+            '<class \'hiku.graph.Node\'> in node "root"',
+            'Node can not contain these types: '
+            '<class \'hiku.graph.Node\'> in node "bar"',
+        ],
     )
 
 

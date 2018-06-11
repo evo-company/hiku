@@ -37,7 +37,7 @@ class GraphValidator(GraphVisitor):
 
     _name_formatter = _NameFormatter()
     _graph_accept_types = (AbstractNode,)
-    _node_accept_types = (AbstractNode, AbstractField, AbstractLink)
+    _node_accept_types = (AbstractField, AbstractLink)
     _link_accept_types = (AbstractOption,)
 
     def __init__(self, items):
@@ -109,7 +109,8 @@ class GraphValidator(GraphVisitor):
                     .format(obj.name, obj.requires, self._format_path())
                 )
 
-    def _generic_visit_node(self, obj, node_name):
+    def visit_node(self, obj):
+        node_name = obj.name or 'root'
         invalid = [f for f in obj.fields
                    if not isinstance(f, self._node_accept_types)]
         if invalid:
@@ -130,18 +131,8 @@ class GraphValidator(GraphVisitor):
                 .format(node_name, self._format_names(duplicates))
             )
 
-    def visit_node(self, obj):
-        self._generic_visit_node(obj, obj.name)
-        nodes = [f.name for f in obj.fields if isinstance(f, AbstractNode)]
-        if nodes:
-            self.errors.report(
-                'Node can not be defined in the non-root node: '
-                '{} in "{}"'
-                .format(self._format_names(nodes), obj.name)
-            )
-
     def visit_root(self, obj):
-        self._generic_visit_node(obj, 'root')
+        self.visit_node(obj)
 
     def visit_graph(self, obj):
         self.visit_graph_items(obj.items)

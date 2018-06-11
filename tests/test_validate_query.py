@@ -25,8 +25,6 @@ TYPES = {
 GRAPH = Graph([
     Node('hooted', []),
     Root([
-        Node('decants', []),
-
         # simple
         Field('robby', None, _),
         # complex
@@ -79,10 +77,6 @@ def test_field():
     check_errors(q.Node([q.Field('invalid')]), [
         'Field "invalid" is not implemented in the "root" node',
     ])
-    # field in the global node
-    check_errors(q.Node([q.Link('decants', q.Node([q.Field('invalid')]))]), [
-        'Field "invalid" is not implemented in the "decants" node',
-    ])
     # field in the linked node
     check_errors(q.Node([q.Link('amyls', q.Node([q.Field('invalid')]))]), [
         'Field "invalid" is not implemented in the "hooted" node',
@@ -122,9 +116,6 @@ def test_nested_records():
 def test_non_field():
     check_errors(q.Node([q.Field('amyls')]), [
         'Trying to query "root.amyls" link as it was a field',
-    ])
-    check_errors(q.Node([q.Field('decants')]), [
-        'Trying to query "decants" node as it was a field',
     ])
 
 
@@ -193,10 +184,6 @@ def test_link():
     # link in the root node
     check_errors(q.Node([lnk]), [
         'Link "invalid" is not implemented in the "root" node',
-    ])
-    # link in the global node
-    check_errors(q.Node([q.Link('decants', q.Node([lnk]))]), [
-        'Link "invalid" is not implemented in the "decants" node',
     ])
     # link in the linked node
     check_errors(q.Node([q.Link('amyls', q.Node([lnk]))]), [

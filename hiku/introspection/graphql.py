@@ -112,6 +112,10 @@ def _nodes_map(graph):
                              ((ROOT_NAME, graph.root),)))
 
 
+def schema_link(graph):
+    return None
+
+
 def type_link(graph, options):
     name = options['name']
     if name in _nodes_map(graph):
@@ -341,19 +345,20 @@ GRAPH = Graph([
         Field('isDeprecated', Boolean, not_implemented),
         Field('deprecationReason', String, not_implemented),
     ]),
+    Node('__Schema', [
+        Link('types', Sequence[TypeRef['__Type']], root_schema_types,
+             requires=None),
+        Link('queryType', TypeRef['__Type'], root_schema_query_type,
+             requires=None),
+        Link('directives', Sequence[TypeRef['__Directive']], na_many,
+             requires=None),
+        Link('mutationType', Optional[TypeRef['__Type']], na_maybe,
+             requires=None),
+        Link('subscriptionType', Optional[TypeRef['__Type']], na_maybe,
+             requires=None),
+    ]),
     Root([
-        Node('__schema', [
-            Link('types', Sequence[TypeRef['__Type']], root_schema_types,
-                 requires=None),
-            Link('queryType', TypeRef['__Type'], root_schema_query_type,
-                 requires=None),
-            Link('directives', Sequence[TypeRef['__Directive']], na_many,
-                 requires=None),
-            Link('mutationType', Optional[TypeRef['__Type']], na_maybe,
-                 requires=None),
-            Link('subscriptionType', Optional[TypeRef['__Type']], na_maybe,
-                 requires=None),
-        ]),
+        Link('__schema', TypeRef['__Schema'], schema_link, requires=None),
         Link('__type', Optional[TypeRef['__Type']], type_link, requires=None,
              options=[Option('name', String)]),
     ]),

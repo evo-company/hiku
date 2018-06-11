@@ -36,6 +36,15 @@ GRAPH = Graph([
         Field('atelier', Record[{'litas': String}], _),
         Field('matwork', Sequence[Record[{'bashaw': String}]], _),
     ]),
+    Node('Flossy', [
+        Field('demoing', String, _),
+        Field('anoxic', Optional[Record[{'peeps': String}]], _),
+        Field('seggen', Record[{'pensive': String}], _),
+        Field('necker', Sequence[Record[{'carney': String}]], _),
+        Link('daur', TypeRef['cosies'], _, requires=None),
+        Link('peafowl', Sequence[TypeRef['cosies']], _, requires=None),
+        Link('carf', Optional[TypeRef['cosies']], _, requires=None,)
+    ]),
     Root([
         Field('slotted', String, _),
         Field('tatler', Optional[Record[{'orudis': String}]], _),
@@ -50,15 +59,7 @@ GRAPH = Graph([
             'water': Sequence[CharacterRecord],
         }], _),
         Field('barbary', Sequence[Record[{'betty': String}]], _),
-        Node('flossy', [
-            Field('demoing', String, _),
-            Field('anoxic', Optional[Record[{'peeps': String}]], _),
-            Field('seggen', Record[{'pensive': String}], _),
-            Field('necker', Sequence[Record[{'carney': String}]], _),
-            Link('daur', TypeRef['cosies'], _, requires=None),
-            Link('peafowl', Sequence[TypeRef['cosies']], _, requires=None),
-            Link('carf', Optional[TypeRef['cosies']], _, requires=None,)
-        ]),
+        Link('flossy', TypeRef['Flossy'], _, requires=None),
         Link('zareeba', TypeRef['cosies'], _, requires=None),
         Link('crowdie', Sequence[TypeRef['cosies']], _, requires=None),
         Link('moujik', TypeRef['saunas'], _, requires=None),
@@ -173,28 +174,6 @@ def test_root_fields_complex():
                  {'barbary': [{}]})
     check_result('[{:barbary [:betty]}]',
                  {'barbary': [{'betty': 'japheth_ophir'}]})
-
-
-def test_root_node_fields():
-    check_result('[{:flossy [:demoing]}]',
-                 {'flossy': {'demoing': 'judaea_bhutani'}})
-
-
-def test_root_node_fields_complex():
-    check_result('[{:flossy [{:anoxic []}]}]',
-                 {'flossy': {'anoxic': {}}})
-    check_result('[{:flossy [{:anoxic [:peeps]}]}]',
-                 {'flossy': {'anoxic': {'peeps': 'peterel_repave'}}})
-
-    check_result('[{:flossy [{:seggen []}]}]',
-                 {'flossy': {'seggen': {}}})
-    check_result('[{:flossy [{:seggen [:pensive]}]}]',
-                 {'flossy': {'seggen': {'pensive': 'quebec_junkman'}}})
-
-    check_result('[{:flossy [{:necker []}]}]',
-                 {'flossy': {'necker': [{}]}})
-    check_result('[{:flossy [{:necker [:carney]}]}]',
-                 {'flossy': {'necker': [{'carney': 'calla_pedway'}]}})
 
 
 def test_node_fields():

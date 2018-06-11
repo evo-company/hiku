@@ -47,14 +47,8 @@ ENV = Graph([
     Root([
         Field('a', None, noop),
         Field('nitrox', Optional[String], noop),
-        Node('x', [
-            Field('b', None, noop),
-        ]),
-        Node('y', [
-            Field('c', None, noop),
-            Link('x1', TypeRef['x'], noop, requires=None),
-            Link('xs', Sequence[TypeRef['x']], noop, requires=None),
-        ]),
+        Link('x', TypeRef['x'], noop, requires=None),
+        Link('y', TypeRef['y'], noop, requires=None),
         Link('y1', TypeRef['y'], noop, requires=None),
         Link('ys', Sequence[TypeRef['y']], noop, requires=None),
     ])

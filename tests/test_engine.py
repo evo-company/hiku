@@ -46,27 +46,6 @@ def test_root_fields():
         f2.assert_called_once_with([query.Field('b')])
 
 
-def test_root_node_fields():
-    f1 = Mock(return_value=['khios'])
-    f2 = Mock(return_value=['cambay'])
-
-    graph = Graph([
-        Root([
-            Node('a', [
-                Field('b', None, f1),
-                Field('c', None, f2),
-            ]),
-        ]),
-    ])
-
-    result = execute(graph, build([Q.a[Q.b, Q.c]]))
-    check_result(result, {'a': {'b': 'khios', 'c': 'cambay'}})
-
-    with reqs_eq_patcher():
-        f1.assert_called_once_with([query.Field('b')])
-        f2.assert_called_once_with([query.Field('c')])
-
-
 def test_node_fields():
     f1 = Mock(return_value=[1])
     f2 = Mock(return_value=[['harkis']])
@@ -352,26 +331,6 @@ def test_node_field_func_result_validation(value):
     err.match(re.escape(
         "Can't store field values, node: 'a', fields: ['b'], "
         "expected: list (len: 2) of lists (len: 1), returned: {value!r}"
-        .format(value=value)
-    ))
-
-
-@pytest.mark.parametrize('value', [1, [], [1, 2]])
-def test_root_node_field_func_result_validation(value):
-    with pytest.raises(TypeError) as err:
-        execute(
-            Graph([
-                Root([
-                    Node('a', [
-                        Field('b', None, Mock(return_value=value))
-                    ]),
-                ]),
-            ]),
-            build([Q.a[Q.b]]),
-        )
-    err.match(re.escape(
-        "Can't store field values, node: 'a', fields: ['b'], "
-        "expected: list (len: 1), returned: {value!r}"
         .format(value=value)
     ))
 

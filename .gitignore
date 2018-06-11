@@ -10,3 +10,4 @@ env
 .coverage
 .idea
 .cache
+.pytest_cache

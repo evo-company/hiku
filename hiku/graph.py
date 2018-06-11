@@ -320,7 +320,6 @@ class Root(Node):
                 Field('foo', String, root_fields_func),
                 Link('bar', Sequence[TypeRef['baz']],
                      to_baz_func, requires=None),
-                Node('quux', [...]),
             ]),
         ])
 

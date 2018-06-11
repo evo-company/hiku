@@ -5,7 +5,7 @@ from itertools import chain, repeat
 from collections import defaultdict, Sequence
 
 from . import query
-from .graph import Link, Node, Maybe, One, Many, Nothing, Field
+from .graph import Link, Maybe, One, Many, Nothing, Field
 from .result import Result
 from .executors.queue import Workflow, Queue
 
@@ -16,12 +16,11 @@ class SplitPattern(query.QueryVisitor):
         self._node = node
         self._fields = []
         self._links = []
-        self._nodes = []
 
     def split(self, pattern):
         for item in pattern.fields:
             self.visit(item)
-        return self._fields, self._links, self._nodes
+        return self._fields, self._links
 
     def visit_node(self, obj):
         raise ValueError('Unexpected value: {!r}'.format(obj))
@@ -36,8 +35,6 @@ class SplitPattern(query.QueryVisitor):
                 self._fields.append((self._node.fields_map[graph_obj.requires],
                                      query.Field(graph_obj.requires)))
             self._links.append((graph_obj, obj))
-        elif isinstance(graph_obj, Node):
-            self._nodes.append(obj)
         else:
             assert isinstance(graph_obj, Field), type(graph_obj)
             # `obj` here is a link, but this link is treated as a complex field
@@ -45,7 +42,8 @@ class SplitPattern(query.QueryVisitor):
 
 
 def _check_store_fields(node, fields, ids, result):
-    if node.name is not None and ids is not None:
+    if node.name is not None:
+        assert ids is not None
         if (
             isinstance(result, Sequence)
             and len(result) == len(ids)
@@ -75,24 +73,19 @@ def store_fields(result, node, fields, ids, query_result):
 
     names = [f.name for f in fields]
     if node.name is not None:
-        if ids is not None:
-            node_index = result.index.setdefault(node.name, {})
-            for i, row in zip(ids, query_result):
-                node_data = node_index.setdefault(i, {})
-                node_data.update(zip(names, row))
-        else:
-            node_data = result.root.setdefault(node.name, {})
-            node_data.update(zip(names, query_result))
+        assert ids is not None
+        node_index = result.index.setdefault(node.name, {})
+        for i, row in zip(ids, query_result):
+            node_data = node_index.setdefault(i, {})
+            node_data.update(zip(names, row))
     else:
         result.root.update(zip(names, query_result))
 
 
 def link_reqs(result, node, link, ids):
     if node.name is not None:
-        if ids is not None:
-            return [result.index[node.name][i][link.requires] for i in ids]
-        else:
-            return result.root[node.name][link.requires]
+        assert ids is not None
+        return [result.index[node.name][i][link.requires] for i in ids]
     else:
         return result.root[link.requires]
 
@@ -118,7 +111,8 @@ _LINK_REF_MAKER = {
 
 
 def _check_store_links(node, link, ids, result):
-    if node.name is not None and ids is not None and link.requires is not None:
+    if node.name is not None and link.requires is not None:
+        assert ids is not None
         if link.type_enum is Maybe or link.type_enum is One:
             if isinstance(result, Sequence) and len(result) == len(ids):
                 return
@@ -156,16 +150,13 @@ def store_links(result, node, link, ids, query_result):
 
     field_val = partial(_LINK_REF_MAKER[link.type_enum], result, link)
     if node.name is not None:
-        if ids is not None:
-            if link.requires is None:
-                query_result = repeat(query_result, len(ids))
-            node_index = result.index.setdefault(node.name, {})
-            for i, res in zip(ids, query_result):
-                node_data = node_index.setdefault(i, {})
-                node_data[link.name] = field_val(res)
-        else:
-            node_data = result.root.setdefault(node.name, {})
-            node_data[link.name] = field_val(query_result)
+        assert ids is not None
+        if link.requires is None:
+            query_result = repeat(query_result, len(ids))
+        node_index = result.index.setdefault(node.name, {})
+        for i, res in zip(ids, query_result):
+            node_data = node_index.setdefault(i, {})
+            node_data[link.name] = field_val(res)
     else:
         result.root[link.name] = field_val(query_result)
 
@@ -227,11 +218,7 @@ class Query(Workflow):
         return self._result
 
     def process_node(self, node, pattern, ids):
-        fields, links, nodes = SplitPattern(node).split(pattern)
-
-        assert not (node.name and nodes), 'Nested nodes are not supported yet'
-        for link in nodes:
-            self.process_node(node.fields_map[link.name], link.node, None)
+        fields, links = SplitPattern(node).split(pattern)
 
         to_func = {}
         from_func = defaultdict(list)
