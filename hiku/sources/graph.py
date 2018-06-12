@@ -107,13 +107,14 @@ class SubGraph(object):
     def __postprocess__(self, field):
         BoundExpr(self, getattr(S.this, field.name)).__postprocess__(field)
 
-    def __call__(self, graph_fields, query_fields, option_values, ids,
-                 queue, ctx, task_set):
+    def __call__(self, fields, ids, queue, ctx, task_set):
         this_link = Link(THIS_LINK_NAME, Sequence[TypeRef[self.node]],
                          None, requires=None)
 
-        reqs = merge(f.func.reqs for f in graph_fields)
-        procs = [f.func.proc for f in graph_fields]
+        reqs = merge(gf.func.reqs for gf, _ in fields)
+        procs = [gf.func.proc for gf, _ in fields]
+        option_values = [[qf.options[opt.name] for opt in gf.options]
+                         for gf, qf in fields]
 
         this_req = reqs.fields_map['this'].node
         other_reqs = query.Node([r for r in reqs.fields

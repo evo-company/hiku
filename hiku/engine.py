@@ -220,85 +220,69 @@ class Query(Workflow):
     def process_node(self, node, pattern, ids):
         fields, links = SplitPattern(node).split(pattern)
 
+        fields = [(gf, query.Field(qf.name, options=get_options(gf, qf)))
+                  if gf.options else (gf, qf) for gf, qf in fields]
+
+        links = [(gl, query.Link(ql.name, ql.node, options=get_options(gl, ql)))
+                 if gl.options else (gl, ql) for gl, ql in links]
+
         to_func = {}
         from_func = defaultdict(list)
-        from_sq = defaultdict(list)
         for graph_field, query_field in fields:
-            sq = getattr(graph_field.func, '__subquery__', None)
-            if sq is None:
-                to_func[graph_field.name] = graph_field.func
-                from_func[graph_field.func].append((graph_field, query_field))
-            else:
-                to_func[graph_field.name] = sq
-                from_sq[sq].append((graph_field, query_field))
+            func = getattr(graph_field.func, '__subquery__', graph_field.func)
+            to_func[graph_field.name] = func
+            from_func[func].append((graph_field, query_field))
 
         # schedule fields resolve
-        to_fut = {}
+        to_dep = {}
         for func, func_fields in from_func.items():
-            query_fields = [query.Field(qf.name, options=get_options(gf, qf))
-                            if gf.options else qf for gf, qf in func_fields]
-
-            if ids is not None:
-                fut = self._submit(func, query_fields, ids)
+            query_fields = [qf for _, qf in func_fields]
+            if hasattr(func, '__subquery__'):
+                assert ids is not None
+                dep = self._queue.fork(self._task_set)
+                proc = func(func_fields, ids, self._queue, self._ctx, dep)
             else:
-                fut = self._submit(func, query_fields)
+                if ids is None:
+                    dep = self._submit(func, query_fields)
+                else:
+                    dep = self._submit(func, query_fields, ids)
+                proc = dep.result
 
-            to_fut[func] = fut
-            self._queue.add_callback(fut, (
-                lambda _query_fields=query_fields, _result_proc=fut.result:
+            to_dep[func] = dep
+            self._queue.add_callback(dep, (
+                lambda _query_fields=query_fields, _proc=proc:
                 store_fields(self._result, node, _query_fields, ids,
-                             _result_proc())
-            ))
-
-        for func, func_fields in from_sq.items():
-            assert ids is not None, 'Sub-queries without ids not supported yet'
-            graph_fields, query_fields = zip(*func_fields) \
-                if func_fields else ([], [])
-
-            options = [[v for _, v in _yield_options(gf, qf)]
-                       for gf, qf in func_fields]
-
-            task_set = self._queue.fork(self._task_set)
-            result_proc = func(graph_fields, query_fields, options, ids,
-                               self._queue, self._ctx, task_set)
-
-            to_fut[func] = task_set
-            self._queue.add_callback(task_set, (
-                lambda _query_fields=query_fields, _result_proc=result_proc:
-                store_fields(self._result, node, _query_fields, ids,
-                             _result_proc())
+                             _proc())
             ))
 
         # schedule link resolve
         for graph_link, query_link in links:
             if graph_link.requires:
-                fut = to_fut[to_func[graph_link.requires]]
-                self._queue.add_callback(fut, (
+                dep = to_dep[to_func[graph_link.requires]]
+                self._queue.add_callback(dep, (
                     lambda _gl=graph_link, _ql=query_link:
                     self._process_node_link(node, _gl, _ql, ids)
                 ))
             else:
                 if graph_link.options:
-                    options = get_options(graph_link, query_link)
-                    fut = self._submit(graph_link.func, options)
+                    dep = self._submit(graph_link.func, query_link.options)
                 else:
-                    fut = self._submit(graph_link.func)
-                self._queue.add_callback(fut, (
-                    lambda _fut=fut, _gl=graph_link, _qe=query_link.node:
+                    dep = self._submit(graph_link.func)
+                self._queue.add_callback(dep, (
+                    lambda _fut=dep, _gl=graph_link, _qe=query_link.node:
                     self.process_link(node, _gl, _qe, ids, _fut.result())
                 ))
 
     def _process_node_link(self, node, graph_link, query_link, ids):
         reqs = link_reqs(self._result, node, graph_link, ids)
         if graph_link.options:
-            options = get_options(graph_link, query_link)
-            fut = self._submit(graph_link.func, reqs, options)
+            dep = self._submit(graph_link.func, reqs, query_link.options)
         else:
-            fut = self._submit(graph_link.func, reqs)
-        self._queue.add_callback(fut, (
+            dep = self._submit(graph_link.func, reqs)
+        self._queue.add_callback(dep, (
             lambda:
             self.process_link(node, graph_link, query_link.node, ids,
-                              fut.result())
+                              dep.result())
         ))
 
     def process_link(self, node, graph_link, query_node, ids, result):
