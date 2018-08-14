@@ -310,11 +310,17 @@ def loads(s, tag_handlers=None):
 
 def _iterencode_items(items, default, encoder):
     items_iter = iter(items)
-    first = next(items_iter)
+    try:
+        first = next(items_iter)
+    except StopIteration:
+        return
     for chunk in _iterencode(first, default, encoder):
         yield chunk
     while True:
-        next_item = next(items_iter)
+        try:
+            next_item = next(items_iter)
+        except StopIteration:
+            return
         yield ' '
         for chunk in _iterencode(next_item, default, encoder):
             yield chunk
