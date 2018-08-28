@@ -12,7 +12,7 @@ from ..graph import Graph, Root, Node, Link, Option, Field, Nothing
 from ..graph import GraphVisitor, GraphTransformer
 from ..types import TypeRef, String, Sequence, Boolean, Optional, TypeVisitor
 from ..types import RecordMeta, AbstractTypeVisitor
-from ..compat import async_wrapper
+from ..compat import async_wrapper, PY3
 
 SCALAR = namedtuple('SCALAR', 'name')
 OBJECT = namedtuple('OBJECT', 'name')
@@ -366,7 +366,7 @@ GRAPH = Graph([
 
 
 class ValidateGraph(GraphVisitor):
-    _name_re = re.compile('^[a-zA-Z]\w*$')
+    _name_re = re.compile('^[_a-zA-Z]\w*$', re.ASCII if PY3 else 0)
 
     def __init__(self):
         self._path = []
@@ -386,6 +386,9 @@ class ValidateGraph(GraphVisitor):
                                                for err in self._errors)))
 
     def visit_node(self, obj):
+        if not self._name_re.match(obj.name):
+            self._add_error(obj.name,
+                            'Invalid node name: {}'.format(obj.name))
         if obj.fields:
             self._path.append(obj.name)
             super(ValidateGraph, self).visit_node(obj)

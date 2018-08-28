@@ -208,7 +208,7 @@ def test_introspection_query():
             Link('clarkia', Sequence[TypeRef['flexed']], _noop, requires=None),
         ]),
         Root([
-            Field('cowered', String, _noop),
+            Field('_cowered', String, _noop),
             Field('entero', Float, _noop),
             Link('toma', Sequence[TypeRef['decian']], _noop, requires=None),
         ]),
@@ -226,7 +226,7 @@ def test_introspection_query():
             _field('clarkia', _seq_of(_obj('flexed'))),
         ]),
         _type('Root', 'OBJECT', fields=[
-            _field('cowered', _non_null(_STR)),
+            _field('_cowered', _non_null(_STR)),
             _field('entero', _non_null(_FLOAT)),
             _field('toma', _seq_of(_obj('decian'))),
         ]),
@@ -235,13 +235,13 @@ def test_introspection_query():
 
 def test_invalid_names():
     graph = Graph([
-        Node('Baz', [
+        Node('Baz-Baz', [
             Field('bzz-bzz', Integer, _noop),
         ]),
         Root([
             Field('foo-foo', Integer, _noop,
                   options=[Option('bar-bar', Integer)]),
-            Link('baz-baz', Sequence[TypeRef['Baz']], _noop,
+            Link('baz-baz', Sequence[TypeRef['Baz-Baz']], _noop,
                  requires='foo-foo'),
         ]),
     ])
@@ -251,6 +251,7 @@ def test_invalid_names():
     assert err.match('foo-foo')
     assert err.match('bar-bar')
     assert err.match('baz-baz')
+    assert err.match('Baz-Baz')
 
 
 def test_empty_nodes():
