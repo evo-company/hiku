@@ -1,9 +1,0 @@
-name: py36
-dependencies:
-  - python=3.6
-  - pip:
-    - sphinx==1.6.3
-    - sphinx_rtd_theme==0.2.5b1
-    - sphinx_tabs==1.0.1
-    - graphql-core==1.1
-    - protobuf==3.3.0

@@ -1,13 +1,11 @@
-import sys
-import os.path
-import sphinx_rtd_theme
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
     'sphinx_tabs.tabs',
 ]
+
+autoclass_content = 'both'
+autodoc_member_order = 'bysource'
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3.6', None),
@@ -18,14 +16,20 @@ intersphinx_mapping = {
 source_suffix = '.rst'
 master_doc = 'index'
 
-project = 'Hiku'
-copyright = '2016, Vladimir Magamedov'
+project = 'hiku'
+copyright = '2018, Vladimir Magamedov'
 author = 'Vladimir Magamedov'
 
-version = 'dev'
-release = 'dev'
-
-templates_path = ['_templates']
+templates_path = []
 
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
+html_theme_options = {
+    'display_version': False,
+}
+
+
+def setup(app):
+    app.add_stylesheet('style.css?r=1')
+    app.add_stylesheet('fixes.css?r=1')
+    app.add_javascript('toggle.js?r=1')
