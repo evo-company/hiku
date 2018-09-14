@@ -1,8 +1,6 @@
 from hiku.query import Node, Field, Link
 from hiku.builder import build, Q
 
-from .base import reqs_eq_patcher
-
 
 def test():
     query = build([
@@ -15,12 +13,11 @@ def test():
             Q.exocet(brogues='hygiea'),
         ],
     ])
-    with reqs_eq_patcher():
-        assert query == Node([
-            Field('tyan'),
-            Link('turlock', Node([Field('gange')])),
-            Link('tiber', Node([
-                Field('decifer', options={'botches': 'auxerre'}),
-                Field('exocet', options={'brogues': 'hygiea'}),
-            ]), {'ramsons': 'defaces'}),
-        ])
+    assert query == Node([
+        Field('tyan'),
+        Link('turlock', Node([Field('gange')])),
+        Link('tiber', Node([
+            Field('decifer', options={'botches': 'auxerre'}),
+            Field('exocet', options={'brogues': 'hygiea'}),
+        ]), {'ramsons': 'defaces'}),
+    ])

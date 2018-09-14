@@ -6,13 +6,10 @@ from hiku.query import Node, Field, Link
 from hiku.protobuf import query_pb2 as t
 from hiku.readers.protobuf import read, transform
 
-from .base import reqs_eq_patcher
-
 
 def check_read(pb_node, expected):
     query = read(pb_node.SerializeToString())
-    with reqs_eq_patcher():
-        assert query == expected
+    assert query == expected
 
 
 def test_node_field():

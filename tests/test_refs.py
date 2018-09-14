@@ -7,29 +7,26 @@ from hiku.expr.refs import type_to_query
 from hiku.expr.nodes import Symbol, Tuple
 from hiku.expr.checker import check, fn_types
 
-from .base import reqs_eq_patcher, ref
+from .base import ref
 
 
 def check_ref(ref_chain, types, arg_type, query_items):
     ref_ = ref(ref_chain)
     ref_query = type_to_query(arg_type) if arg_type else None
     query = build(query_items)
-    with reqs_eq_patcher():
-        assert ref_to_req(types, ref_, ref_query) == query
+    assert ref_to_req(types, ref_, ref_query) == query
 
 
 def check_type(type_, query_items):
     type_query = type_to_query(type_)
     query = build(query_items)
-    with reqs_eq_patcher():
-        assert type_query == query
+    assert type_query == query
 
 
 def check_extract(node, types, query_items):
     node_query = RequirementsExtractor.extract(types, node)
     query = build(query_items)
-    with reqs_eq_patcher():
-        assert node_query == query
+    assert node_query == query
 
 
 def check_refs(types, expr, query_items):
@@ -39,8 +36,7 @@ def check_refs(types, expr, query_items):
     env.update(types['__root__'].__field_types__)
     ast = check(ast, types, env)
     expr_reqs = RequirementsExtractor.extract(types, ast)
-    with reqs_eq_patcher():
-        assert expr_reqs == query
+    assert expr_reqs == query
 
 
 def test_any():

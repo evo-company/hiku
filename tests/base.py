@@ -1,5 +1,4 @@
 from functools import reduce
-from contextlib import contextmanager
 try:
     from itertools import zip_longest
     from unittest.mock import patch as _patch, Mock as _Mock
@@ -9,59 +8,12 @@ except ImportError:
     from mock import call as _call, ANY as _ANY
     from itertools import izip_longest as zip_longest
 
-from hiku.types import GenericMeta
-from hiku.query import Field, Link, Node
 from hiku.expr.refs import Ref, NamedRef
 
 patch = _patch
 Mock = _Mock
 call = _call
 ANY = _ANY
-
-
-def _ne(self, other):
-    return not self.__eq__(other)
-
-
-def _eq(self, other):
-    if type(self) is not type(other):
-        return False
-    return self.__dict__ == other.__dict__
-
-
-def _node_eq(self, other):
-    if type(self) is not type(other):
-        return False
-    return self.fields_map == dict(other.fields_map)
-
-
-_field_patch = patch.multiple(Field, __eq__=_eq, __ne__=_ne)
-_link_patch = patch.multiple(Link, __eq__=_eq, __ne__=_ne)
-_node_patch = patch.multiple(Node, __eq__=_node_eq, __ne__=_ne)
-
-
-@contextmanager
-def reqs_eq_patcher():
-    with _field_patch, _link_patch, _node_patch:
-        yield
-
-
-_ref_patch = patch.multiple(Ref, __eq__=_eq, __ne__=_ne)
-
-
-@contextmanager
-def ref_eq_patcher():
-    with _ref_patch:
-        yield
-
-
-_type_patch = patch.multiple(GenericMeta, __eq__=_eq, __ne__=_ne)
-
-
-@contextmanager
-def type_eq_patcher():
-    with _type_patch:
-        yield
 
 
 _missing = type('<missing>', (object,), {})

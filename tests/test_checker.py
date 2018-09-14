@@ -4,13 +4,12 @@ from hiku.types import Integer, Record, Optional, TypeRef, Sequence
 from hiku.expr.core import S, to_expr, if_some, define, each
 from hiku.expr.checker import check, fn_types
 
-from .base import ref_eq_patcher, type_eq_patcher, ref
+from .base import ref
 
 
 def check_ref(node, chain):
     ref_ = ref(chain)
-    with ref_eq_patcher(), type_eq_patcher():
-        assert node.__ref__ == ref_
+    assert node.__ref__ == ref_
 
 
 def check_expr(types, expr):

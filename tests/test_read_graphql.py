@@ -5,13 +5,10 @@ from graphql.language.parser import parse
 from hiku.query import Node, Field, Link
 from hiku.readers.graphql import read, OperationGetter
 
-from .base import reqs_eq_patcher
-
 
 def check_read(source, query, variables=None):
     parsed_query = read(source, variables)
-    with reqs_eq_patcher():
-        assert parsed_query == query
+    assert parsed_query == query
 
 
 def test_operation_getter_no_ops():

@@ -9,7 +9,7 @@ from hiku.engine import Engine, pass_context, Context
 from hiku.builder import build, Q
 from hiku.executors.sync import SyncExecutor
 
-from .base import reqs_eq_patcher, check_result, ANY, Mock
+from .base import check_result, ANY, Mock
 
 
 OPTION_BEHAVIOUR = [
@@ -41,9 +41,8 @@ def test_root_fields():
     result = execute(graph, build([Q.a, Q.b]))
     check_result(result, {'a': 'boiardo', 'b': 'isolde'})
 
-    with reqs_eq_patcher():
-        f1.assert_called_once_with([query.Field('a')])
-        f2.assert_called_once_with([query.Field('b')])
+    f1.assert_called_once_with([query.Field('a')])
+    f2.assert_called_once_with([query.Field('b')])
 
 
 def test_node_fields():
@@ -66,9 +65,8 @@ def test_node_fields():
     assert result.index == {'a': {1: {'b': 'harkis', 'c': 'slits'}}}
 
     f1.assert_called_once_with()
-    with reqs_eq_patcher():
-        f2.assert_called_once_with([query.Field('b')], [1])
-        f3.assert_called_once_with([query.Field('c')], [1])
+    f2.assert_called_once_with([query.Field('b')], [1])
+    f3.assert_called_once_with([query.Field('c')], [1])
 
 
 def test_node_complex_fields():
@@ -96,16 +94,15 @@ def test_node_complex_fields():
     )
 
     f1.assert_called_once_with()
-    with reqs_eq_patcher():
-        f2.assert_called_once_with(
-            [query.Link('b', query.Node([query.Field('f')]))], [1],
-        )
-        f3.assert_called_once_with(
-            [query.Link('c', query.Node([query.Field('g')]))], [1],
-        )
-        f4.assert_called_once_with(
-            [query.Link('d', query.Node([query.Field('h')]))], [1],
-        )
+    f2.assert_called_once_with(
+        [query.Link('b', query.Node([query.Field('f')]))], [1],
+    )
+    f3.assert_called_once_with(
+        [query.Link('c', query.Node([query.Field('g')]))], [1],
+    )
+    f4.assert_called_once_with(
+        [query.Link('d', query.Node([query.Field('h')]))], [1],
+    )
 
 
 def test_links():
@@ -133,9 +130,8 @@ def test_links():
 
     f1.assert_called_once_with()
     f2.assert_called_once_with()
-    with reqs_eq_patcher():
-        f3.assert_called_once_with([query.Field('d')], [1])
-        f4.assert_called_once_with([query.Field('e')], [2])
+    f3.assert_called_once_with([query.Field('d')], [1])
+    f4.assert_called_once_with([query.Field('e')], [2])
 
 
 @pytest.mark.parametrize('option, args, result', OPTION_BEHAVIOUR)
@@ -148,8 +144,7 @@ def test_field_option_valid(option, args, result):
     ])
     check_result(execute(graph, build([Q.auslese(**args)])),
                  {'auslese': 'baking'})
-    with reqs_eq_patcher():
-        f.assert_called_once_with([query.Field('auslese', options=result)])
+    f.assert_called_once_with([query.Field('auslese', options=result)])
 
 
 def test_field_option_unknown():
@@ -186,8 +181,7 @@ def test_link_option_valid(option, args, result):
     check_result(execute(graph, build([Q.b(**args)[Q.c]])),
                  {'b': [{'c': 'aunder'}]})
     f1.assert_called_once_with(result)
-    with reqs_eq_patcher():
-        f2.assert_called_once_with([query.Field('c')], [1])
+    f2.assert_called_once_with([query.Field('c')], [1])
 
 
 def test_link_option_unknown():
@@ -224,8 +218,7 @@ def test_pass_context_field():
     check_result(execute(graph, build([Q.a]), {'vetch': 'shadier'}),
                  {'a': 'boiardo'})
 
-    with reqs_eq_patcher():
-        f.assert_called_once_with(ANY, [query.Field('a')])
+    f.assert_called_once_with(ANY, [query.Field('a')])
 
     ctx = f.call_args[0][0]
     assert isinstance(ctx, Context)
@@ -253,8 +246,7 @@ def test_pass_context_link():
     assert result.index == {'a': {1: {'b': 'boners'}}}
 
     f1.assert_called_once_with(ANY)
-    with reqs_eq_patcher():
-        f2.assert_called_once_with([query.Field('b')], [1])
+    f2.assert_called_once_with([query.Field('b')], [1])
 
     ctx = f1.call_args[0][0]
     assert isinstance(ctx, Context)
@@ -290,8 +282,7 @@ def test_node_link_without_requirements():
 
     f1.assert_called_once_with()
     f2.assert_called_once_with()
-    with reqs_eq_patcher():
-        f3.assert_called_once_with([query.Field('c')], [2])
+    f3.assert_called_once_with([query.Field('c')], [2])
 
 
 @pytest.mark.parametrize('value', [1, [], [1, 2]])

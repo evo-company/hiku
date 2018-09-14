@@ -74,6 +74,13 @@ class Field(object):
     def __repr__(self):
         return _name_repr(self.name, self.options)
 
+    def __eq__(self, other):
+        return (self.__class__ is other.__class__
+                and self.__dict__ == other.__dict__)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def accept(self, visitor):
         return visitor.visit_field(self)
 
@@ -97,6 +104,13 @@ class Link(object):
         return '{{{} {!r}}}'.format(_name_repr(self.name, self.options),
                                     self.node)
 
+    def __eq__(self, other):
+        return (self.__class__ is other.__class__
+                and self.__dict__ == other.__dict__)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def accept(self, visitor):
         return visitor.visit_link(self)
 
@@ -116,6 +130,13 @@ class Node(object):
 
     def __repr__(self):
         return '[{}]'.format(' '.join(map(repr, self.fields)))
+
+    def __eq__(self, other):
+        return (self.__class__ is other.__class__
+                and self.fields_map == other.fields_map)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def accept(self, visitor):
         return visitor.visit_node(self)

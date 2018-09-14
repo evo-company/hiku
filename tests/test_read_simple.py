@@ -5,13 +5,10 @@ import pytest
 from hiku.query import Node, Field, Link
 from hiku.readers.simple import read
 
-from .base import reqs_eq_patcher
-
 
 def check_read(source, query):
     first = read(source)
-    with reqs_eq_patcher():
-        assert first == query
+    assert first == query
 
 
 def test_invalid_root():

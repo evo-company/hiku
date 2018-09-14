@@ -21,7 +21,14 @@ class Ref(object):
         self.to = to
 
     def __repr__(self):
-        return '({!r}) > {!r}'.format(self.to, self.backref)
+        return '{!r} > {!r}'.format(self.to, self.backref)
+
+    def __eq__(self, other):
+        return (self.__class__ is other.__class__
+                and self.__dict__ == other.__dict__)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 class NamedRef(Ref):
@@ -31,7 +38,7 @@ class NamedRef(Ref):
         self.name = name
 
     def __repr__(self):
-        return '{}({!r}) > {!r}'.format(self.name, self.to, self.backref)
+        return '{}:{!r} > {!r}'.format(self.name, self.to, self.backref)
 
 
 def get_type(types, type_):

@@ -9,6 +9,13 @@ class GenericMeta(type):
     def __repr__(cls):
         return cls.__name__
 
+    def __eq__(cls, other):
+        return (cls.__class__ is other.__class__
+                and cls.__dict__ == other.__dict__)
+
+    def __ne__(cls, other):
+        return not cls.__eq__(other)
+
     def accept(cls, visitor):
         raise NotImplementedError(type(cls))
 
