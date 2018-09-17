@@ -210,7 +210,7 @@ class SourceSQLAlchemyTestBase(with_metaclass(ABCMeta, object)):
 
     def test_many_to_one(self):
         self.check(
-            '[{:foo_list [:name :count {:bar [:name :type]}]}]',
+            '[{:foo_list [:name :count :bar_id {:bar [:name :type]}]}]',
             {'foo_list': [
                 {'name': 'foo3', 'count': 15, 'bar_id': 4,
                  'bar': {'name': 'bar1', 'type': 1}},
@@ -223,7 +223,7 @@ class SourceSQLAlchemyTestBase(with_metaclass(ABCMeta, object)):
 
     def test_one_to_many(self):
         self.check(
-            '[{:bar_list [:name :type {:foo_s [:name :count]}]}]',
+            '[{:bar_list [:id :name :type {:foo_s [:name :count]}]}]',
             {'bar_list': [
                 {'id': 6, 'name': 'bar3', 'type': 3, 'foo_s': [
                     {'name': 'foo4', 'count': 20},

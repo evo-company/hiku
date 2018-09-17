@@ -59,7 +59,41 @@ def _name_repr(name, options):
         return '(:{} {{{}}})'.format(name, options_repr)
 
 
-class Field(object):
+def _compute_hash(obj):
+    if isinstance(obj, dict):
+        return hash(tuple((_compute_hash(k), _compute_hash(v))
+                          for k, v in sorted(obj.items())))
+    elif isinstance(obj, list):
+        return hash(tuple(_compute_hash(i) for i in obj))
+    else:
+        return hash(obj)
+
+
+class FieldBase(object):
+
+    @cached_property
+    def result_key(self):
+        if self.alias is not None:
+            return self.alias
+        else:
+            return self.name
+
+    @cached_property
+    def options_hash(self):
+        if self.options:
+            return _compute_hash(self.options)
+        else:
+            return None
+
+    @cached_property
+    def index_key(self):
+        if self.options_hash is not None:
+            return '{}[{}]'.format(self.name, self.options_hash)
+        else:
+            return self.name
+
+
+class Field(FieldBase):
     """Represents a field of the node
 
     :param name: name of the field
@@ -76,7 +110,9 @@ class Field(object):
 
     def __eq__(self, other):
         return (self.__class__ is other.__class__
-                and self.__dict__ == other.__dict__)
+                and self.name == other.name
+                and self.options == other.options
+                and self.alias == other.alias)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -85,7 +121,7 @@ class Field(object):
         return visitor.visit_field(self)
 
 
-class Link(object):
+class Link(FieldBase):
     """Represents a link to the node
 
     :param name: name of the link
@@ -106,7 +142,10 @@ class Link(object):
 
     def __eq__(self, other):
         return (self.__class__ is other.__class__
-                and self.__dict__ == other.__dict__)
+                and self.name == other.name
+                and self.node == other.node
+                and self.options == other.options
+                and self.alias == other.alias)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -127,6 +166,10 @@ class Node(object):
     @cached_property
     def fields_map(self):
         return OrderedDict((f.name, f) for f in self.fields)
+
+    @cached_property
+    def result_map(self):
+        return OrderedDict((f.result_key, f) for f in self.fields)
 
     def __repr__(self):
         return '[{}]'.format(' '.join(map(repr, self.fields)))

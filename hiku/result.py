@@ -18,6 +18,8 @@
         on the client
 
 """
+from collections import defaultdict
+
 from .types import RecordMeta, OptionalMeta, SequenceMeta
 from .query import Node, Field, Link, merge
 from .graph import Link as GraphLink, Field as GraphField, Many, Maybe
@@ -137,3 +139,42 @@ def denormalize(graph, result, query):
     :param query: executed query, instance of the :py:class:`~hiku.query.Node`
     """
     return _denormalize(graph, graph.root, result, merge([query]))
+
+
+class Proxy(object):
+
+    def __init__(self, ref, query):
+        self.__ref__ = ref
+        self.__query__ = query
+
+    def __getitem__(self, item):
+        f = self.__query__.result_map[item]
+        value = self.__ref__[f.index_key]
+        if isinstance(f, Field):
+            return value
+        elif isinstance(value, Reference):
+            return Proxy(value, f.node)
+        elif (
+            isinstance(value, list) and value
+            and isinstance(value[0], Reference)
+        ):
+            return [Proxy(ref, f.node) for ref in value]
+        else:
+            return value
+
+
+class Reference(object):
+    ROOT = '__root__'
+
+    def __init__(self, index, node, ident):
+        self.__idx__ = index
+        self.__node__ = node
+        self.__ident__ = ident
+
+    @classmethod
+    def __root__(cls):
+        return cls(defaultdict(lambda: defaultdict(dict)),
+                   Reference.ROOT, Reference.ROOT)
+
+    def __getitem__(self, item):
+        return self.__idx__[self.__node__][self.__ident__][item]

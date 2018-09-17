@@ -18,6 +18,8 @@ from ..readers.simple import transform
 from .nodes import Symbol, Tuple, List, Keyword, Dict
 
 
+THIS = 'this'
+
 _Func = namedtuple('__func__', 'expr, args')
 
 

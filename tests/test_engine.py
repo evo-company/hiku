@@ -12,6 +12,11 @@ from hiku.executors.sync import SyncExecutor
 from .base import check_result, ANY, Mock
 
 
+def id_field(fields, ids):
+    for i in ids:
+        yield [i for _ in fields]
+
+
 OPTION_BEHAVIOUR = [
     (Option('op', None), {'op': 1812}, {'op': 1812}),
     (Option('op', None, default=None), {}, {'op': None}),
@@ -62,7 +67,6 @@ def test_node_fields():
 
     result = execute(graph, build([Q.d[Q.b, Q.c]]))
     check_result(result, {'d': [{'b': 'harkis', 'c': 'slits'}]})
-    assert result.index == {'a': {1: {'b': 'harkis', 'c': 'slits'}}}
 
     f1.assert_called_once_with()
     f2.assert_called_once_with([query.Field('b')], [1])
@@ -106,32 +110,33 @@ def test_node_complex_fields():
 
 
 def test_links():
-    f1 = Mock(return_value=[1])
-    f2 = Mock(return_value=[2])
-    f3 = Mock(return_value=[['boners']])
-    f4 = Mock(return_value=[['julio']])
+    fb = Mock(return_value=[1])
+    fc = Mock(return_value=[2])
+    fi = Mock(return_value=[3])
+    fd = Mock(return_value=[['boners']])
+    fe = Mock(return_value=[['julio']])
 
     graph = Graph([
         Node('a', [
-            Field('d', None, f3),
-            Field('e', None, f4),
+            Field('d', None, fd),
+            Field('e', None, fe),
         ]),
         Root([
-            Link('b', Sequence[TypeRef['a']], f1, requires=None),
-            Link('c', Sequence[TypeRef['a']], f2, requires=None),
+            Field('i', None, fi),
+            Link('b', Sequence[TypeRef['a']], fb, requires=None),
+            Link('c', Sequence[TypeRef['a']], fc, requires='i'),
         ]),
     ])
 
     result = execute(graph, build([Q.b[Q.d], Q.c[Q.e]]))
     check_result(result, {'b': [{'d': 'boners'}],
                           'c': [{'e': 'julio'}]})
-    assert result.index == {'a': {1: {'d': 'boners'},
-                                  2: {'e': 'julio'}}}
 
-    f1.assert_called_once_with()
-    f2.assert_called_once_with()
-    f3.assert_called_once_with([query.Field('d')], [1])
-    f4.assert_called_once_with([query.Field('e')], [2])
+    fi.assert_called_once_with([query.Field('i')])
+    fb.assert_called_once_with()
+    fc.assert_called_once_with(3)
+    fd.assert_called_once_with([query.Field('d')], [1])
+    fe.assert_called_once_with([query.Field('e')], [2])
 
 
 @pytest.mark.parametrize('option, args, result', OPTION_BEHAVIOUR)
@@ -243,7 +248,6 @@ def test_pass_context_link():
 
     result = execute(graph, build([Q.c[Q.b]]), {'fibs': 'dossil'})
     check_result(result, {'c': [{'b': 'boners'}]})
-    assert result.index == {'a': {1: {'b': 'boners'}}}
 
     f1.assert_called_once_with(ANY)
     f2.assert_called_once_with([query.Field('b')], [1])
@@ -275,10 +279,6 @@ def test_node_link_without_requirements():
 
     result = execute(graph, build([Q.e[Q.d[Q.c]]]))
     check_result(result, {'e': [{'d': [{'c': 'arnhild'}]}]})
-    assert result.index == {
-        'a': {2: {'c': 'arnhild'}},
-        'b': {1: {'d': [result.ref('a', 2)]}},
-    }
 
     f1.assert_called_once_with()
     f2.assert_called_once_with()
@@ -396,3 +396,188 @@ def test_node_link_many_func_result_validation(value):
         "Can't store link values, node: 'c', link: 'e', expected: "
         "list (len: 2) of lists, returned: {!r}".format(value)
     ))
+
+
+def test_root_field_alias():
+    data = {'a': 42}
+
+    def root_fields(fields):
+        return [data[f.name] for f in fields]
+
+    graph = Graph([
+        Root([
+            Field('a', None, root_fields),
+        ]),
+    ])
+    result = execute(graph, query.Node([
+        query.Field('a', alias='a1'),
+        query.Field('a', alias='a2'),
+    ]))
+    check_result(result, {'a1': 42, 'a2': 42})
+
+
+def test_node_field_alias():
+    data = {'x1': {'a': 42}}
+
+    def x_fields(fields, ids):
+        for i in ids:
+            yield [data[i][f.name] for f in fields]
+
+    graph = Graph([
+        Node('X', [
+            Field('a', None, x_fields),
+        ]),
+        Root([
+            Link('x', TypeRef['X'], lambda: 'x1', requires=None),
+        ]),
+    ])
+    result = execute(graph, query.Node([
+        query.Link('x', query.Node([
+            query.Field('a', alias='a1'),
+            query.Field('a', alias='a2'),
+        ])),
+    ]))
+    check_result(result, {'x': {'a1': 42, 'a2': 42}})
+
+
+def test_root_link_alias():
+    data = {
+        'xN': {'a': 1, 'b': 2},
+    }
+
+    def x_fields(fields, ids):
+        for i in ids:
+            yield [data[i][f.name] for f in fields]
+
+    graph = Graph([
+        Node('X', [
+            Field('a', None, x_fields),
+            Field('b', None, x_fields),
+        ]),
+        Root([
+            Link('x', TypeRef['X'], lambda: 'xN', requires=None),
+        ]),
+    ])
+    result = execute(graph, query.Node([
+        query.Link('x', query.Node([query.Field('a')]), alias='x1'),
+        query.Link('x', query.Node([query.Field('b')]), alias='x2'),
+    ]))
+    print(result)
+    check_result(result, {
+        'x1': {'a': 1},
+        'x2': {'b': 2},
+    })
+
+
+def test_node_link_alias():
+    data = {
+        'yN': {'a': 1, 'b': 2},
+    }
+    x2y = {'xN': 'yN'}
+
+    def y_fields(fields, ids):
+        for i in ids:
+            yield [data[i][f.name] for f in fields]
+
+    graph = Graph([
+        Node('Y', [
+            Field('a', None, y_fields),
+            Field('b', None, y_fields),
+        ]),
+        Node('X', [
+            Field('id', None, id_field),
+            Link('y', TypeRef['Y'],
+                 lambda ids: [x2y[i] for i in ids],
+                 requires='id'),
+        ]),
+        Root([
+            Link('x', TypeRef['X'], lambda: 'xN', requires=None),
+        ]),
+    ])
+    result = execute(graph, query.Node([
+        query.Link('x', query.Node([
+            query.Link('y', query.Node([query.Field('a')]), alias='y1'),
+            query.Link('y', query.Node([query.Field('b')]), alias='y2'),
+        ])),
+    ]))
+    check_result(result, {
+        'x': {
+            'y1': {'a': 1},
+            'y2': {'b': 2},
+        }
+    })
+
+
+def test_conflicting_fields():
+    x_data = {'xN': {'a': 42}}
+
+    def x_fields(fields, ids):
+        for i in ids:
+            yield ['{}-{}'.format(x_data[i][f.name], f.options['k'])
+                   for f in fields]
+
+    graph = Graph([
+        Node('X', [
+            Field('a', None, x_fields, options=[Option('k', Integer)]),
+        ]),
+        Root([
+            Link('x1', TypeRef['X'], lambda: 'xN', requires=None),
+            Link('x2', TypeRef['X'], lambda: 'xN', requires=None),
+        ]),
+    ])
+
+    result = execute(graph, query.Node([
+        query.Link('x1', query.Node([query.Field('a', options={'k': 1})])),
+        query.Link('x2', query.Node([query.Field('a', options={'k': 2})])),
+    ]))
+    check_result(result, {
+        'x1': {'a': '42-1'},
+        'x2': {'a': '42-2'},
+    })
+
+
+def test_conflicting_links():
+    data = {
+        'yA': {'a': 1, 'b': 2},
+        'yB': {'a': 3, 'b': 4},
+        'yC': {'a': 5, 'b': 6},
+    }
+    x2y = {'xN': ['yA', 'yB', 'yC']}
+
+    def y_fields(fields, ids):
+        for i in ids:
+            yield [data[i][f.name] for f in fields]
+
+    def x_to_y_link(ids, options):
+        for i in ids:
+            yield [y for y in x2y[i] if y not in options['exclude']]
+
+    graph = Graph([
+        Node('Y', [
+            Field('a', None, y_fields),
+            Field('b', None, y_fields),
+        ]),
+        Node('X', [
+            Field('id', None, id_field),
+            Link('y', Sequence[TypeRef['Y']], x_to_y_link, requires='id',
+                 options=[Option('exclude', None)]),
+        ]),
+        Root([
+            Link('x1', TypeRef['X'], lambda: 'xN', requires=None),
+            Link('x2', TypeRef['X'], lambda: 'xN', requires=None),
+        ]),
+    ])
+    result = execute(graph, query.Node([
+        query.Link('x1', query.Node([
+            query.Link('y', query.Node([query.Field('a')]),
+                       options={'exclude': ['yA']}),
+        ])),
+        query.Link('x2', query.Node([
+            query.Link('y', query.Node([query.Field('b')]),
+                       options={'exclude': ['yC']}),
+        ])),
+    ]))
+    check_result(result, {
+        'x1': {'y': [{'a': 3}, {'a': 5}]},
+        'x2': {'y': [{'b': 2}, {'b': 4}]},
+    })

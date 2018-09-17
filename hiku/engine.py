@@ -6,8 +6,58 @@ from collections import defaultdict, Sequence
 
 from . import query
 from .graph import Link, Maybe, One, Many, Nothing, Field
-from .result import Result
+from .result import Reference, Proxy
 from .executors.queue import Workflow, Queue
+
+
+class InitOptions(query.QueryVisitor):
+
+    def __init__(self, graph):
+        self._graph = graph
+        self._path = [graph.root]
+
+    def _yield_options(self, graph_obj, query_obj):
+        options = query_obj.options or {}
+        for option in graph_obj.options:
+            value = options.get(option.name, option.default)
+            if value is Nothing:
+                raise TypeError('Required option "{}" for {!r} was not provided'
+                                .format(option.name, graph_obj))
+            else:
+                yield option.name, value
+
+    def _get_options(self, graph_obj, query_obj):
+        return dict(self._yield_options(graph_obj, query_obj))
+
+    def visit_field(self, obj):
+        graph_obj = self._path[-1].fields_map[obj.name]
+        if graph_obj.options:
+            options = self._get_options(graph_obj, obj)
+            return query.Field(obj.name, options=options, alias=obj.alias)
+        else:
+            return obj
+
+    def visit_link(self, obj):
+        graph_obj = self._path[-1].fields_map[obj.name]
+
+        if isinstance(graph_obj, Link):
+            self._path.append(self._graph.nodes_map[graph_obj.node])
+            try:
+                node = self.visit(obj.node)
+            finally:
+                self._path.pop()
+        else:
+            assert isinstance(graph_obj, Field), type(graph_obj)
+            node = obj.node
+
+        if graph_obj.options:
+            options = self._get_options(graph_obj, obj)
+        else:
+            options = None
+        return query.Link(obj.name, node, options=options, alias=obj.alias)
+
+    def visit_node(self, obj):
+        return query.Node([self.visit(f) for f in obj.fields])
 
 
 class SplitPattern(query.QueryVisitor):
@@ -65,42 +115,48 @@ def _check_store_fields(node, fields, ids, result):
                             expected, result))
 
 
-def store_fields(result, node, fields, ids, query_result):
+def store_fields(result, node, query_fields, ids, query_result):
     if inspect.isgenerator(query_result):
         query_result = list(query_result)
 
-    _check_store_fields(node, fields, ids, query_result)
+    _check_store_fields(node, query_fields, ids, query_result)
 
-    names = [f.name for f in fields]
+    names = [f.index_key for f in query_fields]
     if node.name is not None:
         assert ids is not None
-        node_index = result.index.setdefault(node.name, {})
+        node_idx = result.__idx__[node.name]
         for i, row in zip(ids, query_result):
-            node_data = node_index.setdefault(i, {})
-            node_data.update(zip(names, row))
+            node_idx[i].update(zip(names, row))
     else:
-        result.root.update(zip(names, query_result))
+        assert ids is None
+        root = result.__idx__[Reference.ROOT][Reference.ROOT]
+        root.update(zip(names, query_result))
 
 
 def link_reqs(result, node, link, ids):
     if node.name is not None:
         assert ids is not None
-        return [result.index[node.name][i][link.requires] for i in ids]
+        node_idx = result.__idx__[node.name]
+        return [node_idx[i][link.requires] for i in ids]
     else:
-        return result.root[link.requires]
+        root = result.__idx__[Reference.ROOT][Reference.ROOT]
+        return root[link.requires]
 
 
-def link_ref_maybe(result, link, ident):
-    return None if ident is Nothing else result.ref(link.node, ident)
+def link_ref_maybe(result, graph_link, ident):
+    if ident is Nothing:
+        return None
+    else:
+        return Reference(result.__idx__, graph_link.node, ident)
 
 
-def link_ref_one(result, link, ident):
+def link_ref_one(result, graph_link, ident):
     assert ident is not Nothing
-    return result.ref(link.node, ident)
+    return Reference(result.__idx__, graph_link.node, ident)
 
 
-def link_ref_many(result, link, idents):
-    return [result.ref(link.node, i) for i in idents]
+def link_ref_many(result, graph_link, idents):
+    return [Reference(result.__idx__, graph_link.node, i) for i in idents]
 
 
 _LINK_REF_MAKER = {
@@ -145,20 +201,22 @@ def _check_store_links(node, link, ids, result):
                             expected, result))
 
 
-def store_links(result, node, link, ids, query_result):
-    _check_store_links(node, link, ids, query_result)
+def store_links(result, node, graph_link, query_link, ids, query_result):
+    _check_store_links(node, graph_link, ids, query_result)
 
-    field_val = partial(_LINK_REF_MAKER[link.type_enum], result, link)
+    field_val = partial(_LINK_REF_MAKER[graph_link.type_enum],
+                        result, graph_link)
     if node.name is not None:
         assert ids is not None
-        if link.requires is None:
+        if graph_link.requires is None:
             query_result = repeat(query_result, len(ids))
-        node_index = result.index.setdefault(node.name, {})
+
+        node_idx = result.__idx__[node.name]
         for i, res in zip(ids, query_result):
-            node_data = node_index.setdefault(i, {})
-            node_data[link.name] = field_val(res)
+            node_idx[i][query_link.index_key] = field_val(res)
     else:
-        result.root[link.name] = field_val(query_result)
+        root = result.__idx__[Reference.ROOT][Reference.ROOT]
+        root[query_link.index_key] = field_val(query_result)
 
 
 def link_result_to_ids(from_list, link_type, result):
@@ -184,29 +242,15 @@ def link_result_to_ids(from_list, link_type, result):
     raise TypeError(repr([from_list, link_type]))
 
 
-def _yield_options(graph_obj, query_obj):
-    options = query_obj.options or {}
-    for option in graph_obj.options:
-        value = options.get(option.name, option.default)
-        if value is Nothing:
-            raise TypeError('Required option "{}" for {!r} was not provided'
-                            .format(option.name, graph_obj))
-        else:
-            yield option.name, value
-
-
-def get_options(graph_obj, query_obj):
-    return dict(_yield_options(graph_obj, query_obj))
-
-
 class Query(Workflow):
 
-    def __init__(self, queue, task_set, graph, ctx):
+    def __init__(self, queue, task_set, graph, pattern, ctx):
         self._queue = queue
         self._task_set = task_set
         self.graph = graph
+        self._pattern = pattern
         self._ctx = ctx
-        self._result = Result()
+        self._result = Reference.__root__()
 
     def _submit(self, func, *args, **kwargs):
         if _do_pass_context(func):
@@ -215,16 +259,10 @@ class Query(Workflow):
             return self._task_set.submit(func, *args, **kwargs)
 
     def result(self):
-        return self._result
+        return Proxy(self._result, self._pattern)
 
     def process_node(self, node, pattern, ids):
         fields, links = SplitPattern(node).split(pattern)
-
-        fields = [(gf, query.Field(qf.name, options=get_options(gf, qf)))
-                  if gf.options else (gf, qf) for gf, qf in fields]
-
-        links = [(gl, query.Link(ql.name, ql.node, options=get_options(gl, ql)))
-                 if gl.options else (gl, ql) for gl, ql in links]
 
         to_func = {}
         from_func = defaultdict(list)
@@ -251,8 +289,7 @@ class Query(Workflow):
             to_dep[func] = dep
             self._queue.add_callback(dep, (
                 lambda _query_fields=query_fields, _proc=proc:
-                store_fields(self._result, node, _query_fields, ids,
-                             _proc())
+                store_fields(self._result, node, _query_fields, ids, _proc())
             ))
 
         # schedule link resolve
@@ -269,8 +306,8 @@ class Query(Workflow):
                 else:
                     dep = self._submit(graph_link.func)
                 self._queue.add_callback(dep, (
-                    lambda _fut=dep, _gl=graph_link, _qe=query_link.node:
-                    self.process_link(node, _gl, _qe, ids, _fut.result())
+                    lambda _fut=dep, _gl=graph_link, _ql=query_link:
+                    self.process_link(node, _gl, _ql, ids, _fut.result())
                 ))
 
     def _process_node_link(self, node, graph_link, query_link, ids):
@@ -281,19 +318,18 @@ class Query(Workflow):
             dep = self._submit(graph_link.func, reqs)
         self._queue.add_callback(dep, (
             lambda:
-            self.process_link(node, graph_link, query_link.node, ids,
-                              dep.result())
+            self.process_link(node, graph_link, query_link, ids, dep.result())
         ))
 
-    def process_link(self, node, graph_link, query_node, ids, result):
+    def process_link(self, node, graph_link, query_link, ids, result):
         if inspect.isgenerator(result):
             result = list(result)
-        store_links(self._result, node, graph_link, ids, result)
+        store_links(self._result, node, graph_link, query_link, ids, result)
         from_list = ids is not None and graph_link.requires is not None
         to_ids = link_result_to_ids(from_list, graph_link.type_enum, result)
         if to_ids:
-            self.process_node(self.graph.nodes_map[graph_link.node], query_node,
-                              to_ids)
+            self.process_node(self.graph.nodes_map[graph_link.node],
+                              query_link.node, to_ids)
 
 
 def pass_context(func):
@@ -324,8 +360,9 @@ class Engine(object):
         self.executor = executor
 
     def execute(self, graph, pattern, ctx=None):
+        query_ = InitOptions(graph).visit(pattern)
         queue = Queue(self.executor)
         task_set = queue.fork(None)
-        q = Query(queue, task_set, graph, Context(ctx or {}))
-        q.process_node(q.graph.root, pattern, None)
+        q = Query(queue, task_set, graph, query_, Context(ctx or {}))
+        q.process_node(q.graph.root, query_, None)
         return self.executor.process(queue, q)

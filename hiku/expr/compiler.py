@@ -4,6 +4,7 @@ from collections import Counter
 from ..types import CallableMeta
 from ..compat import ast as py, integer_types, text_type
 
+from .core import THIS
 from .nodes import Symbol, Keyword
 
 
@@ -45,9 +46,9 @@ class ExpressionCompiler(object):
     def compile_lambda_expr(cls, node, args=None):
         args = args or []
         compiler = cls()
-        with compiler.env.push(['this'] + args):
+        with compiler.env.push([THIS] + args):
             body = compiler.visit(node)
-        py_args = [py.arg(cls.env_var), py.arg('this'), py.arg(cls.ctx_var)]
+        py_args = [py.arg(cls.env_var), py.arg(THIS), py.arg(cls.ctx_var)]
         py_args += [py.arg(name) for name in args]
         expr = py.Lambda(py.arguments(py_args, None, None, []), body)
         py.fix_missing_locations(expr)

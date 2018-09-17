@@ -7,12 +7,9 @@ from ..query import merge
 from ..types import Any
 from ..engine import Query
 from ..expr.refs import RequirementsExtractor
-from ..expr.core import to_expr, S
+from ..expr.core import to_expr, S, THIS
 from ..expr.checker import check, graph_types, fn_types
 from ..expr.compiler import ExpressionCompiler
-
-
-THIS_LINK_NAME = '__link_to_this'
 
 
 def _create_result_proc(engine_query, procs, options):
@@ -20,7 +17,7 @@ def _create_result_proc(engine_query, procs, options):
         sq_result = engine_query.result()
         return [[proc(this, sq_result, *opt_args)
                  for proc, opt_args in zip(procs, options)]
-                for this in sq_result[THIS_LINK_NAME]]
+                for this in sq_result[THIS]]
     return result_proc
 
 
@@ -52,7 +49,7 @@ class BoundExpr(object):
         env = fn_types(funcs)
         env.update(self.sub_graph.types['__root__'].__field_types__)
         env.update((opt.name, opt.type or Any) for opt in field.options)
-        env['this'] = TypeRef[self.sub_graph.node]
+        env[THIS] = TypeRef[self.sub_graph.node]
 
         expr = check(expr, self.sub_graph.types, env)
 
@@ -108,20 +105,21 @@ class SubGraph(object):
         BoundExpr(self, getattr(S.this, field.name)).__postprocess__(field)
 
     def __call__(self, fields, ids, queue, ctx, task_set):
-        this_link = Link(THIS_LINK_NAME, Sequence[TypeRef[self.node]],
-                         None, requires=None)
+        this_graph_link = Link(THIS, Sequence[TypeRef[self.node]], None,
+                               requires=None)
 
         reqs = merge(gf.func.reqs for gf, _ in fields)
         procs = [gf.func.proc for gf, _ in fields]
         option_values = [[qf.options[opt.name] for opt in gf.options]
                          for gf, qf in fields]
 
-        this_req = reqs.fields_map['this'].node
+        this_query_link = reqs.fields_map[THIS]
         other_reqs = query.Node([r for r in reqs.fields
-                                 if r.name != 'this'])
+                                 if r.name != THIS])
 
-        q = Query(queue, task_set, self.graph, ctx)
-        q.process_link(self.graph.root, this_link, this_req, None, ids)
+        q = Query(queue, task_set, self.graph, reqs, ctx)
+        q.process_link(self.graph.root, this_graph_link, this_query_link,
+                       None, ids)
         q.process_node(self.graph.root, other_reqs, None)
         return _create_result_proc(q, procs, option_values)
 
