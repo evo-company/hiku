@@ -44,8 +44,8 @@ class Index(defaultdict):
 
     def finish(self):
         for value in self.values():
-            del value.default_factory
-        del self.default_factory
+            value.default_factory = None
+        self.default_factory = None
 
 
 class Reference(object):

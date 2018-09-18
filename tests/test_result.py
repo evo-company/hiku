@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import re
 import json
 
 import pytest
@@ -314,7 +313,7 @@ def test_non_requested_field_item():
     assert proxy.foo == 'bar'
     with pytest.raises(KeyError) as err:
         proxy['unknown']
-    err.match("Field 'unknown' wasn't requested in the query")
+    err.match(r"Field u?'unknown' wasn't requested in the query")
 
 
 def test_non_requested_field_attr():
@@ -328,7 +327,7 @@ def test_non_requested_field_attr():
     assert proxy.foo == 'bar'
     with pytest.raises(AttributeError) as err:
         proxy.unknown
-    err.match("Field 'unknown' wasn't requested in the query")
+    err.match(r"Field u?'unknown' wasn't requested in the query")
 
 
 def test_missing_object():
@@ -340,7 +339,7 @@ def test_missing_object():
 
     with pytest.raises(AssertionError) as err:
         proxy.foo
-    err.match(re.escape("Object SomeNode['unknown'] is missing in the index"))
+    err.match(r"Object SomeNode\[u?'unknown'\] is missing in the index")
 
 
 def test_missing_field():
@@ -353,4 +352,4 @@ def test_missing_field():
 
     with pytest.raises(AssertionError) as err:
         proxy.foo
-    err.match(re.escape("Field SomeNode[42].foo is missing in the index"))
+    err.match("Field SomeNode\[42\]\.foo is missing in the index")
