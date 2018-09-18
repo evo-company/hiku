@@ -23,54 +23,86 @@ from collections import defaultdict
 from .types import RecordMeta, OptionalMeta, SequenceMeta
 from .query import Node, Field, Link, merge
 from .graph import Link as GraphLink, Field as GraphField, Many, Maybe
+from .utils import cached_property
 
 
-class Ref(object):
+class Index(defaultdict):
+    ROOT = '__root__'
+
+    def __init__(self):
+        super(Index, self).__init__(lambda: defaultdict(dict))
+
+    @cached_property
+    def root(self):
+        return self[self.ROOT][self.ROOT]
+
+    def ref(self, node, ident):
+        return Reference(self, node, ident)
+
+    def root_ref(self):
+        return Reference(self, self.ROOT, self.ROOT)
+
+    def finish(self):
+        for value in self.values():
+            del value.default_factory
+        del self.default_factory
+
+
+class Reference(object):
+    __slots__ = ('index', 'node', 'ident')
 
     def __init__(self, index, node, ident):
         self.index = index
         self.node = node
         self.ident = ident
 
-    def __getitem__(self, key):
-        return self.index[self.node][self.ident][key]
+    def __getitem__(self, item):
+        try:
+            obj = self.index[self.node][self.ident]
+        except KeyError:
+            raise AssertionError('Object {}[{!r}] is missing in the index'
+                                 .format(self.node, self.ident))
+        try:
+            return obj[item]
+        except KeyError:
+            raise AssertionError('Field {}[{!r}].{} is missing in the index'
+                                 .format(self.node, self.ident, item))
 
-    def __repr__(self):
-        return '<{}:{}>'.format(self.node, self.ident)
 
-    def __eq__(self, other):
-        return self.index[self.node][self.ident] == other
+class Proxy(object):
+    __slots__ = ('__ref__', '__node__')
 
+    def __init__(self, ref, query_node):
+        self.__ref__ = ref
+        self.__node__ = query_node
 
-class Result(object):
-    """Internal result representation
+    def __wrap__(self, query_obj, value):
+        if isinstance(query_obj, Field):
+            return value
+        elif isinstance(value, Reference):
+            return self.__class__(value, query_obj.node)
+        elif (
+            isinstance(value, list) and value
+            and isinstance(value[0], Reference)
+        ):
+            return [self.__class__(ref, query_obj.node) for ref in value]
+        else:
+            return value
 
-    It gives access to the result of the :py:class:`~hiku.graph.Root` node --
-    which is a starting point of the query execution, and from it to all the
-    other node objects, which are stored internally in the index.
+    def __getitem__(self, item):
+        try:
+            obj = self.__node__.result_map[item]
+        except KeyError:
+            raise KeyError("Field {!r} wasn't requested in the query"
+                           .format(item))
+        value = self.__ref__[obj.index_key]
+        return self.__wrap__(obj, value)
 
-    Behaves like a mapping.
-    """
-    def __init__(self):
-        self.root = {}
-        self.index = {}
-
-    def __repr__(self):
-        lines = ['<{}: {!r}'.format(self.__class__.__name__, self.root)]
-        if self.index:
-            lines.append('  index:')
-            for node, idx in self.index.items():
-                lines.append('    {}:'.format(node))
-                for id_, data in idx.items():
-                    lines.append('      {!r}: {!r}'.format(id_, data))
-        lines[-1] += '>'
-        return '\n'.join(lines)
-
-    def __getitem__(self, key):
-        return self.root[key]
-
-    def ref(self, node, ident):
-        return Ref(self.index, node, ident)
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError as e:
+            raise AttributeError(e)
 
 
 def _denormalize_type(type_, result, query_obj):
@@ -139,42 +171,3 @@ def denormalize(graph, result, query):
     :param query: executed query, instance of the :py:class:`~hiku.query.Node`
     """
     return _denormalize(graph, graph.root, result, merge([query]))
-
-
-class Proxy(object):
-
-    def __init__(self, ref, query):
-        self.__ref__ = ref
-        self.__query__ = query
-
-    def __getitem__(self, item):
-        f = self.__query__.result_map[item]
-        value = self.__ref__[f.index_key]
-        if isinstance(f, Field):
-            return value
-        elif isinstance(value, Reference):
-            return Proxy(value, f.node)
-        elif (
-            isinstance(value, list) and value
-            and isinstance(value[0], Reference)
-        ):
-            return [Proxy(ref, f.node) for ref in value]
-        else:
-            return value
-
-
-class Reference(object):
-    ROOT = '__root__'
-
-    def __init__(self, index, node, ident):
-        self.__idx__ = index
-        self.__node__ = node
-        self.__ident__ = ident
-
-    @classmethod
-    def __root__(cls):
-        return cls(defaultdict(lambda: defaultdict(dict)),
-                   Reference.ROOT, Reference.ROOT)
-
-    def __getitem__(self, item):
-        return self.__idx__[self.__node__][self.__ident__][item]

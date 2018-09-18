@@ -4,36 +4,38 @@ from functools import partial
 from itertools import chain, repeat
 from collections import defaultdict, Sequence
 
-from . import query
+from . import query as hiku_query
 from .graph import Link, Maybe, One, Many, Nothing, Field
-from .result import Reference, Proxy
+from .result import Proxy, Index
 from .executors.queue import Workflow, Queue
 
 
-class InitOptions(query.QueryVisitor):
+def _yield_options(graph_obj, query_obj):
+    options = query_obj.options or {}
+    for option in graph_obj.options:
+        value = options.get(option.name, option.default)
+        if value is Nothing:
+            raise TypeError('Required option "{}" for {!r} was not provided'
+                            .format(option.name, graph_obj))
+        else:
+            yield option.name, value
+
+
+def _get_options(graph_obj, query_obj):
+    return dict(_yield_options(graph_obj, query_obj))
+
+
+class InitOptions(hiku_query.QueryVisitor):
 
     def __init__(self, graph):
         self._graph = graph
         self._path = [graph.root]
 
-    def _yield_options(self, graph_obj, query_obj):
-        options = query_obj.options or {}
-        for option in graph_obj.options:
-            value = options.get(option.name, option.default)
-            if value is Nothing:
-                raise TypeError('Required option "{}" for {!r} was not provided'
-                                .format(option.name, graph_obj))
-            else:
-                yield option.name, value
-
-    def _get_options(self, graph_obj, query_obj):
-        return dict(self._yield_options(graph_obj, query_obj))
-
     def visit_field(self, obj):
         graph_obj = self._path[-1].fields_map[obj.name]
         if graph_obj.options:
-            options = self._get_options(graph_obj, obj)
-            return query.Field(obj.name, options=options, alias=obj.alias)
+            options = _get_options(graph_obj, obj)
+            return hiku_query.Field(obj.name, options=options, alias=obj.alias)
         else:
             return obj
 
@@ -50,25 +52,22 @@ class InitOptions(query.QueryVisitor):
             assert isinstance(graph_obj, Field), type(graph_obj)
             node = obj.node
 
-        if graph_obj.options:
-            options = self._get_options(graph_obj, obj)
-        else:
-            options = None
-        return query.Link(obj.name, node, options=options, alias=obj.alias)
+        options = _get_options(graph_obj, obj) if graph_obj.options else None
+        return hiku_query.Link(obj.name, node, options=options, alias=obj.alias)
 
     def visit_node(self, obj):
-        return query.Node([self.visit(f) for f in obj.fields])
+        return hiku_query.Node([self.visit(f) for f in obj.fields])
 
 
-class SplitPattern(query.QueryVisitor):
+class SplitQuery(hiku_query.QueryVisitor):
 
     def __init__(self, node):
         self._node = node
         self._fields = []
         self._links = []
 
-    def split(self, pattern):
-        for item in pattern.fields:
+    def split(self, node):
+        for item in node.fields:
             self.visit(item)
         return self._fields, self._links
 
@@ -83,7 +82,7 @@ class SplitPattern(query.QueryVisitor):
         if isinstance(graph_obj, Link):
             if graph_obj.requires:
                 self._fields.append((self._node.fields_map[graph_obj.requires],
-                                     query.Field(graph_obj.requires)))
+                                     hiku_query.Field(graph_obj.requires)))
             self._links.append((graph_obj, obj))
         else:
             assert isinstance(graph_obj, Field), type(graph_obj)
@@ -115,7 +114,7 @@ def _check_store_fields(node, fields, ids, result):
                             expected, result))
 
 
-def store_fields(result, node, query_fields, ids, query_result):
+def store_fields(index, node, query_fields, ids, query_result):
     if inspect.isgenerator(query_result):
         query_result = list(query_result)
 
@@ -124,39 +123,37 @@ def store_fields(result, node, query_fields, ids, query_result):
     names = [f.index_key for f in query_fields]
     if node.name is not None:
         assert ids is not None
-        node_idx = result.__idx__[node.name]
+        node_idx = index[node.name]
         for i, row in zip(ids, query_result):
             node_idx[i].update(zip(names, row))
     else:
         assert ids is None
-        root = result.__idx__[Reference.ROOT][Reference.ROOT]
-        root.update(zip(names, query_result))
+        index.root.update(zip(names, query_result))
 
 
-def link_reqs(result, node, link, ids):
+def link_reqs(index, node, link, ids):
     if node.name is not None:
         assert ids is not None
-        node_idx = result.__idx__[node.name]
+        node_idx = index[node.name]
         return [node_idx[i][link.requires] for i in ids]
     else:
-        root = result.__idx__[Reference.ROOT][Reference.ROOT]
-        return root[link.requires]
+        return index.root[link.requires]
 
 
-def link_ref_maybe(result, graph_link, ident):
+def link_ref_maybe(index, graph_link, ident):
     if ident is Nothing:
         return None
     else:
-        return Reference(result.__idx__, graph_link.node, ident)
+        return index.ref(graph_link.node, ident)
 
 
-def link_ref_one(result, graph_link, ident):
+def link_ref_one(index, graph_link, ident):
     assert ident is not Nothing
-    return Reference(result.__idx__, graph_link.node, ident)
+    return index.ref(graph_link.node, ident)
 
 
-def link_ref_many(result, graph_link, idents):
-    return [Reference(result.__idx__, graph_link.node, i) for i in idents]
+def link_ref_many(index, graph_link, idents):
+    return [index.ref(graph_link.node, i) for i in idents]
 
 
 _LINK_REF_MAKER = {
@@ -201,22 +198,21 @@ def _check_store_links(node, link, ids, result):
                             expected, result))
 
 
-def store_links(result, node, graph_link, query_link, ids, query_result):
+def store_links(index, node, graph_link, query_link, ids, query_result):
     _check_store_links(node, graph_link, ids, query_result)
 
     field_val = partial(_LINK_REF_MAKER[graph_link.type_enum],
-                        result, graph_link)
+                        index, graph_link)
     if node.name is not None:
         assert ids is not None
         if graph_link.requires is None:
             query_result = repeat(query_result, len(ids))
 
-        node_idx = result.__idx__[node.name]
+        node_idx = index[node.name]
         for i, res in zip(ids, query_result):
             node_idx[i][query_link.index_key] = field_val(res)
     else:
-        root = result.__idx__[Reference.ROOT][Reference.ROOT]
-        root[query_link.index_key] = field_val(query_result)
+        index.root[query_link.index_key] = field_val(query_result)
 
 
 def link_result_to_ids(from_list, link_type, result):
@@ -244,13 +240,13 @@ def link_result_to_ids(from_list, link_type, result):
 
 class Query(Workflow):
 
-    def __init__(self, queue, task_set, graph, pattern, ctx):
+    def __init__(self, queue, task_set, graph, query, ctx):
         self._queue = queue
         self._task_set = task_set
-        self.graph = graph
-        self._pattern = pattern
+        self._graph = graph
+        self._query = query
         self._ctx = ctx
-        self._result = Reference.__root__()
+        self._index = Index()
 
     def _submit(self, func, *args, **kwargs):
         if _do_pass_context(func):
@@ -258,11 +254,15 @@ class Query(Workflow):
         else:
             return self._task_set.submit(func, *args, **kwargs)
 
-    def result(self):
-        return Proxy(self._result, self._pattern)
+    def start(self):
+        self.process_node(self._graph.root, self._query, None)
 
-    def process_node(self, node, pattern, ids):
-        fields, links = SplitPattern(node).split(pattern)
+    def result(self):
+        self._index.finish()
+        return Proxy(self._index.root_ref(), self._query)
+
+    def process_node(self, node, query, ids):
+        fields, links = SplitQuery(node).split(query)
 
         to_func = {}
         from_func = defaultdict(list)
@@ -289,7 +289,7 @@ class Query(Workflow):
             to_dep[func] = dep
             self._queue.add_callback(dep, (
                 lambda _query_fields=query_fields, _proc=proc:
-                store_fields(self._result, node, _query_fields, ids, _proc())
+                store_fields(self._index, node, _query_fields, ids, _proc())
             ))
 
         # schedule link resolve
@@ -311,7 +311,7 @@ class Query(Workflow):
                 ))
 
     def _process_node_link(self, node, graph_link, query_link, ids):
-        reqs = link_reqs(self._result, node, graph_link, ids)
+        reqs = link_reqs(self._index, node, graph_link, ids)
         if graph_link.options:
             dep = self._submit(graph_link.func, reqs, query_link.options)
         else:
@@ -324,11 +324,11 @@ class Query(Workflow):
     def process_link(self, node, graph_link, query_link, ids, result):
         if inspect.isgenerator(result):
             result = list(result)
-        store_links(self._result, node, graph_link, query_link, ids, result)
+        store_links(self._index, node, graph_link, query_link, ids, result)
         from_list = ids is not None and graph_link.requires is not None
         to_ids = link_result_to_ids(from_list, graph_link.type_enum, result)
         if to_ids:
-            self.process_node(self.graph.nodes_map[graph_link.node],
+            self.process_node(self._graph.nodes_map[graph_link.node],
                               query_link.node, to_ids)
 
 
@@ -359,10 +359,12 @@ class Engine(object):
     def __init__(self, executor):
         self.executor = executor
 
-    def execute(self, graph, pattern, ctx=None):
-        query_ = InitOptions(graph).visit(pattern)
+    def execute(self, graph, query, ctx=None):
+        if ctx is None:
+            ctx = {}
+        query = InitOptions(graph).visit(query)
         queue = Queue(self.executor)
         task_set = queue.fork(None)
-        q = Query(queue, task_set, graph, query_, Context(ctx or {}))
-        q.process_node(q.graph.root, query_, None)
-        return self.executor.process(queue, q)
+        query_workflow = Query(queue, task_set, graph, query, Context(ctx))
+        query_workflow.start()
+        return self.executor.process(queue, query_workflow)

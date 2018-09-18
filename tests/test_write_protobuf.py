@@ -2,11 +2,12 @@ from __future__ import unicode_literals
 
 from google.protobuf.message import Message
 
+from hiku.query import merge
 from hiku.readers.simple import read
 from hiku.writers.protobuf import populate
 
 from .protobuf import result_pb2 as t
-from .test_result import GRAPH, RESULT
+from .test_result import GRAPH, get_result
 
 
 def msg(msg_type, data):
@@ -21,9 +22,10 @@ def msg(msg_type, data):
     return msg_
 
 
-def check_pb(query, expected):
+def check_pb(query_string, expected):
+    query = merge([read(query_string)])
     pb_root = t.Root()
-    populate(pb_root, GRAPH, RESULT, read(query))
+    populate(pb_root, GRAPH, get_result(query), query)
     assert pb_root == msg(t.Root, expected)
 
 

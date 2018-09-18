@@ -1,7 +1,8 @@
 from __future__ import unicode_literals
 
 from hiku.edn import loads
-from hiku.result import Result
+from hiku.query import Node
+from hiku.result import Index, Proxy
 from hiku.writers.simple import dumps
 
 
@@ -12,16 +13,17 @@ def check_writes(data, output):
 
 
 def test_simple():
-    result = Result()
-    result.root['f1'] = 1
-    a = result.root.setdefault('a', {})
-    a['f2'] = 2
-    b = result.index.setdefault('b', {})
-    b[1] = {'f3': 'bar1'}
-    b[2] = {'f3': 'bar2'}
-    b[3] = {'f3': 'bar3'}
-    result.root['l1'] = result.ref('b', 1)
-    result.root['l2'] = [result.ref('b', 2), result.ref('b', 3)]
+    index = Index()
+    index.root['f1'] = 1
+    index.root['a'] = {'f2': 2}
+    index['b'][1].update({'f3': 'bar1'})
+    index['b'][2].update({'f3': 'bar2'})
+    index['b'][3].update({'f3': 'bar3'})
+    index.root['l1'] = index.ref('b', 1)
+    index.root['l2'] = [index.ref('b', 2), index.ref('b', 3)]
+    index.finish()
+
+    result = Proxy(index.root_ref(), Node([]))
     check_writes(
         result,
         """
