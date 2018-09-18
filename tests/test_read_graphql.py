@@ -106,14 +106,14 @@ def test_field_args():
 
 def test_field_alias():
     check_read(
-        '{a: b}',
+        '{ a: b }',
         Node([Field('b', alias='a')]),
     )
 
 
 def test_link_alias():
     check_read(
-        '{a: b {c d}}',
+        '{ a: b { c d } }',
         Node([
             Link('b', Node([
                 Field('c'),

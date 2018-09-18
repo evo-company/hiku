@@ -462,7 +462,6 @@ def test_root_link_alias():
         query.Link('x', query.Node([query.Field('a')]), alias='x1'),
         query.Link('x', query.Node([query.Field('b')]), alias='x2'),
     ]))
-    print(result)
     check_result(result, {
         'x1': {'a': 1},
         'x2': {'b': 2},

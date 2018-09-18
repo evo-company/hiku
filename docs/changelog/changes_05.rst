@@ -4,6 +4,8 @@ Changes in 0.5
 Unreleased
 ~~~~~~~~~~
 
+  - Fixed possible conflicts in the result's index
+  - Implemented field alias support
   - Added Python 3.7 compatibility
   - Added ``Any`` type support for GraphQL introspection, this type also will
     be used for fields, which are incompatible with GraphQL's type system
