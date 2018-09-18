@@ -105,9 +105,22 @@ def test_field_args():
 
 
 def test_field_alias():
-    with pytest.raises(TypeError) as err:
-        read('{ glamors: foule }')
-    err.match('Field aliases are not supported')
+    check_read(
+        '{a: b}',
+        Node([Field('b', alias='a')]),
+    )
+
+
+def test_link_alias():
+    check_read(
+        '{a: b {c d}}',
+        Node([
+            Link('b', Node([
+                Field('c'),
+                Field('d'),
+            ]), alias='a'),
+        ]),
+    )
 
 
 def test_complex_field():

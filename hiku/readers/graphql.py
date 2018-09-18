@@ -127,16 +127,22 @@ class SelectionSetVisitMixin(object):
                 yield j
 
     def visit_Field(self, obj):
+        if obj.arguments:
+            options = {arg.name.value: self.visit(arg.value)
+                       for arg in obj.arguments}
+        else:
+            options = None
+
         if obj.alias is not None:
-            raise TypeError('Field aliases are not supported: {!r}'
-                            .format(obj))
-        options = {arg.name.value: self.visit(arg.value)
-                   for arg in obj.arguments}
+            alias = obj.alias.value
+        else:
+            alias = None
+
         if obj.selection_set is None:
-            yield Field(obj.name.value, options or None)
+            yield Field(obj.name.value, options=options, alias=alias)
         else:
             node = Node(list(self.visit(obj.selection_set)))
-            yield Link(obj.name.value, node, options or None)
+            yield Link(obj.name.value, node, options=options, alias=alias)
 
     def visit_Variable(self, obj):
         return self.lookup_variable(obj.name.value)
