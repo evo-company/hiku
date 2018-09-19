@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from ..edn import dumps as _dumps, TaggedElement, List
-from ..result import Reference, Index
+from ..result import Reference, ROOT
 from ..compat import text_type
 
 
@@ -22,9 +22,9 @@ def _transform(obj):
 
 
 def dumps(result, ensure_ascii=True):
-    data = _transform(result.__ref__.index.root)
-    for name, value in result.__ref__.index.items():
-        if name != Index.ROOT:
+    data = _transform(result.__idx__.root)
+    for name, value in result.__idx__.items():
+        if name != ROOT.node:
             data[name] = {ident: _transform(val)
                           for ident, val in value.items()}
     return _dumps(data, default=default, ensure_ascii=ensure_ascii)

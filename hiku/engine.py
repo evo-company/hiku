@@ -6,7 +6,7 @@ from collections import defaultdict, Sequence
 
 from . import query as hiku_query
 from .graph import Link, Maybe, One, Many, Nothing, Field
-from .result import Proxy, Index
+from .result import Proxy, Index, ROOT, Reference
 from .executors.queue import Workflow, Queue
 
 
@@ -140,20 +140,20 @@ def link_reqs(index, node, link, ids):
         return index.root[link.requires]
 
 
-def link_ref_maybe(index, graph_link, ident):
+def link_ref_maybe(graph_link, ident):
     if ident is Nothing:
         return None
     else:
-        return index.ref(graph_link.node, ident)
+        return Reference(graph_link.node, ident)
 
 
-def link_ref_one(index, graph_link, ident):
+def link_ref_one(graph_link, ident):
     assert ident is not Nothing
-    return index.ref(graph_link.node, ident)
+    return Reference(graph_link.node, ident)
 
 
-def link_ref_many(index, graph_link, idents):
-    return [index.ref(graph_link.node, i) for i in idents]
+def link_ref_many(graph_link, idents):
+    return [Reference(graph_link.node, i) for i in idents]
 
 
 _LINK_REF_MAKER = {
@@ -201,8 +201,7 @@ def _check_store_links(node, link, ids, result):
 def store_links(index, node, graph_link, query_link, ids, query_result):
     _check_store_links(node, graph_link, ids, query_result)
 
-    field_val = partial(_LINK_REF_MAKER[graph_link.type_enum],
-                        index, graph_link)
+    field_val = partial(_LINK_REF_MAKER[graph_link.type_enum], graph_link)
     if node.name is not None:
         assert ids is not None
         if graph_link.requires is None:
@@ -259,7 +258,7 @@ class Query(Workflow):
 
     def result(self):
         self._index.finish()
-        return Proxy(self._index.root_ref(), self._query)
+        return Proxy(self._index, ROOT, self._query)
 
     def process_node(self, node, query, ids):
         fields, links = SplitQuery(node).split(query)

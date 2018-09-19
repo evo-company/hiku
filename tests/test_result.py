@@ -8,7 +8,7 @@ from hiku import query as hiku_query
 from hiku.query import merge
 from hiku.types import Record, String, Optional, Sequence, TypeRef
 from hiku.graph import Graph, Link, Node, Field, Root
-from hiku.result import denormalize, Index, Proxy, Reference
+from hiku.result import denormalize, Index, Proxy, Reference, ROOT
 from hiku.readers.simple import read
 
 
@@ -85,56 +85,47 @@ INDEX.root.update({
         'water': [cthulhu_data, zoth_ommog_data],
     },
     'barbary': [{'betty': 'japheth_ophir'}],
-    'flossy': {
-        'demoing': 'judaea_bhutani',
-        'anoxic': {'peeps': 'peterel_repave'},
-        'seggen': {'pensive': 'quebec_junkman'},
-        'necker': [{'carney': 'calla_pedway'}],
-        'daur': INDEX.ref('cosies', 1),
-        'peafowl': [INDEX.ref('cosies', 3),
-                    INDEX.ref('cosies', 2)],
-        'carf': None,
-    },
-    'zareeba': INDEX.ref('cosies', 2),
-    'crowdie': [INDEX.ref('cosies', 1),
-                INDEX.ref('cosies', 3)],
-    'moujik': INDEX.ref('saunas', 7),
+    'flossy': Reference('Flossy', 8),
+    'zareeba': Reference('cosies', 2),
+    'crowdie': [Reference('cosies', 1),
+                Reference('cosies', 3)],
+    'moujik': Reference('saunas', 7),
 })
 INDEX['cosies'][1].update({
     'nerv': 'deist_vined',
     'doghead': 'satsuma_mks',
-    'mistic': INDEX.ref('kir', 4),
-    'biopics': [INDEX.ref('kir', 5), INDEX.ref('kir', 6)],
+    'mistic': Reference('kir', 4),
+    'biopics': [Reference('kir', 5), Reference('kir', 6)],
 })
 INDEX['cosies'][2].update({
     'nerv': 'calgary_badass',
     'doghead': 'kelson_popple',
-    'mistic': INDEX.ref('kir', 5),
-    'biopics': [INDEX.ref('kir', 6), INDEX.ref('kir', 4)],
+    'mistic': Reference('kir', 5),
+    'biopics': [Reference('kir', 6), Reference('kir', 4)],
 })
 INDEX['cosies'][3].update({
     'nerv': 'orkneys_kumiss',
     'doghead': 'cached_jello',
-    'mistic': INDEX.ref('kir', 6),
-    'biopics': [INDEX.ref('kir', 4), INDEX.ref('kir', 5)],
+    'mistic': Reference('kir', 6),
+    'biopics': [Reference('kir', 4), Reference('kir', 5)],
 })
 INDEX['kir'][4].update({
     'panton': 'atajo_chow',
     'tamsin': 'gimmes_oleum',
-    'bahut': INDEX.ref('cosies', 1),
-    'paramo': [INDEX.ref('cosies', 2), INDEX.ref('cosies', 3)],
+    'bahut': Reference('cosies', 1),
+    'paramo': [Reference('cosies', 2), Reference('cosies', 3)],
 })
 INDEX['kir'][5].update({
     'panton': 'defina_ungot',
     'tamsin': 'beefs_heaters',
-    'bahut': INDEX.ref('cosies', 2),
-    'paramo': [INDEX.ref('cosies', 3), INDEX.ref('cosies', 1)],
+    'bahut': Reference('cosies', 2),
+    'paramo': [Reference('cosies', 3), Reference('cosies', 1)],
 })
 INDEX['kir'][6].update({
     'panton': 'jnd_toped',
     'tamsin': 'meccas_subdean',
-    'bahut': INDEX.ref('cosies', 3),
-    'paramo': [INDEX.ref('cosies', 1), INDEX.ref('cosies', 2)],
+    'bahut': Reference('cosies', 3),
+    'paramo': [Reference('cosies', 1), Reference('cosies', 2)],
 })
 INDEX['saunas'][7].update({
     'went': {'changer': 'cheerly_jpg'},
@@ -142,11 +133,20 @@ INDEX['saunas'][7].update({
     'matwork': [{'bashaw': 'bukhoro_zins'},
                 {'bashaw': 'worms_gemman'}],
 })
+INDEX['Flossy'][8].update({
+    'demoing': 'judaea_bhutani',
+    'anoxic': {'peeps': 'peterel_repave'},
+    'seggen': {'pensive': 'quebec_junkman'},
+    'necker': [{'carney': 'calla_pedway'}],
+    'daur': Reference('cosies', 1),
+    'peafowl': [Reference('cosies', 3), Reference('cosies', 2)],
+    'carf': None,
+})
 INDEX.finish()
 
 
 def get_result(query):
-    return Proxy(INDEX.root_ref(), query)
+    return Proxy(INDEX, ROOT, query)
 
 
 def check_result(query_string, result):
@@ -307,8 +307,8 @@ def test_non_requested_field_item():
     index['SomeNode'][42]['foo'] = 'bar'
     index.finish()
 
-    ref = Reference(index, 'SomeNode', 42)
-    proxy = Proxy(ref, hiku_query.Node([hiku_query.Field('foo')]))
+    ref = Reference('SomeNode', 42)
+    proxy = Proxy(index, ref, hiku_query.Node([hiku_query.Field('foo')]))
 
     assert proxy.foo == 'bar'
     with pytest.raises(KeyError) as err:
@@ -321,8 +321,8 @@ def test_non_requested_field_attr():
     index['SomeNode'][42]['foo'] = 'bar'
     index.finish()
 
-    ref = Reference(index, 'SomeNode', 42)
-    proxy = Proxy(ref, hiku_query.Node([hiku_query.Field('foo')]))
+    ref = Reference('SomeNode', 42)
+    proxy = Proxy(index, ref, hiku_query.Node([hiku_query.Field('foo')]))
 
     assert proxy.foo == 'bar'
     with pytest.raises(AttributeError) as err:
@@ -334,8 +334,8 @@ def test_missing_object():
     index = Index()
     index.finish()
 
-    ref = Reference(index, 'SomeNode', 'unknown')
-    proxy = Proxy(ref, hiku_query.Node([hiku_query.Field('foo')]))
+    ref = Reference('SomeNode', 'unknown')
+    proxy = Proxy(index, ref, hiku_query.Node([hiku_query.Field('foo')]))
 
     with pytest.raises(AssertionError) as err:
         proxy.foo
@@ -347,8 +347,8 @@ def test_missing_field():
     index['SomeNode'][42].update({})
     index.finish()
 
-    ref = Reference(index, 'SomeNode', 42)
-    proxy = Proxy(ref, hiku_query.Node([hiku_query.Field('foo')]))
+    ref = Reference('SomeNode', 42)
+    proxy = Proxy(index, ref, hiku_query.Node([hiku_query.Field('foo')]))
 
     with pytest.raises(AssertionError) as err:
         proxy.foo

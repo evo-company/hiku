@@ -26,21 +26,28 @@ from .graph import Link as GraphLink, Field as GraphField, Many, Maybe
 from .utils import cached_property
 
 
+class Reference(object):
+    __slots__ = ('node', 'ident')
+
+    def __init__(self, node, ident):
+        self.node = node
+        self.ident = ident
+
+    def __repr__(self):
+        return '<{}[{!r}]>'.format(self.node, self.ident)
+
+
+ROOT = Reference('__root__', '__root__')
+
+
 class Index(defaultdict):
-    ROOT = '__root__'
 
     def __init__(self):
         super(Index, self).__init__(lambda: defaultdict(dict))
 
     @cached_property
     def root(self):
-        return self[self.ROOT][self.ROOT]
-
-    def ref(self, node, ident):
-        return Reference(self, node, ident)
-
-    def root_ref(self):
-        return Reference(self, self.ROOT, self.ROOT)
+        return self[ROOT.node][ROOT.ident]
 
     def finish(self):
         for value in self.values():
@@ -48,55 +55,45 @@ class Index(defaultdict):
         self.default_factory = None
 
 
-class Reference(object):
-    __slots__ = ('index', 'node', 'ident')
+class Proxy(object):
+    __slots__ = ('__idx__', '__ref__', '__node__')
 
-    def __init__(self, index, node, ident):
-        self.index = index
-        self.node = node
-        self.ident = ident
+    def __init__(self, index, reference, node):
+        self.__idx__ = index
+        self.__ref__ = reference
+        self.__node__ = node
 
     def __getitem__(self, item):
         try:
-            obj = self.index[self.node][self.ident]
+            field = self.__node__.result_map[item]
+        except KeyError:
+            raise KeyError("Field {!r} wasn't requested in the query"
+                           .format(item))
+
+        try:
+            obj = self.__idx__[self.__ref__.node][self.__ref__.ident]
         except KeyError:
             raise AssertionError('Object {}[{!r}] is missing in the index'
-                                 .format(self.node, self.ident))
+                                 .format(self.__ref__.node, self.__ref__.ident))
         try:
-            return obj[item]
+            value = obj[field.index_key]
         except KeyError:
             raise AssertionError('Field {}[{!r}].{} is missing in the index'
-                                 .format(self.node, self.ident, item))
+                                 .format(self.__ref__.node, self.__ref__.ident,
+                                         field.index_key))
 
-
-class Proxy(object):
-    __slots__ = ('__ref__', '__node__')
-
-    def __init__(self, ref, query_node):
-        self.__ref__ = ref
-        self.__node__ = query_node
-
-    def __wrap__(self, query_obj, value):
-        if isinstance(query_obj, Field):
+        if isinstance(field, Field):
             return value
         elif isinstance(value, Reference):
-            return self.__class__(value, query_obj.node)
+            return self.__class__(self.__idx__, value, field.node)
         elif (
             isinstance(value, list) and value
             and isinstance(value[0], Reference)
         ):
-            return [self.__class__(ref, query_obj.node) for ref in value]
+            return [self.__class__(self.__idx__, ref, field.node)
+                    for ref in value]
         else:
             return value
-
-    def __getitem__(self, item):
-        try:
-            obj = self.__node__.result_map[item]
-        except KeyError:
-            raise KeyError("Field {!r} wasn't requested in the query"
-                           .format(item))
-        value = self.__ref__[obj.index_key]
-        return self.__wrap__(obj, value)
 
     def __getattr__(self, name):
         try:
