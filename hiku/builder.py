@@ -31,6 +31,22 @@ Q = Handle()
 
 
 def build(items):
+    """Builds a query
+
+    Example:
+
+    .. code-block:: python
+
+        query = build([
+            Q.foo,
+            Q.bar(arg=42)[
+                Q.baz,
+            ],
+        ])
+
+    :param items: list of fields
+    :return: ready to execute query
+    """
     query_items = []
     for handle in items:
         assert handle.__field_name__ is not None
