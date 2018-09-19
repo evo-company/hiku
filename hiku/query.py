@@ -185,18 +185,36 @@ class Node(object):
         return visitor.visit_node(self)
 
 
+def _field_eq(a, b):
+    return a.name == b.name and a.options == b.options
+
+
 def _merge(nodes):
-    seen = set()
+    fields = {}
+    links = {}
     to_merge = OrderedDict()
     for field in chain.from_iterable(e.fields for e in nodes):
         if field.__class__ is Link:
-            to_merge.setdefault(field.name, []).append(field.node)
+            if field.result_key in links:
+                if not _field_eq(field, links[field.result_key]):
+                    raise ValueError('Found distinct links with the same '
+                                     'resulting name: {!r}'.format(field))
+                to_merge[field.result_key].append(field.node)
+            else:
+                links[field.result_key] = field
+                to_merge[field.result_key] = [field.node]
         else:
-            if field.name not in seen:
-                seen.add(field.name)
+            if field.result_key in fields:
+                if not _field_eq(field, fields[field.result_key]):
+                    raise ValueError('Found distinct fields with the same '
+                                     'resulting name: {!r}'.format(field))
+            else:
+                fields[field.result_key] = field
                 yield field
-    for name, values in to_merge.items():
-        yield Link(name, Node(list(_merge(values))))
+    for result_key, values in to_merge.items():
+        link = links[result_key]
+        yield Link(link.name, Node(list(_merge(values))),
+                   options=link.options, alias=link.alias)
 
 
 def merge(nodes):

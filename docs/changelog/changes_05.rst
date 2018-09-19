@@ -4,6 +4,7 @@ Changes in 0.5
 Unreleased
 ~~~~~~~~~~
 
+  - Fixed query merge functionality to preserve options of the merged links
   - Fixed possible conflicts in the result's index
   - Implemented field alias support
   - Added Python 3.7 compatibility
