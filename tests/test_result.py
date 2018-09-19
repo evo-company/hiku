@@ -353,3 +353,41 @@ def test_missing_field():
     with pytest.raises(AssertionError) as err:
         proxy.foo
     err.match("Field SomeNode\[42\]\.foo is missing in the index")
+
+
+def test_denormalize_with_alias():
+    index = Index()
+    index.root.update({
+        'x': Reference('X', 'xN'),
+    })
+    index['X']['xN'].update({
+        'a': 1,
+        'b': 2,
+    })
+    index.finish()
+
+    graph = Graph([
+        Node('X', [
+            Field('a', None, None),
+            Field('b', None, None),
+        ]),
+        Root([
+            Link('x', TypeRef['X'], lambda: 'xN', requires=None),
+        ]),
+    ])
+
+    query = hiku_query.Node([
+        hiku_query.Link('x', hiku_query.Node([
+            hiku_query.Field('a', alias='a1'),
+        ]), alias='x1'),
+        hiku_query.Link('x', hiku_query.Node([
+            hiku_query.Field('b', alias='b1'),
+        ]), alias='x2'),
+    ])
+
+    result = Proxy(index, ROOT, query)
+
+    assert denormalize(graph, result, query) == {
+        'x1': {'a1': 1},
+        'x2': {'b1': 2},
+    }

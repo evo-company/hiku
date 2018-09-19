@@ -116,8 +116,8 @@ def _denormalize_type(type_, result, query_obj):
             assert isinstance(type_, RecordMeta), type(type_)
             field_types = type_.__field_types__
             return {
-                f.name: _denormalize_type(
-                    field_types[f.name], result[f.name], f)
+                f.name: _denormalize_type(field_types[f.name],
+                                          result[f.name], f)
                 for f in query_obj.node.fields
             }
     assert False, (type_, query_obj)
@@ -125,9 +125,11 @@ def _denormalize_type(type_, result, query_obj):
 
 def _denormalize(graph, graph_obj, result, query_obj):
     if isinstance(query_obj, Node):
-        return {f.name: _denormalize(graph, graph_obj.fields_map[f.name],
-                                     result[f.name], f)
-                for f in query_obj.fields}
+        return {
+            f.result_key: _denormalize(graph, graph_obj.fields_map[f.name],
+                                       result[f.result_key], f)
+            for f in query_obj.fields
+        }
 
     elif isinstance(query_obj, Field):
         return result
