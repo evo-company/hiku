@@ -4,8 +4,8 @@ from hiku.builder import build, Q
 
 def test():
     query = build([
-        Q.tyan,
-        Q.turlock[
+        Q.aliased_tyan << Q.tyan,
+        Q.aliased_turlock << Q.turlock[
             Q.gange
         ],
         Q.tiber(ramsons='defaces')[
@@ -14,8 +14,8 @@ def test():
         ],
     ])
     assert query == Node([
-        Field('tyan'),
-        Link('turlock', Node([Field('gange')])),
+        Field('tyan', alias='aliased_tyan'),
+        Link('turlock', Node([Field('gange')]), alias='aliased_turlock'),
         Link('tiber', Node([
             Field('decifer', options={'botches': 'auxerre'}),
             Field('exocet', options={'brogues': 'hygiea'}),

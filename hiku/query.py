@@ -50,15 +50,6 @@ from collections import OrderedDict
 from .utils import cached_property
 
 
-def _name_repr(name, options):
-    if options is None:
-        return ':{}'.format(name)
-    else:
-        options_repr = ' '.join((':{} {!r}'.format(k, v)
-                                 for k, v in options.items()))
-        return '(:{} {{{}}})'.format(name, options_repr)
-
-
 def _compute_hash(obj):
     if isinstance(obj, dict):
         return hash(tuple((_compute_hash(k), _compute_hash(v))
@@ -106,7 +97,13 @@ class Field(FieldBase):
         self.alias = alias
 
     def __repr__(self):
-        return _name_repr(self.name, self.options)
+        return (
+            '{self.__class__.__name__}('
+            '{self.name!r}, '
+            'options={self.options!r}, '
+            'alias={self.alias!r})'
+            .format(self=self)
+        )
 
     def __eq__(self, other):
         return (self.__class__ is other.__class__
@@ -137,8 +134,13 @@ class Link(FieldBase):
         self.alias = alias
 
     def __repr__(self):
-        return '{{{} {!r}}}'.format(_name_repr(self.name, self.options),
-                                    self.node)
+        return (
+            '{self.__class__.__name__}('
+            '{self.name!r}, {self.node!r}, '
+            'options={self.options!r}, '
+            'alias={self.alias!r})'
+            .format(self=self)
+        )
 
     def __eq__(self, other):
         return (self.__class__ is other.__class__
@@ -172,7 +174,7 @@ class Node(object):
         return OrderedDict((f.result_key, f) for f in self.fields)
 
     def __repr__(self):
-        return '[{}]'.format(' '.join(map(repr, self.fields)))
+        return '{self.__class__.__name__}({self.fields!r})'.format(self=self)
 
     def __eq__(self, other):
         return (self.__class__ is other.__class__
