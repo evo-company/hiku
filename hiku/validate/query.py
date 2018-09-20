@@ -4,7 +4,7 @@ from contextlib import contextmanager
 
 from ..types import AbstractTypeVisitor
 from ..query import QueryVisitor
-from ..graph import GraphVisitor, Node, Field, Link, Nothing
+from ..graph import GraphVisitor, Field, Link, Nothing
 from ..compat import text_type
 
 from .errors import Errors
@@ -240,6 +240,10 @@ class _RecordFieldsValidator(QueryVisitor):
         raise AssertionError('Node is not expected here')
 
 
+def _field_eq(a, b):
+    return a.name == b.name and a.options == b.options
+
+
 class QueryValidator(QueryVisitor):
 
     def __init__(self, graph):
@@ -290,21 +294,25 @@ class QueryValidator(QueryVisitor):
             finally:
                 self.path.pop()
 
-        elif isinstance(graph_obj, Node):
-            linked_node = graph_obj
-            if obj.options is not None:
-                self.errors.report('Options are not possible here')
-            self.path.append(linked_node)
-            try:
-                self.visit(obj.node)
-            finally:
-                self.path.pop()
-
         elif graph_obj is _undefined:
             self.errors.report('Link "{}" is not implemented in the "{}" node'
                                .format(obj.name, node.name or 'root'))
         else:
             raise TypeError(repr(graph_obj))
+
+    def visit_node(self, obj):
+        fields = {}
+        for field in obj.fields:
+            seen = fields.get(field.result_key)
+            if seen is not None:
+                if not _field_eq(field, seen):
+                    node = self.path[-1].name or 'root'
+                    self.errors.report('Found distinct fields with the same '
+                                       'resulting name "{}" for the node "{}"'
+                                       .format(field.result_key, node))
+            else:
+                fields[field.result_key] = field
+            self.visit(field)
 
 
 def validate(graph, query):

@@ -381,3 +381,87 @@ def test_record_option_type_errors():
         ['Invalid value for option "{field}:lawing", '
          '"Invalid" instead of Integer'],
     )
+
+
+def test_distinct_by_name_fields():
+    graph = Graph([
+        Node('X', [
+            Field('a', None, None),
+            Field('b', None, None),
+        ]),
+        Root([
+            Link('x', TypeRef['X'], None, requires=None),
+        ]),
+    ])
+    errors = validate(graph, q.Node([
+        q.Link('x', q.Node([
+            q.Field('a'),
+            q.Field('b', alias='a'),
+        ])),
+    ]))
+    assert errors == [
+        'Found distinct fields with the same resulting name "a" for the '
+        'node "X"',
+    ]
+
+
+def test_distinct_by_options_fields():
+    graph = Graph([
+        Node('X', [
+            Field('a', None, None,
+                  options=[Option('e', Optional[Integer], default=None)]),
+        ]),
+        Root([
+            Link('x', TypeRef['X'], None, requires=None),
+        ]),
+    ])
+    errors = validate(graph, q.Node([
+        q.Link('x', q.Node([
+            q.Field('a'),
+            q.Field('a', options={'e': 1}),
+        ])),
+    ]))
+    assert errors == [
+        'Found distinct fields with the same resulting name "a" for the '
+        'node "X"',
+    ]
+
+
+def test_distinct_by_name_links():
+    graph = Graph([
+        Node('X', [
+            Field('a', None, None),
+        ]),
+        Root([
+            Link('x1', TypeRef['X'], None, requires=None),
+            Link('x2', TypeRef['X'], None, requires=None),
+        ]),
+    ])
+    errors = validate(graph, q.Node([
+        q.Link('x1', q.Node([q.Field('a')])),
+        q.Link('x2', q.Node([q.Field('a')]), alias='x1'),
+    ]))
+    assert errors == [
+        'Found distinct fields with the same resulting name "x1" for the '
+        'node "root"'
+    ]
+
+
+def test_distinct_by_options_links():
+    graph = Graph([
+        Node('X', [
+            Field('a', None, None),
+        ]),
+        Root([
+            Link('x', TypeRef['X'], None, requires=None,
+                 options=[Option('e', Optional[Integer], default=None)]),
+        ]),
+    ])
+    errors = validate(graph, q.Node([
+        q.Link('x', q.Node([q.Field('a')])),
+        q.Link('x', q.Node([q.Field('a')]), options={'e': 1}),
+    ]))
+    assert errors == [
+        'Found distinct fields with the same resulting name "x" for the '
+        'node "root"'
+    ]
