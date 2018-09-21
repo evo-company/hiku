@@ -2,12 +2,13 @@ import re
 
 import pytest
 
-from hiku import query
+from hiku import query as q
 from hiku.graph import Graph, Node, Field, Link, Option, Root
 from hiku.types import Record, Sequence, Integer, Optional, TypeRef
-from hiku.engine import Engine, pass_context, Context
+from hiku.engine import Engine, pass_context, Context, Query
 from hiku.builder import build, Q
 from hiku.executors.sync import SyncExecutor
+from hiku.executors.queue import Queue
 
 from .base import check_result, ANY, Mock
 
@@ -46,8 +47,8 @@ def test_root_fields():
     result = execute(graph, build([Q.a, Q.b]))
     check_result(result, {'a': 'boiardo', 'b': 'isolde'})
 
-    f1.assert_called_once_with([query.Field('a')])
-    f2.assert_called_once_with([query.Field('b')])
+    f1.assert_called_once_with([q.Field('a')])
+    f2.assert_called_once_with([q.Field('b')])
 
 
 def test_node_fields():
@@ -69,8 +70,8 @@ def test_node_fields():
     check_result(result, {'d': [{'b': 'harkis', 'c': 'slits'}]})
 
     f1.assert_called_once_with()
-    f2.assert_called_once_with([query.Field('b')], [1])
-    f3.assert_called_once_with([query.Field('c')], [1])
+    f2.assert_called_once_with([q.Field('b')], [1])
+    f3.assert_called_once_with([q.Field('c')], [1])
 
 
 def test_node_complex_fields():
@@ -99,13 +100,13 @@ def test_node_complex_fields():
 
     f1.assert_called_once_with()
     f2.assert_called_once_with(
-        [query.Link('b', query.Node([query.Field('f')]))], [1],
+        [q.Link('b', q.Node([q.Field('f')]))], [1],
     )
     f3.assert_called_once_with(
-        [query.Link('c', query.Node([query.Field('g')]))], [1],
+        [q.Link('c', q.Node([q.Field('g')]))], [1],
     )
     f4.assert_called_once_with(
-        [query.Link('d', query.Node([query.Field('h')]))], [1],
+        [q.Link('d', q.Node([q.Field('h')]))], [1],
     )
 
 
@@ -132,11 +133,11 @@ def test_links():
     check_result(result, {'b': [{'d': 'boners'}],
                           'c': [{'e': 'julio'}]})
 
-    fi.assert_called_once_with([query.Field('i')])
+    fi.assert_called_once_with([q.Field('i')])
     fb.assert_called_once_with()
     fc.assert_called_once_with(3)
-    fd.assert_called_once_with([query.Field('d')], [1])
-    fe.assert_called_once_with([query.Field('e')], [2])
+    fd.assert_called_once_with([q.Field('d')], [1])
+    fe.assert_called_once_with([q.Field('e')], [2])
 
 
 @pytest.mark.parametrize('option, args, result', OPTION_BEHAVIOUR)
@@ -149,7 +150,7 @@ def test_field_option_valid(option, args, result):
     ])
     check_result(execute(graph, build([Q.auslese(**args)])),
                  {'auslese': 'baking'})
-    f.assert_called_once_with([query.Field('auslese', options=result)])
+    f.assert_called_once_with([q.Field('auslese', options=result)])
 
 
 def test_field_option_unknown():
@@ -186,7 +187,7 @@ def test_link_option_valid(option, args, result):
     check_result(execute(graph, build([Q.b(**args)[Q.c]])),
                  {'b': [{'c': 'aunder'}]})
     f1.assert_called_once_with(result)
-    f2.assert_called_once_with([query.Field('c')], [1])
+    f2.assert_called_once_with([q.Field('c')], [1])
 
 
 def test_link_option_unknown():
@@ -223,7 +224,7 @@ def test_pass_context_field():
     check_result(execute(graph, build([Q.a]), {'vetch': 'shadier'}),
                  {'a': 'boiardo'})
 
-    f.assert_called_once_with(ANY, [query.Field('a')])
+    f.assert_called_once_with(ANY, [q.Field('a')])
 
     ctx = f.call_args[0][0]
     assert isinstance(ctx, Context)
@@ -250,7 +251,7 @@ def test_pass_context_link():
     check_result(result, {'c': [{'b': 'boners'}]})
 
     f1.assert_called_once_with(ANY)
-    f2.assert_called_once_with([query.Field('b')], [1])
+    f2.assert_called_once_with([q.Field('b')], [1])
 
     ctx = f1.call_args[0][0]
     assert isinstance(ctx, Context)
@@ -282,7 +283,7 @@ def test_node_link_without_requirements():
 
     f1.assert_called_once_with()
     f2.assert_called_once_with()
-    f3.assert_called_once_with([query.Field('c')], [2])
+    f3.assert_called_once_with([q.Field('c')], [2])
 
 
 @pytest.mark.parametrize('value', [1, [], [1, 2]])
@@ -409,9 +410,9 @@ def test_root_field_alias():
             Field('a', None, root_fields),
         ]),
     ])
-    result = execute(graph, query.Node([
-        query.Field('a', alias='a1'),
-        query.Field('a', alias='a2'),
+    result = execute(graph, q.Node([
+        q.Field('a', alias='a1'),
+        q.Field('a', alias='a2'),
     ]))
     check_result(result, {'a1': 42, 'a2': 42})
 
@@ -431,10 +432,10 @@ def test_node_field_alias():
             Link('x', TypeRef['X'], lambda: 'x1', requires=None),
         ]),
     ])
-    result = execute(graph, query.Node([
-        query.Link('x', query.Node([
-            query.Field('a', alias='a1'),
-            query.Field('a', alias='a2'),
+    result = execute(graph, q.Node([
+        q.Link('x', q.Node([
+            q.Field('a', alias='a1'),
+            q.Field('a', alias='a2'),
         ])),
     ]))
     check_result(result, {'x': {'a1': 42, 'a2': 42}})
@@ -458,9 +459,9 @@ def test_root_link_alias():
             Link('x', TypeRef['X'], lambda: 'xN', requires=None),
         ]),
     ])
-    result = execute(graph, query.Node([
-        query.Link('x', query.Node([query.Field('a')]), alias='x1'),
-        query.Link('x', query.Node([query.Field('b')]), alias='x2'),
+    result = execute(graph, q.Node([
+        q.Link('x', q.Node([q.Field('a')]), alias='x1'),
+        q.Link('x', q.Node([q.Field('b')]), alias='x2'),
     ]))
     check_result(result, {
         'x1': {'a': 1},
@@ -493,10 +494,10 @@ def test_node_link_alias():
             Link('x', TypeRef['X'], lambda: 'xN', requires=None),
         ]),
     ])
-    result = execute(graph, query.Node([
-        query.Link('x', query.Node([
-            query.Link('y', query.Node([query.Field('a')]), alias='y1'),
-            query.Link('y', query.Node([query.Field('b')]), alias='y2'),
+    result = execute(graph, q.Node([
+        q.Link('x', q.Node([
+            q.Link('y', q.Node([q.Field('a')]), alias='y1'),
+            q.Link('y', q.Node([q.Field('b')]), alias='y2'),
         ])),
     ]))
     check_result(result, {
@@ -525,9 +526,9 @@ def test_conflicting_fields():
         ]),
     ])
 
-    result = execute(graph, query.Node([
-        query.Link('x1', query.Node([query.Field('a', options={'k': 1})])),
-        query.Link('x2', query.Node([query.Field('a', options={'k': 2})])),
+    result = execute(graph, q.Node([
+        q.Link('x1', q.Node([q.Field('a', options={'k': 1})])),
+        q.Link('x2', q.Node([q.Field('a', options={'k': 2})])),
     ]))
     check_result(result, {
         'x1': {'a': '42-1'},
@@ -566,17 +567,76 @@ def test_conflicting_links():
             Link('x2', TypeRef['X'], lambda: 'xN', requires=None),
         ]),
     ])
-    result = execute(graph, query.Node([
-        query.Link('x1', query.Node([
-            query.Link('y', query.Node([query.Field('a')]),
-                       options={'exclude': ['yA']}),
+    result = execute(graph, q.Node([
+        q.Link('x1', q.Node([
+            q.Link('y', q.Node([q.Field('a')]),
+                   options={'exclude': ['yA']}),
         ])),
-        query.Link('x2', query.Node([
-            query.Link('y', query.Node([query.Field('b')]),
-                       options={'exclude': ['yC']}),
+        q.Link('x2', q.Node([
+            q.Link('y', q.Node([q.Field('b')]),
+                   options={'exclude': ['yC']}),
         ])),
     ]))
     check_result(result, {
         'x1': {'y': [{'a': 3}, {'a': 5}]},
         'x2': {'y': [{'b': 2}, {'b': 4}]},
     })
+
+
+def test_process_node_seq():
+    ordering = []
+
+    def f1(fields):
+        names = tuple(f.name for f in fields)
+        ordering.append(names)
+        return names
+
+    def f2(fields):
+        return f1(fields)
+
+    def f3():
+        ordering.append('x1')
+        return 'x1'
+
+    def f4(fields, ids):
+        for i in ids:
+            yield ['{}-e'.format(i) for _ in fields]
+
+    graph = Graph([
+        Node('X', [
+            Field('e', None, f4),
+        ]),
+        Root([
+            Field('a', None, f1),
+            Field('b', None, f1),
+            Field('c', None, f2),
+            Field('d', None, f2),
+            Link('x', TypeRef['X'], f3, requires=None),
+        ]),
+    ])
+    query = q.Node([
+        q.Field('d'),
+        q.Field('b'),
+        q.Field('a'),
+        q.Link('x', q.Node([
+            q.Field('e'),
+        ])),
+        q.Field('c'),
+    ])
+
+    executor = SyncExecutor()
+    queue = Queue(executor)
+    task_set = queue.fork(None)
+    query_workflow = Query(queue, task_set, graph, query, Context({}))
+    query_workflow.process_node_seq(graph.root, query, None)
+    result = executor.process(queue, query_workflow)
+    check_result(result, {
+        'a': 'a',
+        'b': 'b',
+        'c': 'c',
+        'd': 'd',
+        'x': {
+            'e': 'x1-e',
+        },
+    })
+    assert ordering == [('d',), ('b', 'a'), 'x1', ('c',)]

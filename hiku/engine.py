@@ -61,13 +61,13 @@ class InitOptions(hiku_query.QueryVisitor):
 
 class SplitQuery(hiku_query.QueryVisitor):
 
-    def __init__(self, node):
-        self._node = node
+    def __init__(self, graph_node):
+        self._node = graph_node
         self._fields = []
         self._links = []
 
-    def split(self, node):
-        for item in node.fields:
+    def split(self, query_node):
+        for item in query_node.fields:
             self.visit(item)
         return self._fields, self._links
 
@@ -75,19 +75,55 @@ class SplitQuery(hiku_query.QueryVisitor):
         raise ValueError('Unexpected value: {!r}'.format(obj))
 
     def visit_field(self, obj):
-        self._fields.append((self._node.fields_map[obj.name], obj))
+        graph_obj = self._node.fields_map[obj.name]
+        func = getattr(graph_obj.func, '__subquery__', graph_obj.func)
+        self._fields.append((func, graph_obj, obj))
 
     def visit_link(self, obj):
         graph_obj = self._node.fields_map[obj.name]
         if isinstance(graph_obj, Link):
             if graph_obj.requires:
-                self._fields.append((self._node.fields_map[graph_obj.requires],
-                                     hiku_query.Field(graph_obj.requires)))
+                self.visit(hiku_query.Field(graph_obj.requires))
             self._links.append((graph_obj, obj))
         else:
             assert isinstance(graph_obj, Field), type(graph_obj)
             # `obj` here is a link, but this link is treated as a complex field
-            self._fields.append((graph_obj, obj))
+            self._fields.append((graph_obj.func, graph_obj, obj))
+
+
+class GroupQuery(hiku_query.QueryVisitor):
+
+    def __init__(self, node):
+        self._node = node
+        self._funcs = []
+        self._groups = []
+        self._current_func = None
+
+    def group(self, node):
+        for item in node.fields:
+            self.visit(item)
+        return list(zip(self._funcs, self._groups))
+
+    def visit_node(self, obj):
+        raise ValueError('Unexpected value: {!r}'.format(obj))
+
+    def visit_field(self, obj):
+        graph_obj = self._node.fields_map[obj.name]
+        func = getattr(graph_obj.func, '__subquery__', graph_obj.func)
+        if func == self._current_func:
+            self._groups[-1].append((graph_obj, obj))
+        else:
+            self._groups.append([(graph_obj, obj)])
+            self._funcs.append(func)
+            self._current_func = func
+
+    def visit_link(self, obj):
+        graph_obj = self._node.fields_map[obj.name]
+        if graph_obj.requires:
+            self.visit(hiku_query.Field(graph_obj.requires))
+        self._groups.append((graph_obj, obj))
+        self._funcs.append(graph_obj.func)
+        self._current_func = None
 
 
 def _check_store_fields(node, fields, ids, result):
@@ -260,65 +296,47 @@ class Query(Workflow):
         self._index.finish()
         return Proxy(self._index, ROOT, self._query)
 
+    def process_node_seq(self, node, query, ids):
+        proc_steps = GroupQuery(node).group(query)
+
+        # recursively and sequentially schedule fields and links
+        def proc(steps):
+            step_func, step_item = steps.pop(0)
+            if isinstance(step_item, list):
+                dep = self._schedule_fields(node, step_func, step_item, ids)
+            else:
+                graph_link, query_link = step_item
+                dep = self._schedule_link(node, graph_link, query_link, ids)
+
+            if steps:
+                self._queue.add_callback(dep, lambda: proc(steps))
+
+        if proc_steps:
+            proc(proc_steps)
+
     def process_node(self, node, query, ids):
         fields, links = SplitQuery(node).split(query)
 
         to_func = {}
         from_func = defaultdict(list)
-        for graph_field, query_field in fields:
-            func = getattr(graph_field.func, '__subquery__', graph_field.func)
+        for func, graph_field, query_field in fields:
             to_func[graph_field.name] = func
             from_func[func].append((graph_field, query_field))
 
         # schedule fields resolve
         to_dep = {}
         for func, func_fields in from_func.items():
-            query_fields = [qf for _, qf in func_fields]
-            if hasattr(func, '__subquery__'):
-                assert ids is not None
-                dep = self._queue.fork(self._task_set)
-                proc = func(func_fields, ids, self._queue, self._ctx, dep)
-            else:
-                if ids is None:
-                    dep = self._submit(func, query_fields)
-                else:
-                    dep = self._submit(func, query_fields, ids)
-                proc = dep.result
-
-            to_dep[func] = dep
-            self._queue.add_callback(dep, (
-                lambda _query_fields=query_fields, _proc=proc:
-                store_fields(self._index, node, _query_fields, ids, _proc())
-            ))
+            to_dep[func] = self._schedule_fields(node, func, func_fields, ids)
 
         # schedule link resolve
         for graph_link, query_link in links:
+            schedule = partial(self._schedule_link, node,
+                               graph_link, query_link, ids)
             if graph_link.requires:
                 dep = to_dep[to_func[graph_link.requires]]
-                self._queue.add_callback(dep, (
-                    lambda _gl=graph_link, _ql=query_link:
-                    self._process_node_link(node, _gl, _ql, ids)
-                ))
+                self._queue.add_callback(dep, schedule)
             else:
-                if graph_link.options:
-                    dep = self._submit(graph_link.func, query_link.options)
-                else:
-                    dep = self._submit(graph_link.func)
-                self._queue.add_callback(dep, (
-                    lambda _fut=dep, _gl=graph_link, _ql=query_link:
-                    self.process_link(node, _gl, _ql, ids, _fut.result())
-                ))
-
-    def _process_node_link(self, node, graph_link, query_link, ids):
-        reqs = link_reqs(self._index, node, graph_link, ids)
-        if graph_link.options:
-            dep = self._submit(graph_link.func, reqs, query_link.options)
-        else:
-            dep = self._submit(graph_link.func, reqs)
-        self._queue.add_callback(dep, (
-            lambda:
-            self.process_link(node, graph_link, query_link, ids, dep.result())
-        ))
+                schedule()
 
     def process_link(self, node, graph_link, query_link, ids, result):
         if inspect.isgenerator(result):
@@ -329,6 +347,37 @@ class Query(Workflow):
         if to_ids:
             self.process_node(self._graph.nodes_map[graph_link.node],
                               query_link.node, to_ids)
+
+    def _schedule_fields(self, node, func, fields, ids):
+        query_fields = [qf for _, qf in fields]
+        if hasattr(func, '__subquery__'):
+            assert ids is not None
+            dep = self._queue.fork(self._task_set)
+            proc = func(fields, ids, self._queue, self._ctx, dep)
+        else:
+            if ids is None:
+                dep = self._submit(func, query_fields)
+            else:
+                dep = self._submit(func, query_fields, ids)
+            proc = dep.result
+        self._queue.add_callback(
+            dep,
+            lambda: store_fields(self._index, node, query_fields, ids, proc())
+        )
+        return dep
+
+    def _schedule_link(self, node, graph_link, query_link, ids):
+        args = []
+        if graph_link.requires:
+            args.append(link_reqs(self._index, node, graph_link, ids))
+        if graph_link.options:
+            args.append(query_link.options)
+        dep = self._submit(graph_link.func, *args)
+        self._queue.add_callback(dep, (
+            lambda:
+            self.process_link(node, graph_link, query_link, ids, dep.result())
+        ))
+        return dep
 
 
 def pass_context(func):
