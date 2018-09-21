@@ -4,6 +4,10 @@ Changes in 0.5
 Unreleased
 ~~~~~~~~~~
 
+  - Added aliases support into query builder
+  - Heavily refactored result storage to eliminate cycling references
+  - Result now also supports reading field values as attributes, in addition
+    to the reading values by keys
   - Fixed query merge functionality to preserve options of the merged links
   - Fixed possible conflicts in the result's index
   - Implemented field alias support
