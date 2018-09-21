@@ -65,11 +65,13 @@
 
 - !Command
   name: test
+  image: test
   requires: [pg]
   params:
     - !Argument {name: tests, default: "tests_py3_pg docs"}
-  image: env
   run: py.test {{tests}}
+  environ:
+    PYTHONPATH: .
 
 - !Command
   name: build docs
