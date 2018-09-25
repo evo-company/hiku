@@ -108,7 +108,7 @@ class SubGraph(object):
         this_graph_link = Link(THIS, Sequence[TypeRef[self.node]], None,
                                requires=None)
 
-        reqs = merge(gf.func.reqs for gf, _ in fields)
+        reqs = merge([gf.func.reqs for gf, _ in fields])
         procs = [gf.func.proc for gf, _ in fields]
         option_values = [[qf.options[opt.name] for opt in gf.options]
                          for gf, qf in fields]

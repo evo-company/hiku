@@ -25,7 +25,7 @@ def _get_options(graph_obj, query_obj):
     return dict(_yield_options(graph_obj, query_obj))
 
 
-class InitOptions(hiku_query.QueryVisitor):
+class InitOptions(hiku_query.QueryTransformer):
 
     def __init__(self, graph):
         self._graph = graph
@@ -34,8 +34,7 @@ class InitOptions(hiku_query.QueryVisitor):
     def visit_field(self, obj):
         graph_obj = self._path[-1].fields_map[obj.name]
         if graph_obj.options:
-            options = _get_options(graph_obj, obj)
-            return hiku_query.Field(obj.name, options=options, alias=obj.alias)
+            return obj.copy(options=_get_options(graph_obj, obj))
         else:
             return obj
 
@@ -53,10 +52,7 @@ class InitOptions(hiku_query.QueryVisitor):
             node = obj.node
 
         options = _get_options(graph_obj, obj) if graph_obj.options else None
-        return hiku_query.Link(obj.name, node, options=options, alias=obj.alias)
-
-    def visit_node(self, obj):
-        return hiku_query.Node([self.visit(f) for f in obj.fields])
+        return obj.copy(node=node, options=options)
 
 
 class SplitQuery(hiku_query.QueryVisitor):
@@ -296,7 +292,7 @@ class Query(Workflow):
         self._index.finish()
         return Proxy(self._index, ROOT, self._query)
 
-    def process_node_seq(self, node, query, ids):
+    def _process_node_ordered(self, node, query, ids):
         proc_steps = GroupQuery(node).group(query)
 
         # recursively and sequentially schedule fields and links
@@ -315,6 +311,10 @@ class Query(Workflow):
             proc(proc_steps)
 
     def process_node(self, node, query, ids):
+        if query.ordered:
+            self._process_node_ordered(node, query, ids)
+            return
+
         fields, links = SplitQuery(node).split(query)
 
         to_func = {}

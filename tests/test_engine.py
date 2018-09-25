@@ -5,10 +5,9 @@ import pytest
 from hiku import query as q
 from hiku.graph import Graph, Node, Field, Link, Option, Root
 from hiku.types import Record, Sequence, Integer, Optional, TypeRef
-from hiku.engine import Engine, pass_context, Context, Query
+from hiku.engine import Engine, pass_context, Context
 from hiku.builder import build, Q
 from hiku.executors.sync import SyncExecutor
-from hiku.executors.queue import Queue
 
 from .base import check_result, ANY, Mock
 
@@ -583,7 +582,7 @@ def test_conflicting_links():
     })
 
 
-def test_process_node_seq():
+def test_process_ordered_node():
     ordering = []
 
     def f1(fields):
@@ -622,14 +621,10 @@ def test_process_node_seq():
             q.Field('e'),
         ])),
         q.Field('c'),
-    ])
+    ], ordered=True)
 
-    executor = SyncExecutor()
-    queue = Queue(executor)
-    task_set = queue.fork(None)
-    query_workflow = Query(queue, task_set, graph, query, Context({}))
-    query_workflow.process_node_seq(graph.root, query, None)
-    result = executor.process(queue, query_workflow)
+    engine = Engine(SyncExecutor())
+    result = engine.execute(graph, query)
     check_result(result, {
         'a': 'a',
         'b': 'b',

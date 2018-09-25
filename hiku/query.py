@@ -45,7 +45,7 @@
     .. _om.next: https://github.com/omcljs/om/wiki/Documentation-(om.next)
 """
 from itertools import chain
-from collections import OrderedDict
+from collections import OrderedDict, Sequence
 
 from .utils import cached_property
 
@@ -60,7 +60,30 @@ def _compute_hash(obj):
         return hash(obj)
 
 
-class FieldBase(object):
+class Base(object):
+    __attrs__ = ()
+
+    def __repr__(self):
+        kwargs = ', '.join('{}={!r}'.format(attr, self.__dict__[attr])
+                           for attr in self.__attrs__)
+        return '{}({})'.format(self.__class__.__name__, kwargs)
+
+    def __eq__(self, other):
+        return (self.__class__ is other.__class__
+                and all(self.__dict__[attr] == other.__dict__[attr]
+                        for attr in self.__attrs__))
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def copy(self, **kwargs):
+        obj = self.__class__.__new__(self.__class__)
+        obj.__dict__.update((attr, kwargs.get(attr, self.__dict__[attr]))
+                            for attr in self.__attrs__)
+        return obj
+
+
+class FieldBase(Base):
 
     @cached_property
     def result_key(self):
@@ -91,28 +114,12 @@ class Field(FieldBase):
     :param optional options: field options -- mapping of names to values
     :param optional alias: field's name in result
     """
+    __attrs__ = ('name', 'options', 'alias')
+
     def __init__(self, name, options=None, alias=None):
         self.name = name
         self.options = options
         self.alias = alias
-
-    def __repr__(self):
-        return (
-            '{self.__class__.__name__}('
-            '{self.name!r}, '
-            'options={self.options!r}, '
-            'alias={self.alias!r})'
-            .format(self=self)
-        )
-
-    def __eq__(self, other):
-        return (self.__class__ is other.__class__
-                and self.name == other.name
-                and self.options == other.options
-                and self.alias == other.alias)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
 
     def accept(self, visitor):
         return visitor.visit_field(self)
@@ -127,43 +134,31 @@ class Link(FieldBase):
     :param optional options: link options -- mapping of names to values
     :param optional alias: link's name in result
     """
+    __attrs__ = ('name', 'node', 'options', 'alias')
+
     def __init__(self, name, node, options=None, alias=None):
         self.name = name
         self.node = node
         self.options = options
         self.alias = alias
 
-    def __repr__(self):
-        return (
-            '{self.__class__.__name__}('
-            '{self.name!r}, {self.node!r}, '
-            'options={self.options!r}, '
-            'alias={self.alias!r})'
-            .format(self=self)
-        )
-
-    def __eq__(self, other):
-        return (self.__class__ is other.__class__
-                and self.name == other.name
-                and self.node == other.node
-                and self.options == other.options
-                and self.alias == other.alias)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
     def accept(self, visitor):
         return visitor.visit_link(self)
 
 
-class Node(object):
+class Node(Base):
     """Represents collection of fields and links
 
     :param fields: list of :py:class:`~hiku.query.Field` and
-                   :py:class:`~hiku.query.Link`
+        :py:class:`~hiku.query.Link`
+    :param ordered: whether to compute fields of this node sequentially
+        in order or not
     """
-    def __init__(self, fields):
+    __attrs__ = ('fields', 'ordered')
+
+    def __init__(self, fields, ordered=False):
         self.fields = fields
+        self.ordered = ordered
 
     @cached_property
     def fields_map(self):
@@ -172,16 +167,6 @@ class Node(object):
     @cached_property
     def result_map(self):
         return OrderedDict((f.result_key, f) for f in self.fields)
-
-    def __repr__(self):
-        return '{self.__class__.__name__}({self.fields!r})'.format(self=self)
-
-    def __eq__(self, other):
-        return (self.__class__ is other.__class__
-                and self.fields_map == other.fields_map)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
 
     def accept(self, visitor):
         return visitor.visit_node(self)
@@ -205,8 +190,7 @@ def _merge(nodes):
                 yield field
     for key, values in to_merge.items():
         link = links[key]
-        yield Link(link.name, Node(list(_merge(values))),
-                   options=link.options, alias=link.alias)
+        yield link.copy(node=merge(values))
 
 
 def merge(nodes):
@@ -215,7 +199,9 @@ def merge(nodes):
     :param nodes: queries, represented as list of :py:class:`~hiku.query.Node`
     :return: merged query as one :py:class:`~hiku.query.Node`
     """
-    return Node(list(_merge(nodes)))
+    assert isinstance(nodes, Sequence), type(nodes)
+    ordered = any(n.ordered for n in nodes)
+    return Node(list(_merge(nodes)), ordered=ordered)
 
 
 class QueryVisitor(object):
@@ -232,3 +218,18 @@ class QueryVisitor(object):
     def visit_node(self, obj):
         for item in obj.fields:
             self.visit(item)
+
+
+class QueryTransformer(object):
+
+    def visit(self, obj):
+        return obj.accept(self)
+
+    def visit_field(self, obj):
+        return obj.copy()
+
+    def visit_link(self, obj):
+        return obj.copy(node=self.visit(obj.node))
+
+    def visit_node(self, obj):
+        return obj.copy(fields=[self.visit(f) for f in obj.fields])
