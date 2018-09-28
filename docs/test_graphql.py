@@ -40,7 +40,7 @@ def test_sync_introspection():
     from hiku.graph import apply
     from hiku.introspection.graphql import GraphQLIntrospection
 
-    graph = apply(graph, [GraphQLIntrospection()])
+    graph = apply(graph, [GraphQLIntrospection(graph)])
 
     query = read('{ __typename }')
     result = hiku_engine.execute(graph, query)
@@ -59,7 +59,7 @@ async def test_async_introspection(event_loop):
     from hiku.graph import apply
     from hiku.introspection.graphql import AsyncGraphQLIntrospection
 
-    graph = apply(graph, [AsyncGraphQLIntrospection()])
+    graph = apply(graph, [AsyncGraphQLIntrospection(graph)])
 
     query = read('{ __typename }')
     result = await async_hiku_engine.execute(graph, query)

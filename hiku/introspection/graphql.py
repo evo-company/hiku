@@ -2,9 +2,8 @@ from __future__ import absolute_import
 
 import re
 
-from itertools import chain
 from functools import partial
-from collections import namedtuple, OrderedDict
+from collections import namedtuple as _namedtuple, OrderedDict
 
 from graphql import print_ast, ast_from_value
 
@@ -14,23 +13,41 @@ from ..types import TypeRef, String, Sequence, Boolean, Optional, TypeVisitor
 from ..types import RecordMeta, AbstractTypeVisitor
 from ..compat import async_wrapper, PY3
 
+
+def namedtuple(name, *fields):
+    """Fixes hashing for different tuples with same content
+    """
+    base = _namedtuple(name, fields)
+
+    def __hash__(self):
+        return hash((self.__class__, super(base, self).__hash__()))
+
+    return type(name, (base,), {
+        '__slots__': (),
+        '__hash__': __hash__,
+    })
+
+
 SCALAR = namedtuple('SCALAR', 'name')
 OBJECT = namedtuple('OBJECT', 'name')
-INPUT_OBJECT = namedtuple('INPUT_OBJECT', 'alias, name')
+INPUT_OBJECT = namedtuple('INPUT_OBJECT', 'name')
 INTERFACE = namedtuple('INTERFACE', 'name')
 LIST = namedtuple('LIST', 'of_type')
 NON_NULL = namedtuple('NON_NULL', 'of_type')
 
-FieldIdent = namedtuple('FieldIdent', 'node, name')
-ArgumentIdent = namedtuple('ArgumentIdent', 'node, field, name')
+FieldIdent = namedtuple('FieldIdent', 'node', 'name')
+FieldArgIdent = namedtuple('FieldArgIdent', 'node', 'field', 'name')
+InputObjectFieldIdent = namedtuple('InputObjectFieldIdent', 'name', 'key')
 
-ROOT_NAME = 'Root'
+QUERY_ROOT_NAME = 'Query'
+MUTATION_ROOT_NAME = 'Mutation'
 
 
 class TypeIdent(AbstractTypeVisitor):
 
-    def __init__(self, graph):
+    def __init__(self, graph, input_mode=False):
         self._graph = graph
+        self._input_mode = input_mode
 
     def visit_any(self, obj):
         return NON_NULL(SCALAR('Any'))
@@ -51,10 +68,15 @@ class TypeIdent(AbstractTypeVisitor):
         return self.visit(obj.__type__).of_type
 
     def visit_typeref(self, obj):
-        if obj.__type_name__ in self._graph.nodes_map:
-            return NON_NULL(OBJECT(obj.__type_name__))
+        if self._input_mode:
+            assert obj.__type_name__ in self._graph.data_types
+            return NON_NULL(INPUT_OBJECT(obj.__type_name__))
         else:
-            return NON_NULL(INTERFACE(obj.__type_name__))
+            if obj.__type_name__ in self._graph.nodes_map:
+                return NON_NULL(OBJECT(obj.__type_name__))
+            else:
+                assert obj.__type_name__ in self._graph.data_types
+                return NON_NULL(INTERFACE(obj.__type_name__))
 
     def visit_string(self, obj):
         return NON_NULL(SCALAR('String'))
@@ -96,59 +118,66 @@ def not_implemented(*args, **kwargs):
     raise NotImplementedError(args, kwargs)
 
 
-def na_maybe(graph):
+def na_maybe(schema):
     return Nothing
 
 
-def na_many(graph, ids=None, options=None):
+def na_many(schema, ids=None, options=None):
     if ids is None:
         return []
     else:
         return [[] for _ in ids]
 
 
-def _nodes_map(graph):
-    return OrderedDict(chain(((n.name, n) for n in graph.nodes),
-                             ((ROOT_NAME, graph.root),)))
+def _nodes_map(schema):
+    nodes = [(n.name, n) for n in schema.query_graph.nodes]
+    nodes.append((QUERY_ROOT_NAME, schema.query_graph.root))
+    if schema.mutation_graph is not None:
+        nodes.append((MUTATION_ROOT_NAME, schema.mutation_graph.root))
+    return OrderedDict(nodes)
 
 
-def schema_link(graph):
+def schema_link(schema):
     return None
 
 
-def type_link(graph, options):
+def type_link(schema, options):
     name = options['name']
-    if name in _nodes_map(graph):
+    if name in _nodes_map(schema):
         return OBJECT(name)
     else:
         return Nothing
 
 
-def root_schema_types(graph):
+def root_schema_types(schema):
     yield SCALAR('String')
     yield SCALAR('Int')
     yield SCALAR('Boolean')
     yield SCALAR('Float')
     yield SCALAR('Any')
-    for name in _nodes_map(graph):
+    for name in _nodes_map(schema):
         yield OBJECT(name)
-    for name, type_ in graph.data_types.items():
+    for name, type_ in schema.query_graph.data_types.items():
         if isinstance(type_, RecordMeta):
             yield INTERFACE(name)
-            yield INPUT_OBJECT('I{}'.format(name), name)
+            yield INPUT_OBJECT(name)
 
 
-def root_schema_query_type(graph):
-    return OBJECT(ROOT_NAME)
+def root_schema_query_type(schema):
+    return OBJECT(QUERY_ROOT_NAME)
 
 
-def type_info(graph, fields, ids):
+def root_schema_mutation_type(schema):
+    if schema.mutation_graph is not None:
+        return OBJECT(MUTATION_ROOT_NAME)
+    else:
+        return Nothing
+
+
+def type_info(schema, fields, ids):
     for ident in ids:
         if isinstance(ident, OBJECT):
-            if ident.name == ROOT_NAME:
-                node = graph.root
-            else:
-                node = graph.nodes_map[ident.name]
+            node = _nodes_map(schema)[ident.name]
             info = {'id': ident,
                     'kind': 'OBJECT',
                     'name': ident.name,
@@ -161,7 +190,7 @@ def type_info(graph, fields, ids):
         elif isinstance(ident, INPUT_OBJECT):
             info = {'id': ident,
                     'kind': 'INPUT_OBJECT',
-                    'name': ident.alias,
+                    'name': 'I{}'.format(ident.name),
                     'description': None}
         elif isinstance(ident, NON_NULL):
             info = {'id': ident,
@@ -178,8 +207,8 @@ def type_info(graph, fields, ids):
         yield [info.get(f.name) for f in fields]
 
 
-def type_fields_link(graph, ids, options):
-    nodes_map = _nodes_map(graph)
+def type_fields_link(schema, ids, options):
+    nodes_map = _nodes_map(schema)
     for ident in ids:
         if isinstance(ident, OBJECT):
             node = nodes_map[ident.name]
@@ -189,8 +218,8 @@ def type_fields_link(graph, ids, options):
                                 'which is not acceptable for GraphQL in order '
                                 'to define schema type'.format(ident.name))
             yield field_idents
-        elif isinstance(ident, (INTERFACE, INPUT_OBJECT)):
-            type_ = graph.data_types[ident.name]
+        elif isinstance(ident, INTERFACE):
+            type_ = schema.query_graph.data_types[ident.name]
             field_idents = [FieldIdent(ident.name, f_name)
                             for f_name, f_type in type_.__field_types__.items()]
             yield field_idents
@@ -198,7 +227,7 @@ def type_fields_link(graph, ids, options):
             yield []
 
 
-def type_of_type_link(graph, ids):
+def type_of_type_link(schema, ids):
     for ident in ids:
         if isinstance(ident, (NON_NULL, LIST)):
             yield ident.of_type
@@ -206,8 +235,8 @@ def type_of_type_link(graph, ids):
             yield Nothing
 
 
-def field_info(graph, fields, ids):
-    nodes_map = _nodes_map(graph)
+def field_info(schema, fields, ids):
+    nodes_map = _nodes_map(schema)
     for ident in ids:
         if ident.node in nodes_map:
             node = nodes_map[ident.node]
@@ -226,59 +255,86 @@ def field_info(graph, fields, ids):
         yield [info[f.name] for f in fields]
 
 
-def field_type_link(graph, ids):
-    nodes_map = _nodes_map(graph)
-    type_ident = TypeIdent(graph)
+def field_type_link(schema, ids):
+    nodes_map = _nodes_map(schema)
+    type_ident = TypeIdent(schema.query_graph)
     for ident in ids:
         if ident.node in nodes_map:
             node = nodes_map[ident.node]
             field = node.fields_map[ident.name]
             yield type_ident.visit(field.type)
         else:
-            type_ = graph.data_types[ident.node].__field_types__[ident.name]
-            yield type_ident.visit(type_)
+            data_type = schema.query_graph.data_types[ident.node]
+            field_type = data_type.__field_types__[ident.name]
+            yield type_ident.visit(field_type)
 
 
-def field_args_link(graph, ids):
-    nodes_map = _nodes_map(graph)
+def field_args_link(schema, ids):
+    nodes_map = _nodes_map(schema)
     for ident in ids:
         if ident.node in nodes_map:
             node = nodes_map[ident.node]
             field = node.fields_map[ident.name]
-            yield [ArgumentIdent(ident.node, field.name, option.name)
+            yield [FieldArgIdent(ident.node, field.name, option.name)
                    for option in field.options]
         else:
             yield []
 
 
-def input_value_info(graph, fields, ids):
-    nodes_map = _nodes_map(graph)
+def type_input_object_input_fields_link(schema, ids):
     for ident in ids:
-        node = nodes_map[ident.node]
-        field = node.fields_map[ident.field]
-        option = field.options_map[ident.name]
-        if option.default is Nothing:
-            default = None
-        elif option.default is None:
-            # graphql-core currently can't parse/print "null" values
-            default = 'null'
+        if isinstance(ident, INPUT_OBJECT):
+            data_type = schema.query_graph.data_types[ident.name]
+            yield [InputObjectFieldIdent(ident.name, key)
+                   for key in data_type.__field_types__.keys()]
         else:
-            default = print_ast(ast_from_value(option.default))
-        info = {'id': ident,
-                'name': option.name,
-                'description': option.description,
-                'defaultValue': default}
-        yield [info[f.name] for f in fields]
+            yield []
 
 
-def input_value_type_link(graph, ids):
-    nodes_map = _nodes_map(graph)
-    type_ident = TypeIdent(graph)
+def input_value_info(schema, fields, ids):
+    nodes_map = _nodes_map(schema)
     for ident in ids:
-        node = nodes_map[ident.node]
-        field = node.fields_map[ident.field]
-        option = field.options_map[ident.name]
-        yield type_ident.visit(option.type)
+        if isinstance(ident, FieldArgIdent):
+            node = nodes_map[ident.node]
+            field = node.fields_map[ident.field]
+            option = field.options_map[ident.name]
+            if option.default is Nothing:
+                default = None
+            elif option.default is None:
+                # graphql-core currently can't parse/print "null" values
+                default = 'null'
+            else:
+                default = print_ast(ast_from_value(option.default))
+            info = {'id': ident,
+                    'name': option.name,
+                    'description': option.description,
+                    'defaultValue': default}
+            yield [info[f.name] for f in fields]
+        elif isinstance(ident, InputObjectFieldIdent):
+            info = {'id': ident,
+                    'name': ident.key,
+                    'description': None,
+                    'defaultValue': None}
+            yield [info[f.name] for f in fields]
+        else:
+            raise TypeError(repr(ident))
+
+
+def input_value_type_link(schema, ids):
+    nodes_map = _nodes_map(schema)
+    type_ident = TypeIdent(schema.query_graph, input_mode=True)
+    for ident in ids:
+        if isinstance(ident, FieldArgIdent):
+            node = nodes_map[ident.node]
+            field = node.fields_map[ident.field]
+            option = field.options_map[ident.name]
+            yield type_ident.visit(option.type)
+        elif isinstance(ident, InputObjectFieldIdent):
+            data_type = schema.query_graph.data_types[ident.name]
+            field_type = data_type.__field_types__[ident.key]
+            yield type_ident.visit(field_type)
+        else:
+            raise TypeError(repr(ident))
 
 
 GRAPH = Graph([
@@ -307,8 +363,8 @@ GRAPH = Graph([
              options=[Option('includeDeprecated', Boolean, default=False)]),
 
         # INPUT_OBJECT only
-        Link('inputFields', Sequence[TypeRef['__InputValue']], na_many,
-             requires='id'),
+        Link('inputFields', Sequence[TypeRef['__InputValue']],
+             type_input_object_input_fields_link, requires='id'),
 
         # NON_NULL and LIST only
         Link('ofType', Optional[TypeRef['__Type']], type_of_type_link,
@@ -348,13 +404,13 @@ GRAPH = Graph([
     Node('__Schema', [
         Link('types', Sequence[TypeRef['__Type']], root_schema_types,
              requires=None),
-        Link('queryType', TypeRef['__Type'], root_schema_query_type,
+        Link('queryType', TypeRef['__Type'],
+             root_schema_query_type, requires=None),
+        Link('mutationType', Optional[TypeRef['__Type']],
+             root_schema_mutation_type, requires=None),
+        Link('subscriptionType', Optional[TypeRef['__Type']], na_maybe,
              requires=None),
         Link('directives', Sequence[TypeRef['__Directive']], na_many,
-             requires=None),
-        Link('mutationType', Optional[TypeRef['__Type']], na_maybe,
-             requires=None),
-        Link('subscriptionType', Optional[TypeRef['__Type']], na_maybe,
              requires=None),
     ]),
     Root([
@@ -425,19 +481,23 @@ class ValidateGraph(GraphVisitor):
         super(ValidateGraph, self).visit_option(obj)
 
 
-class BindToGraph(GraphTransformer):
+class BindToSchema(GraphTransformer):
 
-    def __init__(self, graph):
-        self.graph = graph
+    def __init__(self, schema):
+        self.schema = schema
+        self._bound = {}
 
     def visit_field(self, obj):
-        field = super(BindToGraph, self).visit_field(obj)
-        field.func = partial(field.func, self.graph)
+        field = super(BindToSchema, self).visit_field(obj)
+        func = self._bound.get(obj.func)
+        if func is None:
+            func = self._bound[obj.func] = partial(obj.func, self.schema)
+        field.func = func
         return field
 
     def visit_link(self, obj):
-        link = super(BindToGraph, self).visit_link(obj)
-        link.func = partial(link.func, self.graph)
+        link = super(BindToSchema, self).visit_link(obj)
+        link.func = partial(link.func, self.schema)
         return link
 
 
@@ -471,7 +531,7 @@ class AddIntrospection(GraphTransformer):
 
     def visit_root(self, obj):
         root = super(AddIntrospection, self).visit_root(obj)
-        root.fields.append(self.type_name_field_factory(ROOT_NAME))
+        root.fields.append(self.type_name_field_factory(QUERY_ROOT_NAME))
         return root
 
     def visit_graph(self, obj):
@@ -480,14 +540,24 @@ class AddIntrospection(GraphTransformer):
         return graph
 
 
+class SchemaInfo(object):
+
+    def __init__(self, query_graph, mutation_graph=None):
+        self.query_graph = query_graph
+        self.mutation_graph = mutation_graph
+
+
 class GraphQLIntrospection(GraphTransformer):
+
+    def __init__(self, query_graph, mutation_graph=None):
+        self._schema = SchemaInfo(query_graph, mutation_graph)
 
     def __type_name__(self, node_name):
         return Field('__typename', String,
                      partial(type_name_field_func, node_name))
 
-    def __introspection_graph__(self, graph):
-        return BindToGraph(graph).visit(GRAPH)
+    def __introspection_graph__(self):
+        return BindToSchema(self._schema).visit(GRAPH)
 
     def visit_node(self, obj):
         node = super(GraphQLIntrospection, self).visit_node(obj)
@@ -496,12 +566,12 @@ class GraphQLIntrospection(GraphTransformer):
 
     def visit_root(self, obj):
         root = super(GraphQLIntrospection, self).visit_root(obj)
-        root.fields.append(self.__type_name__(ROOT_NAME))
+        root.fields.append(self.__type_name__(QUERY_ROOT_NAME))
         return root
 
     def visit_graph(self, obj):
         ValidateGraph.validate(obj)
-        introspection_graph = self.__introspection_graph__(obj)
+        introspection_graph = self.__introspection_graph__()
         items = [self.visit(node) for node in obj.items]
         items.extend(introspection_graph.items)
         return Graph(items, data_types=obj.data_types)
@@ -513,7 +583,7 @@ class AsyncGraphQLIntrospection(GraphQLIntrospection):
         return Field('__typename', String,
                      async_wrapper(partial(type_name_field_func, node_name)))
 
-    def __introspection_graph__(self, graph):
-        introspection_graph = BindToGraph(graph).visit(GRAPH)
-        introspection_graph = MakeAsync().visit(introspection_graph)
-        return introspection_graph
+    def __introspection_graph__(self):
+        graph = super(AsyncGraphQLIntrospection, self).__introspection_graph__()
+        graph = MakeAsync().visit(graph)
+        return graph

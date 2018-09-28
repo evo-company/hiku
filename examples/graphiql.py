@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     graph = get_graph(get_queries(hiku.sources.sqlalchemy, SA_ENGINE_KEY,
                                   SyncQueries))
-    graph = apply(graph, [GraphQLIntrospection()])
+    graph = apply(graph, [GraphQLIntrospection(graph)])
     app.config['GRAPH'] = graph
 
     app.run()
