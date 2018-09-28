@@ -4,6 +4,7 @@ from graphql.language.parser import parse
 
 from hiku.query import Node, Field, Link
 from hiku.readers.graphql import read, OperationGetter
+from hiku.readers.graphql import read_operation, OperationType
 
 
 def check_read(source, query, variables=None):
@@ -305,3 +306,15 @@ def test_missing_variables():
         }
         """)
     err.match('Variable "asides" is not provided for query Belinda')
+
+
+def test_read_operation_query():
+    op = read_operation('query { pong }')
+    assert op.type is OperationType.QUERY
+    assert op.query == Node([Field('pong')])
+
+
+def test_read_operation_mutation():
+    op = read_operation('mutation { ping }')
+    assert op.type is OperationType.MUTATION
+    assert op.query == Node([Field('ping')], ordered=True)

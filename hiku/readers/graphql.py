@@ -11,6 +11,7 @@ from graphql.language import ast
 from graphql.language.ast import NonNullType
 from graphql.language.parser import parse
 
+from ..utils import const
 from ..query import Node, Field, Link
 
 
@@ -256,8 +257,10 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
         self.fragments_transformer = FragmentsTransformer(self.document,
                                                           self.query_name,
                                                           self.query_variables)
+        ordered = obj.operation == 'mutation'
         try:
-            node = Node(list(self.visit(obj.selection_set)))
+            node = Node(list(self.visit(obj.selection_set)),
+                        ordered=ordered)
         finally:
             self.query_name = None
             self.query_variables = None
@@ -298,3 +301,36 @@ def read(src, variables=None, operation_name=None):
                         .format(op.operation))
 
     return GraphQLTransformer.transform(doc, op, variables)
+
+
+class OperationType(object):
+    QUERY = const('OperationType.QUERY')
+    MUTATION = const('OperationType.MUTATION')
+    SUBSCRIPTION = const('OperationType.SUBSCRIPTION')
+
+
+class Operation(object):
+
+    def __init__(self, type_, query, name=None):
+        self.type = type_
+        self.query = query
+        self.name = name
+
+
+_operations_map = {
+    'query': OperationType.QUERY,
+    'mutation': OperationType.MUTATION,
+    'subscription': OperationType.MUTATION,
+}
+
+
+def read_operation(src, variables=None, operation_name=None):
+    doc = parse(src)
+    op = OperationGetter.get(doc, operation_name=operation_name)
+    query = GraphQLTransformer.transform(doc, op, variables)
+    type_ = _operations_map.get(op.operation)
+    name = op.name.value if op.name else None
+    if type_ is None:
+        raise TypeError('Unsupported operation type: {}'.format(op.operation))
+    else:
+        return Operation(type_, query, name)
