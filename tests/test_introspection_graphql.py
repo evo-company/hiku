@@ -318,12 +318,12 @@ def test_data_types():
     ])], data_types)
     assert introspect(graph) == _schema([
         _type('Query', 'OBJECT', fields=[
-            _field('foo', _non_null(_iface('Foo'))),
+            _field('foo', _non_null(_iface('IFoo'))),
         ]),
-        _type('Foo', 'INTERFACE', fields=[
+        _type('IFoo', 'INTERFACE', fields=[
             _field('bar', _non_null(_INT)),
         ]),
-        _type('IFoo', 'INPUT_OBJECT', inputFields=[
+        _type('IOFoo', 'INPUT_OBJECT', inputFields=[
             _ival('bar', _non_null(_INT)),
         ]),
     ])
@@ -348,18 +348,18 @@ def test_mutation_type():
     assert introspect(query_graph, mutation_graph) == _schema([
         _type('Query', 'OBJECT', fields=[
             _field('getFoo', _non_null(_INT), args=[
-                _ival('getterArg', _non_null(_iobj('IFoo'))),
+                _ival('getterArg', _non_null(_iobj('IOFoo'))),
             ]),
         ]),
         _type('Mutation', 'OBJECT', fields=[
             _field('setFoo', _non_null(_INT), args=[
-                _ival('setterArg', _non_null(_iobj('IFoo'))),
+                _ival('setterArg', _non_null(_iobj('IOFoo'))),
             ]),
         ]),
-        _type('Foo', 'INTERFACE', fields=[
+        _type('IFoo', 'INTERFACE', fields=[
             _field('bar', _non_null(_INT)),
         ]),
-        _type('IFoo', 'INPUT_OBJECT', inputFields=[
+        _type('IOFoo', 'INPUT_OBJECT', inputFields=[
             _ival('bar', _non_null(_INT)),
         ]),
     ], with_mutation=True)

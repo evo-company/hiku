@@ -69,13 +69,15 @@ class TypeIdent(AbstractTypeVisitor):
 
     def visit_typeref(self, obj):
         if self._input_mode:
-            assert obj.__type_name__ in self._graph.data_types
+            assert obj.__type_name__ in self._graph.data_types, \
+                obj.__type_name__
             return NON_NULL(INPUT_OBJECT(obj.__type_name__))
         else:
             if obj.__type_name__ in self._graph.nodes_map:
                 return NON_NULL(OBJECT(obj.__type_name__))
             else:
-                assert obj.__type_name__ in self._graph.data_types
+                assert obj.__type_name__ in self._graph.data_types, \
+                    obj.__type_name__
                 return NON_NULL(INTERFACE(obj.__type_name__))
 
     def visit_string(self, obj):
@@ -185,12 +187,12 @@ def type_info(schema, fields, ids):
         elif isinstance(ident, INTERFACE):
             info = {'id': ident,
                     'kind': 'INTERFACE',
-                    'name': ident.name,
+                    'name': 'I{}'.format(ident.name),
                     'description': None}
         elif isinstance(ident, INPUT_OBJECT):
             info = {'id': ident,
                     'kind': 'INPUT_OBJECT',
-                    'name': 'I{}'.format(ident.name),
+                    'name': 'IO{}'.format(ident.name),
                     'description': None}
         elif isinstance(ident, NON_NULL):
             info = {'id': ident,
