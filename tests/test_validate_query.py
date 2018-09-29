@@ -465,3 +465,22 @@ def test_distinct_by_options_links():
         'Found distinct fields with the same resulting name "x" for the '
         'node "root"'
     ]
+
+
+def test_typeref_in_option():
+    data_types = {
+        'Foo': Record[{
+            'key': Integer,
+        }],
+    }
+    graph = Graph([
+        Root([
+            Field('get', None, None, options=[Option('foo', TypeRef['Foo'])]),
+        ]),
+    ], data_types=data_types)
+    assert validate(graph, q.Node([
+        q.Field('get', options={'foo': {'key': 1}}),
+    ])) == []
+    assert validate(graph, q.Node([
+        q.Field('get', options={'foo': {'key': '1'}}),
+    ])) == ['Invalid value for option "root.get:foo", "str" instead of Integer']

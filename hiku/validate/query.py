@@ -95,7 +95,8 @@ class _OptionTypeError(_OptionError):
 
 class _OptionTypeValidator(object):
 
-    def __init__(self, value):
+    def __init__(self, data_types, value):
+        self._data_types = data_types
         self._value = [value]
 
     @property
@@ -167,10 +168,15 @@ class _OptionTypeValidator(object):
             with self.push(self.value[key]):
                 self.visit(value_type)
 
+    def visit_typeref(self, type_):
+        assert type_.__type_name__ in self._data_types, type_.__type_name__
+        self.visit(self._data_types[type_.__type_name__])
+
 
 class _ValidateOptions(GraphVisitor):
 
-    def __init__(self, options, for_, errors):
+    def __init__(self, data_types, options, for_, errors):
+        self._data_types = data_types
         self.options = options
         self.for_ = for_
         self.errors = errors
@@ -194,7 +200,7 @@ class _ValidateOptions(GraphVisitor):
                                .format(node, field, obj.name))
         elif obj.type is not None:
             try:
-                _OptionTypeValidator(value).visit(obj.type)
+                _OptionTypeValidator(self._data_types, value).visit(obj.type)
             except _OptionError as err:
                 node, field = self.for_
                 self.errors.report('Invalid value for option "{}.{}:{}", {}'
@@ -258,7 +264,8 @@ class QueryValidator(QueryVisitor):
             is_field = _AssumeField(node, self.errors).visit(field)
             if is_field:
                 for_ = (node.name or 'root', obj.name)
-                _ValidateOptions(obj.options, for_, self.errors).visit(field)
+                _ValidateOptions(self.graph.data_types, obj.options, for_,
+                                 self.errors).visit(field)
         else:
             self.errors.report('Field "{}" is not implemented in the "{}" node'
                                .format(obj.name, node.name or 'root'))
@@ -268,7 +275,8 @@ class QueryValidator(QueryVisitor):
         graph_obj = node.fields_map.get(obj.name, _undefined)
         if isinstance(graph_obj, Field):
             for_ = (node.name or 'root', obj.name)
-            _ValidateOptions(obj.options, for_, self.errors).visit(graph_obj)
+            _ValidateOptions(self.graph.data_types, obj.options, for_,
+                             self.errors).visit(graph_obj)
 
             field_types = _AssumeRecord(self.graph.data_types)\
                 .visit(graph_obj.type)
@@ -286,7 +294,8 @@ class QueryValidator(QueryVisitor):
         elif isinstance(graph_obj, Link):
             linked_node = self.graph.nodes_map[graph_obj.node]
             for_ = (node.name or 'root', obj.name)
-            _ValidateOptions(obj.options, for_, self.errors).visit(graph_obj)
+            _ValidateOptions(self.graph.data_types, obj.options, for_,
+                             self.errors).visit(graph_obj)
 
             self.path.append(linked_node)
             try:
