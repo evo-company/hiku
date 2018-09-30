@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import re
 
 from functools import partial
-from collections import namedtuple as _namedtuple, OrderedDict
+from collections import namedtuple, OrderedDict
 
 from graphql import print_ast, ast_from_value
 
@@ -11,33 +11,34 @@ from ..graph import Graph, Root, Node, Link, Option, Field, Nothing
 from ..graph import GraphVisitor, GraphTransformer
 from ..types import TypeRef, String, Sequence, Boolean, Optional, TypeVisitor
 from ..types import RecordMeta, AbstractTypeVisitor
+from ..utils import listify
 from ..compat import async_wrapper, PY3
 
 
-def namedtuple(name, *fields):
+def _namedtuple(typename, field_names):
     """Fixes hashing for different tuples with same content
     """
-    base = _namedtuple(name, fields)
+    base = namedtuple(typename, field_names)
 
     def __hash__(self):
         return hash((self.__class__, super(base, self).__hash__()))
 
-    return type(name, (base,), {
+    return type(typename, (base,), {
         '__slots__': (),
         '__hash__': __hash__,
     })
 
 
-SCALAR = namedtuple('SCALAR', 'name')
-OBJECT = namedtuple('OBJECT', 'name')
-INPUT_OBJECT = namedtuple('INPUT_OBJECT', 'name')
-INTERFACE = namedtuple('INTERFACE', 'name')
-LIST = namedtuple('LIST', 'of_type')
-NON_NULL = namedtuple('NON_NULL', 'of_type')
+SCALAR = _namedtuple('SCALAR', 'name')
+OBJECT = _namedtuple('OBJECT', 'name')
+INPUT_OBJECT = _namedtuple('INPUT_OBJECT', 'name')
+INTERFACE = _namedtuple('INTERFACE', 'name')
+LIST = _namedtuple('LIST', 'of_type')
+NON_NULL = _namedtuple('NON_NULL', 'of_type')
 
-FieldIdent = namedtuple('FieldIdent', 'node', 'name')
-FieldArgIdent = namedtuple('FieldArgIdent', 'node', 'field', 'name')
-InputObjectFieldIdent = namedtuple('InputObjectFieldIdent', 'name', 'key')
+FieldIdent = _namedtuple('FieldIdent', 'node, name')
+FieldArgIdent = _namedtuple('FieldArgIdent', 'node, field, name')
+InputObjectFieldIdent = _namedtuple('InputObjectFieldIdent', 'name, key')
 
 QUERY_ROOT_NAME = 'Query'
 MUTATION_ROOT_NAME = 'Mutation'
@@ -151,6 +152,7 @@ def type_link(schema, options):
         return Nothing
 
 
+@listify
 def root_schema_types(schema):
     yield SCALAR('String')
     yield SCALAR('Int')
@@ -159,7 +161,7 @@ def root_schema_types(schema):
     yield SCALAR('Any')
     for name in _nodes_map(schema):
         yield OBJECT(name)
-    for name, type_ in schema.query_graph.data_types.items():
+    for name, type_ in schema.data_types.items():
         if isinstance(type_, RecordMeta):
             yield INTERFACE(name)
             yield INPUT_OBJECT(name)
@@ -176,6 +178,7 @@ def root_schema_mutation_type(schema):
         return Nothing
 
 
+@listify
 def type_info(schema, fields, ids):
     for ident in ids:
         if isinstance(ident, OBJECT):
@@ -209,6 +212,7 @@ def type_info(schema, fields, ids):
         yield [info.get(f.name) for f in fields]
 
 
+@listify
 def type_fields_link(schema, ids, options):
     nodes_map = _nodes_map(schema)
     for ident in ids:
@@ -221,7 +225,7 @@ def type_fields_link(schema, ids, options):
                                 'to define schema type'.format(ident.name))
             yield field_idents
         elif isinstance(ident, INTERFACE):
-            type_ = schema.query_graph.data_types[ident.name]
+            type_ = schema.data_types[ident.name]
             field_idents = [FieldIdent(ident.name, f_name)
                             for f_name, f_type in type_.__field_types__.items()]
             yield field_idents
@@ -229,6 +233,7 @@ def type_fields_link(schema, ids, options):
             yield []
 
 
+@listify
 def type_of_type_link(schema, ids):
     for ident in ids:
         if isinstance(ident, (NON_NULL, LIST)):
@@ -237,6 +242,7 @@ def type_of_type_link(schema, ids):
             yield Nothing
 
 
+@listify
 def field_info(schema, fields, ids):
     nodes_map = _nodes_map(schema)
     for ident in ids:
@@ -257,6 +263,7 @@ def field_info(schema, fields, ids):
         yield [info[f.name] for f in fields]
 
 
+@listify
 def field_type_link(schema, ids):
     nodes_map = _nodes_map(schema)
     type_ident = TypeIdent(schema.query_graph)
@@ -266,11 +273,12 @@ def field_type_link(schema, ids):
             field = node.fields_map[ident.name]
             yield type_ident.visit(field.type)
         else:
-            data_type = schema.query_graph.data_types[ident.node]
+            data_type = schema.data_types[ident.node]
             field_type = data_type.__field_types__[ident.name]
             yield type_ident.visit(field_type)
 
 
+@listify
 def field_args_link(schema, ids):
     nodes_map = _nodes_map(schema)
     for ident in ids:
@@ -283,16 +291,18 @@ def field_args_link(schema, ids):
             yield []
 
 
+@listify
 def type_input_object_input_fields_link(schema, ids):
     for ident in ids:
         if isinstance(ident, INPUT_OBJECT):
-            data_type = schema.query_graph.data_types[ident.name]
+            data_type = schema.data_types[ident.name]
             yield [InputObjectFieldIdent(ident.name, key)
                    for key in data_type.__field_types__.keys()]
         else:
             yield []
 
 
+@listify
 def input_value_info(schema, fields, ids):
     nodes_map = _nodes_map(schema)
     for ident in ids:
@@ -322,6 +332,7 @@ def input_value_info(schema, fields, ids):
             raise TypeError(repr(ident))
 
 
+@listify
 def input_value_type_link(schema, ids):
     nodes_map = _nodes_map(schema)
     type_ident = TypeIdent(schema.query_graph, input_mode=True)
@@ -332,7 +343,7 @@ def input_value_type_link(schema, ids):
             option = field.options_map[ident.name]
             yield type_ident.visit(option.type)
         elif isinstance(ident, InputObjectFieldIdent):
-            data_type = schema.query_graph.data_types[ident.name]
+            data_type = schema.data_types[ident.name]
             field_type = data_type.__field_types__[ident.key]
             yield type_ident.visit(field_type)
         else:
@@ -487,13 +498,13 @@ class BindToSchema(GraphTransformer):
 
     def __init__(self, schema):
         self.schema = schema
-        self._bound = {}
+        self._processed = {}
 
     def visit_field(self, obj):
         field = super(BindToSchema, self).visit_field(obj)
-        func = self._bound.get(obj.func)
+        func = self._processed.get(obj.func)
         if func is None:
-            func = self._bound[obj.func] = partial(obj.func, self.schema)
+            func = self._processed[obj.func] = partial(obj.func, self.schema)
         field.func = func
         return field
 
@@ -505,9 +516,15 @@ class BindToSchema(GraphTransformer):
 
 class MakeAsync(GraphTransformer):
 
+    def __init__(self):
+        self._processed = {}
+
     def visit_field(self, obj):
         field = super(MakeAsync, self).visit_field(obj)
-        field.func = async_wrapper(field.func)
+        func = self._processed.get(obj.func)
+        if func is None:
+            func = self._processed[obj.func] = async_wrapper(obj.func)
+        field.func = func
         return field
 
     def visit_link(self, obj):
@@ -546,6 +563,7 @@ class SchemaInfo(object):
 
     def __init__(self, query_graph, mutation_graph=None):
         self.query_graph = query_graph
+        self.data_types = query_graph.data_types
         self.mutation_graph = mutation_graph
 
 
