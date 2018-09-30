@@ -1,4 +1,5 @@
 import inspect
+import warnings
 
 from functools import partial
 from itertools import chain, repeat
@@ -148,6 +149,8 @@ def _check_store_fields(node, fields, ids, result):
 
 def store_fields(index, node, query_fields, ids, query_result):
     if inspect.isgenerator(query_result):
+        warnings.warn('Data loading functions should not return generators',
+                      DeprecationWarning)
         query_result = list(query_result)
 
     _check_store_fields(node, query_fields, ids, query_result)
@@ -340,6 +343,8 @@ class Query(Workflow):
 
     def process_link(self, node, graph_link, query_link, ids, result):
         if inspect.isgenerator(result):
+            warnings.warn('Data loading functions should not return generators',
+                          DeprecationWarning)
             result = list(result)
         store_links(self._index, node, graph_link, query_link, ids, result)
         from_list = ids is not None and graph_link.requires is not None

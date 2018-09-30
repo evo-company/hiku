@@ -50,3 +50,9 @@ def const(name):
     t = type(name, (object,), {})
     t.__module__ = sys._getframe(1).f_globals.get('__name__', '__main__')
     return t
+
+
+def listify(func):
+    def wrapper(*args, **kwargs):
+        return list(func(*args, **kwargs))
+    return wrapper

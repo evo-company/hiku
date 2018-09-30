@@ -5,6 +5,7 @@ import pytest
 from hiku import query as q
 from hiku.graph import Graph, Node, Field, Link, Option, Root
 from hiku.types import Record, Sequence, Integer, Optional, TypeRef
+from hiku.utils import listify
 from hiku.engine import Engine, pass_context, Context
 from hiku.builder import build, Q
 from hiku.executors.sync import SyncExecutor
@@ -12,6 +13,7 @@ from hiku.executors.sync import SyncExecutor
 from .base import check_result, ANY, Mock
 
 
+@listify
 def id_field(fields, ids):
     for i in ids:
         yield [i for _ in fields]
@@ -419,6 +421,7 @@ def test_root_field_alias():
 def test_node_field_alias():
     data = {'x1': {'a': 42}}
 
+    @listify
     def x_fields(fields, ids):
         for i in ids:
             yield [data[i][f.name] for f in fields]
@@ -445,6 +448,7 @@ def test_root_link_alias():
         'xN': {'a': 1, 'b': 2},
     }
 
+    @listify
     def x_fields(fields, ids):
         for i in ids:
             yield [data[i][f.name] for f in fields]
@@ -474,6 +478,7 @@ def test_node_link_alias():
     }
     x2y = {'xN': 'yN'}
 
+    @listify
     def y_fields(fields, ids):
         for i in ids:
             yield [data[i][f.name] for f in fields]
@@ -510,6 +515,7 @@ def test_node_link_alias():
 def test_conflicting_fields():
     x_data = {'xN': {'a': 42}}
 
+    @listify
     def x_fields(fields, ids):
         for i in ids:
             yield ['{}-{}'.format(x_data[i][f.name], f.options['k'])
@@ -543,10 +549,12 @@ def test_conflicting_links():
     }
     x2y = {'xN': ['yA', 'yB', 'yC']}
 
+    @listify
     def y_fields(fields, ids):
         for i in ids:
             yield [data[i][f.name] for f in fields]
 
+    @listify
     def x_to_y_link(ids, options):
         for i in ids:
             yield [y for y in x2y[i] if y not in options['exclude']]
@@ -597,6 +605,7 @@ def test_process_ordered_node():
         ordering.append('x1')
         return 'x1'
 
+    @listify
     def f4(fields, ids):
         for i in ids:
             yield ['{}-e'.format(i) for _ in fields]
