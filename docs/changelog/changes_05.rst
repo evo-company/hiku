@@ -4,6 +4,11 @@ Changes in 0.5
 Unreleased
 ~~~~~~~~~~
 
+  - Added mutations support into GraphQL introspection
+  - Added :py:func:`~hiku.readers.graphql.read_operation` function to support
+    reading all GraphQL operations
+  - Added ability to process nodes sequentially, as requested by a user
+    in a query
   - Added aliases support into query builder
   - Heavily refactored result storage to eliminate cycling references
   - Result now also supports reading field values as attributes, in addition
@@ -23,3 +28,27 @@ Backward-incompatible changes
 
   - Removed ability to define Node in Root node in favor of complex types and
     data types
+  - Added new positional argument to the
+    :py:meth:`hiku.readers.graphql.GraphQLTransformer.transform` method
+  - Renamed positional argument "pattern" in the
+    :py:meth:`hiku.engine.Engine.execute` method
+
+Deprecated features
+~~~~~~~~~~~~~~~~~~~
+
+  - Data loading functions should return data as a ``list`` or as a similar
+    type instead of returning generators. To use generators you can use a
+    decorator link this:
+
+    .. code-block:: python
+
+        def listify(func):
+            def wrapper(*args, **kwargs):
+                return list(func(*args, **kwargs))
+            return wrapper
+
+        @listify
+        def fields_func(fields, ids):
+            for id in ids:
+                ...
+                yield row  # field values

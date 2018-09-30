@@ -2,7 +2,7 @@
     :members: read
 
 .. automodule:: hiku.readers.graphql
-    :members: read
+    :members: read, read_operation, Operation, OperationType
 
 .. automodule:: hiku.readers.protobuf
     :members: read

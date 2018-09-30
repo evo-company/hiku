@@ -269,7 +269,7 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
 
 
 def read(src, variables=None, operation_name=None):
-    """Reads a GraphQL query
+    """Reads a query from the GraphQL document
 
     Example:
 
@@ -304,16 +304,23 @@ def read(src, variables=None, operation_name=None):
 
 
 class OperationType(object):
+    """Enumerates GraphQL operation types"""
+    #: query operation
     QUERY = const('OperationType.QUERY')
+    #: mutation operation
     MUTATION = const('OperationType.MUTATION')
+    #: subscription operation
     SUBSCRIPTION = const('OperationType.SUBSCRIPTION')
 
 
 class Operation(object):
-
+    """Represents requested GraphQL operation"""
     def __init__(self, type_, query, name=None):
+        #: type of the operation
         self.type = type_
+        #: operation's query
         self.query = query
+        #: optional name of the operation
         self.name = name
 
 
@@ -325,6 +332,21 @@ _operations_map = {
 
 
 def read_operation(src, variables=None, operation_name=None):
+    """Reads an operation from the GraphQL document
+
+    Example:
+
+    .. code-block:: python
+
+        op = read_operation('{ foo bar }')
+        if op.type is OperationType.QUERY:
+            result = execute(engine, graph, op.query)
+
+    :param str src: GraphQL document
+    :param dict variables: query variables
+    :param str operation_name: Name of the operation to execute
+    :return: :py:class:`Operation`
+    """
     doc = parse(src)
     op = OperationGetter.get(doc, operation_name=operation_name)
     query = GraphQLTransformer.transform(doc, op, variables)
