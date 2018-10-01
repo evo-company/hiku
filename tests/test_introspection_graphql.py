@@ -363,3 +363,18 @@ def test_mutation_type():
             _ival('bar', _non_null(_INT)),
         ]),
     ], with_mutation=True)
+
+
+def test_untyped_fields():
+    graph = Graph([
+        Root([
+            Field('untyped', None, _noop),
+            Field('any_typed', Any, _noop),
+        ]),
+    ])
+    assert introspect(graph) == _schema([
+        _type('Query', 'OBJECT', fields=[
+            _field('untyped', _ANY),
+            _field('any_typed', _ANY),
+        ]),
+    ])

@@ -10,7 +10,7 @@ from graphql import print_ast, ast_from_value
 from ..graph import Graph, Root, Node, Link, Option, Field, Nothing
 from ..graph import GraphVisitor, GraphTransformer
 from ..types import TypeRef, String, Sequence, Boolean, Optional, TypeVisitor
-from ..types import RecordMeta, AbstractTypeVisitor
+from ..types import Any, RecordMeta, AbstractTypeVisitor
 from ..utils import listify
 from ..compat import async_wrapper, PY3
 
@@ -51,13 +51,13 @@ class TypeIdent(AbstractTypeVisitor):
         self._input_mode = input_mode
 
     def visit_any(self, obj):
-        return NON_NULL(SCALAR('Any'))
+        return SCALAR('Any')
 
     def visit_mapping(self, obj):
-        return NON_NULL(SCALAR('Any'))
+        return SCALAR('Any')
 
     def visit_record(self, obj):
-        return NON_NULL(SCALAR('Any'))
+        return SCALAR('Any')
 
     def visit_callable(self, obj):
         raise TypeError('Not expected here: {!r}'.format(obj))
@@ -66,7 +66,8 @@ class TypeIdent(AbstractTypeVisitor):
         return NON_NULL(LIST(self.visit(obj.__item_type__)))
 
     def visit_optional(self, obj):
-        return self.visit(obj.__type__).of_type
+        ident = self.visit(obj.__type__)
+        return ident.of_type if isinstance(ident, NON_NULL) else ident
 
     def visit_typeref(self, obj):
         if self._input_mode:
@@ -271,7 +272,7 @@ def field_type_link(schema, ids):
         if ident.node in nodes_map:
             node = nodes_map[ident.node]
             field = node.fields_map[ident.name]
-            yield type_ident.visit(field.type)
+            yield type_ident.visit(field.type or Any)
         else:
             data_type = schema.data_types[ident.node]
             field_type = data_type.__field_types__[ident.name]
