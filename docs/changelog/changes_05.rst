@@ -32,6 +32,16 @@ Backward-incompatible changes
     :py:meth:`hiku.readers.graphql.GraphQLTransformer.transform` method
   - Renamed positional argument "pattern" in the
     :py:meth:`hiku.engine.Engine.execute` method
+  - Removed third positional ``query`` argument in the
+    :py:func:`hiku.result.denormalize` function
+  - To add GraphQL introspection one should specify query graph and mutation
+    graph during :py:class:`hiku.introspection.graphql.GraphQLIntrospection`
+    or :py:class:`hiku.introspection.graphql.AsyncGraphQLIntrospection`
+    initialization:
+
+    .. code-block:: python
+
+        graph = apply(graph, [GraphQLIntrospection(graph)])
 
 Deprecated features
 ~~~~~~~~~~~~~~~~~~~
