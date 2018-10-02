@@ -6,7 +6,7 @@
 
 """
 from ..edn import loads, Dict, List, Keyword, Tuple
-from ..query import Node, Link, Field
+from ..query import Node, Link, Field, merge
 from ..compat import text_type
 
 
@@ -61,7 +61,7 @@ def _extract(values):
 
 def transform(value):
     if isinstance(value, List):
-        return Node(list(_extract(value)))
+        return merge([Node(list(_extract(value)))])
     else:
         raise TypeError('Node should be defined as vector, '
                         '{!r} provided instead'.format(value))

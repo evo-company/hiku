@@ -7,11 +7,11 @@
 """
 from google.protobuf.json_format import MessageToDict
 
-from ..query import Node, Link, Field
+from ..query import Node, Link, Field, merge
 from ..protobuf import query_pb2
 
 
-def transform(pb_node):
+def _transform(pb_node):
     fields = []
     for i in pb_node.items:
         item_type = i.WhichOneof('value')
@@ -28,10 +28,14 @@ def transform(pb_node):
             options = None
             if i.link.HasField('options'):
                 options = MessageToDict(i.link.options)
-            fields.append(Link(i.link.name, transform(i.link.node), options))
+            fields.append(Link(i.link.name, _transform(i.link.node), options))
         else:
             raise TypeError('Node item is empty: {!r}'.format(i))
     return Node(fields)
+
+
+def transform(pb_node):
+    return merge([_transform(pb_node)])
 
 
 def read(data):

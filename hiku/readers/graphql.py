@@ -12,7 +12,7 @@ from graphql.language.ast import NonNullType
 from graphql.language.parser import parse
 
 from ..utils import const
-from ..query import Node, Field, Link
+from ..query import Node, Field, Link, merge
 
 
 class NodeVisitor(object):
@@ -265,7 +265,7 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
             self.query_name = None
             self.query_variables = None
             self.fragments_transformer = None
-        return node
+        return merge([node])
 
 
 def read(src, variables=None, operation_name=None):

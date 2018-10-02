@@ -187,13 +187,13 @@ def test_named_fragments():
                 Link('sneezer', Node([
                     Field('flowers'),
                     Field('doozie'),
+                    Field('apres'),
                     Link('pins', Node([
                         Field('gunya'),
                         Link('kilned', Node([
                             Field('rusk'),
                         ])),
                     ])),
-                    Field('apres'),
                 ]), options={'gire': 'noatak'}),
                 Link('movies', Node([
                     Field('boree'),
