@@ -21,7 +21,7 @@
 from collections import defaultdict
 
 from .types import RecordMeta, OptionalMeta, SequenceMeta
-from .query import Node, Field, Link, merge
+from .query import Node, Field, Link
 from .graph import Link as GraphLink, Field as GraphField, Many, Maybe
 from .utils import cached_property
 
@@ -153,7 +153,7 @@ def _denormalize(graph, graph_obj, result, query_obj):
             return _denormalize(graph, graph_obj, result, query_obj.node)
 
 
-def denormalize(graph, result, query):
+def denormalize(graph, result):
     """Transforms normalized result (graph) into simple hierarchical structure
 
     This hierarchical structure will follow query structure.
@@ -162,11 +162,10 @@ def denormalize(graph, result, query):
 
         query = hiku.readers.simple.read('[:foo]')
         norm_result = hiku_engine.execute(graph, query)
-        result = hiku.result.denormalize(graph, norm_result, query)
+        result = hiku.result.denormalize(graph, norm_result)
         assert result == {'foo': 'value'}
 
     :param graph: :py:class:`~hiku.graph.Graph` definition
     :param result: result of the query
-    :param query: executed query, instance of the :py:class:`~hiku.query.Node`
     """
-    return _denormalize(graph, graph.root, result, merge([query]))
+    return _denormalize(graph, graph.root, result, result.__node__)

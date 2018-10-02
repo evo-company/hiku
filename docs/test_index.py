@@ -78,7 +78,7 @@ def test():
     for query in [query_graphql(), query_simple(), query_python()]:
         hiku_engine = Engine(SyncExecutor())
         result = hiku_engine.execute(GRAPH, query)
-        result = denormalize(GRAPH, result, query)
+        result = denormalize(GRAPH, result)
         assert result == \
         {
             "characters": [

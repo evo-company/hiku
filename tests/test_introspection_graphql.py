@@ -197,7 +197,7 @@ def introspect(query_graph, mutation_graph=None):
     assert not errors
 
     norm_result = engine.execute(query_graph, query)
-    return denormalize(query_graph, norm_result, query)
+    return denormalize(query_graph, norm_result)
 
 
 def test_introspection_query():

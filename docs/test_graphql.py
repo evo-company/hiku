@@ -30,7 +30,7 @@ def test_query(dt):
 
     query = read('{ now }')
     result = hiku_engine.execute(GRAPH, query)
-    simple_result = denormalize(GRAPH, result, query)
+    simple_result = denormalize(GRAPH, result)
     assert simple_result == {'now': '2015-10-21T07:28:00'}
 
 
@@ -44,7 +44,7 @@ def test_sync_introspection():
 
     query = read('{ __typename }')
     result = hiku_engine.execute(graph, query)
-    simple_result = denormalize(graph, result, query)
+    simple_result = denormalize(graph, result)
     assert simple_result == {'__typename': 'Root'}
 
 
@@ -63,5 +63,5 @@ async def test_async_introspection(event_loop):
 
     query = read('{ __typename }')
     result = await async_hiku_engine.execute(graph, query)
-    simple_result = denormalize(graph, result, query)
+    simple_result = denormalize(graph, result)
     assert simple_result == {'__typename': 'Root'}

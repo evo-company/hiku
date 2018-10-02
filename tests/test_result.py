@@ -151,7 +151,7 @@ def get_result(query):
 
 def check_result(query_string, result):
     query = merge([read(query_string)])
-    new_result = denormalize(GRAPH, get_result(query), query)
+    new_result = denormalize(GRAPH, get_result(query))
     json.dumps(new_result)  # using json to check for circular references
     assert new_result == result
 
@@ -387,7 +387,45 @@ def test_denormalize_with_alias():
 
     result = Proxy(index, ROOT, query)
 
-    assert denormalize(graph, result, query) == {
+    assert denormalize(graph, result) == {
         'x1': {'a1': 1},
         'x2': {'b1': 2},
+    }
+
+
+def test_denormalize_non_merged_query():
+    index = Index()
+    index.root.update({
+        'x': Reference('X', 'xN'),
+    })
+    index['X']['xN'].update({
+        'a': 1,
+        'b': 2,
+    })
+    index.finish()
+    graph = Graph([
+        Node('X', [
+            Field('a', None, None),
+            Field('b', None, None),
+        ]),
+        Root([
+            Link('x', TypeRef['X'], lambda: 'xN', requires=None),
+        ]),
+    ])
+    non_merged_query = hiku_query.Node([
+        hiku_query.Link('x', hiku_query.Node([
+            hiku_query.Field('a'),
+        ])),
+        hiku_query.Link('x', hiku_query.Node([
+            hiku_query.Field('b'),
+        ])),
+    ])
+
+    with pytest.raises(KeyError) as err:
+        denormalize(graph, Proxy(index, ROOT, non_merged_query))
+    err.match("Field u?'a' wasn't requested in the query")
+
+    merged_query = merge([non_merged_query])
+    assert denormalize(graph, Proxy(index, ROOT, merged_query)) == {
+        'x': {'a': 1, 'b': 2},
     }

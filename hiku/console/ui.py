@@ -122,7 +122,7 @@ class ConsoleApplication(object):
                 status = '400 Bad Request'
             else:
                 result = self.engine.execute(self.root, query, ctx=self.ctx)
-                result = denormalize(self.root, result, query)
+                result = denormalize(self.root, result)
                 status = '200 OK'
         except Exception:
             tb = traceback.format_exc() if self.debug else None

@@ -66,7 +66,7 @@ async def execute(engine, graph, query, ctx=None):
     errors = validate(graph, query)
     if not errors:
         result = await engine.execute(graph, query, ctx=ctx)
-        return {'data': denormalize(graph, result, query)}
+        return {'data': denormalize(graph, result)}
     else:
         return {'errors': errors}
 
