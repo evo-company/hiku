@@ -158,7 +158,13 @@ def denormalize(graph, result):
 
     This hierarchical structure will follow query structure.
 
-    Example::
+    .. note:: To work properly this function requires that incoming query
+        was merged by using :py:func:`hiku.query.merge` function. This is done
+        by default in all query readers.
+
+    Example:
+
+    .. code-block:: python
 
         query = hiku.readers.simple.read('[:foo]')
         norm_result = hiku_engine.execute(graph, query)

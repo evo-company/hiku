@@ -4,6 +4,18 @@ Changes in 0.5
 Unreleased
 ~~~~~~~~~~
 
+  - All query readers now return merged queries, so queries like this:
+
+    .. code-block:: clojure
+
+        [{:foo [:a :b]} {:foo [:b :c]}]
+
+    will be transformed into this automatically:
+
+    .. code-block:: clojure
+
+        [{:foo [:a :b :c]}]
+
   - Added mutations support into GraphQL introspection
   - Added :py:func:`~hiku.readers.graphql.read_operation` function to support
     reading all GraphQL operations
