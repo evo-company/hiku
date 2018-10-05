@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='hiku',
-    version='0.5.0rc2',
+    version='0.5.0rc3',
     description='Library to implement Graph APIs',
     author='Vladimir Magamedov',
     author_email='vladimir@magamedov.com',
