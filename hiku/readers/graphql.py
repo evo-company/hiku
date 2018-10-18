@@ -327,7 +327,7 @@ class Operation(object):
 _operations_map = {
     'query': OperationType.QUERY,
     'mutation': OperationType.MUTATION,
-    'subscription': OperationType.MUTATION,
+    'subscription': OperationType.SUBSCRIPTION,
 }
 
 
@@ -340,7 +340,7 @@ def read_operation(src, variables=None, operation_name=None):
 
         op = read_operation('{ foo bar }')
         if op.type is OperationType.QUERY:
-            result = execute(engine, graph, op.query)
+            result = engine.execute(engine, graph, op.query)
 
     :param str src: GraphQL document
     :param dict variables: query variables

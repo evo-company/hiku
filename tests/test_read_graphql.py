@@ -318,3 +318,9 @@ def test_read_operation_mutation():
     op = read_operation('mutation { ping }')
     assert op.type is OperationType.MUTATION
     assert op.query == Node([Field('ping')], ordered=True)
+
+
+def test_read_operation_subscription():
+    op = read_operation('subscription { ping }')
+    assert op.type is OperationType.SUBSCRIPTION
+    assert op.query == Node([Field('ping')])
