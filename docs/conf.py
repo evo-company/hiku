@@ -1,7 +1,6 @@
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
-    'sphinx_tabs.tabs',
 ]
 
 autoclass_content = 'both'
@@ -32,4 +31,3 @@ html_theme_options = {
 def setup(app):
     app.add_stylesheet('style.css?r=1')
     app.add_stylesheet('fixes.css?r=1')
-    app.add_javascript('toggle.js?r=1')
