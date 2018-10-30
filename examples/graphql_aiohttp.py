@@ -68,14 +68,19 @@ async def execute(engine, graph, query, ctx=None):
         result = await engine.execute(graph, query, ctx=ctx)
         return {'data': denormalize(graph, result)}
     else:
-        return {'errors': errors}
+        return {'errors': [{'message': e} for e in errors]}
 
 
 async def dispatch(data, engine, query_graph, mutation_graph, ctx=None):
     try:
-        op = read_operation(data['query'],
-                            variables=data.get('variables'),
-                            operation_name=data.get('operationName'))
+        try:
+            op = read_operation(data['query'],
+                                variables=data.get('variables'),
+                                operation_name=data.get('operationName'))
+        except TypeError as e:
+            return {'errors': [{'message': ('Failed to read query: {}'
+                                            .format(e))}]}
+
         if op.type is OperationType.QUERY:
             return await execute(engine, query_graph, op.query, ctx=ctx)
         elif op.type is OperationType.MUTATION:
