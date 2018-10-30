@@ -1,11 +1,75 @@
 Using GraphQL
 =============
 
-.. note:: Hiku is a general-purpose library to expose information as a graph. And
-  initially, GraphQL support was not a primary concern. Hiku is an attempt to explore
-  alternative ways without the need to conform to the GraphQL spec and implement all
-  those features. So now, after several releases, it is possible to grow GraphQL
-  support and keep it optional.
+.. note:: Hiku is a general-purpose library to expose data as a graph of linked
+  nodes. And it is possible to implement GraphQL server using Hiku.
+
+To implement GraphQL server we will have to add GraphQL introspection into our
+graph and to add GraphQL query execution process:
+
+  - read GraphQL query
+  - validate query against graph definition
+  - execute query using Engine
+  - denormalize result into simple data structure
+  - serialize result and send back to the client
+
+Graph Definition
+~~~~~~~~~~~~~~~~
+
+GraphQL schema may have several root object types for each operation type:
+query, mutation, subscription... Hiku has only one :py:class:`~hiku.graph.Root`
+node to represent entry point into a graph. So, to implement mutations, we will
+need a second :py:class:`~hiku.graph.Root` node, and second graph, which is
+identical to the query graph, except :py:class:`~hiku.graph.Root` node:
+
+.. code-block:: python
+
+  query_graph = Graph([
+      Root([
+          Field('value', String, value_func),
+      ]),
+  ])
+
+  mutation_graph = Graph(query_graph.nodes + [
+      Root([
+          Field('action', Boolean, action_func),
+      ]),
+  ])
+
+
+Introspection
+~~~~~~~~~~~~~
+
+.. automodule:: hiku.introspection.graphql
+  :members: GraphQLIntrospection, AsyncGraphQLIntrospection
+
+Incompatible with GraphQL types are represented as :py:class:`hiku.types.Any`
+type.
+
+``Record`` data types are represented as interfaces and input objects with
+distinct prefixes. Given these data types:
+
+.. code-block:: python
+
+  graph = Graph([...], data_types={'Foo': Record[{'x': Integer}]})
+
+You will see ``Foo`` data type via introspection as:
+
+.. code-block:: javascript
+
+  interface IFoo {
+    x: Integer
+  }
+
+  input IOFoo {
+    x: Integer
+  }
+
+This is because Hiku's data types universally can be used in field and
+option definitions, as long as they don't have references to nodes.
+
+Reading
+~~~~~~~
 
 In order to parse GraphQL queries you will need to install ``graphql-core``
 library:
@@ -14,45 +78,63 @@ library:
 
   $ pip install graphql-core
 
-**Currently not supported features**
+There are two options:
 
-- mutations and other non-query operations
-- field aliases
+  - :py:func:`~hiku.readers.graphql.read` simple queries, when only query
+    operations are expected
+  - :py:func:`~hiku.readers.graphql.read_operation`, when different operations
+    are expected: queries, mutations, etc.
 
-Reading GraphQL queries
-~~~~~~~~~~~~~~~~~~~~~~~
+.. automodule:: hiku.readers.graphql
+    :members: read, read_operation, Operation, OperationType
 
-Minimal graph definition:
+Validation
+~~~~~~~~~~
 
-.. literalinclude:: test_graphql.py
-  :lines: 11-25
+As every other query, GraphQL queries should be validated and errors can be
+sent back to the client:
 
-GraphQL query execution:
+.. code-block:: python
 
-.. literalinclude:: test_graphql.py
-  :lines: 31-34
-  :dedent: 4
+  from hiku.validate.query import validate
 
-Introspection
-~~~~~~~~~~~~~
+  def handler(request):
+      ... # read
+      errors = validate(graph, query)
+      if errors:
+          return {'errors': [{'message': e} for e in errors]}
+      ... # execute
 
-Hiku's graph by default doesn't contain a built-in introspection,
-but it can be added.
+Execution
+~~~~~~~~~
 
-.. note:: Hiku types are optional and are not fully compatible with GraphQL type
-  system. For example, if the field contains :py:class:`~hiku.types.Any` or
-  :py:class:`~hiku.types.Record` types, such fields will be ignored. You still
-  will be able to query such fields, but they wouldn't be available for
-  introspection.
+Depending on operation type, you will execute query against one graph or
+another:
 
-For synchronous graphs:
+.. code-block:: python
 
-.. literalinclude:: test_graphql.py
-  :lines: 40-48
-  :dedent: 4
+  if op.type is OperationType.QUERY:
+      result = engine.execute(query_graph, op.query)
+  elif op.type is OperationType.MUTATION:
+      result = engine.execute(mutation_graph, op.query)
+  else:
+      return {'errors': [{'message': ('Unsupported operation type: {!r}'
+                                      .format(op.type))}]}
 
-For asynchronous graphs:
+Denormalization
+~~~~~~~~~~~~~~~
 
-.. literalinclude:: test_graphql.py
-  :lines: 59-67
-  :dedent: 4
+Most common serialization format for GraphQL is JSON. But in order to serialize
+execution result into JSON, it should be denormalized, to replace references
+(possibly cyclic) with actual data:
+
+.. code-block:: python
+
+  from hiku.result import denormalize
+
+  def handler(request):
+      ... # execute
+      result = {'data': denormalize(graph, result)}
+      return jsonify(result)
+
+.. _graphql-core: https://github.com/graphql-python/graphql-core

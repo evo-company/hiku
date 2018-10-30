@@ -569,8 +569,25 @@ class SchemaInfo(object):
 
 
 class GraphQLIntrospection(GraphTransformer):
+    """Adds GraphQL introspection into synchronous graph
 
+    Example:
+
+    .. code-block:: python
+
+        from hiku.graph import apply
+        from hiku.introspection.graphql import GraphQLIntrospection
+
+        graph = apply(graph, [GraphQLIntrospection(graph)])
+
+    """
     def __init__(self, query_graph, mutation_graph=None):
+        """
+        :param query_graph: graph, where Root node represents Query root
+            operation type
+        :param mutation_graph: graph, where Root node represents Mutation root
+            operation type
+        """
         self._schema = SchemaInfo(query_graph, mutation_graph)
 
     def __type_name__(self, node_name):
@@ -599,7 +616,18 @@ class GraphQLIntrospection(GraphTransformer):
 
 
 class AsyncGraphQLIntrospection(GraphQLIntrospection):
+    """Adds GraphQL introspection into asynchronous graph
 
+    Example:
+
+    .. code-block:: python
+
+        from hiku.graph import apply
+        from hiku.introspection.graphql import AsyncGraphQLIntrospection
+
+        graph = apply(graph, [AsyncGraphQLIntrospection(graph)])
+
+    """
     def __type_name__(self, node_name):
         return Field('__typename', String,
                      async_wrapper(partial(type_name_field_func, node_name)))

@@ -1,10 +1,3 @@
-"""
-    hiku.readers.graphql
-    ~~~~~~~~~~~~~~~~~~~~
-
-    Support for GraphQL queries
-
-"""
 from __future__ import absolute_import
 
 from graphql.language import ast
@@ -275,17 +268,7 @@ def read(src, variables=None, operation_name=None):
 
     .. code-block:: python
 
-        query = read(
-            '''
-            query Characters($limit: Int) {
-                characters(limit: $limit) {
-                    name
-                }
-            }
-            ''',
-            {'limit': 100},
-        )
-
+        query = read('{ foo bar }')
         result = engine.execute(graph, query)
 
     :param str src: GraphQL query
@@ -340,7 +323,7 @@ def read_operation(src, variables=None, operation_name=None):
 
         op = read_operation('{ foo bar }')
         if op.type is OperationType.QUERY:
-            result = engine.execute(engine, graph, op.query)
+            result = engine.execute(query_graph, op.query)
 
     :param str src: GraphQL document
     :param dict variables: query variables
