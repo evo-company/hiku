@@ -1,8 +1,8 @@
 Changes in 0.5
 ==============
 
-Unreleased
-~~~~~~~~~~
+0.5.0rc3
+~~~~~~~~
 
   - All query readers now return merged queries, so queries like this:
 
