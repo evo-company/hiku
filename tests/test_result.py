@@ -352,7 +352,7 @@ def test_missing_field():
 
     with pytest.raises(AssertionError) as err:
         proxy.foo
-    err.match("Field SomeNode\[42\]\.foo is missing in the index")
+    err.match(r"Field SomeNode\[42\]\.foo is missing in the index")
 
 
 def test_denormalize_with_alias():

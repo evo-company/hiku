@@ -168,8 +168,8 @@ def test_field_option_missing():
     ])
     with pytest.raises(TypeError) as err:
         execute(graph, build([Q.poofy]))
-    err.match('^Required option "mohism" for Field\(\'poofy\', '
-              '(.*) was not provided$')
+    err.match(r'^Required option "mohism" for Field\(\'poofy\', '
+              r'(.*) was not provided$')
 
 
 @pytest.mark.parametrize('option, args, result', OPTION_BEHAVIOUR)
@@ -209,8 +209,8 @@ def test_link_option_missing():
     ])
     with pytest.raises(TypeError) as err:
         execute(graph, build([Q.eclairs[Q.papeete]]))
-    err.match('^Required option "nocks" for Link\(\'eclairs\', '
-              '(.*) was not provided$')
+    err.match(r'^Required option "nocks" for Link\(\'eclairs\', '
+              r'(.*) was not provided$')
 
 
 def test_pass_context_field():

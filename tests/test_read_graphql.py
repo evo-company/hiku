@@ -275,7 +275,7 @@ def test_undefined_variables():
           selma(djin: $geeky)
         }
         """)
-    err.match('Variable \$geeky is not defined in query <unnamed>')
+    err.match(r'Variable \$geeky is not defined in query <unnamed>')
 
     with pytest.raises(TypeError) as err:
         read("""
@@ -283,7 +283,7 @@ def test_undefined_variables():
           ve(sac: $bd)
         }
         """)
-    err.match('Variable \$bd is not defined in query Oriolus')
+    err.match(r'Variable \$bd is not defined in query Oriolus')
 
     with pytest.raises(TypeError) as err:
         read("""
@@ -295,7 +295,7 @@ def test_undefined_variables():
           chewie(newton: $aliyah)
         }
         """)
-    err.match('Variable \$aliyah is not defined in query Had')
+    err.match(r'Variable \$aliyah is not defined in query Had')
 
 
 def test_missing_variables():

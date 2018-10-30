@@ -436,7 +436,7 @@ GRAPH = Graph([
 
 
 class ValidateGraph(GraphVisitor):
-    _name_re = re.compile('^[_a-zA-Z]\w*$', re.ASCII if PY3 else 0)
+    _name_re = re.compile(r'^[_a-zA-Z]\w*$', re.ASCII if PY3 else 0)
 
     def __init__(self):
         self._path = []
