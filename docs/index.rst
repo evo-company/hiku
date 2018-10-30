@@ -1,13 +1,7 @@
 Hiku
 ====
 
-Release v0.4 - :doc:`What's new <changelog/changes_04>`
-
-Project on GitHub: https://github.com/vmagamedov/hiku
-
-Hiku is a library to design Graph APIs. Why graphs? – They are simple,
-predictable, flexible, easy to compose and because of that, they are easy
-to reuse.
+Hiku is a library to implement Graph APIs. GraphQL support included.
 
 Licensed under **BSD-3-Clause** license. See LICENSE.txt
 
@@ -21,79 +15,84 @@ Installation
 Highlights
 ~~~~~~~~~~
 
-  * Not coupled to one specific query language
-  * Flexibility in result serialization, including binary format
-  * All concurrency models supported: async/await, threads, greenlets
-  * Parallel execution of the query itself for free
-  * No data under-fetching or over-fetching
-  * No extra data loading from databases, only what was needed to fulfill
-    the query
-  * No ``N+1`` problems, they are eliminated by design
-  * Even complex queries of any size are predictable in terms of
-    performance impact
-  * Implements a concept of the `Two-Level Graph` in order to put your
-    business-logic in the right place
+  * Not coupled to a single specific query language
+  * Flexibility in result serialization, including binary formats
+  * Natively uses normalized result representation, without data duplication
+  * All concurrency models supported: coroutines, threads
+  * Parallelized query execution
+  * No data under-fetching or over-fetching between ``client<->server`` and
+    between ``server<->database``
+  * No ``N+1`` problems by design
+  * Introduces a concept of `Two-Level Graph` in order to decouple data-sources
+    and business-logic
 
 Quick example
 ~~~~~~~~~~~~~
 
-.. container:: toggle
+Graph definition:
 
-  .. container:: header
+.. code-block:: python
 
-    Define your data (click to expand)
+  CHARACTER_DATA = {
+      '819e79e09f40': {'name': 'James T. Kirk', 'species': 'Human'},
+      '4266ffb4fbc3': {'name': 'Spock', 'species': 'Vulcan/Human'},
+      'a562fedf8804': {'name': 'Leonard McCoy', 'species': 'Human'},
+  }
 
-  .. literalinclude:: test_index.py
-    :lines: 13-35
+  def characters_data(fields, ids):
+      for ident in ids:
+          yield [CHARACTER_DATA[ident][f.name] for f in fields]
 
-Define your graph:
+  def characters_link():
+      return ['819e79e09f40', '4266ffb4fbc3', 'a562fedf8804']
 
-.. literalinclude:: test_index.py
-  :lines: 38-47
+  GRAPH = Graph([
+      Node('Character', [
+          Field('name', String, characters_data),
+          Field('species', String, characters_data),
+      ]),
+      Root([
+          Link('characters', Sequence[TypeRef['Character']],
+               characters_link, requires=None),
+      ]),
+  ])
 
-Express your needs using query:
+Query:
 
-.. tabs::
+.. code-block:: python
 
-  .. group-tab:: GraphQL
+  engine = Engine(SyncExecutor())
+  query = build([
+      Q.characters[
+          Q.name,
+          Q.species,
+      ],
+  ])
+  result = engine.execute(GRAPH, query)
 
-    .. literalinclude:: test_index.py
-      :language: javascript
-      :lines: 52-57
-      :dedent: 4
+  # use result in your code
+  for character in result.characters:
+      print(character.name)
+      print(character.species)
 
-  .. group-tab:: Simple EDN
-
-    .. literalinclude:: test_index.py
-      :language: clojure
-      :lines: 63
-      :dedent: 4
-
-  .. group-tab:: Python DSL
-
-    .. literalinclude:: test_index.py
-      :lines: 68-73
-      :dedent: 4
-
-Execute your query:
-
-.. literalinclude:: test_index.py
-  :lines: 79-80
-  :dedent: 8
-
-Denormalize result, so it will be possible to serialize into plain JSON
-format:
-
-.. literalinclude:: test_index.py
-  :lines: 81
-  :dedent: 8
-
-And you will get ready for ``json.dumps`` result:
-
-.. literalinclude:: test_index.py
-  :language: javascript
-  :lines: 83-98
-  :dedent: 8
+  # get `json.dumps()`-ready result representation
+  data = denormalize(GRAPH, result)
+  assert data == {
+      "characters": [
+          {
+              "name": "James T. Kirk",
+              "species": "Human"
+          },
+          {
+              "name": "Spock",
+              "species": "Vulcan/Human"
+          },
+          {
+              "name": "Leonard McCoy",
+              "species": "Human"
+          },
+      ]
+  }
 
 User's Guide
 ~~~~~~~~~~~~
