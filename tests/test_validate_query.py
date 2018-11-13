@@ -3,7 +3,7 @@ import pytest
 from hiku import query as q
 from hiku.graph import Graph, Node, Field, Link, Option, Root
 from hiku.types import Integer, Record, Sequence, Optional, TypeRef, Boolean
-from hiku.types import String, Mapping
+from hiku.types import String, Mapping, Any
 from hiku.validate.query import validate
 
 
@@ -484,3 +484,20 @@ def test_typeref_in_option():
     assert validate(graph, q.Node([
         q.Field('get', options={'foo': {'key': '1'}}),
     ])) == ['Invalid value for option "root.get:foo", "str" instead of Integer']
+
+
+def test_any_in_option():
+    graph = Graph([
+        Root([
+            Field('get', None, None, options=[
+                Option('foo', Mapping[String, Any]),
+            ]),
+        ]),
+    ])
+    assert validate(graph, q.Node([
+        q.Field('get', options={'foo': {u'key': 1}}),
+    ])) == []
+    assert validate(graph, q.Node([
+        q.Field('get', options={'foo': 'bar'}),
+    ])) == ['Invalid value for option "root.get:foo", '
+            '"str" instead of Mapping[String, Any]']

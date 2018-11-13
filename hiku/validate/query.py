@@ -114,6 +114,9 @@ class _OptionTypeValidator(object):
     def visit(self, type_):
         type_.accept(self)
 
+    def visit_any(self, type_):
+        pass
+
     def visit_boolean(self, type_):
         if not isinstance(self.value, bool):
             raise _OptionTypeError(self.value, type_)
