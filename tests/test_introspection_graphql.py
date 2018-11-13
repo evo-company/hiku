@@ -232,7 +232,6 @@ def test_introspection_query():
             _field('clarkia', _seq_of(_obj('flexed'))),
         ]),
         _type('Query', 'OBJECT', fields=[
-            _field('_cowered', _non_null(_STR)),
             _field('entero', _non_null(_FLOAT)),
             _field('toma', _seq_of(_obj('decian'))),
         ]),

@@ -219,9 +219,10 @@ def type_fields_link(schema, ids, options):
     for ident in ids:
         if isinstance(ident, OBJECT):
             node = nodes_map[ident.name]
-            field_idents = [FieldIdent(ident.name, f.name) for f in node.fields]
+            field_idents = [FieldIdent(ident.name, f.name) for f in node.fields
+                            if not f.name.startswith('_')]
             if not field_idents:
-                raise TypeError('Node "{}" does not contain any typed field, '
+                raise TypeError('Node "{}" does not contain fields, '
                                 'which is not acceptable for GraphQL in order '
                                 'to define schema type'.format(ident.name))
             yield field_idents

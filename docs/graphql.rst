@@ -40,6 +40,9 @@ identical to the query graph, except :py:class:`~hiku.graph.Root` node:
 Introspection
 ~~~~~~~~~~~~~
 
+.. note:: Fields with underscore-prefixed names are hidden in GraphQL
+  introspection.
+
 .. automodule:: hiku.introspection.graphql
   :members: GraphQLIntrospection, AsyncGraphQLIntrospection
 
