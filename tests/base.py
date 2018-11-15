@@ -49,11 +49,14 @@ def check_result(result, value):
 
 
 def _ref_reducer(backref, item):
-    name, to = item
+    try:
+        name, to, options = item
+    except ValueError:
+        (name, to), options = item, None
     if name is None:
         return Ref(backref, to)
     else:
-        return NamedRef(backref, name, to)
+        return NamedRef(backref, name, to, options=options)
 
 
 def ref(chain):

@@ -33,9 +33,10 @@ class Ref:
 
 class NamedRef(Ref):
 
-    def __init__(self, backref, name, to):
+    def __init__(self, backref, name, to, options=None):
         super(NamedRef, self).__init__(backref, to)
         self.name = name
+        self.options = options
 
     def __repr__(self):
         return '{}:{!r} > {!r}'.format(self.name, self.to, self.backref)
@@ -60,7 +61,7 @@ def ref_to_req(types, ref, add_req=None):
         if isinstance(ref, NamedRef):
             node = Node([]) if add_req is None else add_req
             return ref_to_req(types, ref.backref,
-                              Node([Link(ref.name, node)]))
+                              Node([Link(ref.name, node, options=ref.options)]))
         else:
             return ref_to_req(types, ref.backref, add_req)
 
@@ -70,20 +71,20 @@ def ref_to_req(types, ref, add_req=None):
             assert isinstance(ref, NamedRef), type(ref)
             node = Node([]) if add_req is None else add_req
             return ref_to_req(types, ref.backref,
-                              Node([Link(ref.name, node)]))
+                              Node([Link(ref.name, node, options=ref.options)]))
         else:
             assert not isinstance(item_type, _CONTAINER_TYPES), ref_type
             assert isinstance(ref, NamedRef), type(ref)
             assert add_req is None, repr(add_req)
             return ref_to_req(types, ref.backref,
-                              Node([Field(ref.name)]))
+                              Node([Field(ref.name, options=ref.options)]))
 
     elif isinstance(ref_type, GenericMeta):
         assert not isinstance(ref_type, _CONTAINER_TYPES), ref_type
         assert add_req is None, repr(add_req)
         if isinstance(ref, NamedRef):
             return ref_to_req(types, ref.backref,
-                              Node([Field(ref.name)]))
+                              Node([Field(ref.name, options=ref.options)]))
         else:
             return ref_to_req(types, ref.backref)
 

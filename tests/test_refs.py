@@ -98,6 +98,39 @@ def test_ref_to_optional():
     ], {'Foo': Record[{'bar': Optional[Integer]}]}, None, [Q.foo[Q.bar]])
 
 
+def test_ref_to_scalar_opt():
+    chain = [
+        ('bar', Integer, {'arg': 42}),
+        ('foo', Record[{'bar': Integer}]),
+    ]
+    check_ref(chain, {}, None, [Q.foo[Q.bar(arg=42)]])
+
+
+def test_ref_to_record_opt():
+    chain = [
+        ('bar', Integer),
+        ('foo', Record[{'bar': Integer}], {'arg': 42}),
+    ]
+    check_ref(chain, {}, None, [Q.foo(arg=42)[Q.bar]])
+
+
+def test_ref_to_sequence_scalar_opt():
+    chain = [
+        (None, Integer),
+        ('foo', Sequence[Integer], {'arg': 42}),
+    ]
+    check_ref(chain, {}, None, [Q.foo(arg=42)])
+
+
+def test_ref_to_sequence_record_opt():
+    chain = [
+        ('bar', Integer),
+        (None, Record[{'bar': Integer}]),
+        ('foo', Sequence[Record[{'bar': Integer}]], {'arg': 42}),
+    ]
+    check_ref(chain, {}, None, [Q.foo(arg=42)[Q.bar]])
+
+
 def test_query_for_record_with_scalar():
     check_type(Record[{'foo': Integer}], [Q.foo])
 
