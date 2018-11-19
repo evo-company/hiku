@@ -127,6 +127,10 @@ class ExpressionCompiler:
                            [py.comprehension(py.Name(var_name, py.Store()),
                                              col_expr, [])])
 
+    def visit_opt_expr(self, node):
+        _, arg, _ = node.values
+        return self.visit(arg)
+
     def visit_tuple(self, node):
         sym = node.values[0]
         if sym.name == 'get':
@@ -137,6 +141,8 @@ class ExpressionCompiler:
             return self.visit_if_some_expr(node)
         elif sym.name == 'each':
             return self.visit_each_expr(node)
+        elif sym.name == 'opt':
+            return self.visit_opt_expr(node)
         else:
             values = [self.visit(node) for node in node.values]
             sym_expr, arg_exprs = values[0], values[1:]

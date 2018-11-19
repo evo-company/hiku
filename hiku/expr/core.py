@@ -11,7 +11,7 @@ from collections import namedtuple
 
 from ..edn import loads
 from ..query import Node, Link, Field
-from ..types import Record, Callable, Any
+from ..types import Record, Callable, Any, Mapping, String
 from ..readers.simple import transform
 
 from .nodes import Symbol, Tuple, List, Keyword, Dict
@@ -199,3 +199,8 @@ def if_some(bind, then, else_):
     wouldn't be ``None``. Otherwise "else"-expression will be
     evaluated.
     """
+
+
+@define(Any, Mapping[String, Any], _name='opt')
+def opt(arg, options):
+    pass

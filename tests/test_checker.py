@@ -1,7 +1,7 @@
 import pytest
 
-from hiku.types import Integer, Record, Optional, TypeRef, Sequence
-from hiku.expr.core import S, to_expr, if_some, define, each
+from hiku.types import Integer, Record, Optional, TypeRef, Sequence, String
+from hiku.expr.core import S, to_expr, if_some, define, each, opt
 from hiku.expr.checker import check, fn_types
 
 from .base import ref
@@ -81,6 +81,28 @@ def test_if_some_optional():
         (None, TypeRef['Foo']),
         ('foo', Optional[TypeRef['Foo']]),
     ])
+
+
+def test_opt():
+    types = {
+        '__root__': Record[{'foo': String}],
+    }
+    check_ref(
+        check_expr(types, opt(S.foo, {})),
+        [('foo', String, {})],
+    )
+
+    ast = check_expr(types, opt(S.foo, {'option': 42}))
+    check_ref(
+        ast,
+        [('foo', String, {'option': 42})],
+    )
+    assert ast.values[1].name == 'foo'
+    assert ast.values[1].__ref__ is None, ast.values[1].__ref__
+
+    with pytest.raises(TypeError) as err:
+        check_expr(types, opt(S.foo, {'option': 42}, 123))
+    err.match('More arguments than expected')
 
 
 def test_optional_args():

@@ -39,7 +39,11 @@ class NamedRef(Ref):
         self.options = options
 
     def __repr__(self):
-        return '{}:{!r} > {!r}'.format(self.name, self.to, self.backref)
+        r = self.name
+        if self.options is not None:
+            r += '({!r})'.format(self.options)
+        r += ':{!r} > {!r}'.format(self.to, self.backref)
+        return r
 
 
 def get_type(types, type_):

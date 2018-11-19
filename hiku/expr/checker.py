@@ -5,7 +5,7 @@ from ..types import Sequence, SequenceMeta, Record, RecordMeta
 from ..types import MappingMeta, OptionalMeta, Any, AnyMeta, TypeRefMeta
 
 from .refs import NamedRef, Ref
-from .nodes import NodeTransformer, Symbol, Keyword, Tuple, List
+from .nodes import NodeTransformer, Symbol, Keyword, Tuple, List, Dict
 
 
 def fn_types(functions):
@@ -134,6 +134,21 @@ class Checker(NodeTransformer):
         return Tuple([Symbol('if_some'), List([bind_sym, bind_expr]),
                       then, else_])
 
+    def visit_opt_expr(self, node):
+        if len(node.values) > 3:
+            raise TypeError('More arguments than expected: {!r}'.format(node))
+        arg = self.visit(node.values[1])
+        options = self.visit(node.values[2])
+        assert isinstance(options, Dict), type(options)
+        options_dict = {k.name: v for k, v in zip(options.values[::2],
+                                                  options.values[1::2])}
+        ref = NamedRef(arg.__ref__.backref, arg.__ref__.name,
+                       arg.__ref__.to, options_dict)
+        arg.__ref__ = None
+        tup = Tuple([Symbol('opt'), arg, options])
+        tup.__ref__ = ref
+        return tup
+
     def visit_tuple_generic(self, node):
         sym = self.visit(node.values[0])
         assert isinstance(sym, Symbol), type(sym)
@@ -156,6 +171,8 @@ class Checker(NodeTransformer):
             return self.visit_each_expr(node)
         elif sym.name == 'if_some':
             return self.visit_if_some_expr(node)
+        elif sym.name == 'opt':
+            return self.visit_opt_expr(node)
         else:
             return self.visit_tuple_generic(node)
 
