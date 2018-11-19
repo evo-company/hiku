@@ -5,9 +5,10 @@ import pytest
 
 from hiku.graph import Graph, Node, Link, Field, Option, Root
 from hiku.types import Record, Sequence, Any, TypeRef, String
+from hiku.utils import listify
 from hiku.engine import Engine
 from hiku.builder import build, Q
-from hiku.expr.core import define, S, each
+from hiku.expr.core import define, S, each, opt
 from hiku.sources.graph import SubGraph
 from hiku.readers.simple import read
 from hiku.executors.sync import SyncExecutor
@@ -260,3 +261,46 @@ def test_complex_field():
     ])
     result = engine.execute(hl_graph, build([Q.foo[Q.a[Q.s]]]))
     check_result(result, {'foo': {'a': {'s': 'bar'}}})
+
+
+def test_opt():
+    engine = Engine(SyncExecutor())
+
+    @listify
+    def a_data(fields, ids):
+        for _ in ids:
+            yield ['value-{}'.format(f.options['size']) for f in fields]
+
+    ll_graph = Graph([
+        Node('A', [
+            Field('foo', None, a_data,
+                  options=[Option('size', None)]),
+        ]),
+    ])
+    a_sg = SubGraph(ll_graph, 'A')
+
+    @define(Any)
+    def inc(value):
+        return value + 1
+
+    hl_graph = Graph([
+        Node('A', [
+            Field('foo', None, a_sg.c(
+                opt(S.this.foo, {
+                    'size': 43,
+                    # 'size': inc(S.size),
+                })
+            ),
+                  # options=[Option('size', None)]
+                  ),
+        ]),
+        Root([
+            Link('a', TypeRef['A'], lambda: 1, requires=None),
+        ]),
+    ])
+    result = engine.execute(hl_graph, build([
+        Q.a[
+            Q.foo(size=42),
+        ],
+    ]))
+    check_result(result, {'a': {'foo': 'value-43'}})
