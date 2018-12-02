@@ -1,6 +1,13 @@
 Changes in 0.5
 ==============
 
+0.5.1rc1
+~~~~~~~~
+
+  - Fields with underscore-prefixed names are now hidden in GraphQL
+    introspection
+  - Fixed ``Any`` type usage in ``Option`` during query validation
+
 0.5.0
 ~~~~~
 
