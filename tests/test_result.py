@@ -6,7 +6,7 @@ import pytest
 
 from hiku import query as hiku_query
 from hiku.query import merge
-from hiku.types import Record, String, Optional, Sequence, TypeRef
+from hiku.types import Record, String, Optional, Sequence, TypeRef, Integer
 from hiku.graph import Graph, Link, Node, Field, Root
 from hiku.result import denormalize, Index, Proxy, Reference, ROOT
 from hiku.readers.simple import read
@@ -429,3 +429,22 @@ def test_denormalize_non_merged_query():
     assert denormalize(graph, Proxy(index, ROOT, merged_query)) == {
         'x': {'a': 1, 'b': 2},
     }
+
+
+def test_denormalize_data_type():
+    index = Index()
+    index.root.update({'foo': {'a': 42}})
+    index.finish()
+    graph = Graph([
+        Root([
+            Field('foo', TypeRef['Foo'], None),
+        ]),
+    ], data_types={
+        'Foo': Record[{'a': Integer}],
+    })
+    query = hiku_query.Node([
+        hiku_query.Link('foo', hiku_query.Node([
+            hiku_query.Field('a'),
+        ])),
+    ])
+    assert denormalize(graph, Proxy(index, ROOT, query)) == {'foo': {'a': 42}}
