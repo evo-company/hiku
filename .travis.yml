@@ -1,18 +1,24 @@
 sudo: false
+dist: xenial
 language: python
 python:
 - '2.7'
 - '3.5'
 - '3.6'
-#- '3.7'
-- 'pypy'
+- '3.7'
+# - 'pypy'
 - 'pypy3.5'
+install:
+- pip install codecov
+- pip install tox-travis
+script: tox -- --cov
 matrix:
   include:
-  - env: TOXENV=py37
-    python: 3.7
-    sudo: required
-    dist: xenial
-install:
-- pip install tox-travis
-script: tox
+  - env: TOXENV=pypy
+    python: pypy
+    dist: trusty
+
+after_script:
+- codecov
+
+cache: pip
