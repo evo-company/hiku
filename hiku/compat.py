@@ -74,6 +74,8 @@ ast = _AST()
 
 
 if PY3:
+    import collections.abc as collections_abc
+
     text_type = str
     string_types = str,
     integer_types = int,
@@ -85,6 +87,8 @@ if PY3:
             return fn.__qualname__
 
 else:
+    import collections as collections_abc
+
     text_type = unicode  # noqa
     string_types = basestring,  # noqa
     integer_types = int, long  # noqa
@@ -94,6 +98,9 @@ else:
             return '{}.{}'.format(fn.im_class.__name__, fn.im_func.__name__)
         else:
             return fn.__name__
+
+
+Sequence = collections_abc.Sequence
 
 
 if PY35:

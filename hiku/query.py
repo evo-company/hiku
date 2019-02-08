@@ -45,9 +45,10 @@
     .. _om.next: https://github.com/omcljs/om/wiki/Documentation-(om.next)
 """
 from itertools import chain
-from collections import OrderedDict, Sequence
+from collections import OrderedDict
 
 from .utils import cached_property
+from .compat import Sequence
 
 
 def _compute_hash(obj):
