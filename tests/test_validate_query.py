@@ -91,7 +91,7 @@ def test_field():
 def test_field_complex(field_name):
     check_errors(q.Node([q.Link(field_name, q.Node([]))]), [])
     check_errors(q.Node([q.Link(field_name, q.Node([q.Field('invalid')]))]), [
-        'Unknown field name',
+        'Unknown field name "invalid"',
     ])
     check_errors(q.Node([q.Link(field_name, q.Node([q.Field('attr')]))]), [])
 

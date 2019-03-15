@@ -226,7 +226,7 @@ class _RecordFieldsValidator(QueryVisitor):
 
     def visit_field(self, obj):
         if obj.name not in self._field_types:
-            self._errors.report('Unknown field name')
+            self._errors.report('Unknown field name "{}"'.format(obj.name))
         elif obj.options is not None:
             self._errors.report('Options are not expected')
         elif _AssumeRecord(self._data_types).visit(self._field_types[obj.name]):
