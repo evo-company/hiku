@@ -1,9 +1,10 @@
 Changes in 0.5
 ==============
 
-0.5.1rc2
+0.5.1rc3
 ~~~~~~~~
 
+  - Fixed engine to properly compute complex fields for sub-graph data sources
   - Fixed result denormalization for complex fields with data types
   - Fields with underscore-prefixed names are now hidden in GraphQL
     introspection
