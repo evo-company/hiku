@@ -86,7 +86,8 @@ class SplitQuery(hiku_query.QueryVisitor):
         else:
             assert isinstance(graph_obj, Field), type(graph_obj)
             # `obj` here is a link, but this link is treated as a complex field
-            self._fields.append((graph_obj.func, graph_obj, obj))
+            func = getattr(graph_obj.func, '__subquery__', graph_obj.func)
+            self._fields.append((func, graph_obj, obj))
 
 
 class GroupQuery(hiku_query.QueryVisitor):

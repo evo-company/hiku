@@ -6,11 +6,13 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 from hiku.graph import Graph, Node, Link, Field, Option, Root
-from hiku.types import Record, Sequence, Any, TypeRef
+from hiku.types import Record, Sequence, Any, TypeRef, String
 from hiku.engine import Engine
+from hiku.builder import build, Q
 from hiku.expr.core import define, S, each
 from hiku.sources.graph import SubGraph
 from hiku.readers.simple import read
+from hiku.executors.sync import SyncExecutor
 from hiku.executors.threads import ThreadsExecutor
 
 from .base import check_result
@@ -236,3 +238,27 @@ def test_mixed_query(engine, graph):
         {'a': 'a3', 'with_option': 9},
         {'a': 'a2', 'with_option': 8},
     ]})
+
+
+def test_complex_field():
+    engine = Engine(SyncExecutor())
+
+    def get_a(fields, ids):
+        return [[{'s': 'bar'} for _ in fields] for _ in ids]
+
+    ll_graph = Graph([
+        Node('Foo', [
+            Field('a', Record[{'s': String}], get_a),
+        ]),
+    ])
+    foo_sg = SubGraph(ll_graph, 'Foo')
+    hl_graph = Graph([
+        Node('Foo', [
+            Field('a', Record[{'s': String}], foo_sg),
+        ]),
+        Root([
+            Link('foo', TypeRef['Foo'], lambda: 1, requires=None),
+        ]),
+    ])
+    result = engine.execute(hl_graph, build([Q.foo[Q.a[Q.s]]]))
+    check_result(result, {'foo': {'a': {'s': 'bar'}}})
