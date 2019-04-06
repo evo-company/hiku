@@ -2,23 +2,14 @@ sudo: false
 dist: xenial
 language: python
 python:
-- '2.7'
 - '3.5'
 - '3.6'
 - '3.7'
-# - 'pypy'
 - 'pypy3.5'
+cache: pip
 install:
 - pip install codecov
 - pip install tox-travis
 script: tox -- --cov
-matrix:
-  include:
-  - env: TOXENV=pypy
-    python: pypy
-    dist: trusty
-
 after_script:
 - codecov
-
-cache: pip

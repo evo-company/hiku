@@ -105,14 +105,14 @@ async def to_characters_query(ctx):
     query = select([character_table.c.id])
     async with ctx[SA_ENGINE_KEY].acquire() as conn:
         rows = await conn.execute(query)
-    return [row.id for row in rows]
+        return [row.id async for row in rows]
 
 @pass_context
 async def to_actors_query(ctx):
     query = select([actor_table.c.id])
     async with ctx[SA_ENGINE_KEY].acquire() as conn:
         rows = await conn.execute(query)
-    return [row.id for row in rows]
+        return [row.id async for row in rows]
 
 GRAPH = Graph([
     Node('Character', [

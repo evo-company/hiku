@@ -11,3 +11,8 @@ release:
 	rm -f hiku/console/assets/*.js
 	pi build static
 	python setup.py sdist
+
+reqs:
+	pip-compile -U requirements.in
+	pip-compile -U requirements-docs.in
+	pip-compile -U requirements-tests.in

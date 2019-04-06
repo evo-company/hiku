@@ -1,34 +1,26 @@
 - !Image
   name: base36
-  from: !DockerImage ubuntu:bionic
+  from: !DockerImage python:3.6.8-slim
   repository: localhost/hiku/base36
   tasks:
-  # python3, pip3
-  - run: apt-get update
-  - run: apt-get install -y python3-pkg-resources python3-distutils curl
-  - run: curl -L https://bootstrap.pypa.io/get-pip.py | python3 -
-  - run: apt-get purge -y curl
-  - run: apt-get autoremove -y
-  - run: rm -rf /var/lib/apt/lists/*
-  # setup
-  - run: python3 -m pip install --no-cache-dir --disable-pip-version-check -r {{requirements}}
-    requirements: !File requirements.txt
+  - run: python3 -m pip install --no-deps --no-cache-dir --disable-pip-version-check -r {{req}}
+    req: !File requirements.txt
 
 - !Image
   name: test
   from: base36
   repository: localhost/hiku/test
   tasks:
-  - run: python3 -m pip install --no-cache-dir --disable-pip-version-check -r {{requirements}}
-    requirements: !File requirements-tests.txt
+  - run: python3 -m pip install --no-deps --no-cache-dir --disable-pip-version-check -r {{req}}
+    req: !File requirements-tests.txt
 
 - !Image
   name: docs
   from: base36
   repository: localhost/hiku/docs
   tasks:
-  - run: python3 -m pip install --no-cache-dir --disable-pip-version-check -r {{requirements}}
-    requirements: !File requirements-docs.txt
+  - run: python3 -m pip install --no-deps --no-cache-dir --disable-pip-version-check -r {{req}}
+    req: !File requirements-docs.txt
 
 - !Image
   name: static.env
@@ -68,7 +60,7 @@
   image: test
   requires: [pg]
   params:
-    - !Argument {name: tests, default: "tests_py3_pg docs"}
+    - !Argument {name: tests, default: "tests_pg docs"}
   run: py.test {{tests}}
   environ:
     PYTHONPATH: .

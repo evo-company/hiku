@@ -6,6 +6,11 @@ import inspect
 PY3 = sys.version_info[0] == 3
 PY35 = sys.version_info >= (3, 5)
 PY36 = sys.version_info >= (3, 6)
+try:
+    import __pypy__  # noqa
+    PYPY = True
+except ImportError:
+    PYPY = False
 
 
 def with_metaclass(meta, *bases):
