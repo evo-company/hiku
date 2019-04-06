@@ -1,46 +1,43 @@
 from __future__ import absolute_import
 
+import enum
+
 from graphql.language import ast
-from graphql.language.ast import NonNullType
 from graphql.language.parser import parse
 
-from ..utils import const
 from ..query import Node, Field, Link, merge
 
 
 class NodeVisitor(object):
 
     def visit(self, obj):
-        if not isinstance(obj, ast.Node):
-            raise TypeError('Unknown node type: {!r}'.format(obj))
-        visit_method = getattr(self, 'visit_{}'.format(obj.__class__.__name__),
-                               None)
+        visit_method = getattr(self, 'visit_{}'.format(obj.kind, None))
         if visit_method is None:
             raise NotImplementedError('Not implemented node type: {!r}'
                                       .format(obj))
         return visit_method(obj)
 
-    def visit_Document(self, obj):
+    def visit_document(self, obj):
         for definition in obj.definitions:
             self.visit(definition)
 
-    def visit_OperationDefinition(self, obj):
+    def visit_operation_definition(self, obj):
         self.visit(obj.selection_set)
 
-    def visit_FragmentDefinition(self, obj):
+    def visit_fragment_definition(self, obj):
         self.visit(obj.selection_set)
 
-    def visit_SelectionSet(self, obj):
+    def visit_selection_set(self, obj):
         for i in obj.selections:
             self.visit(i)
 
-    def visit_Field(self, obj):
+    def visit_field(self, obj):
         pass
 
-    def visit_FragmentSpread(self, obj):
+    def visit_fragment_spread(self, obj):
         pass
 
-    def visit_InlineFragment(self, obj):
+    def visit_inline_fragment(self, obj):
         self.visit(obj.selection_set)
 
 
@@ -69,10 +66,10 @@ class OperationGetter(NodeVisitor):
                 raise ValueError('Undefined operation name: {!r}'
                                  .format(self._operation_name))
 
-    def visit_FragmentDefinition(self, obj):
+    def visit_fragment_definition(self, obj):
         pass  # skip visit here
 
-    def visit_OperationDefinition(self, obj):
+    def visit_operation_definition(self, obj):
         name = obj.name.value if obj.name is not None else None
         if name in self._operations:
             raise TypeError('Duplicate operation definition: {!r}'
@@ -85,10 +82,10 @@ class FragmentsCollector(NodeVisitor):
     def __init__(self):
         self.fragments_map = {}
 
-    def visit_OperationDefinition(self, obj):
+    def visit_operation_definition(self, obj):
         pass  # not interested in operations here
 
-    def visit_FragmentDefinition(self, obj):
+    def visit_fragment_definition(self, obj):
         if obj.name.value in self.fragments_map:
             raise TypeError('Duplicated fragment name: "{}"'
                             .format(obj.name.value))
@@ -115,12 +112,12 @@ class SelectionSetVisitMixin(object):
             raise TypeError('Variable ${} is not defined in query {}'
                             .format(name, self.query_name or '<unnamed>'))
 
-    def visit_SelectionSet(self, obj):
+    def visit_selection_set(self, obj):
         for i in obj.selections:
             for j in self.visit(i):
                 yield j
 
-    def visit_Field(self, obj):
+    def visit_field(self, obj):
         if obj.arguments:
             options = {arg.name.value: self.visit(arg.value)
                        for arg in obj.arguments}
@@ -138,39 +135,39 @@ class SelectionSetVisitMixin(object):
             node = Node(list(self.visit(obj.selection_set)))
             yield Link(obj.name.value, node, options=options, alias=alias)
 
-    def visit_Variable(self, obj):
+    def visit_variable(self, obj):
         return self.lookup_variable(obj.name.value)
 
-    def _visit_scalar(self, obj):
-        return obj.value
+    def visit_null_value(self, obj):
+        return None
 
-    def visit_IntValue(self, obj):
+    def visit_int_value(self, obj):
         return int(obj.value)
 
-    def visit_FloatValue(self, obj):
+    def visit_float_value(self, obj):
         return float(obj.value)
 
-    def visit_StringValue(self, obj):
+    def visit_string_value(self, obj):
         return obj.value
 
-    def visit_BooleanValue(self, obj):
+    def visit_boolean_value(self, obj):
         return obj.value
 
-    def visit_EnumValue(self, obj):
+    def visit_enum_value(self, obj):
         return obj.value
 
-    def visit_ListValue(self, obj):
+    def visit_list_value(self, obj):
         return [self.visit(i) for i in obj.values]
 
-    def visit_ObjectValue(self, obj):
+    def visit_object_value(self, obj):
         return {f.name.value: self.visit(f.value) for f in obj.fields}
 
-    def visit_FragmentSpread(self, obj):
+    def visit_fragment_spread(self, obj):
         assert not obj.directives, obj.directives
         for i in self.transform_fragment(obj.name.value):
             yield i
 
-    def visit_InlineFragment(self, obj):
+    def visit_inline_fragment(self, obj):
         for i in self.visit(obj.selection_set):
             yield i
 
@@ -191,10 +188,10 @@ class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
     def transform_fragment(self, name):
         return self.visit(self.fragments_map[name])
 
-    def visit_OperationDefinition(self, obj):
+    def visit_operation_definition(self, obj):
         pass  # not interested in operations here
 
-    def visit_FragmentDefinition(self, obj):
+    def visit_fragment_definition(self, obj):
         if obj.name.value in self.cache:
             return self.cache[obj.name.value]
         else:
@@ -227,7 +224,7 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
     def transform_fragment(self, name):
         return self.fragments_transformer.transform_fragment(name)
 
-    def visit_OperationDefinition(self, obj):
+    def visit_operation_definition(self, obj):
         variables = self.variables or {}
         query_name = obj.name.value if obj.name else '<unnamed>'
         query_variables = {}
@@ -238,7 +235,7 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
             except KeyError:
                 if var_defn.default_value is not None:
                     value = self.visit(var_defn.default_value)
-                elif isinstance(var_defn.type, NonNullType):
+                elif isinstance(var_defn.type, ast.NonNullTypeNode):
                     raise TypeError('Variable "{}" is not provided for query {}'
                                     .format(name, query_name))
                 else:
@@ -250,7 +247,7 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
         self.fragments_transformer = FragmentsTransformer(self.document,
                                                           self.query_name,
                                                           self.query_variables)
-        ordered = obj.operation == 'mutation'
+        ordered = obj.operation is ast.OperationType.MUTATION
         try:
             node = Node(list(self.visit(obj.selection_set)),
                         ordered=ordered)
@@ -278,22 +275,22 @@ def read(src, variables=None, operation_name=None):
     """
     doc = parse(src)
     op = OperationGetter.get(doc, operation_name=operation_name)
-    if op.operation != 'query':
+    if op.operation is not ast.OperationType.QUERY:
         raise TypeError('Only "query" operations are supported, '
                         '"{}" operation was provided'
-                        .format(op.operation))
+                        .format(op.operation.value))
 
     return GraphQLTransformer.transform(doc, op, variables)
 
 
-class OperationType(object):
+class OperationType(enum.Enum):
     """Enumerates GraphQL operation types"""
     #: query operation
-    QUERY = const('OperationType.QUERY')
+    QUERY = ast.OperationType.QUERY
     #: mutation operation
-    MUTATION = const('OperationType.MUTATION')
+    MUTATION = ast.OperationType.MUTATION
     #: subscription operation
-    SUBSCRIPTION = const('OperationType.SUBSCRIPTION')
+    SUBSCRIPTION = ast.OperationType.SUBSCRIPTION
 
 
 class Operation(object):
@@ -305,13 +302,6 @@ class Operation(object):
         self.query = query
         #: optional name of the operation
         self.name = name
-
-
-_operations_map = {
-    'query': OperationType.QUERY,
-    'mutation': OperationType.MUTATION,
-    'subscription': OperationType.SUBSCRIPTION,
-}
 
 
 def read_operation(src, variables=None, operation_name=None):
@@ -333,7 +323,7 @@ def read_operation(src, variables=None, operation_name=None):
     doc = parse(src)
     op = OperationGetter.get(doc, operation_name=operation_name)
     query = GraphQLTransformer.transform(doc, op, variables)
-    type_ = _operations_map.get(op.operation)
+    type_ = OperationType._value2member_map_.get(op.operation)
     name = op.name.value if op.name else None
     if type_ is None:
         raise TypeError('Unsupported operation type: {}'.format(op.operation))

@@ -1,5 +1,6 @@
 import pytest
 
+from graphql.language import ast
 from graphql.language.parser import parse
 
 from hiku.query import Node, Field, Link
@@ -21,15 +22,15 @@ def test_operation_getter_no_ops():
 def test_operation_getter_no_name():
     query = OperationGetter.get(parse('{ foo }'))
     assert query.name is None
-    assert query.operation == 'query'
+    assert query.operation is ast.OperationType.QUERY
 
     named_query = OperationGetter.get(parse('query Foo { foo }'))
     assert named_query.name.value == 'Foo'
-    assert named_query.operation == 'query'
+    assert named_query.operation is ast.OperationType.QUERY
 
     mutation = OperationGetter.get(parse('mutation Foo { foo }'), None)
     assert mutation.name.value == 'Foo'
-    assert mutation.operation == 'mutation'
+    assert mutation.operation is ast.OperationType.MUTATION
 
     with pytest.raises(TypeError) as err:
         OperationGetter.get(parse('query Foo { foo } query Bar { bar }'))
@@ -50,11 +51,11 @@ def test_operation_getter_by_name():
     q1 = OperationGetter.get(parse('query Foo { foo } query Bar { bar }'),
                              'Bar')
     assert q1.name.value == 'Bar'
-    assert q1.operation == 'query'
+    assert q1.operation is ast.OperationType.QUERY
 
     q2 = OperationGetter.get(parse('query Foo { foo } mutation Bar { bar }'),
                              'Bar')
-    assert q2.operation == 'mutation'
+    assert q2.operation is ast.OperationType.MUTATION
 
 
 def test_field():
@@ -81,11 +82,10 @@ def test_field_args():
         '{ ozone(auer: true) }',
         Node([Field('ozone', options={'auer': True})]),
     )
-    # FIXME: NullValue is not supported yet in graphql-core
-    # check_read(
-    #     '{ ozone(auer: null) }',
-    #     Node([Field('ozone', options={'auer': None})]),
-    # )
+    check_read(
+        '{ ozone(auer: null) }',
+        Node([Field('ozone', options={'auer': None})]),
+    )
     check_read(
         '{ ozone(auer: HURTEST) }',
         Node([Field('ozone', options={'auer': 'HURTEST'})]),

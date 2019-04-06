@@ -1,11 +1,10 @@
 from __future__ import absolute_import
 
 import re
+import json
 
 from functools import partial
 from collections import namedtuple, OrderedDict
-
-from graphql import print_ast, ast_from_value
 
 from ..graph import Graph, Root, Node, Link, Option, Field, Nothing
 from ..graph import GraphVisitor, GraphTransformer
@@ -314,11 +313,8 @@ def input_value_info(schema, fields, ids):
             option = field.options_map[ident.name]
             if option.default is Nothing:
                 default = None
-            elif option.default is None:
-                # graphql-core currently can't parse/print "null" values
-                default = 'null'
             else:
-                default = print_ast(ast_from_value(option.default))
+                default = json.dumps(option.default)
             info = {'id': ident,
                     'name': option.name,
                     'description': option.description,
