@@ -1,4 +1,5 @@
 hiku/console/assets/*.js
+node_modules
 build
 dist
 env

@@ -24,31 +24,15 @@
 
 - !Image
   name: static.env
-  from: !DockerImage alpine:3.4
-  repository: vmagamedov/hiku-static.env
+  from: !DockerImage alpine:3.8
+  repository: localhost/hiku/static.env
   tasks:
-  - run: apk add --no-cache nodejs
-  - run: |
-      cd /usr/local/lib
-      {% for package in packages %}
-      npm install {{package}}
-      {% endfor %}
-    packages:
-    - babel-core@6.14.0
-    - babel-loader@6.2.5
-    - babel-preset-es2015@6.14.0
-    - babel-preset-react@6.11.1
-    - style-loader@0.13.1
-    - css-loader@0.25.0
-    - imports-loader@0.6.5
-    - exports-loader@0.6.3
-    - webpack@1.13.2
-    - webpack-dev-server@1.16.1
-    - react@15.3.2
-    - react-dom@15.3.2
-    - codemirror@5.19.0
-    - es6-promise@4.0.3
-    - whatwg-fetch@1.0.0
+  - run: apk add --no-cache nodejs-npm
+  - run: cp {{pkg}} /package.json
+    pkg: !File "package.json"
+  - run: cp {{lock}} /package-lock.json
+    lock: !File "package-lock.json"
+  - run: npm ci
 
 - !Service
   name: pg
@@ -75,16 +59,13 @@
 - !Command
   name: build static
   image: static.env
-  run: >
-    NODE_PATH=/usr/local/lib/node_modules
-    /usr/local/lib/node_modules/.bin/webpack -p
+  run: /node_modules/.bin/webpack -p
 
 - !Command
   name: webpack
   image: static.env
   run: >
-    NODE_PATH=/usr/local/lib/node_modules
-    /usr/local/lib/node_modules/.bin/webpack-dev-server
+    /node_modules/.bin/webpack-dev-server
     --content-base=hiku/console/assets
     --host=0.0.0.0
     --watch-poll
