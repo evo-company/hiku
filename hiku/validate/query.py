@@ -1,6 +1,5 @@
-import collections
-
 from contextlib import contextmanager
+from collections import abc as collections_abc
 
 from ..types import AbstractTypeVisitor
 from ..query import QueryVisitor
@@ -138,14 +137,14 @@ class _OptionTypeValidator(object):
             self.visit(type_.__type__)
 
     def visit_sequence(self, type_):
-        if not isinstance(self.value, collections.Sequence):
+        if not isinstance(self.value, collections_abc.Sequence):
             raise _OptionTypeError(self.value, type_)
         for item in self.value:
             with self.push(item):
                 self.visit(type_.__item_type__)
 
     def visit_mapping(self, type_):
-        if not isinstance(self.value, collections.Mapping):
+        if not isinstance(self.value, collections_abc.Mapping):
             raise _OptionTypeError(self.value, type_)
         for key, value in self.value.items():
             with self.push(key):
@@ -154,7 +153,7 @@ class _OptionTypeValidator(object):
                 self.visit(type_.__value_type__)
 
     def visit_record(self, type_):
-        if not isinstance(self.value, collections.Mapping):
+        if not isinstance(self.value, collections_abc.Mapping):
             raise _OptionTypeError(self.value, type_)
 
         unknown = set(self.value).difference(type_.__field_types__)
