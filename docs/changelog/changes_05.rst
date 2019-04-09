@@ -1,8 +1,8 @@
 Changes in 0.5
 ==============
 
-0.5.1rc3
-~~~~~~~~
+0.5.1
+~~~~~
 
   - Fixed engine to properly compute complex fields for sub-graph data sources
   - Fixed result denormalization for complex fields with data types
