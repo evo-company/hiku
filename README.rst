@@ -1,8 +1,7 @@
-**Hiku** is a library to design Graph APIs. Why graphs? – They are simple,
-predictable, flexible, easy to compose and because of that, they are easy
-to reuse.
+Hiku
+====
 
-Documentation: https://hiku.readthedocs.io/
+Hiku is a library to implement Graph APIs. Essential GraphQL support included.
 
 Licensed under **BSD-3-Clause** license. See LICENSE.txt
 
@@ -11,32 +10,91 @@ Installation
 
 .. code-block:: shell
 
-  $ pip install hiku
+  $ pip3 install hiku
+
+Bug fixes and new features are frequently published via release candidates:
+
+.. code-block:: shell
+
+  $ pip3 install --upgrade --pre hiku
 
 Highlights
 ~~~~~~~~~~
 
-* Not coupled to one specific query language
-* Flexibility in result serialization, including binary format
-* All concurrency models supported: async/await, threads, greenlets
-* Parallel execution of the query itself for free
-* No data under-fetching or over-fetching
-* No extra data loading from databases, only what was needed to fulfill
-  the query
-* No ``N+1`` problems, they are eliminated by design
-* Even complex queries of any size are predictable in terms of
-  performance impact
-* Implements a concept of the `Two-Level Graph` in order to put your
-  business-logic in the right place
+* Not coupled to a single specific query language
+* Flexibility in result serialization, including binary formats
+* Natively uses normalized result representation, without data duplication
+* All concurrency models supported: coroutines, threads
+* Parallel query execution
+* No data under-fetching or over-fetching between ``client<->server`` and
+  between ``server<->database``
+* No ``N+1`` problems by design
+* Introduces a concept of `Two-Level Graph` in order to decouple data-sources
+  and business-logic
+
+Quick example
+~~~~~~~~~~~~~
+
+Graph definition:
+
+.. code-block:: python
+
+  from hiku.graph import Graph, Root, Node, Field, Link
+  from hiku.types import String, Sequence, TypeRef
+
+  def characters_data(fields, ids):
+      data = {
+          1: {'name': 'James T. Kirk', 'species': 'Human'},
+          2: {'name': 'Spock', 'species': 'Vulcan/Human'},
+          3: {'name': 'Leonard McCoy', 'species': 'Human'},
+      }
+      return [[data[i][f.name] for f in fields] for i in ids]
+
+  def characters_link():
+      return [1, 2, 3]
+
+  GRAPH = Graph([
+      Node('Character', [
+          Field('name', String, characters_data),
+          Field('species', String, characters_data),
+      ]),
+      Root([
+          Link('characters', Sequence[TypeRef['Character']],
+               characters_link, requires=None),
+      ]),
+  ])
+
+Query:
+
+.. code-block:: python
+
+  from hiku.engine import Engine
+  from hiku.builder import Q, build
+  from hiku.executors.sync import SyncExecutor
+
+  engine = Engine(SyncExecutor())
+
+  result = engine.execute(GRAPH, build([
+      Q.characters[
+          Q.name,
+          Q.species,
+      ],
+  ]))
+
+  # use result in your code
+  for character in result.characters:
+      print(character.name, '-', character.species)
+
+Output:
+
+.. code-block:: text
+
+  James T. Kirk - Human
+  Spock - Vulcan/Human
+  Leonard McCoy - Human
 
 Contributing
 ~~~~~~~~~~~~
-
-Please feel free to open an issue if you are getting mysterious error
-messages. It will be much easier to track down bugs, if you will
-provide short graph definition to reproduce it. Pull requests are highly
-appreciated and awaited. Especially when it comes to a spelling errors
-in documentation.
 
 Use Tox_ in order to test and lint your changes.
 

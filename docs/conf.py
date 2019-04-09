@@ -16,7 +16,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 project = 'hiku'
-copyright = '2018, Vladimir Magamedov'
+copyright = '2019, Vladimir Magamedov'
 author = 'Vladimir Magamedov'
 
 templates_path = []
