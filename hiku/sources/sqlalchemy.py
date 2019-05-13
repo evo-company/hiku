@@ -57,12 +57,15 @@ class FieldsQuery(object):
             column = self.from_clause.c[field.name]
             field.type = _translate_type(column)
 
+    def in_impl(self, column, values):
+        return column.in_(values)
+
     def select_expr(self, fields_, ids):
         columns = [self.from_clause.c[f.name] for f in fields_]
         expr = (
             sqlalchemy.select([self.primary_key] + columns)
             .select_from(self.from_clause)
-            .where(self.primary_key.in_(ids))
+            .where(self.in_impl(self.primary_key, ids))
         )
 
         def result_proc(rows):
@@ -133,14 +136,17 @@ class LinkQuery(with_metaclass(ABCMeta, object)):
             raise TypeError(repr(link.type_enum))
         link.func = pass_context(func)
 
+    def in_impl(self, column, values):
+        return column.in_(values)
+
     def select_expr(self, ids):
         # TODO: make this optional, but enabled by default
-        filtered_ids = frozenset(filter(None, ids))
+        filtered_ids = list(filter(None, set(ids)))
         if filtered_ids:
             return (
                 sqlalchemy.select([self.from_column.label('from_column'),
                                    self.to_column.label('to_column')])
-                .where(self.from_column.in_(filtered_ids))
+                .where(self.in_impl(self.from_column, filtered_ids))
             )
         else:
             return None
