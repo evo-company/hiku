@@ -1,37 +1,11 @@
 from contextlib import contextmanager
-from collections import deque, OrderedDict
+from collections import deque
 
-from .. import graph
 from ..types import Sequence, SequenceMeta, Record, RecordMeta
 from ..types import MappingMeta, OptionalMeta, Any, AnyMeta, TypeRefMeta
 
 from .refs import NamedRef, Ref
 from .nodes import NodeTransformer, Symbol, Keyword, Tuple, List
-
-
-class GraphTypes(graph.GraphVisitor):
-
-    def visit_graph(self, obj):
-        types = OrderedDict((node.name, self.visit(node))
-                            for node in obj.iter_nodes())
-        types['__root__'] = self.visit(graph.Root(list(obj.iter_root())))
-        return types
-
-    def visit_node(self, obj):
-        return Record[[(f.name, self.visit(f)) for f in obj.fields]]
-
-    def visit_root(self, obj):
-        return Record[[(f.name, self.visit(f)) for f in obj.fields]]
-
-    def visit_link(self, obj):
-        return obj.type
-
-    def visit_field(self, obj):
-        return obj.type or Any
-
-
-def graph_types(graph_):
-    return GraphTypes().visit(graph_)
 
 
 def fn_types(functions):

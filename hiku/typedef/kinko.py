@@ -4,7 +4,7 @@ from contextlib import contextmanager
 
 from ..types import Record, RecordMeta, OptionalMeta, SequenceMeta, MappingMeta
 from ..types import GenericMeta, Any
-from ..expr.checker import GraphTypes
+from ..graph import GraphTypes
 
 from .types import TypeDef
 

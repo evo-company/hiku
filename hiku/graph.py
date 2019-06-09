@@ -7,10 +7,11 @@
 
 """
 from abc import ABCMeta, abstractmethod
+from itertools import chain
 from functools import reduce
 from collections import OrderedDict
 
-from .types import OptionalMeta, SequenceMeta, TypeRefMeta
+from .types import OptionalMeta, SequenceMeta, TypeRefMeta, Record, Any
 from .utils import kw_only, cached_property, const
 from .compat import with_metaclass
 
@@ -364,6 +365,7 @@ class Graph(AbstractGraph):
 
         self.items = GraphInit.init(items)
         self.data_types = data_types or {}
+        self.__types__ = GraphTypes.get_types(self.items, self.data_types)
 
     def __repr__(self):
         return '{}({!r})'.format(self.__class__.__name__, self.items)
@@ -504,8 +506,8 @@ class GraphInit(GraphTransformer):
 
     @classmethod
     def init(cls, items):
-        graph_init = cls()
-        return [graph_init.visit(i) for i in items]
+        self = cls()
+        return [self.visit(i) for i in items]
 
     def visit_field(self, obj):
         field = super(GraphInit, self).visit_field(obj)
@@ -520,3 +522,38 @@ class GraphInit(GraphTransformer):
         if postprocess is not None:
             postprocess(link)
         return link
+
+
+class GraphTypes(GraphVisitor):
+
+    def _visit_graph(self, items, data_types):
+        types = OrderedDict(data_types)
+        roots = []
+        for item in items:
+            if item.name is not None:
+                types[item.name] = self.visit(item)
+            else:
+                roots.append(self.visit(item))
+        types['__root__'] = Record[chain.from_iterable(
+            r.__field_types__.items() for r in roots
+        )]
+        return types
+
+    @classmethod
+    def get_types(cls, items, data_types):
+        return cls()._visit_graph(items, data_types)
+
+    def visit_graph(self, obj):
+        return self._visit_graph(obj.items, obj.data_types)
+
+    def visit_node(self, obj):
+        return Record[[(f.name, self.visit(f)) for f in obj.fields]]
+
+    def visit_root(self, obj):
+        return Record[[(f.name, self.visit(f)) for f in obj.fields]]
+
+    def visit_link(self, obj):
+        return obj.type
+
+    def visit_field(self, obj):
+        return obj.type or Any

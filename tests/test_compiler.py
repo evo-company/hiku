@@ -11,7 +11,7 @@ from hiku.types import Optional, String, Record, Any, TypeRef, Sequence
 from hiku.graph import Graph, Field, Node, Link, Root
 from hiku.compat import PY3
 from hiku.expr.core import define, S, if_, each, to_expr, if_some
-from hiku.expr.checker import check, graph_types, fn_types
+from hiku.expr.checker import check, fn_types
 from hiku.expr.compiler import ExpressionCompiler
 
 
@@ -56,7 +56,7 @@ ENV = Graph([
 
 
 def check_compiles(dsl_expr, code):
-    types = graph_types(ENV)
+    types = ENV.__types__
 
     expr, functions = to_expr(dsl_expr)
     env = fn_types(functions)

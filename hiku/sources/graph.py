@@ -8,7 +8,7 @@ from ..types import Any
 from ..engine import Query
 from ..expr.refs import RequirementsExtractor
 from ..expr.core import to_expr, S, THIS
-from ..expr.checker import check, graph_types, fn_types
+from ..expr.checker import check, fn_types
 from ..expr.compiler import ExpressionCompiler
 
 
@@ -91,8 +91,7 @@ class SubGraph(object):
     def __init__(self, graph, node):
         self.graph = graph
         self.node = node
-
-        self.types = graph_types(graph)
+        self.types = graph.__types__
 
     def __repr__(self):
         return '<{}: node={!r}>'.format(self.__class__.__name__, self.node)
