@@ -1,6 +1,6 @@
 import inspect
 
-from asyncio import wait, FIRST_COMPLETED
+from asyncio import wait, FIRST_COMPLETED, gather, CancelledError
 
 
 class AsyncIOExecutor(object):
@@ -16,9 +16,14 @@ class AsyncIOExecutor(object):
         return self._loop.create_task(coro)
 
     async def process(self, queue, workflow):
-        while queue.__futures__:
-            done, _ = await wait(queue.__futures__,
-                                 loop=self._loop,
-                                 return_when=FIRST_COMPLETED)
-            queue.progress(done)
-        return workflow.result()
+        try:
+            while queue.__futures__:
+                done, _ = await wait(queue.__futures__,
+                                     return_when=FIRST_COMPLETED)
+                queue.progress(done)
+            return workflow.result()
+        except CancelledError:
+            for task in queue.__futures__:
+                task.cancel()
+            await gather(*queue.__futures__)
+            raise
