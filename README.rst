@@ -1,9 +1,9 @@
 Hiku
 ====
 
-Hiku is a library to implement Graph APIs. Essential GraphQL support included.
+|project|_ |documentation|_ |version|_ |tag|_ |license|_
 
-Licensed under **BSD-3-Clause** license. See LICENSE.txt
+Hiku is a library to implement Graph APIs. Essential GraphQL support included.
 
 Installation
 ~~~~~~~~~~~~
@@ -99,3 +99,13 @@ Contributing
 Use Tox_ in order to test and lint your changes.
 
 .. _Tox: https://tox.readthedocs.io/
+.. |project| image:: https://img.shields.io/badge/vmagamedov%2Fhiku-blueviolet.svg?logo=github
+.. _project: https://github.com/vmagamedov/hiku
+.. |documentation| image:: https://img.shields.io/badge/docs-hiku.rtfd.io-blue.svg
+.. _documentation: https://hiku.readthedocs.io/en/latest/
+.. |version| image:: https://img.shields.io/pypi/v/hiku.svg?label=stable&color=green
+.. _version: https://pypi.org/project/hiku/
+.. |tag| image:: https://img.shields.io/github/tag/vmagamedov/hiku.svg?label=latest
+.. _tag: https://pypi.org/project/hiku/#history
+.. |license| image:: https://img.shields.io/pypi/l/hiku.svg
+.. _license: https://github.com/vmagamedov/hiku/blob/master/LICENSE.txt
