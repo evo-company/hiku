@@ -10,7 +10,7 @@ from hiku.types import TypeRef, Integer, Sequence
 from hiku.graph import Graph, Node, Field, Root, Link
 from hiku.result import ROOT, Proxy, Index, Reference
 from hiku.readers.graphql import read
-from hiku.denormalize.graphql import DenormalizeGraphQL, StripQuery
+from hiku.denormalize.graphql import DenormalizeGraphQL
 
 
 def _(*args):
@@ -71,27 +71,3 @@ def test_typename():
             ],
         },
     }
-
-
-def test_strip():
-    query = read("""
-    query {
-        __typename
-        foo {
-            __typename
-            bar {
-                __typename
-                baz
-            }
-        }
-    }
-    """)
-    assert StripQuery().visit(query) == read("""
-    query {
-        foo {
-            bar {
-                baz
-            }
-        }
-    }
-    """)

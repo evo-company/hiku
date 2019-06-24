@@ -1,12 +1,13 @@
 import inspect
 
 from asyncio import wait, FIRST_COMPLETED, gather, CancelledError
+from asyncio import get_event_loop
 
 
 class AsyncIOExecutor(object):
 
-    def __init__(self, loop):
-        self._loop = loop
+    def __init__(self, loop=None):
+        self._loop = loop or get_event_loop()
 
     def submit(self, fn, *args, **kwargs):
         coro = fn(*args, **kwargs)

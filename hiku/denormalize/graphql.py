@@ -1,16 +1,9 @@
 from collections import deque
 
-from ..query import Field, Link, QueryTransformer
+from ..query import Field, Link
 from ..types import TypeRefMeta, SequenceMeta, OptionalMeta
 
 from .base import Denormalize
-
-
-class StripQuery(QueryTransformer):
-
-    def visit_node(self, obj):
-        return obj.copy(fields=[self.visit(f) for f in obj.fields
-                                if f.name != '__typename'])
 
 
 class DenormalizeGraphQL(Denormalize):

@@ -1,22 +1,22 @@
 import logging
 
-from aiohttp import web
+from flask import Flask, request, jsonify
 
-from hiku.types import String, Boolean, Integer, TypeRef, Record
 from hiku.graph import Graph, Root, Field, Option
+from hiku.types import Record, Integer, TypeRef, String, Boolean
 from hiku.engine import Engine
-from hiku.endpoint.graphql import AsyncGraphQLEndpoint
-from hiku.executors.asyncio import AsyncIOExecutor
+from hiku.executors.sync import SyncExecutor
+from hiku.endpoint.graphql import GraphQLEndpoint
 
 
 log = logging.getLogger(__name__)
 
 
-async def value_func(fields):
+def value_func(fields):
     return ['Hello World!' for _ in fields]
 
 
-async def action_func(fields):
+def action_func(fields):
     results = []
     for field in fields:
         print('action performed!', field.options)
@@ -48,23 +48,24 @@ MUTATION_GRAPH = Graph(QUERY_GRAPH.nodes + [
 ], data_types=DATA_TYPES)
 
 
-async def handle_graphql(request):
-    data = await request.json()
-    result = await request.app['graphql-endpoint'].dispatch(data)
-    return web.json_response(result)
+app = Flask(__name__)
+
+graphql_endpoint = GraphQLEndpoint(
+    Engine(SyncExecutor()), QUERY_GRAPH, MUTATION_GRAPH,
+)
+
+
+@app.route('/graphql', methods={'POST'})
+def handle_graphql():
+    data = request.get_json()
+    result = graphql_endpoint.dispatch(data)
+    return jsonify(result)
 
 
 def main():
     logging.basicConfig()
-    app = web.Application()
-    app.add_routes([
-        web.post('/graphql', handle_graphql),
-    ])
-    app['graphql-endpoint'] = AsyncGraphQLEndpoint(
-        Engine(AsyncIOExecutor()), QUERY_GRAPH, MUTATION_GRAPH,
-    )
-    web.run_app(app)
+    app.run(port=5000)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
