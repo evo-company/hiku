@@ -55,7 +55,7 @@ def test_typename():
         'baz': 43
     })
     result = Proxy(index, ROOT, query)
-    assert DenormalizeGraphQL(graph, result).process(query) == {
+    assert DenormalizeGraphQL(graph, result, 'Query').process(query) == {
         '__typename': 'Query',
         'foo': {
             '__typename': 'Foo',

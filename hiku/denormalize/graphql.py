@@ -8,9 +8,9 @@ from .base import Denormalize
 
 class DenormalizeGraphQL(Denormalize):
 
-    def __init__(self, graph, result):
+    def __init__(self, graph, result, root_type_name):
         super().__init__(graph, result)
-        self._type_name = deque(['Query'])
+        self._type_name = deque([root_type_name])
 
     def visit_field(self, obj: Field):
         if obj.name == '__typename':

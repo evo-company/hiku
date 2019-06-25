@@ -5,8 +5,14 @@ from ..query import QueryTransformer
 from ..validate.query import validate
 from ..readers.graphql import read_operation, OperationType
 from ..denormalize.graphql import DenormalizeGraphQL
-from ..introspection.graphql import AsyncGraphQLIntrospection
-from ..introspection.graphql import GraphQLIntrospection
+from ..introspection.graphql import AsyncGraphQLIntrospection, QUERY_ROOT_NAME
+from ..introspection.graphql import GraphQLIntrospection, MUTATION_ROOT_NAME
+
+
+_type_names = {
+    OperationType.QUERY: QUERY_ROOT_NAME,
+    OperationType.MUTATION: MUTATION_ROOT_NAME,
+}
 
 
 class GraphQLError(Exception):
@@ -84,7 +90,8 @@ class GraphQLEndpoint(AbstractGraphQLEndpoint):
     def execute(self, graph, op, ctx):
         stripped_query = _process_query(graph, op.query)
         result = self.engine.execute(graph, stripped_query, ctx)
-        return DenormalizeGraphQL(graph, result).process(op.query)
+        type_name = _type_names[op.type]
+        return DenormalizeGraphQL(graph, result, type_name).process(op.query)
 
     def dispatch(self, data):
         try:
@@ -112,7 +119,8 @@ class AsyncGraphQLEndpoint(AbstractGraphQLEndpoint):
     async def execute(self, graph, op, ctx):
         stripped_query = _process_query(graph, op.query)
         result = await self.engine.execute(graph, stripped_query, ctx)
-        return DenormalizeGraphQL(graph, result).process(op.query)
+        type_name = _type_names[op.type]
+        return DenormalizeGraphQL(graph, result, type_name).process(op.query)
 
     async def dispatch(self, data):
         try:
