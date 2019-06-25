@@ -1,10 +1,19 @@
 Changes in 0.6
 ==============
 
-0.6.0rc2
+0.6.0rcX
 ~~~~~~~~
 
-  - Optimized aiopg data source
+  - Added GraphQL endpoint classes to incorporate the whole workflow
+    of executing GraphQL queries
+  - Added ``graphql_flask.py`` example
+  - Made ``loop`` argument optional in ``AsyncIOExecutor``
+  - Reimplemented denormalization functionality, which also fixes GraphQL
+    introspection
+  - ``AsyncIOExecutor`` now supports cancellation of sub-tasks
+  - Optimized ``aiopg`` data source to use ``ANY`` op instead of ``IN`` op and
+    to perform several ``fetchmany`` calls instead of one ``fetchall`` call
+    to reduce event loop blocking
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
