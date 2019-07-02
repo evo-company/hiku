@@ -25,7 +25,7 @@ setup(
     url='https://github.com/vmagamedov/hiku',
     packages=find_packages(exclude=['test*']),
     include_package_data=True,
-    license='BSD',
+    license='BSD-3-Clause',
     python_requires='>=3.5',
     install_requires=[],
     classifiers=[
@@ -34,8 +34,8 @@ setup(
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3 :: Only',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
 )
