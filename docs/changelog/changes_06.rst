@@ -4,6 +4,8 @@ Changes in 0.6
 0.6.0rcX
 ~~~~~~~~
 
+  - Representing data types as Object type in GraphQL introspection
+  - Implemented @skip and @include directives
   - Added GraphQL endpoint classes to incorporate the whole workflow
     of executing GraphQL queries
   - Added ``graphql_flask.py`` example
