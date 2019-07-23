@@ -32,7 +32,6 @@ SCALAR = _namedtuple('SCALAR', 'name')
 OBJECT = _namedtuple('OBJECT', 'name')
 DIRECTIVE = _namedtuple('DIRECTIVE', 'name')
 INPUT_OBJECT = _namedtuple('INPUT_OBJECT', 'name')
-INTERFACE = _namedtuple('INTERFACE', 'name')
 LIST = _namedtuple('LIST', 'of_type')
 NON_NULL = _namedtuple('NON_NULL', 'of_type')
 
@@ -76,12 +75,7 @@ class TypeIdent(AbstractTypeVisitor):
                 obj.__type_name__
             return NON_NULL(INPUT_OBJECT(obj.__type_name__))
         else:
-            if obj.__type_name__ in self._graph.nodes_map:
-                return NON_NULL(OBJECT(obj.__type_name__))
-            else:
-                assert obj.__type_name__ in self._graph.data_types, \
-                    obj.__type_name__
-                return NON_NULL(INTERFACE(obj.__type_name__))
+            return NON_NULL(OBJECT(obj.__type_name__))
 
     def visit_string(self, obj):
         return NON_NULL(SCALAR('String'))
@@ -165,7 +159,7 @@ def root_schema_types(schema):
         yield OBJECT(name)
     for name, type_ in schema.data_types.items():
         if isinstance(type_, RecordMeta):
-            yield INTERFACE(name)
+            yield OBJECT(name)
             yield INPUT_OBJECT(name)
 
 
@@ -186,18 +180,17 @@ def root_schema_directives(schema):
 
 @listify
 def type_info(schema, fields, ids):
+    nodes_map = _nodes_map(schema)
     for ident in ids:
         if isinstance(ident, OBJECT):
-            node = _nodes_map(schema)[ident.name]
+            if ident.name in nodes_map:
+                description = nodes_map[ident.name].description
+            else:
+                description = None
             info = {'id': ident,
                     'kind': 'OBJECT',
                     'name': ident.name,
-                    'description': node.description}
-        elif isinstance(ident, INTERFACE):
-            info = {'id': ident,
-                    'kind': 'INTERFACE',
-                    'name': 'I{}'.format(ident.name),
-                    'description': None}
+                    'description': description}
         elif isinstance(ident, INPUT_OBJECT):
             info = {'id': ident,
                     'kind': 'INPUT_OBJECT',
@@ -223,18 +216,22 @@ def type_fields_link(schema, ids, options):
     nodes_map = _nodes_map(schema)
     for ident in ids:
         if isinstance(ident, OBJECT):
-            node = nodes_map[ident.name]
-            field_idents = [FieldIdent(ident.name, f.name) for f in node.fields
-                            if not f.name.startswith('_')]
+            if ident.name in nodes_map:
+                node = nodes_map[ident.name]
+                field_idents = [
+                    FieldIdent(ident.name, f.name)
+                    for f in node.fields if not f.name.startswith('_')
+                ]
+            else:
+                type_ = schema.data_types[ident.name]
+                field_idents = [
+                    FieldIdent(ident.name, f_name)
+                    for f_name, f_type in type_.__field_types__.items()
+                ]
             if not field_idents:
-                raise TypeError('Node "{}" does not contain fields, '
+                raise TypeError('Object type "{}" does not contain fields, '
                                 'which is not acceptable for GraphQL in order '
                                 'to define schema type'.format(ident.name))
-            yield field_idents
-        elif isinstance(ident, INTERFACE):
-            type_ = schema.data_types[ident.name]
-            field_idents = [FieldIdent(ident.name, f_name)
-                            for f_name, f_type in type_.__field_types__.items()]
             yield field_idents
         else:
             yield []

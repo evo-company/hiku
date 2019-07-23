@@ -118,10 +118,6 @@ def _obj(name):
     return {'kind': 'OBJECT', 'name': name, 'ofType': None}
 
 
-def _iface(name):
-    return {'kind': 'INTERFACE', 'name': name, 'ofType': None}
-
-
 def _iobj(name):
     return {'kind': 'INPUT_OBJECT', 'name': name, 'ofType': None}
 
@@ -339,9 +335,9 @@ def test_data_types():
     ])], data_types)
     assert introspect(graph) == _schema([
         _type('Query', 'OBJECT', fields=[
-            _field('foo', _non_null(_iface('IFoo'))),
+            _field('foo', _non_null(_obj('Foo'))),
         ]),
-        _type('IFoo', 'INTERFACE', fields=[
+        _type('Foo', 'OBJECT', fields=[
             _field('bar', _non_null(_INT)),
         ]),
         _type('IOFoo', 'INPUT_OBJECT', inputFields=[
@@ -377,7 +373,7 @@ def test_mutation_type():
                 _ival('setterArg', _non_null(_iobj('IOFoo'))),
             ]),
         ]),
-        _type('IFoo', 'INTERFACE', fields=[
+        _type('Foo', 'OBJECT', fields=[
             _field('bar', _non_null(_INT)),
         ]),
         _type('IOFoo', 'INPUT_OBJECT', inputFields=[
