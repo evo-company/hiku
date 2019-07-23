@@ -314,6 +314,132 @@ def test_missing_variables():
     err.match('Variable "asides" is not provided for query Belinda')
 
 
+@pytest.mark.parametrize('skip', [True, False])
+def test_skip_field(skip):
+    check_read(
+        """
+        query Page($cond: Boolean!) {
+          foo
+          bar @skip(if: $cond)
+        }
+        """,
+        Node([Field('foo')] + ([] if skip else [Field('bar')])),
+        {'cond': skip},
+    )
+
+
+@pytest.mark.parametrize('skip', [True, False])
+def test_skip_fragment_spread(skip):
+    check_read(
+        """
+        query Page($cond: Boolean!) {
+          foo
+          ...Fragment @skip(if: $cond)
+        }
+        fragment Fragment on Thing {
+          bar
+        }
+        """,
+        Node([Field('foo')] + ([] if skip else [Field('bar')])),
+        {'cond': skip},
+    )
+
+
+@pytest.mark.parametrize('skip', [True, False])
+def test_skip_inline_fragment(skip):
+    check_read(
+        """
+        query Page($cond: Boolean!) {
+          foo
+          ... on Thing @skip(if: $cond) {
+            bar
+          }
+        }
+        """,
+        Node([Field('foo')] + ([] if skip else [Field('bar')])),
+        {'cond': skip},
+    )
+
+
+@pytest.mark.parametrize('include', [True, False])
+def test_include_field(include):
+    check_read(
+        """
+        query Page($cond: Boolean!) {
+          foo
+          bar @include(if: $cond)
+        }
+        """,
+        Node([Field('foo')] + ([Field('bar')] if include else [])),
+        {'cond': include},
+    )
+
+
+@pytest.mark.parametrize('include', [True, False])
+def test_include_fragment_spread(include):
+    check_read(
+        """
+        query Page($cond: Boolean!) {
+          foo
+          ...Fragment @include(if: $cond)
+        }
+        fragment Fragment on Thing {
+          bar
+        }
+        """,
+        Node([Field('foo')] + ([Field('bar')] if include else [])),
+        {'cond': include},
+    )
+
+
+@pytest.mark.parametrize('include', [True, False])
+def test_include_inline_fragment(include):
+    check_read(
+        """
+        query Page($cond: Boolean!) {
+          foo
+          ... on Thing @include(if: $cond) {
+            bar
+          }
+        }
+        """,
+        Node([Field('foo')] + ([Field('bar')] if include else [])),
+        {'cond': include},
+    )
+
+
+@pytest.mark.parametrize('directive', ['skip', 'include'])
+def test_directive_invalid_arguments(directive):
+    with pytest.raises(
+        TypeError,
+        match=('@{} directive accepts exactly one argument, 2 provided'
+               .format(directive))
+    ):
+        read(
+            """
+            {{
+              foo
+              bar @{}(if: true, extra: true)
+            }}
+            """
+            .format(directive),
+        )
+    with pytest.raises(
+        TypeError,
+        match=('@{} directive does not accept "unknown" argument'
+               .format(directive))
+    ):
+        read(
+            """
+            {{
+              foo
+              bar @{}(unknown: true)
+            }}
+            """
+            .format(directive),
+        )
+
+
 def test_read_operation_query():
     op = read_operation('query { pong }')
     assert op.type is OperationType.QUERY

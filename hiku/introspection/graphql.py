@@ -30,6 +30,7 @@ def _namedtuple(typename, field_names):
 
 SCALAR = _namedtuple('SCALAR', 'name')
 OBJECT = _namedtuple('OBJECT', 'name')
+DIRECTIVE = _namedtuple('DIRECTIVE', 'name')
 INPUT_OBJECT = _namedtuple('INPUT_OBJECT', 'name')
 INTERFACE = _namedtuple('INTERFACE', 'name')
 LIST = _namedtuple('LIST', 'of_type')
@@ -38,6 +39,7 @@ NON_NULL = _namedtuple('NON_NULL', 'of_type')
 FieldIdent = _namedtuple('FieldIdent', 'node, name')
 FieldArgIdent = _namedtuple('FieldArgIdent', 'node, field, name')
 InputObjectFieldIdent = _namedtuple('InputObjectFieldIdent', 'name, key')
+DirectiveArgIdent = _namedtuple('DirectiveArgIdent', 'name')
 
 QUERY_ROOT_NAME = 'Query'
 MUTATION_ROOT_NAME = 'Mutation'
@@ -178,6 +180,10 @@ def root_schema_mutation_type(schema):
         return Nothing
 
 
+def root_schema_directives(schema):
+    return [DIRECTIVE('skip'), DIRECTIVE('include')]
+
+
 @listify
 def type_info(schema, fields, ids):
     for ident in ids:
@@ -303,6 +309,16 @@ def type_input_object_input_fields_link(schema, ids):
             yield []
 
 
+_arg_descriptions = {
+    'include': (
+        'Included when true.'
+    ),
+    'skip': (
+        'Skipped when true.'
+    ),
+}
+
+
 @listify
 def input_value_info(schema, fields, ids):
     nodes_map = _nodes_map(schema)
@@ -326,6 +342,12 @@ def input_value_info(schema, fields, ids):
                     'description': None,
                     'defaultValue': None}
             yield [info[f.name] for f in fields]
+        elif isinstance(ident, DirectiveArgIdent):
+            info = {'id': ident,
+                    'name': 'if',
+                    'description': _arg_descriptions[ident.name],
+                    'defaultValue': None}
+            yield [info[f.name] for f in fields]
         else:
             raise TypeError(repr(ident))
 
@@ -344,8 +366,35 @@ def input_value_type_link(schema, ids):
             data_type = schema.data_types[ident.name]
             field_type = data_type.__field_types__[ident.key]
             yield type_ident.visit(field_type)
+        elif isinstance(ident, DirectiveArgIdent):
+            yield NON_NULL(SCALAR('Boolean'))
         else:
             raise TypeError(repr(ident))
+
+
+_directive_descriptions = {
+    'include': (
+        'Directs the executor to include this field or fragment '
+        'only when the `if` argument is true.'
+    ),
+    'skip': (
+        'Directs the executor to skip this field or fragment '
+        'when the `if` argument is true.'
+    ),
+}
+
+
+@listify
+def directive_value_info(schema, fields, ids):
+    for ident in ids:
+        info = {'name': ident.name,
+                'description': _directive_descriptions.get(ident.name),
+                'locations': ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']}
+        yield [info[f.name] for f in fields]
+
+
+def directive_args_link(schema, ids):
+    return [[DirectiveArgIdent(ident)] for ident in ids]
 
 
 GRAPH = Graph([
@@ -400,11 +449,11 @@ GRAPH = Graph([
         Field('defaultValue', String, input_value_info),
     ]),
     Node('__Directive', [
-        Field('name', String, not_implemented),
-        Field('description', String, not_implemented),
-        Field('locations', String, not_implemented),  # FIXME: Sequence[String]
-        Link('args', Sequence[TypeRef['__InputValue']], not_implemented,
-             requires=None),
+        Field('name', String, directive_value_info),
+        Field('description', String, directive_value_info),
+        Field('locations', Sequence[String], directive_value_info),
+        Link('args', Sequence[TypeRef['__InputValue']], directive_args_link,
+             requires='name'),
     ]),
     Node('__EnumValue', [
         Field('name', String, not_implemented),
@@ -421,8 +470,8 @@ GRAPH = Graph([
              root_schema_mutation_type, requires=None),
         Link('subscriptionType', Optional[TypeRef['__Type']], na_maybe,
              requires=None),
-        Link('directives', Sequence[TypeRef['__Directive']], na_many,
-             requires=None),
+        Link('directives', Sequence[TypeRef['__Directive']],
+             root_schema_directives, requires=None),
     ]),
     Root([
         Link('__schema', TypeRef['__Schema'], schema_link, requires=None),

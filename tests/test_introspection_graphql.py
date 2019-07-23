@@ -1,3 +1,5 @@
+from unittest.mock import ANY
+
 import pytest
 
 from hiku.compat import PY36, PYPY
@@ -159,12 +161,26 @@ def _type(name, kind, **kwargs):
     return data
 
 
+def _directive(name):
+    return {
+        'name': name,
+        'description': ANY,
+        "locations": ["FIELD", "FRAGMENT_SPREAD", "INLINE_FRAGMENT"],
+        "args": [
+            _ival('if', _non_null(_BOOL), description=ANY),
+        ],
+    }
+
+
 def _schema(types, with_mutation=False):
     names = [t['name'] for t in types]
     assert 'Query' in names, names
     return {
         '__schema': {
-            'directives': [],
+            'directives': [
+                _directive('skip'),
+                _directive('include'),
+            ],
             'mutationType': {'name': 'Mutation'} if with_mutation else None,
             'queryType': {'name': 'Query'},
             'types': SCALARS + types,

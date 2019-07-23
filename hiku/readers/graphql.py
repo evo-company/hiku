@@ -117,7 +117,42 @@ class SelectionSetVisitMixin(object):
             for j in self.visit(i):
                 yield j
 
+    def _should_skip(self, obj):
+        if not obj.directives:
+            return
+
+        skip = next((d for d in obj.directives if d.name.value == 'skip'),
+                    None)
+        if skip is not None:
+            if len(skip.arguments) != 1:
+                raise TypeError('@skip directive accepts exactly one '
+                                'argument, {} provided'
+                                .format(len(skip.arguments)))
+            skip_arg = skip.arguments[0]
+            if skip_arg.name.value != 'if':
+                raise TypeError('@skip directive does not accept "{}" '
+                                'argument'
+                                .format(skip_arg.name.value))
+            return self.visit(skip_arg.value)
+
+        include = next((d for d in obj.directives if d.name.value == 'include'),
+                       None)
+        if include is not None:
+            if len(include.arguments) != 1:
+                raise TypeError('@include directive accepts exactly one '
+                                'argument, {} provided'
+                                .format(len(include.arguments)))
+            include_arg = include.arguments[0]
+            if include_arg.name.value != 'if':
+                raise TypeError('@include directive does not accept "{}" '
+                                'argument'
+                                .format(include_arg.name.value))
+            return not self.visit(include_arg.value)
+
     def visit_field(self, obj):
+        if self._should_skip(obj):
+            return
+
         if obj.arguments:
             options = {arg.name.value: self.visit(arg.value)
                        for arg in obj.arguments}
@@ -163,11 +198,14 @@ class SelectionSetVisitMixin(object):
         return {f.name.value: self.visit(f.value) for f in obj.fields}
 
     def visit_fragment_spread(self, obj):
-        assert not obj.directives, obj.directives
+        if self._should_skip(obj):
+            return
         for i in self.transform_fragment(obj.name.value):
             yield i
 
     def visit_inline_fragment(self, obj):
+        if self._should_skip(obj):
+            return
         for i in self.visit(obj.selection_set):
             yield i
 
