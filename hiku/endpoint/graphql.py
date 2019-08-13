@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from asyncio import gather
 
 from ..graph import apply
 from ..query import QueryTransformer
@@ -58,7 +59,7 @@ def _process_query(graph, query):
         return stripped_query
 
 
-class AbstractGraphQLEndpoint(ABC):
+class BaseGraphQLEndpoint(ABC):
 
     @property
     @abstractmethod
@@ -84,7 +85,7 @@ class AbstractGraphQLEndpoint(ABC):
         pass
 
 
-class GraphQLEndpoint(AbstractGraphQLEndpoint):
+class GraphQLEndpoint(BaseGraphQLEndpoint):
     introspection_cls = GraphQLIntrospection
 
     def execute(self, graph, op, ctx):
@@ -108,12 +109,15 @@ class BatchGraphQLEndpoint(GraphQLEndpoint):
 
     def dispatch(self, data):
         if isinstance(data, list):
-            return [super().dispatch(item) for item in data]
+            return [
+                super(BatchGraphQLEndpoint, self).dispatch(item)
+                for item in data
+            ]
         else:
-            return super().dispatch(data)
+            return super(BatchGraphQLEndpoint, self).dispatch(data)
 
 
-class AsyncGraphQLEndpoint(AbstractGraphQLEndpoint):
+class AsyncGraphQLEndpoint(BaseGraphQLEndpoint):
     introspection_cls = AsyncGraphQLIntrospection
 
     async def execute(self, graph, op, ctx):
@@ -137,6 +141,9 @@ class AsyncBatchGraphQLEndpoint(AsyncGraphQLEndpoint):
 
     async def dispatch(self, data):
         if isinstance(data, list):
-            return [await super().dispatch(item) for item in data]
+            return await gather(*(
+                super(AsyncBatchGraphQLEndpoint, self).dispatch(item)
+                for item in data
+            ))
         else:
-            return await super().dispatch(data)
+            return await super(AsyncBatchGraphQLEndpoint, self).dispatch(data)
