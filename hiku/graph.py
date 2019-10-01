@@ -12,7 +12,7 @@ from functools import reduce
 from collections import OrderedDict
 
 from .types import OptionalMeta, SequenceMeta, TypeRefMeta, Record, Any
-from .utils import kw_only, cached_property, const
+from .utils import cached_property, const
 
 
 Maybe = const('Maybe')
@@ -51,17 +51,13 @@ class Option(AbstractOption):
         Option('size', Integer, default=100)
 
     """
-    def __init__(self, name, type_, **kwargs):
+    def __init__(self, name, type_, *, default=Nothing, description=None):
         """
         :param name: name of the option
         :param type_: type of the option or ``None``
-        :param kw-only,optional default: default option value
-        :param kw-only,optional description: description of the option
+        :param default: default option value
+        :param description: description of the option
         """
-        default, description = kw_only(self.__init__, kwargs, [],
-                                       [('default', Nothing),
-                                        ('description', None)])
-
         self.name = name
         self.type = type_
         self.default = default
@@ -113,18 +109,14 @@ class Field(AbstractField):
     - ``ids`` - list node identifiers
 
     """
-    def __init__(self, name, type_, func, **kwargs):
+    def __init__(self, name, type_, func, *, options=None, description=None):
         """
         :param str name: name of the field
         :param type_: type of the field or ``None``
         :param func: function to load field's data
-        :param kw-only,optional options: list of acceptable options
-        :param kw-only,optional description: description of the field
+        :param options: list of acceptable options
+        :param description: description of the field
         """
-        options, description = kw_only(self.__init__, kwargs, [],
-                                       [('options', None),
-                                        ('description', None)])
-
         self.name = name
         self.type = type_
         self.func = func
@@ -229,20 +221,18 @@ class Link(AbstractLink):
     Where ``options`` is a mapping ``str: value`` of provided in the query
     options.
     """
-    def __init__(self, name, type_, func, **kwargs):
+    def __init__(
+        self, name, type_, func, *, requires, options=None, description=None
+    ):
         """
         :param name: name of the link
         :param type_: type of the link
         :param func: function to load identifiers of the linked node
-        :param kw-only requires: field name from the current node, required
-                                      to compute identifiers of the linked node
-        :param kw-only,optional options: list of acceptable options
-        :param kw-only,optional description: description of the link
+        :param requires: field name from the current node, required to compute
+                         identifiers of the linked node
+        :param options: list of acceptable options
+        :param description: description of the link
         """
-        requires, options, description = \
-            kw_only(self.__init__, kwargs, ['requires'],
-                    [('options', None), ('description', None)])
-
         type_enum, node = get_type_enum(type_)
 
         self.name = name
@@ -287,16 +277,15 @@ class Node(AbstractNode):
         ])
 
     """
-    def __init__(self, name, fields, **kwargs):
+    def __init__(self, name, fields, *, description=None):
         """
         :param name: name of the node
         :param fields: list of fields and links
-        :param kw-only,optional description: description of the node
+        :param description: description of the node
         """
         self.name = name
         self.fields = fields
-        self.description, = kw_only(self.__init__, kwargs, [],
-                                    [('description', None)])
+        self.description = description
 
     def __repr__(self):
         return '{}({!r}, {!r}, ...)'.format(self.__class__.__name__, self.name,

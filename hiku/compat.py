@@ -1,6 +1,5 @@
 import sys
 import ast as _ast
-import inspect
 
 
 PY36 = sys.version_info >= (3, 6)
@@ -25,10 +24,3 @@ class _AST:
 
 
 ast = _AST()
-
-
-def qualname(fn):
-    if inspect.ismethod(fn):
-        return fn.__func__.__qualname__
-    else:
-        return fn.__qualname__

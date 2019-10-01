@@ -3,7 +3,6 @@ from collections import defaultdict
 
 import sqlalchemy
 
-from ..utils import kw_only
 from ..types import String, Integer
 from ..graph import Nothing, Maybe, One, Many
 from ..engine import pass_context
@@ -28,9 +27,7 @@ def _table_repr(table):
 @pass_context
 class FieldsQuery:
 
-    def __init__(self, engine_key, from_clause, **kwargs):
-        primary_key, = \
-            kw_only(self.__init__, kwargs, [], [('primary_key', None)])
+    def __init__(self, engine_key, from_clause, *, primary_key=None):
         self.engine_key = engine_key
         self.from_clause = from_clause
         if primary_key is not None:
@@ -105,9 +102,7 @@ def _to_many_mapper(pairs, values):
 
 class LinkQuery:
 
-    def __init__(self, engine_key, **kwargs):
-        from_column, to_column = kw_only(self.__init__, kwargs,
-                                         ['from_column', 'to_column'])
+    def __init__(self, engine_key, *, from_column, to_column):
         if from_column.table is not to_column.table:
             raise ValueError('from_column and to_column should belong to '
                              'one table')
