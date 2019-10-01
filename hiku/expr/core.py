@@ -22,7 +22,7 @@ THIS = 'this'
 _Func = namedtuple('__func__', 'expr, args')
 
 
-class _DotHandler(object):
+class _DotHandler:
 
     def __init__(self, obj):
         self.obj = obj
@@ -34,7 +34,7 @@ class _DotHandler(object):
         return _DotHandler(Tuple([Symbol('get'), self.obj, Symbol(name)]))
 
 
-class _S(object):
+class _S:
 
     def __getattr__(self, name):
         return _DotHandler(Symbol(name))

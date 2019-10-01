@@ -75,7 +75,7 @@ class Set(frozenset):
         return '#{{{}}}'.format(' '.join(map(repr, self)))
 
 
-class TaggedElement(object):
+class TaggedElement:
 
     def __init__(self, name, value):
         self.name = name

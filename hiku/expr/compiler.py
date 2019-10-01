@@ -8,7 +8,7 @@ from .core import THIS
 from .nodes import Symbol, Keyword
 
 
-class Environ(object):
+class Environ:
 
     def __init__(self):
         self.vars = Counter()
@@ -31,7 +31,7 @@ class Environ(object):
                 self.vars[name] -= 1
 
 
-class ExpressionCompiler(object):
+class ExpressionCompiler:
     ctx_var = 'ctx'
     env_var = 'env'
 

@@ -14,7 +14,7 @@ _CONTAINER_TYPES = (
 )
 
 
-class Ref(object):
+class Ref:
 
     def __init__(self, backref, to):
         self.backref = backref

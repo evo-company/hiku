@@ -4,7 +4,7 @@ from asyncio import wait, FIRST_COMPLETED, gather, CancelledError
 from asyncio import get_event_loop
 
 
-class AsyncIOExecutor(object):
+class AsyncIOExecutor:
 
     def __init__(self, loop=None):
         self._loop = loop or get_event_loop()

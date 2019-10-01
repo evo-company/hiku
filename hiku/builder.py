@@ -1,7 +1,7 @@
 from .query import Node, Field, Link
 
 
-class Handle(object):
+class Handle:
 
     def __init__(self, name=None, options=None, alias=None, items=None):
         self.__field_name__ = name

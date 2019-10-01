@@ -91,7 +91,7 @@ class _OptionTypeError(_OptionError):
         super(_OptionTypeError, self).__init__(description)
 
 
-class _OptionTypeValidator(object):
+class _OptionTypeValidator:
 
     def __init__(self, data_types, value):
         self._data_types = data_types

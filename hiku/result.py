@@ -26,7 +26,7 @@ from .graph import Link as GraphLink, Field as GraphField, Many, Maybe
 from .utils import cached_property
 
 
-class Reference(object):
+class Reference:
     __slots__ = ('node', 'ident')
 
     def __init__(self, node, ident):
@@ -55,7 +55,7 @@ class Index(defaultdict):
         self.default_factory = None
 
 
-class Proxy(object):
+class Proxy:
     __slots__ = ('__idx__', '__ref__', '__node__')
 
     def __init__(self, index, reference, node):

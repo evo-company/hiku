@@ -11,7 +11,7 @@ def _():
     return 1/0
 
 
-class Invalid(object):
+class Invalid:
 
     def __repr__(self):
         return '<invalid>'

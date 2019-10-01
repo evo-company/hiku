@@ -6,7 +6,7 @@ from graphql.language.parser import parse
 from ..query import Node, Field, Link, merge
 
 
-class NodeVisitor(object):
+class NodeVisitor:
 
     def visit(self, obj):
         visit_method = getattr(self, 'visit_{}'.format(obj.kind, None))
@@ -90,7 +90,7 @@ class FragmentsCollector(NodeVisitor):
         self.fragments_map[obj.name.value] = obj
 
 
-class SelectionSetVisitMixin(object):
+class SelectionSetVisitMixin:
 
     def transform_fragment(self, name):
         raise NotImplementedError(type(self))
@@ -329,7 +329,7 @@ class OperationType(enum.Enum):
     SUBSCRIPTION = ast.OperationType.SUBSCRIPTION
 
 
-class Operation(object):
+class Operation:
     """Represents requested GraphQL operation"""
     def __init__(self, type_, query, name=None):
         #: type of the operation

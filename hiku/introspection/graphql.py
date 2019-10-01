@@ -606,7 +606,7 @@ class AddIntrospection(GraphTransformer):
         return graph
 
 
-class SchemaInfo(object):
+class SchemaInfo:
 
     def __init__(self, query_graph, mutation_graph=None):
         self.query_graph = query_graph

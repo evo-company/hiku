@@ -12,7 +12,7 @@ def fn_types(functions):
     return {fn.__def_name__: fn.__def_type__ for fn in functions}
 
 
-class Environ(object):
+class Environ:
 
     def __init__(self, values):
         env_vars = {}

@@ -396,7 +396,7 @@ def _do_pass_context(func):
     return getattr(func, '__pass_context__', False)
 
 
-class Context(object):
+class Context:
 
     def __init__(self, mapping):
         self.__mapping = mapping
@@ -409,7 +409,7 @@ class Context(object):
                            'in the query context'.format(item))
 
 
-class Engine(object):
+class Engine:
 
     def __init__(self, executor):
         self.executor = executor

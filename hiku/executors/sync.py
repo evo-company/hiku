@@ -1,4 +1,4 @@
-class FutureLike(object):
+class FutureLike:
 
     def __init__(self, result):
         self._result = result
@@ -7,7 +7,7 @@ class FutureLike(object):
         return self._result
 
 
-class SyncExecutor(object):
+class SyncExecutor:
 
     def submit(self, fn, *args, **kwargs):
         return FutureLike(fn(*args, **kwargs))

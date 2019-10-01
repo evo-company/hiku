@@ -1,7 +1,7 @@
 import sys
 
 
-class cached_property(object):
+class cached_property:
 
     def __init__(self, func):
         self.__doc__ = getattr(func, '__doc__')

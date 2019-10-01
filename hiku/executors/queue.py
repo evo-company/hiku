@@ -2,13 +2,13 @@ from itertools import chain
 from collections import defaultdict
 
 
-class Workflow(object):
+class Workflow:
 
     def result(self):
         raise NotImplementedError(type(self))
 
 
-class TaskSet(object):
+class TaskSet:
 
     def __init__(self, queue):
         self._queue = queue
@@ -17,7 +17,7 @@ class TaskSet(object):
         return self._queue.submit(self, fn, *args, **kwargs)
 
 
-class Queue(object):
+class Queue:
 
     def __init__(self, executor):
         self._executor = executor

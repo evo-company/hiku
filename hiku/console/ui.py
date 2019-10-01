@@ -36,7 +36,7 @@ def _encode(s, charset='utf-8'):
     return s.encode(charset)
 
 
-class ConsoleApplication(object):
+class ConsoleApplication:
     _urls = {
         'index_url': '/',
         'docs_url': '/docs',

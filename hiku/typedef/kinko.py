@@ -16,7 +16,7 @@ _CONTAINER_TYPES = (
 )
 
 
-class TypeDoc(object):
+class TypeDoc:
 
     def __init__(self, type_, description):
         self.__type__ = type_
@@ -54,7 +54,7 @@ class GraphTypesEx(GraphTypes):
                        if t is not Any]]
 
 
-class _LinePrinter(object):
+class _LinePrinter:
 
     def visit(self, type_):
         return type_.accept(self)
@@ -78,7 +78,7 @@ class _LinePrinter(object):
         return 'Unknown'
 
 
-class _IndentedPrinter(object):
+class _IndentedPrinter:
     _indent_size = 2
 
     def __init__(self):

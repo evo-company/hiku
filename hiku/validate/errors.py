@@ -1,4 +1,4 @@
-class Errors(object):
+class Errors:
 
     def __init__(self):
         self.list = []

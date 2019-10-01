@@ -1,4 +1,4 @@
-class Node(object):
+class Node:
 
     def accept(self, visitor):
         raise NotImplementedError(type(self))
@@ -64,7 +64,7 @@ class Dict(Node):
         return visitor.visit_dict(self)
 
 
-class NodeVisitor(object):
+class NodeVisitor:
 
     def visit(self, node):
         if hasattr(node, 'accept'):
@@ -94,7 +94,7 @@ class NodeVisitor(object):
             self.visit(value)
 
 
-class NodeTransformer(object):
+class NodeTransformer:
 
     def visit(self, node):
         if hasattr(node, 'accept'):

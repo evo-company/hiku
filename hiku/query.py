@@ -61,7 +61,7 @@ def _compute_hash(obj):
         return hash(obj)
 
 
-class Base(object):
+class Base:
     __attrs__ = ()
 
     def __repr__(self):
@@ -205,7 +205,7 @@ def merge(nodes):
     return Node(list(_merge(nodes)), ordered=ordered)
 
 
-class QueryVisitor(object):
+class QueryVisitor:
 
     def visit(self, obj):
         return obj.accept(self)
@@ -221,7 +221,7 @@ class QueryVisitor(object):
             self.visit(item)
 
 
-class QueryTransformer(object):
+class QueryTransformer:
 
     def visit(self, obj):
         return obj.accept(self)

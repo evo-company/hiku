@@ -32,7 +32,7 @@ def _yield_options(query_field, graph_field):
             yield value
 
 
-class BoundExpr(object):
+class BoundExpr:
 
     def __init__(self, sub_graph, expr):
         self.sub_graph = sub_graph
@@ -68,7 +68,7 @@ class BoundExpr(object):
         raise TypeError('Expression is not checked: {!r}'.format(self.expr))
 
 
-class CheckedExpr(object):
+class CheckedExpr:
 
     def __init__(self, sub_graph, expr, reqs, proc):
         self.sub_graph = sub_graph
@@ -86,7 +86,7 @@ class CheckedExpr(object):
         return self.sub_graph
 
 
-class SubGraph(object):
+class SubGraph:
 
     def __init__(self, graph, node):
         self.graph = graph

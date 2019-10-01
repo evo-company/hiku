@@ -5,7 +5,7 @@ import pytest
 from hiku.executors.queue import Queue
 
 
-class DummyFuture(object):
+class DummyFuture:
 
     def __init__(self, fn, args, kwargs):
         self.fn = fn
@@ -16,7 +16,7 @@ class DummyFuture(object):
         self.fn(*self.args, **self.kwargs)
 
 
-class DummyExecutor(object):
+class DummyExecutor:
 
     def submit(self, fn, *args, **kwargs):
         return DummyFuture(fn, args, kwargs)
