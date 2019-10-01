@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from hiku.edn import loads, dumps
 from hiku.edn import List, Keyword, Dict, TaggedElement, Tuple, Symbol
 

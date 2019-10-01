@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 

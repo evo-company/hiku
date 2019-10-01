@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from sqlalchemy import any_
 
 from . import sqlalchemy as _sa

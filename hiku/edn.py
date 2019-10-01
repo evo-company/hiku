@@ -1,8 +1,6 @@
 """
 Based on the code from https://github.com/gns24/pydatomic project
 """
-from __future__ import unicode_literals
-
 from uuid import UUID
 from decimal import Decimal
 from datetime import datetime

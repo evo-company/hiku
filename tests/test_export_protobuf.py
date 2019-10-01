@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import pytest
 
 from google.protobuf.json_format import ParseError

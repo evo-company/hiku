@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from hiku.edn import dumps
 from hiku.query import Field, Link, Node
 from hiku.export.simple import export
