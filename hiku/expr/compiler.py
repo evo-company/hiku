@@ -48,9 +48,13 @@ class ExpressionCompiler(object):
         compiler = cls()
         with compiler.env.push([THIS] + args):
             body = compiler.visit(node)
-        py_args = [py.arg(cls.env_var), py.arg(THIS), py.arg(cls.ctx_var)]
-        py_args += [py.arg(name) for name in args]
-        expr = py.Lambda(py.arguments(py_args, None, None, []), body)
+        py_args = [
+            py.arg(cls.env_var, None),
+            py.arg(THIS, None),
+            py.arg(cls.ctx_var, None),
+        ]
+        py_args.extend(py.arg(name, None) for name in args)
+        expr = py.Lambda(py.arguments(py_args, None, [], [], None, []), body)
         py.fix_missing_locations(expr)
         return py.Expression(expr)
 
@@ -110,7 +114,7 @@ class ExpressionCompiler(object):
             )
             expr = py.IfExp(test, self.visit(then_), self.visit(else_))
         gen = py.GeneratorExp(expr, [comp])
-        return py.Call(py.Name('next', py.Load()), [gen], [], None, None)
+        return py.Call(py.Name('next', py.Load()), [gen], [])
 
     def visit_each_expr(self, node):
         sym, var, col, body = node.values
@@ -136,7 +140,7 @@ class ExpressionCompiler(object):
         else:
             values = [self.visit(node) for node in node.values]
             sym_expr, arg_exprs = values[0], values[1:]
-            return py.Call(sym_expr, arg_exprs, [], None, None)
+            return py.Call(sym_expr, arg_exprs, [])
 
     def visit_symbol(self, node):
         if node.name in self.env:

@@ -13,47 +13,10 @@ except ImportError:
     PYPY = False
 
 
-class _AST(object):
+class _AST:
 
     def __getattr__(self, name):
         return getattr(_ast, name)
-
-    if PY3:
-        @staticmethod
-        def arguments(args, vararg, kwarg, defaults):
-            return _ast.arguments(args, vararg, [], [], kwarg, defaults)
-
-        @staticmethod
-        def arg(arg):
-            return _ast.arg(arg, None)
-
-    else:
-        @staticmethod
-        def Name(id, ctx):
-            return _ast.Name(str(id), ctx)
-
-        @staticmethod
-        def NameConstant(id):
-            return _ast.Name(str(id), _ast.Load())
-
-        @staticmethod
-        def Attribute(value, attr, ctx):
-            return _ast.Attribute(value, str(attr), ctx)
-
-        @staticmethod
-        def arguments(args, vararg, kwarg, defaults):
-            return _ast.arguments(args, vararg, kwarg, defaults)
-
-        @staticmethod
-        def arg(arg):
-            return _ast.Name(str(arg), _ast.Param())
-
-    if PY35:
-        @staticmethod
-        def Call(func, args, keywords, starargs, kwargs):
-            return _ast.Call(func, args, keywords)
-    else:
-        Call = _ast.Call
 
     if PY36:
         @staticmethod
