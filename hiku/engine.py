@@ -405,7 +405,7 @@ class Context(object):
         try:
             return self.__mapping[item]
         except KeyError:
-            raise KeyError('Context variable {!r} is not specified '
+            raise KeyError('Key {!r} is not specified '
                            'in the query context'.format(item))
 
 
