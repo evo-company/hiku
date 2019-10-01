@@ -106,12 +106,3 @@ else:
 
 
 Sequence = collections_abc.Sequence
-
-
-if PY35:
-    from ._compat import async_wrapper
-
-    async_wrapper = async_wrapper
-else:
-    def async_wrapper(func):
-        raise RuntimeError('Can not use async/await in Python < 3.5')

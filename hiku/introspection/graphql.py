@@ -11,7 +11,7 @@ from ..graph import GraphVisitor, GraphTransformer
 from ..types import TypeRef, String, Sequence, Boolean, Optional, TypeVisitor
 from ..types import Any, RecordMeta, AbstractTypeVisitor
 from ..utils import listify
-from ..compat import async_wrapper, PY3
+from ..compat import PY3
 
 
 def _namedtuple(typename, field_names):
@@ -26,6 +26,12 @@ def _namedtuple(typename, field_names):
         '__slots__': (),
         '__hash__': __hash__,
     })
+
+
+def _async_wrapper(func):
+    async def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+    return wrapper
 
 
 SCALAR = _namedtuple('SCALAR', 'name')
@@ -567,13 +573,13 @@ class MakeAsync(GraphTransformer):
         field = super(MakeAsync, self).visit_field(obj)
         func = self._processed.get(obj.func)
         if func is None:
-            func = self._processed[obj.func] = async_wrapper(obj.func)
+            func = self._processed[obj.func] = _async_wrapper(obj.func)
         field.func = func
         return field
 
     def visit_link(self, obj):
         link = super(MakeAsync, self).visit_link(obj)
-        link.func = async_wrapper(link.func)
+        link.func = _async_wrapper(link.func)
         return link
 
 
@@ -673,7 +679,7 @@ class AsyncGraphQLIntrospection(GraphQLIntrospection):
     """
     def __type_name__(self, node_name):
         return Field('__typename', String,
-                     async_wrapper(partial(type_name_field_func, node_name)))
+                     _async_wrapper(partial(type_name_field_func, node_name)))
 
     def __introspection_graph__(self):
         graph = super(AsyncGraphQLIntrospection, self).__introspection_graph__()
