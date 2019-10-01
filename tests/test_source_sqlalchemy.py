@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -15,7 +15,6 @@ import hiku.sources.sqlalchemy
 from hiku.types import IntegerMeta, StringMeta, TypeRef, Sequence, Optional
 from hiku.graph import Graph, Node, Field, Link, Root
 from hiku.utils import cached_property
-from hiku.compat import with_metaclass
 from hiku.engine import Engine
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
@@ -48,7 +47,7 @@ bar_table = Table(
 thread_pool = ThreadPoolExecutor(2)
 
 
-class AbstractQueries(with_metaclass(ABCMeta)):
+class AbstractQueries(ABC):
 
     @property
     @abstractmethod
@@ -177,7 +176,7 @@ def setup_db(db_engine):
         db_engine.execute(foo_table.insert(), r)
 
 
-class SourceSQLAlchemyTestBase(with_metaclass(ABCMeta, object)):
+class SourceSQLAlchemyTestBase(ABC):
 
     @property
     @abstractmethod

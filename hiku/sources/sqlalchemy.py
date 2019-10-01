@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-from abc import ABCMeta
 from functools import partial
 from collections import defaultdict
 
@@ -10,7 +9,6 @@ from ..utils import kw_only
 from ..types import String, Integer
 from ..graph import Nothing, Maybe, One, Many
 from ..engine import pass_context
-from ..compat import with_metaclass
 
 
 def _translate_type(column):
@@ -30,7 +28,7 @@ def _table_repr(table):
 
 
 @pass_context
-class FieldsQuery(object):
+class FieldsQuery:
 
     def __init__(self, engine_key, from_clause, **kwargs):
         primary_key, = \
@@ -107,7 +105,7 @@ def _to_many_mapper(pairs, values):
     return [mapping[value] for value in values]
 
 
-class LinkQuery(with_metaclass(ABCMeta, object)):
+class LinkQuery:
 
     def __init__(self, engine_key, **kwargs):
         from_column, to_column = kw_only(self.__init__, kwargs,

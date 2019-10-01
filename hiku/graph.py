@@ -6,14 +6,14 @@
     are used to fetch any data from any data source.
 
 """
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from itertools import chain
 from functools import reduce
 from collections import OrderedDict
 
 from .types import OptionalMeta, SequenceMeta, TypeRefMeta, Record, Any
 from .utils import kw_only, cached_property, const
-from .compat import with_metaclass
+
 
 Maybe = const('Maybe')
 
@@ -26,7 +26,7 @@ Many = const('Many')
 Nothing = const('Nothing')
 
 
-class AbstractBase(with_metaclass(ABCMeta)):
+class AbstractBase(ABC):
 
     @abstractmethod
     def accept(self, visitor):
@@ -397,7 +397,7 @@ class Graph(AbstractGraph):
         return visitor.visit_graph(self)
 
 
-class AbstractGraphVisitor(with_metaclass(ABCMeta, object)):
+class AbstractGraphVisitor(ABC):
 
     @abstractmethod
     def visit(self, obj):

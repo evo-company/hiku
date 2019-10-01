@@ -1,5 +1,4 @@
 from ..types import TypingMeta
-from ..compat import with_metaclass
 
 
 class TypeDefMeta(TypingMeta):
@@ -11,5 +10,5 @@ class TypeDefMeta(TypingMeta):
         return visitor.visit_typedef(cls)
 
 
-class TypeDef(with_metaclass(TypeDefMeta, object)):
+class TypeDef(metaclass=TypeDefMeta):
     pass

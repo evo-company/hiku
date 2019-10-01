@@ -1,7 +1,5 @@
-from abc import abstractmethod, ABCMeta
+from abc import abstractmethod, ABC
 from collections import OrderedDict
-
-from .compat import with_metaclass
 
 
 class GenericMeta(type):
@@ -26,7 +24,7 @@ class AnyMeta(GenericMeta):
         return visitor.visit_any(cls)
 
 
-class Any(with_metaclass(AnyMeta, object)):
+class Any(metaclass=AnyMeta):
     pass
 
 
@@ -36,7 +34,7 @@ class BooleanMeta(GenericMeta):
         return visitor.visit_boolean(cls)
 
 
-class Boolean(with_metaclass(BooleanMeta, object)):
+class Boolean(metaclass=BooleanMeta):
     pass
 
 
@@ -46,7 +44,7 @@ class StringMeta(GenericMeta):
         return visitor.visit_string(cls)
 
 
-class String(with_metaclass(StringMeta, object)):
+class String(metaclass=StringMeta):
     pass
 
 
@@ -56,7 +54,7 @@ class IntegerMeta(GenericMeta):
         return visitor.visit_integer(cls)
 
 
-class Integer(with_metaclass(IntegerMeta, object)):
+class Integer(metaclass=IntegerMeta):
     pass
 
 
@@ -66,7 +64,7 @@ class FloatMeta(GenericMeta):
         return visitor.visit_float(cls)
 
 
-class Float(with_metaclass(FloatMeta, object)):
+class Float(metaclass=FloatMeta):
     pass
 
 
@@ -106,7 +104,7 @@ class OptionalMeta(TypingMeta):
         return visitor.visit_optional(cls)
 
 
-class Optional(with_metaclass(OptionalMeta, object)):
+class Optional(metaclass=OptionalMeta):
     pass
 
 
@@ -122,7 +120,7 @@ class SequenceMeta(TypingMeta):
         return visitor.visit_sequence(cls)
 
 
-class Sequence(with_metaclass(SequenceMeta, object)):
+class Sequence(metaclass=SequenceMeta):
     pass
 
 
@@ -139,7 +137,7 @@ class MappingMeta(TypingMeta):
         return visitor.visit_mapping(cls)
 
 
-class Mapping(with_metaclass(MappingMeta, object)):
+class Mapping(metaclass=MappingMeta):
     pass
 
 
@@ -155,7 +153,7 @@ class RecordMeta(TypingMeta):
         return visitor.visit_record(cls)
 
 
-class Record(with_metaclass(RecordMeta, object)):
+class Record(metaclass=RecordMeta):
     pass
 
 
@@ -172,7 +170,7 @@ class CallableMeta(TypingMeta):
         return visitor.visit_callable(cls)
 
 
-class Callable(with_metaclass(CallableMeta, object)):
+class Callable(metaclass=CallableMeta):
     pass
 
 
@@ -188,11 +186,11 @@ class TypeRefMeta(TypingMeta):
         return visitor.visit_typeref(cls)
 
 
-class TypeRef(with_metaclass(TypeRefMeta, object)):
+class TypeRef(metaclass=TypeRefMeta):
     pass
 
 
-class AbstractTypeVisitor(with_metaclass(ABCMeta, object)):
+class AbstractTypeVisitor(ABC):
 
     def visit(self, obj):
         return obj.accept(self)
