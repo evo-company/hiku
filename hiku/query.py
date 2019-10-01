@@ -46,9 +46,9 @@
 """
 from itertools import chain
 from collections import OrderedDict
+from collections.abc import Sequence
 
 from .utils import cached_property
-from .compat import Sequence
 
 
 def _compute_hash(obj):

@@ -4,7 +4,6 @@ from collections import abc as collections_abc
 from ..types import AbstractTypeVisitor
 from ..query import QueryVisitor
 from ..graph import GraphVisitor, Field, Link, Nothing
-from ..compat import text_type
 
 from .errors import Errors
 
@@ -121,7 +120,7 @@ class _OptionTypeValidator(object):
             raise _OptionTypeError(self.value, type_)
 
     def visit_string(self, type_):
-        if not isinstance(self.value, text_type):
+        if not isinstance(self.value, str):
             raise _OptionTypeError(self.value, type_)
 
     def visit_integer(self, type_):

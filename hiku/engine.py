@@ -4,11 +4,11 @@ import warnings
 from functools import partial
 from itertools import chain, repeat
 from collections import defaultdict
+from collections.abc import Sequence
 
 from . import query as hiku_query
 from .graph import Link, Maybe, One, Many, Nothing, Field
 from .result import Proxy, Index, ROOT, Reference
-from .compat import Sequence
 from .executors.queue import Workflow, Queue
 
 

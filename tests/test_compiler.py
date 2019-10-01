@@ -9,7 +9,6 @@ import astor
 
 from hiku.types import Optional, String, Record, Any, TypeRef, Sequence
 from hiku.graph import Graph, Field, Node, Link, Root
-from hiku.compat import PY3
 from hiku.expr.core import define, S, if_, each, to_expr, if_some
 from hiku.expr.checker import check, fn_types
 from hiku.expr.compiler import ExpressionCompiler
@@ -72,8 +71,6 @@ def check_compiles(dsl_expr, code):
     py_expr = ExpressionCompiler.compile_expr(expr)
 
     first = astor.to_source(py_expr).strip()
-    if not PY3:
-        first = first.replace("u'", "'")
     second = dedent(code).strip()
     if first != second:
         msg = ('Compiled code is not equal:\n\n{}'
@@ -177,8 +174,6 @@ def test_generic_bool():
 
 def test_generic_long():
     expected = '18446744073709551616'
-    if not PY3:
-        expected = '{}L'.format(expected)
     check_compiles(
         2 ** 64,
         '({})'.format(expected)

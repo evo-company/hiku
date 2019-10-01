@@ -11,7 +11,6 @@ from ..graph import GraphVisitor, GraphTransformer
 from ..types import TypeRef, String, Sequence, Boolean, Optional, TypeVisitor
 from ..types import Any, RecordMeta, AbstractTypeVisitor
 from ..utils import listify
-from ..compat import PY3
 
 
 def _namedtuple(typename, field_names):
@@ -485,7 +484,7 @@ GRAPH = Graph([
 
 
 class ValidateGraph(GraphVisitor):
-    _name_re = re.compile(r'^[_a-zA-Z]\w*$', re.ASCII if PY3 else 0)
+    _name_re = re.compile(r'^[_a-zA-Z]\w*$', re.ASCII)
 
     def __init__(self):
         self._path = []

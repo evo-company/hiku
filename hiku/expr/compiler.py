@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from collections import Counter
 
 from ..types import CallableMeta
-from ..compat import ast as py, integer_types, text_type
+from ..compat import ast as py
 
 from .core import THIS
 from .nodes import Symbol, Keyword
@@ -80,11 +80,11 @@ class ExpressionCompiler(object):
             return py.NameConstant(node)
         elif isinstance(node, bool):
             return py.NameConstant(node)
-        elif isinstance(node, integer_types):
+        elif isinstance(node, int):
             return py.Num(node)
         elif isinstance(node, float):
             return py.Num(node)
-        elif isinstance(node, text_type):
+        elif isinstance(node, str):
             return py.Str(node)
         else:
             raise NotImplementedError(type(node))

@@ -12,7 +12,6 @@ from collections import namedtuple
 from ..edn import loads
 from ..query import Node, Link, Field
 from ..types import Record, Callable, Any
-from ..compat import text_type, string_types
 from ..readers.simple import transform
 
 from .nodes import Symbol, Tuple, List, Keyword, Dict
@@ -116,8 +115,8 @@ def define(*types, **kwargs):
         expr.__def_name__ = name
         expr.__def_body__ = fn
 
-        if len(types) == 1 and isinstance(types[0], string_types):
-            reqs_list = loads(text_type(types[0]))
+        if len(types) == 1 and isinstance(types[0], str):
+            reqs_list = loads(str(types[0]))
             expr.__def_type__ = Callable[[(_query_to_types(transform(r))
                                            if r is not None else Any)
                                           for r in reqs_list]]

@@ -7,7 +7,6 @@
 """
 from ..edn import loads, Dict, List, Keyword, Tuple
 from ..query import Node, Link, Field, merge
-from ..compat import text_type
 
 
 def _get_options(value):
@@ -32,8 +31,8 @@ def _get_options(value):
         raise TypeError('Option names should be specified as keywords: {}'
                         .format(keys_repr))
 
-    name = text_type(keyword_value)
-    options = {text_type(k): v for k, v in options_value.items()}
+    name = str(keyword_value)
+    options = {str(k): v for k, v in options_value.items()}
     return name, options
 
 
@@ -43,13 +42,13 @@ def _extract(values):
             name, options = _get_options(value)
             yield Field(name, options)
         elif isinstance(value, Keyword):
-            yield Field(text_type(value))
+            yield Field(str(value))
         elif isinstance(value, Dict):
             for key, val in value.items():
                 if isinstance(key, Tuple):
                     name, options = _get_options(key)
                 elif isinstance(key, Keyword):
-                    name = text_type(key)
+                    name = str(key)
                     options = None
                 else:
                     raise TypeError('Link name defined not as keyword, '
