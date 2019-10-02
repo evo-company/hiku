@@ -9,6 +9,20 @@ from ..engine import pass_context, _do_pass_context
 from ..sources.graph import CheckedExpr
 
 
+_METRIC = None
+
+
+def _get_default_metric():
+    global _METRIC
+    if _METRIC is None:
+        _METRIC = Summary(
+            'graph_field_time',
+            'Graph field time (seconds)',
+            ['graph', 'node', 'field'],
+        )
+    return _METRIC
+
+
 def _func_field_names(func):
     fields_pos = 1 if _do_pass_context(func) else 0
 
@@ -26,14 +40,9 @@ def _subquery_field_names(func):
 class GraphMetricsBase(GraphTransformer):
     root_name = 'Root'
 
-    _metric = Summary(
-        'graph_field_time',
-        'Graph field time (seconds)',
-        ['graph', 'node', 'field'],
-    )
-
-    def __init__(self, name):
+    def __init__(self, name, *, metric=None):
         self._name = name
+        self._metric = metric or _get_default_metric()
         self._node = None
         self._wrappers = {}
 
