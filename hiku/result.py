@@ -20,7 +20,7 @@
 """
 from collections import defaultdict
 
-from .types import RecordMeta, OptionalMeta, SequenceMeta, TypeRefMeta
+from .types import RecordMeta, OptionalMeta, SequenceMeta, get_type
 from .query import Node, Field, Link
 from .graph import Link as GraphLink, Field as GraphField, Many, Maybe
 from .utils import cached_property
@@ -123,12 +123,6 @@ def _denormalize_type(type_, result, query_obj):
     assert False, (type_, query_obj)
 
 
-def _get_type(types, type_):
-    return (types[type_.__type_name__]
-            if isinstance(type_, TypeRefMeta)
-            else type_)
-
-
 def _denormalize(graph, graph_obj, result, query_obj):
     if isinstance(query_obj, Node):
         return {
@@ -142,7 +136,7 @@ def _denormalize(graph, graph_obj, result, query_obj):
 
     elif isinstance(query_obj, Link):
         if isinstance(graph_obj, GraphField):
-            field_type = _get_type(graph.data_types, graph_obj.type)
+            field_type = get_type(graph.data_types, graph_obj.type)
             return _denormalize_type(field_type, result, query_obj)
 
         elif isinstance(graph_obj, GraphLink):

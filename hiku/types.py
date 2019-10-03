@@ -95,7 +95,7 @@ class TypingMeta(GenericMeta):
 class OptionalMeta(TypingMeta):
 
     def __cls_init__(cls, type_):
-        cls.__type__ = type_
+        cls.__type__ = _maybe_typeref(type_)
 
     def __cls_repr__(self):
         return '{}[{!r}]'.format(self.__name__, self.__type__)
@@ -111,7 +111,7 @@ class Optional(metaclass=OptionalMeta):
 class SequenceMeta(TypingMeta):
 
     def __cls_init__(cls, item_type):
-        cls.__item_type__ = item_type
+        cls.__item_type__ = _maybe_typeref(item_type)
 
     def __cls_repr__(self):
         return '{}[{!r}]'.format(self.__name__, self.__item_type__)
@@ -127,7 +127,9 @@ class Sequence(metaclass=SequenceMeta):
 class MappingMeta(TypingMeta):
 
     def __cls_init__(cls, params):
-        cls.__key_type__, cls.__value_type__ = params
+        key_type, value_type = params
+        cls.__key_type__ = _maybe_typeref(key_type)
+        cls.__value_type__ = _maybe_typeref(value_type)
 
     def __cls_repr__(self):
         return '{}[{!r}, {!r}]'.format(self.__name__, self.__key_type__,
@@ -144,7 +146,13 @@ class Mapping(metaclass=MappingMeta):
 class RecordMeta(TypingMeta):
 
     def __cls_init__(cls, field_types):
-        cls.__field_types__ = OrderedDict(field_types)
+        if hasattr(field_types, 'items'):
+            items = field_types.items()
+        else:
+            items = field_types
+        cls.__field_types__ = OrderedDict(
+            (key, _maybe_typeref(val)) for key, val in items
+        )
 
     def __cls_repr__(self):
         return '{}[{!r}]'.format(self.__name__, dict(self.__field_types__))
@@ -160,7 +168,7 @@ class Record(metaclass=RecordMeta):
 class CallableMeta(TypingMeta):
 
     def __cls_init__(cls, arg_types):
-        cls.__arg_types__ = arg_types
+        cls.__arg_types__ = [_maybe_typeref(t) for t in arg_types]
 
     def __cls_repr__(self):
         return '{}[{}]'.format(self.__name__,
@@ -188,6 +196,10 @@ class TypeRefMeta(TypingMeta):
 
 class TypeRef(metaclass=TypeRefMeta):
     pass
+
+
+def _maybe_typeref(t):
+    return TypeRef[t] if isinstance(t, str) else t
 
 
 class AbstractTypeVisitor(ABC):
@@ -277,3 +289,10 @@ class TypeVisitor(AbstractTypeVisitor):
     def visit_callable(self, obj):
         for arg_type in obj.__arg_types__:
             self.visit(arg_type)
+
+
+def get_type(types, t):
+    if isinstance(t, TypeRefMeta):
+        return types[t.__type_name__]
+    else:
+        return t

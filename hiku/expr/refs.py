@@ -1,6 +1,6 @@
 from ..query import Node, Link, Field, merge
 from ..types import GenericMeta, RecordMeta, SequenceMeta, MappingMeta
-from ..types import OptionalMeta, TypeRefMeta
+from ..types import OptionalMeta, get_type
 
 from .nodes import NodeVisitor
 
@@ -39,12 +39,6 @@ class NamedRef(Ref):
 
     def __repr__(self):
         return '{}:{!r} > {!r}'.format(self.name, self.to, self.backref)
-
-
-def get_type(types, type_):
-    return (types[type_.__type_name__]
-            if isinstance(type_, TypeRefMeta)
-            else type_)
 
 
 def ref_to_req(types, ref, add_req=None):

@@ -1,8 +1,8 @@
 from contextlib import contextmanager
 from collections import deque
 
-from ..types import Sequence, SequenceMeta, Record, RecordMeta
-from ..types import MappingMeta, OptionalMeta, Any, AnyMeta, TypeRefMeta
+from ..types import Sequence, SequenceMeta, Record, RecordMeta, get_type
+from ..types import MappingMeta, OptionalMeta, Any, AnyMeta
 
 from .refs import NamedRef, Ref
 from .nodes import NodeTransformer, Symbol, Keyword, Tuple, List
@@ -39,13 +39,6 @@ class Environ:
 
     def __contains__(self, key):
         return any(key in d for d in self.vars)
-
-
-def get_type(types, obj):
-    if isinstance(obj, TypeRefMeta):
-        return types[obj.__type_name__]
-    else:
-        return obj
 
 
 def node_type(types, node):

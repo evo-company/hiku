@@ -22,8 +22,8 @@ def check_expr(types, expr):
 def test_get_simple():
     types = {
         'Bar': Record[{'baz': Integer}],
-        'Foo': Record[{'bar': TypeRef['Bar']}],
-        '__root__': Record[{'foo': TypeRef['Foo']}],
+        'Foo': Record[{'bar': 'Bar'}],
+        '__root__': Record[{'foo': 'Foo'}],
     }
     ast = check_expr(types, S.foo.bar.baz)
     check_ref(ast, [
@@ -50,8 +50,8 @@ def test_each_sequence_of_scalar():
 def test_each_sequence_of_record():
     types = {
         'Bar': Record[{'baz': Integer}],
-        'Foo': Record[{'bar': TypeRef['Bar']}],
-        '__root__': Record[{'foo': Sequence[TypeRef['Foo']]}],
+        'Foo': Record[{'bar': 'Bar'}],
+        '__root__': Record[{'foo': Sequence['Foo']}],
     }
     ast = check_expr(types, each(S.x, S.foo, S.x.bar.baz))
     _, _, _, x_bar_baz = ast.values
@@ -66,8 +66,8 @@ def test_each_sequence_of_record():
 def test_if_some_optional():
     types = {
         'Bar': Record[{'baz': Integer}],
-        'Foo': Record[{'bar': Sequence[TypeRef['Bar']]}],
-        '__root__': Record[{'foo': Optional[TypeRef['Foo']]}],
+        'Foo': Record[{'bar': Sequence['Bar']}],
+        '__root__': Record[{'foo': Optional['Foo']}],
     }
     ast = check_expr(types, if_some([S.x, S.foo],
                                     each(S.y, S.x.bar,
@@ -86,7 +86,7 @@ def test_if_some_optional():
 def test_optional_args():
     types = {
         'Foo': Record[{'bar': Integer}],
-        '__root__': Record[{'foo': Optional[TypeRef['Foo']]}],
+        '__root__': Record[{'foo': Optional['Foo']}],
     }
 
     @define(Optional[Record[{'bar': Integer}]])

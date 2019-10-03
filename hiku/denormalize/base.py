@@ -1,7 +1,7 @@
 from collections import deque
 
 from ..query import QueryVisitor, Link, Field
-from ..types import TypeRefMeta, OptionalMeta, SequenceMeta
+from ..types import TypeRefMeta, OptionalMeta, SequenceMeta, get_type
 
 
 class Denormalize(QueryVisitor):
@@ -12,12 +12,6 @@ class Denormalize(QueryVisitor):
         self._type = deque([self._types['__root__']])
         self._data = deque([result])
         self._res = deque()
-
-    def _resolve(self, type_):
-        if isinstance(type_, TypeRefMeta):
-            return self._types[type_.__type_name__]
-        else:
-            return type_
 
     def process(self, query):
         assert not self._res, self._res
@@ -31,7 +25,7 @@ class Denormalize(QueryVisitor):
     def visit_link(self, obj: Link):
         type_ = self._type[-1].__field_types__[obj.name]
         if isinstance(type_, TypeRefMeta):
-            self._type.append(self._resolve(type_))
+            self._type.append(get_type(self._types, type_))
             self._res.append({})
             self._data.append(self._data[-1][obj.result_key])
             super().visit_link(obj)
@@ -39,7 +33,7 @@ class Denormalize(QueryVisitor):
             self._res[-1][obj.result_key] = self._res.pop()
             self._type.pop()
         elif isinstance(type_, SequenceMeta):
-            self._type.append(self._resolve(type_.__item_type__))
+            self._type.append(get_type(self._types, type_.__item_type__))
             items = []
             for item in self._data[-1][obj.result_key]:
                 self._res.append({})
@@ -53,7 +47,7 @@ class Denormalize(QueryVisitor):
             if self._data[-1][obj.result_key] is None:
                 self._res[-1][obj.result_key] = None
             else:
-                self._type.append(self._resolve(type_.__type__))
+                self._type.append(get_type(self._types, type_.__type__))
                 self._res.append({})
                 self._data.append(self._data[-1][obj.result_key])
                 super().visit_link(obj)
