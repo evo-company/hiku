@@ -21,3 +21,10 @@ def test_link():
 
 def test_node():
     check_export(Node([Field('foo')]), '[:foo]')
+
+
+def test_options():
+    check_export(
+        Node([Field('foo', options={'bar': [1, {'baz': 2}, {3}]})]),
+        '[(:foo {:bar [1 {:baz 2} #{3}]})]',
+    )
