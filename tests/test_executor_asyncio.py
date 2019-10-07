@@ -74,7 +74,7 @@ async def test_cancellation(event_loop):
     await asyncio.wait([task], timeout=0.01)
     assert not task.done()
     task.cancel()
-    await asyncio.wait([task], timeout=0.001)
+    await asyncio.wait([task], timeout=0.01)
     assert task.done()
     assert task.cancelled() is True
     assert result == [1, 2]
