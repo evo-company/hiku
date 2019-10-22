@@ -56,20 +56,3 @@ def test_query_reading():
     result = hiku_engine.execute(GRAPH, query)
 
     assert all(c['name'] for c in result['characters'])
-
-
-def test_result_serialization():
-    from hiku.builder import build, Q
-    from hiku.writers.protobuf import populate
-
-    import example_pb2
-
-    query = build([Q.characters[Q.name]])
-
-    result = hiku_engine.execute(GRAPH, query)
-
-    pb_result = example_pb2.Root()
-    populate(pb_result, GRAPH, result, query)
-
-    # to send afterwards
-    pb_result.SerializeToString()
