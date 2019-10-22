@@ -54,7 +54,8 @@ class ExpressionCompiler:
             py.arg(cls.ctx_var, None),
         ]
         py_args.extend(py.arg(name, None) for name in args)
-        expr = py.Lambda(py.arguments(py_args, None, [], [], None, []), body)
+        expr = py.Lambda(py.arguments([], py_args, None, [], [], None, []),
+                         body)
         py.fix_missing_locations(expr)
         return py.Expression(expr)
 
@@ -109,8 +110,10 @@ class ExpressionCompiler:
             test = py.Compare(load_bind_sym, [py.IsNot()], [none])
             store_bind_sym = py.Name(self.env[bind_sym.name], py.Store())
             comp = py.comprehension(
-                store_bind_sym, py.Tuple([self.visit(bind_expr)], py.Load()),
+                store_bind_sym,
+                py.Tuple([self.visit(bind_expr)], py.Load()),
                 [],
+                False,
             )
             expr = py.IfExp(test, self.visit(then_), self.visit(else_))
         gen = py.GeneratorExp(expr, [comp])
@@ -125,7 +128,7 @@ class ExpressionCompiler:
             body_expr = self.visit(body)
         return py.ListComp(body_expr,
                            [py.comprehension(py.Name(var_name, py.Store()),
-                                             col_expr, [])])
+                                             col_expr, [], False)])
 
     def visit_tuple(self, node):
         sym = node.values[0]

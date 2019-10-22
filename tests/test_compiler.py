@@ -4,9 +4,11 @@ from textwrap import dedent
 from collections import OrderedDict
 
 import astor
+import pytest
 
 from hiku.types import Optional, String, Record, Any, TypeRef, Sequence
 from hiku.graph import Graph, Field, Node, Link, Root
+from hiku.compat import PY38
 from hiku.expr.core import define, S, if_, each, to_expr, if_some
 from hiku.expr.checker import check, fn_types
 from hiku.expr.compiler import ExpressionCompiler
@@ -163,10 +165,11 @@ def test_generic_none():
     )
 
 
+@pytest.mark.skipif(not PY38, reason='Python < 3.8')
 def test_generic_bool():
     check_compiles(
         True,
-        "True"
+        "(True)"
     )
 
 
