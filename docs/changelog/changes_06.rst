@@ -4,6 +4,9 @@ Changes in 0.6
 0.6.0rcX
 ~~~~~~~~
 
+  - Fixed Python 3.8 support
+  - Added GraphQL query exporter
+  - Fixed options serialization in the "simple" query exporter
   - Added ability to specify ``TypeRef`` using strings
   - Added Prometheus metrics support
   - Representing data types as Object type in GraphQL introspection
