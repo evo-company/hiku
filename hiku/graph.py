@@ -26,6 +26,13 @@ Many = const('Many')
 Nothing = const('Nothing')
 
 
+def _not_implemented(name):
+    def func(*_):
+        raise NotImplementedError('Field "{}" is not bound to a data '
+                                  'loading function'.format(name))
+    return func
+
+
 class AbstractBase(ABC):
 
     @abstractmethod
@@ -109,7 +116,9 @@ class Field(AbstractField):
     - ``ids`` - list node identifiers
 
     """
-    def __init__(self, name, type_, func, *, options=None, description=None):
+    def __init__(
+        self, name, type_, func, *, options=None, description=None
+    ):
         """
         :param str name: name of the field
         :param type_: type of the field or ``None``
@@ -117,6 +126,9 @@ class Field(AbstractField):
         :param options: list of acceptable options
         :param description: description of the field
         """
+        if func is Ellipsis:
+            func = _not_implemented(name)
+
         self.name = name
         self.type = type_
         self.func = func
@@ -222,7 +234,8 @@ class Link(AbstractLink):
     options.
     """
     def __init__(
-        self, name, type_, func, *, requires, options=None, description=None
+        self, name, type_, func, *, requires, options=None,
+        description=None
     ):
         """
         :param name: name of the link
@@ -234,6 +247,9 @@ class Link(AbstractLink):
         :param description: description of the link
         """
         type_enum, node = get_type_enum(type_)
+
+        if func is Ellipsis:
+            func = _not_implemented(name)
 
         self.name = name
         self.type = type_
@@ -489,6 +505,16 @@ def apply(graph, transformers):
 
     """
     return reduce(lambda g, t: t.visit(g), transformers, graph)
+
+
+def bind(node, field_names, func=None):
+    if func is None:
+        def decorator(func_):
+            return bind(node, field_names, func_)
+        return decorator
+    else:
+        for field_name in field_names:
+            node.fields_map[field_name].func = func
 
 
 class GraphInit(GraphTransformer):
