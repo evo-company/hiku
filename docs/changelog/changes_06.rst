@@ -1,8 +1,8 @@
 Changes in 0.6
 ==============
 
-0.6.0rcX
-~~~~~~~~
+0.6.0
+~~~~~
 
   - Fixed Python 3.8 support
   - Added GraphQL query exporter
