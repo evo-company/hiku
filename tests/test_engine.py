@@ -34,6 +34,16 @@ def execute(graph, query_, ctx=None):
     return engine.execute(graph, query_, ctx=ctx)
 
 
+def test_context():
+    ctx = Context({'foo': 'bar'})
+    assert ctx['foo'] == 'bar'
+    assert 'unknown' not in ctx
+    with pytest.raises(KeyError, match='is not specified'):
+        ctx['unknown']
+    with pytest.raises(TypeError, match='not support item assignment'):
+        ctx['unknown'] = 42
+
+
 def test_root_fields():
     f1 = Mock(return_value=['boiardo'])
     f2 = Mock(return_value=['isolde'])

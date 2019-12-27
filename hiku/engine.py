@@ -4,7 +4,7 @@ import warnings
 from functools import partial
 from itertools import chain, repeat
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Sequence, Mapping
 
 from . import query as hiku_query
 from .graph import Link, Maybe, One, Many, Nothing, Field
@@ -396,10 +396,16 @@ def _do_pass_context(func):
     return getattr(func, '__pass_context__', False)
 
 
-class Context:
+class Context(Mapping):
 
     def __init__(self, mapping):
         self.__mapping = mapping
+
+    def __len__(self):
+        return len(self.__mapping)
+
+    def __iter__(self):
+        return iter(self.__mapping)
 
     def __getitem__(self, item):
         try:
