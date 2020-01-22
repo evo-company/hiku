@@ -1,6 +1,12 @@
 Changes in 0.6
 ==============
 
+0.6.1rcX
+~~~~~~~~
+
+  - Fixed ``LinkQuery.select_expr()`` method to filter only ``None`` values
+  - Engine ``Context`` now fully supports ``Mapping`` interface
+
 0.6.0
 ~~~~~
 
