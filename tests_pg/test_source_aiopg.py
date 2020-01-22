@@ -36,6 +36,9 @@ class AsyncQueries(AbstractQueries):
     async def not_found_list(self):
         return SyncQueries.not_found_list.__call__(self)
 
+    async def falsy_one(self):
+        return SyncQueries.falsy_one.__call__(self)
+
 
 @pytest.fixture(scope='session')
 def _db_dsn(request):

@@ -21,6 +21,8 @@ _missing = type('<missing>', (object,), {})
 
 def result_match(result, value, path=None):
     path = [] if path is None else path
+    if result is _missing:
+        return False, path, result, value
     if isinstance(value, dict):
         for k, v in value.items():
             ok, sp, sr, sv = result_match(result[k], v, path + [k])

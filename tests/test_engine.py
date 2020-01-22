@@ -7,6 +7,7 @@ from hiku.graph import Graph, Node, Field, Link, Option, Root
 from hiku.types import Record, Sequence, Integer, Optional, TypeRef
 from hiku.utils import listify
 from hiku.engine import Engine, pass_context, Context
+from hiku.result import denormalize
 from hiku.builder import build, Q
 from hiku.executors.sync import SyncExecutor
 
@@ -654,3 +655,20 @@ def test_process_ordered_node():
         },
     })
     assert ordering == [('d',), ('b', 'a'), 'x1', ('c',)]
+
+
+def test_falsy_link_result():
+    x_fields = Mock(return_value=[[42]])
+    graph = Graph([
+        Node('X', [
+            Field('a', None, x_fields),
+        ]),
+        Root([
+            Link('x', TypeRef['X'], lambda: 0, requires=None),
+        ]),
+    ])
+    result = execute(graph, q.Node([
+        q.Link('x', q.Node([q.Field('a')])),
+    ]))
+    assert denormalize(graph, result) == {'x': {'a': 42}}
+    x_fields.assert_called_once_with([q.Field('a')], [0])

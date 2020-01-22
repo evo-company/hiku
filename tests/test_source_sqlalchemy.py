@@ -83,6 +83,10 @@ class AbstractQueries(ABC):
     def not_found_list(self):
         pass
 
+    @abstractmethod
+    def falsy_one(self):
+        pass
+
 
 class SyncQueries(AbstractQueries):
 
@@ -97,6 +101,10 @@ class SyncQueries(AbstractQueries):
 
     def not_found_list(self):
         return [6, -1, 4]
+
+    def falsy_one(self):
+        """foo:7 refer to bar:0"""
+        return 0
 
 
 def get_queries(source_module, ctx_var, base_cls):
@@ -150,6 +158,8 @@ def get_graph(queries):
                  _q.not_found_one, requires=None),
             Link('not_found_list', Sequence[TypeRef['bar']],
                  _q.not_found_list, requires=None),
+            Link('falsy_one', TypeRef['bar'],
+                 _q.falsy_one, requires=None),
         ]),
     ])
     return graph
@@ -158,6 +168,7 @@ def get_graph(queries):
 def setup_db(db_engine):
     metadata.create_all(db_engine)
     for r in [
+        {'id': 0, 'name': 'bar0', 'type': 4},
         {'id': 4, 'name': 'bar1', 'type': 1},
         {'id': 5, 'name': 'bar2', 'type': 2},
         {'id': 6, 'name': 'bar3', 'type': 3},
@@ -170,6 +181,7 @@ def setup_db(db_engine):
         {'name': 'foo4', 'count': 20, 'bar_id': 6},
         {'name': 'foo5', 'count': 25, 'bar_id': 5},
         {'name': 'foo6', 'count': 30, 'bar_id': 4},
+        {'name': 'foo7', 'count': 35, 'bar_id': 0},
     ]:
         db_engine.execute(foo_table.insert(), r)
 
@@ -247,6 +259,20 @@ class SourceSQLAlchemyTestBase(ABC):
                     {'name': None, 'type': None},
                     {'name': 'bar1', 'type': 1},
                 ],
+            },
+        )
+
+    def test_falsy_one(self):
+        self.check(
+            '[{:falsy_one [:name :type {:foo_s [:name :count]}]}]',
+            {
+                'falsy_one': {
+                    'name': 'bar0',
+                    'type': 4,
+                    'foo_s': [
+                        {'name': 'foo7', 'count': 35},
+                    ],
+                }
             },
         )
 

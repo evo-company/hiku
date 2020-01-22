@@ -132,7 +132,7 @@ class LinkQuery:
 
     def select_expr(self, ids):
         # TODO: make this optional, but enabled by default
-        filtered_ids = list(filter(None, set(ids)))
+        filtered_ids = [i for i in set(ids) if i is not None]
         if filtered_ids:
             return (
                 sqlalchemy.select([self.from_column.label('from_column'),
