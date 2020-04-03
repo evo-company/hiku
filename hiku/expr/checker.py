@@ -132,7 +132,7 @@ class Checker(NodeTransformer):
         assert isinstance(sym, Symbol), type(sym)
         args = [self.visit(val) for val in node.values[1:]]
         fn_type = node_type(self.types, sym)
-        assert len(fn_type.__arg_types__) == len(args), f'Wrong arguments count at "{sym.name}" node'
+        assert len(fn_type.__arg_types__) == len(args), 'Wrong arguments count at "{}" function'.format(sym.name)
         for arg, arg_type in zip(args, fn_type.__arg_types__):
             ref = getattr(arg, '__ref__', None)
             if ref is not None:
