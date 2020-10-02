@@ -68,7 +68,7 @@ def graph_factory(
     *,
     async_=False,
     fields_query_cls=FieldsQuery,
-    link_query_cls=LinkQuery,
+    link_query_cls=LinkQuery
 ):
     def foo_list():
         return [3, 2, 1]
