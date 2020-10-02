@@ -1,3 +1,6 @@
+- !Meta
+  namespace: hiku
+
 - !Image
   name: base36
   from: !DockerImage python:3.6.8-slim
@@ -38,6 +41,8 @@
   name: pg
   image: !DockerImage onjin/alpine-postgres:9.5
   network-name: postgres
+  ports:
+  - !Expose { port: 5432, as: 5432, addr: 0.0.0.0 }
 
 - !Command
   name: test

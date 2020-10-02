@@ -1,3 +1,4 @@
+import asyncio
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 
@@ -8,15 +9,12 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
-import hiku.sources.sqlalchemy
-
 from hiku.types import IntegerMeta, StringMeta, TypeRef, Sequence, Optional
 from hiku.graph import Graph, Node, Field, Link, Root
-from hiku.utils import cached_property
 from hiku.engine import Engine
 from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
-from hiku.sources.sqlalchemy import LinkQuery
+from hiku.sources.sqlalchemy import LinkQuery, FieldsQuery
 
 from .base import check_result
 
@@ -24,6 +22,8 @@ from .base import check_result
 SA_ENGINE_KEY = 'sa-engine'
 
 metadata = MetaData()
+
+thread_pool = ThreadPoolExecutor(2)
 
 foo_table = Table(
     'foo',
@@ -41,128 +41,6 @@ bar_table = Table(
     Column('name', Unicode),
     Column('type', Integer),
 )
-
-thread_pool = ThreadPoolExecutor(2)
-
-
-class AbstractQueries(ABC):
-
-    @property
-    @abstractmethod
-    def foo_query(self):
-        pass
-
-    @property
-    @abstractmethod
-    def bar_query(self):
-        pass
-
-    @property
-    @abstractmethod
-    def to_foo_query(self):
-        pass
-
-    @property
-    @abstractmethod
-    def to_bar_query(self):
-        pass
-
-    @abstractmethod
-    def foo_list(self):
-        pass
-
-    @abstractmethod
-    def bar_list(self):
-        pass
-
-    @abstractmethod
-    def not_found_one(self):
-        pass
-
-    @abstractmethod
-    def not_found_list(self):
-        pass
-
-    @abstractmethod
-    def falsy_one(self):
-        pass
-
-
-class SyncQueries(AbstractQueries):
-
-    def foo_list(self):
-        return [3, 2, 1]
-
-    def bar_list(self):
-        return [6, 5, 4]
-
-    def not_found_one(self):
-        return -1
-
-    def not_found_list(self):
-        return [6, -1, 4]
-
-    def falsy_one(self):
-        """foo:7 refer to bar:0"""
-        return 0
-
-
-def get_queries(source_module, ctx_var, base_cls):
-    _sm = source_module
-
-    class Queries(base_cls):
-        foo_query = _sm.FieldsQuery(ctx_var, foo_table)
-
-        bar_query = _sm.FieldsQuery(ctx_var, bar_table)
-
-        to_foo_query = _sm.LinkQuery(
-            ctx_var,
-            from_column=foo_table.c.bar_id,
-            to_column=foo_table.c.id,
-        )
-
-        to_bar_query = _sm.LinkQuery(
-            ctx_var,
-            from_column=bar_table.c.id,
-            to_column=bar_table.c.id,
-        )
-
-    return Queries()
-
-
-def get_graph(queries):
-    _q = queries
-
-    graph = Graph([
-        Node(foo_table.name, [
-            Field('id', None, _q.foo_query),
-            Field('name', None, _q.foo_query),
-            Field('count', None, _q.foo_query),
-            Field('bar_id', None, _q.foo_query),
-            Link('bar', Optional[TypeRef['bar']], _q.to_bar_query,
-                 requires='bar_id'),
-        ]),
-        Node(bar_table.name, [
-            Field('id', None, _q.bar_query),
-            Field('name', None, _q.bar_query),
-            Field('type', None, _q.bar_query),
-            Link('foo_s', Sequence[TypeRef['foo']], _q.to_foo_query,
-                 requires='id'),
-        ]),
-        Root([
-            Link('foo_list', Sequence[TypeRef['foo']],
-                 _q.foo_list, requires=None),
-            Link('bar_list', Sequence[TypeRef['bar']],
-                 _q.bar_list, requires=None),
-            Link('not_found_one', TypeRef['bar'],
-                 _q.not_found_one, requires=None),
-            Link('not_found_list', Sequence[TypeRef['bar']],
-                 _q.not_found_list, requires=None),
-            Link('falsy_one', TypeRef['bar'],
-                 _q.falsy_one, requires=None),
-        ]),
-    ])
-    return graph
 
 
 def setup_db(db_engine):
@@ -186,36 +64,115 @@ def setup_db(db_engine):
         db_engine.execute(foo_table.insert(), r)
 
 
-class SourceSQLAlchemyTestBase(ABC):
+def graph_factory(
+    *,
+    async_=False,
+    fields_query_cls=FieldsQuery,
+    link_query_cls=LinkQuery,
+):
+    def foo_list():
+        return [3, 2, 1]
 
-    @property
-    @abstractmethod
-    def queries(self):
-        pass
+    def bar_list():
+        return [6, 5, 4]
+
+    def not_found_one():
+        return -1
+
+    def not_found_list():
+        return [6, -1, 4]
+
+    def falsy_one():
+        """foo:7 refer to bar:0"""
+        return 0
+
+    if async_:
+        foo_list = asyncio.coroutine(foo_list)
+        bar_list = asyncio.coroutine(bar_list)
+        not_found_one = asyncio.coroutine(not_found_one)
+        not_found_list = asyncio.coroutine(not_found_list)
+        falsy_one = asyncio.coroutine(falsy_one)
+
+    foo_query = fields_query_cls(SA_ENGINE_KEY, foo_table)
+
+    bar_query = fields_query_cls(SA_ENGINE_KEY, bar_table)
+
+    to_foo_query = link_query_cls(
+        SA_ENGINE_KEY,
+        from_column=foo_table.c.bar_id,
+        to_column=foo_table.c.id,
+    )
+
+    to_bar_query = link_query_cls(
+        SA_ENGINE_KEY,
+        from_column=bar_table.c.id,
+        to_column=bar_table.c.id,
+    )
+
+    graph = Graph([
+        Node(foo_table.name, [
+            Field('id', None, foo_query),
+            Field('name', None, foo_query),
+            Field('count', None, foo_query),
+            Field('bar_id', None, foo_query),
+            Link('bar', Optional[TypeRef['bar']], to_bar_query,
+                 requires='bar_id'),
+        ]),
+        Node(bar_table.name, [
+            Field('id', None, bar_query),
+            Field('name', None, bar_query),
+            Field('type', None, bar_query),
+            Link('foo_s', Sequence[TypeRef['foo']], to_foo_query,
+                 requires='id'),
+        ]),
+        Root([
+            Link('foo_list', Sequence[TypeRef['foo']],
+                 foo_list, requires=None),
+            Link('bar_list', Sequence[TypeRef['bar']],
+                 bar_list, requires=None),
+            Link('not_found_one', TypeRef['bar'],
+                 not_found_one, requires=None),
+            Link('not_found_list', Sequence[TypeRef['bar']],
+                 not_found_list, requires=None),
+            Link('falsy_one', TypeRef['bar'],
+                 falsy_one, requires=None),
+        ]),
+    ])
+    return graph
+
+
+@pytest.fixture(name='graph')
+def graph_fixture(request):
+    graph = graph_factory()
+    if request.instance:
+        # for class-based tests
+        request.instance.graph = graph
+    return graph
+
+
+def test_same_table():
+    with pytest.raises(ValueError) as e:
+        LinkQuery(SA_ENGINE_KEY, from_column=foo_table.c.id,
+                  to_column=bar_table.c.id)
+    e.match('should belong')
+
+
+def test_types(graph):
+    assert isinstance(
+        graph.nodes_map[foo_table.name].fields_map['id'].type,
+        IntegerMeta,
+    )
+    assert isinstance(
+        graph.nodes_map[foo_table.name].fields_map['name'].type,
+        StringMeta,
+    )
+
+
+class SourceSQLAlchemyTestBase(ABC):
 
     @abstractmethod
     def check(self, src, value):
         pass
-
-    @cached_property
-    def graph(self):
-        return get_graph(self.queries)
-
-    def test_types(self):
-        assert isinstance(
-            self.graph.nodes_map[foo_table.name].fields_map['id'].type,
-            IntegerMeta,
-        )
-        assert isinstance(
-            self.graph.nodes_map[foo_table.name].fields_map['name'].type,
-            StringMeta,
-        )
-
-    def test_same_table(self):
-        with pytest.raises(ValueError) as e:
-            LinkQuery(SA_ENGINE_KEY, from_column=foo_table.c.id,
-                      to_column=bar_table.c.id)
-        e.match('should belong')
 
     def test_many_to_one(self):
         self.check(
@@ -277,11 +234,8 @@ class SourceSQLAlchemyTestBase(ABC):
         )
 
 
+@pytest.mark.usefixtures('graph')
 class TestSourceSQLAlchemy(SourceSQLAlchemyTestBase):
-
-    @cached_property
-    def queries(self):
-        return get_queries(hiku.sources.sqlalchemy, SA_ENGINE_KEY, SyncQueries)
 
     def check(self, src, value):
         sa_engine = create_engine(

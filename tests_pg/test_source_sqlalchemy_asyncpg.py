@@ -1,8 +1,8 @@
 import pytest
 import asyncio
-import aiopg.sa
+from sqlalchemy.ext.asyncio import create_async_engine
 
-import hiku.sources.aiopg
+import hiku.sources.sqlalchemy_async
 
 from hiku.engine import Engine
 from hiku.readers.simple import read
@@ -17,8 +17,8 @@ from tests.test_source_sqlalchemy import graph_factory, SA_ENGINE_KEY
 def graph_fixture(request):
     graph = graph_factory(
         async_=True,
-        fields_query_cls=hiku.sources.aiopg.FieldsQuery,
-        link_query_cls=hiku.sources.aiopg.LinkQuery,
+        fields_query_cls=hiku.sources.sqlalchemy_async.FieldsQuery,
+        link_query_cls=hiku.sources.sqlalchemy_async.LinkQuery,
     )
     request.cls.graph = graph
 
@@ -29,18 +29,17 @@ def db_dsn_fixture(request, db_dsn):
 
 
 @pytest.mark.usefixtures('graph_attr', 'db_dsn_attr')
-class TestSourceAIOPG(SourceSQLAlchemyTestBase):
+class TestSourceSQLAlchemyAsyncPG(SourceSQLAlchemyTestBase):
 
     async def _check(self, src, value):
-        sa_engine = await aiopg.sa.create_engine(self.db_dsn, minsize=0)
+        sa_engine = create_async_engine(self.db_dsn)
         engine = Engine(AsyncIOExecutor())
         try:
             result = await engine.execute(self.graph, read(src),
                                           {SA_ENGINE_KEY: sa_engine})
             check_result(result, value)
         finally:
-            sa_engine.close()
-            await sa_engine.wait_closed()
+            sa_engine.sync_engine.dispose()
 
     def check(self, src, value):
         asyncio.get_event_loop().run_until_complete(self._check(src, value))
