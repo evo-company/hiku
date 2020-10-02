@@ -98,9 +98,9 @@ def coroutine(func):
 
 
 @coroutine
-def appender(l):
+def appender(lst):
     while True:
-        l.append((yield))
+        lst.append((yield))
 
 
 def inst_handler(time_string):

@@ -9,7 +9,7 @@ from ..query import Node, Field, Link, merge
 class NodeVisitor:
 
     def visit(self, obj):
-        visit_method = getattr(self, 'visit_{}'.format(obj.kind, None))
+        visit_method = getattr(self, 'visit_{}'.format(obj.kind))
         if visit_method is None:
             raise NotImplementedError('Not implemented node type: {!r}'
                                       .format(obj))

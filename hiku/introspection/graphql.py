@@ -519,8 +519,7 @@ class ValidateGraph(GraphVisitor):
             super(ValidateGraph, self).visit_root(obj)
             self._path.pop()
         else:
-            self._add_error('Root',
-                            'No fields in the Root node'.format(obj.name))
+            self._add_error('Root', 'No fields in the Root node')
 
     def visit_field(self, obj):
         if not self._name_re.match(obj.name):
