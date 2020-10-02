@@ -1,5 +1,6 @@
 import pytest
 import asyncio
+from sqlalchemy.util import greenlet_spawn
 from sqlalchemy.ext.asyncio import create_async_engine
 
 import hiku.sources.sqlalchemy_async
@@ -25,7 +26,8 @@ def graph_fixture(request):
 
 @pytest.fixture(scope='class', name='db_dsn_attr')
 def db_dsn_fixture(request, db_dsn):
-    request.cls.db_dsn = db_dsn
+    request.cls.db_dsn = db_dsn.replace('postgresql://',
+                                        'postgresql+asyncpg://')
 
 
 @pytest.mark.usefixtures('graph_attr', 'db_dsn_attr')
@@ -39,7 +41,7 @@ class TestSourceSQLAlchemyAsyncPG(SourceSQLAlchemyTestBase):
                                           {SA_ENGINE_KEY: sa_engine})
             check_result(result, value)
         finally:
-            sa_engine.sync_engine.dispose()
+            await greenlet_spawn(sa_engine.sync_engine.dispose)
 
     def check(self, src, value):
         asyncio.get_event_loop().run_until_complete(self._check(src, value))
