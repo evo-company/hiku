@@ -1,0 +1,24 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v1
+      with:
+        node-version: "12"
+    - uses: actions/setup-python@v2
+      with:
+        python-version: "3.7"
+    - run: npm ci
+    - run: ./node_modules/.bin/webpack -p
+    - run: ls -la hiku/console/assets
+    - run: python setup.py sdist
+    - run: pip3 install twine
+    - run: twine upload dist/*
+      env:
+        TWINE_USERNAME: "__token__"
+        TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
