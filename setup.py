@@ -26,7 +26,7 @@ setup(
     packages=find_packages(exclude=['test*']),
     include_package_data=True,
     license='BSD-3-Clause',
-    python_requires='>=3.5',
+    python_requires='>=3.6',
     install_requires=[],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
@@ -34,7 +34,7 @@ setup(
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3 :: Only',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],

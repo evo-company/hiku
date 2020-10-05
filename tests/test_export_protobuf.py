@@ -51,9 +51,9 @@ def test_invalid_options():
     with pytest.raises(ParseError) as type_err:
         export(Node([Field('kott',
                            options={'clauber': UNKNOWN})]))
-    type_err.match('Unexpected type for Value message')
+    type_err.match('has unexpected type')
 
     with pytest.raises(ParseError) as item_type_err:
         export(Node([Field('puerco',
                            options={'bayat': [1, UNKNOWN, 3]})]))
-    item_type_err.match('Unexpected type for Value message')
+    item_type_err.match('has unexpected type')

@@ -1,11 +1,5 @@
 import pytest
 
-from hiku.compat import PY36, PYPY
-
-if not PY36 or PYPY:  # noqa
-    pytest.skip("graphql-core-next library requires Python>=3.6",
-                allow_module_level=True)
-
 from hiku.graph import Graph, Root, Field
 from hiku.types import String
 from hiku.engine import Engine
