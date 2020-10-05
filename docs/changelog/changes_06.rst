@@ -4,6 +4,9 @@ Changes in 0.6
 0.6.1rcX
 ~~~~~~~~
 
+  - Dropped Python 3.5 support
+  - Added SQLAlchemy's asyncio support
+  - Enhanced error message in the expression type checker
   - Fixed ``LinkQuery.select_expr()`` method to filter only ``None`` values
   - Engine ``Context`` now fully supports ``Mapping`` interface
 
