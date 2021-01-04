@@ -6,8 +6,15 @@ from collections import namedtuple, OrderedDict
 
 from ..graph import Graph, Root, Node, Link, Option, Field, Nothing
 from ..graph import GraphVisitor, GraphTransformer
-from ..types import TypeRef, String, Sequence, Boolean, Optional, TypeVisitor
-from ..types import Any, RecordMeta, AbstractTypeVisitor
+from ..types import (
+    TypeRef,
+    String,
+    Sequence,
+    Boolean,
+    Optional,
+    TypeVisitor,
+)
+from ..types import Any, RecordMeta, AbstractTypeVisitor, UnionMeta
 from ..utils import listify
 
 
@@ -37,6 +44,7 @@ DIRECTIVE = _namedtuple('DIRECTIVE', 'name')
 INPUT_OBJECT = _namedtuple('INPUT_OBJECT', 'name')
 LIST = _namedtuple('LIST', 'of_type')
 NON_NULL = _namedtuple('NON_NULL', 'of_type')
+UNION = _namedtuple('UNION', 'name, possible_types')
 
 FieldIdent = _namedtuple('FieldIdent', 'node, name')
 FieldArgIdent = _namedtuple('FieldArgIdent', 'node, field, name')
@@ -67,6 +75,9 @@ class TypeIdent(AbstractTypeVisitor):
 
     def visit_sequence(self, obj):
         return NON_NULL(LIST(self.visit(obj.__item_type__)))
+
+    def visit_union(self, obj):
+        pass
 
     def visit_optional(self, obj):
         ident = self.visit(obj.__type__)
@@ -164,6 +175,17 @@ def root_schema_types(schema):
         if isinstance(type_, RecordMeta):
             yield OBJECT(name)
             yield INPUT_OBJECT(name)
+        if isinstance(type_, UnionMeta):
+            # TODO TypeIdent will return NON_NULL item_type
+            # this may be not desirable
+            type_ident = TypeIdent(None)
+            yield UNION(
+                name,
+                tuple(
+                    type_ident.visit(item_type) for item_type
+                    in type_.__item_types__
+                )
+            )
 
 
 def root_schema_query_type(schema):
@@ -209,6 +231,10 @@ def type_info(schema, fields, ids):
             info = {'id': ident,
                     'name': ident.name,
                     'kind': 'SCALAR'}
+        elif isinstance(ident, UNION):
+            info = {'id': ident,
+                    'name': ident.name,
+                    'kind': 'UNION'}
         else:
             raise TypeError(repr(ident))
         yield [info.get(f.name) for f in fields]
@@ -236,6 +262,15 @@ def type_fields_link(schema, ids, options):
                                 'which is not acceptable for GraphQL in order '
                                 'to define schema type'.format(ident.name))
             yield field_idents
+        else:
+            yield []
+
+
+@listify
+def type_possible_types_link(schema, ids):
+    for ident in ids:
+        if isinstance(ident, UNION):
+            yield ident.possible_types
         else:
             yield []
 
@@ -414,8 +449,8 @@ GRAPH = Graph([
              requires='id'),
 
         # INTERFACE and UNION only
-        Link('possibleTypes', Sequence[TypeRef['__Type']], na_many,
-             requires='id'),
+        Link('possibleTypes', Sequence[TypeRef['__Type']],
+             type_possible_types_link, requires='id'),
 
         # ENUM only
         Link('enumValues', Sequence[TypeRef['__EnumValue']], na_many,

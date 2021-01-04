@@ -124,6 +124,23 @@ class Sequence(metaclass=SequenceMeta):
     pass
 
 
+class UnionMeta(TypingMeta):
+    def __cls_init__(cls, item_types):
+        cls.__item_types__ = tuple(
+            _maybe_typeref(item_type) for item_type in item_types
+        )
+
+    def __cls_repr__(self):
+        return '{}[{!r}]'.format(self.__name__, self.__item_types__)
+
+    def accept(cls, visitor):
+        return visitor.visit_union(cls)
+
+
+class Union(metaclass=UnionMeta):
+    pass
+
+
 class MappingMeta(TypingMeta):
 
     def __cls_init__(cls, params):
@@ -240,6 +257,10 @@ class AbstractTypeVisitor(ABC):
         pass
 
     @abstractmethod
+    def visit_union(self, obj):
+        pass
+
+    @abstractmethod
     def visit_mapping(self, obj):
         pass
 
@@ -277,6 +298,10 @@ class TypeVisitor(AbstractTypeVisitor):
 
     def visit_sequence(self, obj):
         self.visit(obj.__item_type__)
+
+    def visit_union(self, obj):
+        for item_type in obj.__item_types__:
+            self.visit(item_type)
 
     def visit_mapping(self, obj):
         self.visit(obj.__key_type__)

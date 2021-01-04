@@ -43,6 +43,11 @@ class _AssumeRecord(AbstractTypeVisitor):
         if not self._nested:
             return self._get_nested().visit(obj.__item_type__)
 
+    def visit_union(self, obj):
+        """TODO do I need to return something ?"""
+        for item_type in obj.__item_types__:
+            self._get_nested().visit(item_type)
+
     def visit_record(self, obj):
         # return fields alongside type definitions
         return obj.__field_types__
@@ -141,6 +146,9 @@ class _OptionTypeValidator:
         for item in self.value:
             with self.push(item):
                 self.visit(type_.__item_type__)
+
+    def visit_union(self, type_):
+        pass
 
     def visit_mapping(self, type_):
         if not isinstance(self.value, collections_abc.Mapping):
@@ -272,6 +280,9 @@ class QueryValidator(QueryVisitor):
                                .format(obj.name, node.name or 'root'))
 
     def visit_link(self, obj):
+        # TODO hack, find a way to fix this or skip outside of hiku internals
+        if obj.name == '_entities':
+            return
         node = self.path[-1]
         graph_obj = node.fields_map.get(obj.name, _undefined)
         if isinstance(graph_obj, Field):
