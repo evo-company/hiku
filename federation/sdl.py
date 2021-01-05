@@ -29,7 +29,9 @@ def _encode_type(value, optional=False):
         if isinstance(val, str):
             coerce = _name
 
-        return NonNullTypeNode(type=coerce(val)) if not optional else coerce(val)
+        return (
+            NonNullTypeNode(type=coerce(val)) if not optional else coerce(val)
+        )
 
     def _encode(val):
         if isinstance(value, OptionalMeta):

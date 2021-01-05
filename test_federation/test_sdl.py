@@ -22,6 +22,7 @@ from hiku.types import (
     Sequence,
 )
 
+
 def mock_link(): pass
 def mock_resolver(): pass
 
@@ -93,9 +94,12 @@ class TestSDL(TestCase):
         expected = 'astronauts: [Astronaut!]!\n'
         self.assertEqual(sdl, expected)
 
-    def test_print_sdl_for_extended_record(self):
+    def test_print_sdl_for_extended_node(self):
         sdl = print_sdl(AstronautNode)
-        exp = 'type Astronaut @key(fields: "id") {\n  id: Int!\n  name: String!\n  age: Int!\n}\n'
+        exp = (
+            'type Astronaut @key(fields: "id") '
+            '{\n  id: Int!\n  name: String!\n  age: Int!\n}\n'
+        )
         self.assertEqual(sdl, exp)
 
     def test_query_service_sdl(self):
@@ -110,4 +114,3 @@ class TestSDL(TestCase):
             'astronauts: [Astronaut!]!\n \n}'
         )
         self.assertEqual(result, {'_service': {'sdl': expected}})
-

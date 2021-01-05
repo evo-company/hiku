@@ -14,7 +14,6 @@ from federation.graph import (
     ExtendLink,
     ExtendNode,
 )
-from federation.util import HashableDict
 from hiku.graph import Root, Field, Option
 from hiku.types import (
     Integer,
@@ -65,9 +64,9 @@ class AstronautResolver(FederatedResolver):
             return astronaut['age']
 
     def resolve_references(
-            self,
-            refs: List[HashableDict],
-            fields: List[Field]
+        self,
+        refs: List[dict],
+        fields: List[Field]
     ) -> List[Any]:
         result = []
         for ref in refs:

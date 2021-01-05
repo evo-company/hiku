@@ -31,12 +31,10 @@ class ExtendNode(Node):
 
     def __init__(self, name, fields, *, description=None, keys=None):
         """
-        :param keys: https://www.apollographql.com/docs/federation/federation-spec/#key
+        :param keys: primary keys for entity
+            https://www.apollographql.com/docs/federation/federation-spec/#key
         """
         super().__init__(name, fields, description=description)
-        self.name = name
-        self.fields = fields
-        self.description = description
         self.keys = keys
 
 

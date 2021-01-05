@@ -7,7 +7,6 @@ from typing import (
     Any,
 )
 
-from federation.util import HashableDict
 from hiku.graph import (
     Field,
 )
@@ -16,9 +15,9 @@ from hiku.graph import (
 class FederatedResolver(ABC):
     @abstractmethod
     def resolve_references(
-            self,
-            refs: List[HashableDict],
-            fields: List[Field]
+        self,
+        refs: List[dict],
+        fields: List[Field]
     ) -> List[Any]:
         pass
 
@@ -36,12 +35,6 @@ def resolve_entities(entities_link, items):
     entity_node = items_map[entity_type]
     resolver: FederatedResolver = entity_node.fields[0].func
 
-    args = []
-
-    for rep in representations:
-        entity_args = HashableDict(**rep)
-        args.append(entity_args)
-
-    result = resolver.resolve_references(args, _entity_fields)
+    result = resolver.resolve_references(representations, _entity_fields)
 
     return [result]
