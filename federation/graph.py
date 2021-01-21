@@ -2,33 +2,26 @@ from typing import (
     List,
 )
 
-from federation.entities import resolve_entities
 from federation.service import resolve_service
 from hiku.graph import (
     Graph,
     Root,
     Node,
     Field,
-    Option,
     Link,
 )
 from hiku.types import (
-    Union,
     Record,
     String,
     TypeRef,
-    Sequence,
-    Any,
 )
 
 
 class ExtendLink(Link):
-    _extend = True
+    pass
 
 
 class ExtendNode(Node):
-    _extend = True
-
     def __init__(self, name, fields, *, description=None, keys=None):
         """
         :param keys: primary keys for entity
@@ -40,12 +33,15 @@ class ExtendNode(Node):
 
 class FederatedGraph(Graph):
     def __init__(self, items, data_types=None):
+        extend_nodes = self.get_extend_nodes(items)
+
+        self.extend_node_keys_map = {
+            node.name: node.keys for node in extend_nodes
+        }
+
         if not data_types:
             data_types = {}
 
-        extend_nodes = self.get_extend_nodes(items)
-
-        self.add_entity_data_type(data_types, extend_nodes)
         self.add_service_data_type(data_types)
 
         root = self.get_root(items)
@@ -68,9 +64,9 @@ class FederatedGraph(Graph):
     def replace_root(self, items, root):
         return [item for item in items if not isinstance(item, Root)] + [root]
 
-    def add_entity_data_type(self, data_types, nodes: List[ExtendNode]):
-        type_names = [node.name for node in nodes]
-        data_types['_Entity'] = Union[type_names]
+    # def add_entity_data_type(self, data_types, nodes: List[ExtendNode]):
+    #     type_names = [node.name for node in nodes]
+    #     data_types['_Entity'] = Union[type_names]
 
     def add_service_data_type(self, data_types):
         data_types['_Service'] = Record[{
@@ -87,22 +83,12 @@ class FederatedGraph(Graph):
         return Root([
             *old_root.fields,
             self.get_root_service_node(extend_links, extend_nodes),
-            self.get_root_entities_node(items)
         ])
 
+    # TODO _service must go to federation introspection
     def get_root_service_node(self, extend_links, extend_nodes):
         return Field(
             '_service',
             TypeRef['_Service'],
             lambda fields: resolve_service(extend_links, extend_nodes),
-        )
-
-    def get_root_entities_node(self, items):
-        return Field(
-            '_entities',
-            Sequence[TypeRef['_Entity']],
-            lambda fields: resolve_entities(fields[0], items),
-            options=[
-                Option('representations', Any)
-            ]
         )

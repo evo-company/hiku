@@ -2,13 +2,12 @@ import logging
 
 from typing import (
     TypedDict,
-    List,
-    Any,
 )
 
 from flask import Flask, request, jsonify
 
-from federation.entities import FederatedResolver
+from federation.endpoint import FederatedGraphQLEndpoint
+from federation.engine import Engine
 from federation.graph import (
     FederatedGraph,
     ExtendLink,
@@ -22,12 +21,7 @@ from hiku.types import (
     Sequence,
     Optional,
 )
-from hiku.engine import (
-    Engine,
-)
 from hiku.executors.sync import SyncExecutor
-from hiku.endpoint.graphql import GraphQLEndpoint
-
 
 log = logging.getLogger(__name__)
 
@@ -45,17 +39,8 @@ astronauts = {
 }
 
 
-class AstronautResolver(FederatedResolver):
-    def __call__(self, fields, ids):
-        res = []
-
-        for astro_id in ids:
-            astronaut = astronauts.get(astro_id, default_astronaut)
-            res.append([self._get_field(f, astronaut) for f in fields])
-
-        return res
-
-    def _get_field(self, f: Field, astronaut: Astronaut):
+def astronaut_resolver(fields, ids):
+    def _get_field(f: Field, astronaut: Astronaut):
         if f.name == 'id':
             return astronaut['id']
         if f.name == 'name':
@@ -63,19 +48,13 @@ class AstronautResolver(FederatedResolver):
         if f.name == 'age':
             return astronaut['age']
 
-    def resolve_references(
-        self,
-        refs: List[dict],
-        fields: List[Field]
-    ) -> List[Any]:
-        result = []
-        for ref in refs:
-            astronaut = astronauts.get(ref['id'], default_astronaut)
-            result.append({
-                f.name: self._get_field(f, astronaut) for f in fields
-            })
+    res = []
 
-        return result
+    for astro_id in ids:
+        astronaut = astronauts.get(astro_id, default_astronaut)
+        res.append([_get_field(f, astronaut) for f in fields])
+
+    return res
 
 
 def direct_link_id(opts):
@@ -84,9 +63,6 @@ def direct_link_id(opts):
 
 def link_astronauts():
     return [1, 2]
-
-
-astronaut_resolver = AstronautResolver()
 
 
 QUERY_GRAPH = FederatedGraph([
@@ -118,7 +94,7 @@ QUERY_GRAPH = FederatedGraph([
 
 app = Flask(__name__)
 
-graphql_endpoint = GraphQLEndpoint(
+graphql_endpoint = FederatedGraphQLEndpoint(
     Engine(SyncExecutor()),
     QUERY_GRAPH,
     # TODO Mutations
