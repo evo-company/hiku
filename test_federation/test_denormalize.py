@@ -10,7 +10,6 @@ from federation.graph import (
 )
 from hiku.graph import (
     Root,
-    Option,
     Field,
 )
 

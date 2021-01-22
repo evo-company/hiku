@@ -1,20 +1,20 @@
 from unittest import TestCase
+
+from federation.endpoint import FederatedGraphQLEndpoint
+from federation.engine import Engine
 from federation.graph import (
-    resolve_service,
     ExtendLink,
     FederatedGraph,
     ExtendNode,
 )
 from federation.sdl import print_sdl
-from hiku.engine import Engine
+from federation.service import print_service_sdl
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import (
     Option,
     Root,
     Field,
 )
-from hiku.readers.simple import read
-from hiku.result import denormalize
 from hiku.types import (
     Integer,
     String,
@@ -62,18 +62,18 @@ GRAPH = FederatedGraph([
 ])
 
 
-hiku_engine = Engine(SyncExecutor())
-
-
 def execute(graph, query_string):
-    query = read(query_string)
-    result = hiku_engine.execute(graph, query)
-    return denormalize(graph, result)
+    graphql_endpoint = FederatedGraphQLEndpoint(
+        Engine(SyncExecutor()),
+        graph,
+    )
+
+    return graphql_endpoint.dispatch(query_string)
 
 
 class TestSDL(TestCase):
     def test_resolve_sdl_correct(self):
-        [service] = resolve_service(ROOT_FIELDS, [AstronautNode])
+        sdl = print_service_sdl(ROOT_FIELDS, [AstronautNode])
         expected = (
             'type Astronaut @key(fields: "id") {\n  '
             'id: Int!\n  '
@@ -83,7 +83,7 @@ class TestSDL(TestCase):
             'astronaut(id: Int): Astronaut!\n\n'
             'astronauts: [Astronaut!]!\n \n}'
         )
-        self.assertEqual(service['sdl'], expected)
+        self.assertEqual(sdl, expected)
 
     def test_print_sdl_for_extended_link(self):
         sdl = print_sdl(AstronautLink)
@@ -103,7 +103,7 @@ class TestSDL(TestCase):
         self.assertEqual(sdl, exp)
 
     def test_query_service_sdl(self):
-        result = execute(GRAPH, '[{:_service [:sdl]}]')
+        result = execute(GRAPH, {'query': '{ _service { sdl } }'})
         expected = (
             'type Astronaut @key(fields: \"id\") {\n  '
             'id: Int!\n  '
@@ -113,4 +113,4 @@ class TestSDL(TestCase):
             'astronaut(id: Int): Astronaut!\n\n'
             'astronauts: [Astronaut!]!\n \n}'
         )
-        self.assertEqual(result, {'_service': {'sdl': expected}})
+        self.assertEqual(result['data'], {'_service': {'sdl': expected}})

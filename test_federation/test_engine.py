@@ -11,7 +11,6 @@ from federation.graph import (
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import (
     Root,
-    Option,
     Field,
 )
 

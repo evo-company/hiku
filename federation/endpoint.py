@@ -1,3 +1,5 @@
+from federation.introspection import FederatedGraphQLIntrospection
+from federation.service import print_service_sdl
 from hiku.denormalize.graphql import (
     DenormalizeGraphQL,
 )
@@ -8,8 +10,6 @@ from hiku.endpoint.graphql import (
     _switch_graph,
     GraphQLError,
 )
-from hiku.introspection.graphql import GraphQLIntrospection
-
 from federation.graph import FederatedGraph
 
 
@@ -36,9 +36,14 @@ def denormalize(graph: FederatedGraph, query, result):
 
 
 class FederatedGraphQLEndpoint(BaseGraphQLEndpoint):
-    introspection_cls = GraphQLIntrospection
+    introspection_cls = FederatedGraphQLIntrospection
 
-    def execute(self, graph, op, ctx):
+    def execute(self, graph: FederatedGraph, op, ctx):
+        if '_service' in op.query.fields_map:
+            return {'_service': {
+                'sdl': print_service_sdl(graph.extend_links, graph.extend_nodes)
+            }}
+
         stripped_query = _process_query(graph, op.query)
         result = self.engine.execute(graph, stripped_query, ctx)
         type_name = _type_names[op.type]
