@@ -2,8 +2,9 @@ import re
 import json
 
 from functools import partial
-from collections import namedtuple, OrderedDict
+from collections import OrderedDict
 
+from .directive import directive_registry
 from ..graph import Graph, Root, Node, Link, Option, Field, Nothing
 from ..graph import GraphVisitor, GraphTransformer
 from ..types import (
@@ -16,20 +17,19 @@ from ..types import (
 )
 from ..types import Any, RecordMeta, AbstractTypeVisitor, UnionMeta
 from ..utils import listify
-
-
-def _namedtuple(typename, field_names):
-    """Fixes hashing for different tuples with same content
-    """
-    base = namedtuple(typename, field_names)
-
-    def __hash__(self):
-        return hash((self.__class__, super(base, self).__hash__()))
-
-    return type(typename, (base,), {
-        '__slots__': (),
-        '__hash__': __hash__,
-    })
+from .types import (
+    SCALAR,
+    NON_NULL,
+    LIST,
+    INPUT_OBJECT,
+    OBJECT,
+    UNION,
+    DIRECTIVE,
+    FieldIdent,
+    FieldArgIdent,
+    InputObjectFieldIdent,
+    DirectiveArgIdent,
+)
 
 
 def _async_wrapper(func):
@@ -37,19 +37,6 @@ def _async_wrapper(func):
         return func(*args, **kwargs)
     return wrapper
 
-
-SCALAR = _namedtuple('SCALAR', 'name')
-OBJECT = _namedtuple('OBJECT', 'name')
-DIRECTIVE = _namedtuple('DIRECTIVE', 'name')
-INPUT_OBJECT = _namedtuple('INPUT_OBJECT', 'name')
-LIST = _namedtuple('LIST', 'of_type')
-NON_NULL = _namedtuple('NON_NULL', 'of_type')
-UNION = _namedtuple('UNION', 'name, possible_types')
-
-FieldIdent = _namedtuple('FieldIdent', 'node, name')
-FieldArgIdent = _namedtuple('FieldArgIdent', 'node, field, name')
-InputObjectFieldIdent = _namedtuple('InputObjectFieldIdent', 'name, key')
-DirectiveArgIdent = _namedtuple('DirectiveArgIdent', 'name')
 
 QUERY_ROOT_NAME = 'Query'
 MUTATION_ROOT_NAME = 'Mutation'
@@ -200,7 +187,9 @@ def root_schema_mutation_type(schema):
 
 
 def root_schema_directives(schema):
-    return [DIRECTIVE('skip'), DIRECTIVE('include')]
+    return [
+        DIRECTIVE(directive) for directive in directive_registry.keys()
+    ]
 
 
 @listify
@@ -344,16 +333,6 @@ def type_input_object_input_fields_link(schema, ids):
             yield []
 
 
-_arg_descriptions = {
-    'include': (
-        'Included when true.'
-    ),
-    'skip': (
-        'Skipped when true.'
-    ),
-}
-
-
 @listify
 def input_value_info(schema, fields, ids):
     nodes_map = _nodes_map(schema)
@@ -378,11 +357,14 @@ def input_value_info(schema, fields, ids):
                     'defaultValue': None}
             yield [info[f.name] for f in fields]
         elif isinstance(ident, DirectiveArgIdent):
-            info = {'id': ident,
-                    'name': 'if',
-                    'description': _arg_descriptions[ident.name],
-                    'defaultValue': None}
-            yield [info[f.name] for f in fields]
+            directive = directive_registry[ident.name]
+            args = directive.args
+            for arg_name, arg in args.items():
+                info = {'id': ident,
+                        'name': arg_name,
+                        'description': arg.description,
+                        'defaultValue': None}  # TODO to arg ?
+                yield [info[f.name] for f in fields]
         else:
             raise TypeError(repr(ident))
 
@@ -402,30 +384,19 @@ def input_value_type_link(schema, ids):
             field_type = data_type.__field_types__[ident.key]
             yield type_ident.visit(field_type)
         elif isinstance(ident, DirectiveArgIdent):
-            yield NON_NULL(SCALAR('Boolean'))
+            directive = directive_registry[ident.name]
+            for arg in directive.args.values():
+                yield arg.type
         else:
             raise TypeError(repr(ident))
-
-
-_directive_descriptions = {
-    'include': (
-        'Directs the executor to include this field or fragment '
-        'only when the `if` argument is true.'
-    ),
-    'skip': (
-        'Directs the executor to skip this field or fragment '
-        'when the `if` argument is true.'
-    ),
-}
 
 
 @listify
 def directive_value_info(schema, fields, ids):
     for ident in ids:
-        info = {'name': ident.name,
-                'description': _directive_descriptions.get(ident.name),
-                'locations': ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']}
-        yield [info[f.name] for f in fields]
+        if ident.name in directive_registry:
+            directive = directive_registry[ident.name]
+            yield from directive.value_info(fields)
 
 
 def directive_args_link(schema, ids):
@@ -661,14 +632,19 @@ class GraphQLIntrospection(GraphTransformer):
         graph = apply(graph, [GraphQLIntrospection(graph)])
 
     """
-    def __init__(self, query_graph, mutation_graph=None):
+    def __init__(self, query_graph, mutation_graph=None, directives=None):
         """
         :param query_graph: graph, where Root node represents Query root
             operation type
         :param mutation_graph: graph, where Root node represents Mutation root
             operation type
+        :param directives: custom directives
         """
         self._schema = SchemaInfo(query_graph, mutation_graph)
+
+        if directives:
+            for directive in directives:
+                directive_registry[directive.name] = directive
 
     def __type_name__(self, node_name):
         return Field('__typename', String,
