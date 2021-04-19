@@ -99,7 +99,9 @@ class SkipDirective(Directive):
         }
 
 
-directive_registry = {
-    'skip': SkipDirective(),
-    'include': IncludeDirective(),
-}
+# TODO I think we should not have statically declared directives
+#  in package. It should be dynamically created
+default_directives = [
+    SkipDirective(),
+    IncludeDirective(),
+]

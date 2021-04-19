@@ -6,7 +6,11 @@ from federation.directive import (
     ExternalDirective,
     ProvidesDirective,
 )
-from federation.graph import FederatedGraph
+from federation.graph import (
+    FederatedGraph,
+    ExtendNode,
+    ExtendLink,
+)
 from federation.introspection import FederatedGraphQLIntrospection
 from hiku.graph import Root, Field, Node, Link, apply, Option
 from hiku.introspection.directive import (
@@ -120,6 +124,7 @@ _STR = {'kind': 'SCALAR', 'name': 'String', 'ofType': None}
 _BOOL = {'kind': 'SCALAR', 'name': 'Boolean', 'ofType': None}
 _FLOAT = {'kind': 'SCALAR', 'name': 'Float', 'ofType': None}
 _ANY = {'kind': 'SCALAR', 'name': 'Any', 'ofType': None}
+_ANY_FEDERATED = {'kind': 'SCALAR', 'name': '_Any', 'ofType': None}
 
 
 def _obj(name):
@@ -130,11 +135,30 @@ def _iobj(name):
     return {'kind': 'INPUT_OBJECT', 'name': name, 'ofType': None}
 
 
+def _union(name, possible_types = None):
+    union = {
+        'kind': 'UNION',
+        'name': name,
+    }
+
+    if possible_types:
+        union["possibleTypes"] = possible_types
+    else:
+        union["ofType"] = None
+
+    return union
+
 def _seq_of(_type):
     return {'kind': 'NON_NULL', 'name': None,
             'ofType': {'kind': 'LIST', 'name': None,
                        'ofType': {'kind': 'NON_NULL', 'name': None,
                                   'ofType': _type}}}
+
+
+def _seq_of_nullable(_type):
+    return {'kind': 'NON_NULL', 'name': None,
+            'ofType': {'kind': 'LIST', 'name': None,
+                       'ofType': _type}}
 
 
 def _field(name, type_, **kwargs):
@@ -218,6 +242,7 @@ SCALARS = [
     _type('Boolean', 'SCALAR'),
     _type('Float', 'SCALAR'),
     _type('Any', 'SCALAR'),
+    _type('_Any', 'SCALAR'),
 ]
 
 
@@ -235,48 +260,76 @@ def introspect(query_graph, mutation_graph=None):
     return denormalize(query_graph, norm_result)
 
 
+AstronautNode = ExtendNode('Astronaut', [
+    Field('id', Integer, _noop),
+    Field('name', String, _noop),
+    Field('age', Integer, _noop),
+], keys=['id'])
+
+
+AstronautsLink = ExtendLink(
+    'astronauts',
+    Sequence[TypeRef['Astronaut']],
+    _noop,
+    requires=None,
+    options=None,
+)
+
+ROOT_FIELDS = [
+    AstronautsLink,
+]
+
+
 def test_federated_introspection_query_directives():
     graph = FederatedGraph([
-        Node('flexed', [
-            Field('yari', Boolean, _noop, options=[
-                Option('membuka', Sequence[String], default=['frayed']),
-                Option('modist', Optional[Integer], default=None,
-                       description='callow'),
-            ]),
-        ]),
-        Node('decian', [
-            Field('dogme', Integer, _noop),
-            Link('clarkia', Sequence[TypeRef['flexed']], _noop, requires=None),
-        ]),
-        Root([
-            Field('_cowered', String, _noop),
-            Field('entero', Float, _noop),
-            Link('toma', Sequence[TypeRef['decian']], _noop, requires=None),
-        ]),
+        AstronautNode,
+        Root(ROOT_FIELDS),
     ])
+
     exp = _schema([
-        _type('flexed', 'OBJECT', fields=[
-            _field('yari', _non_null(_BOOL), args=[
-                _ival('membuka', _seq_of(_STR), defaultValue='["frayed"]'),
-                _ival('modist', _INT, defaultValue='null',
-                      description='callow'),
-            ]),
-        ]),
-        _type('decian', 'OBJECT', fields=[
-            _field('dogme', _non_null(_INT)),
-            _field('clarkia', _seq_of(_obj('flexed'))),
+        _type('Astronaut', 'OBJECT', fields=[
+            _field('id', _non_null(_INT)),
+            _field('name', _non_null(_STR)),
+            _field('age', _non_null(_INT)),
         ]),
         _type('Query', 'OBJECT', fields=[
-            _field('entero', _non_null(_FLOAT)),
-            _field('toma', _seq_of(_obj('decian'))),
+            _field('astronauts', _seq_of(_obj('Astronaut'))),
         ]),
     ])
     assert exp == introspect(graph)
 
 
-def test_federated_introspection_query_Entities():
-    pass
+def test_federated_introspection_query_entities():
+    graph = FederatedGraph([
+        AstronautNode,
+        Root(ROOT_FIELDS),
+    ])
+
+    exp = _schema([
+        _type('Astronaut', 'OBJECT', fields=[
+            _field('id', _non_null(_INT)),
+            _field('name', _non_null(_STR)),
+            _field('age', _non_null(_INT)),
+        ]),
+        _type('Query', 'OBJECT', fields=[
+            _field('astronauts', _seq_of(_obj('Astronaut'))),
+            _field(
+                '_entities',
+                # _seq_of_nullable(_union('_Entity', [_obj('Astronaut')])),
+                _seq_of_nullable(_union('_Entity')),
+                args=[
+                    _ival(
+                        'representations',
+                        _seq_of(_ANY_FEDERATED),
+                        defaultValue='null'
+                    ),
+                ]
+            ),
+        ]),
+    ])
+    got = introspect(graph)
+    assert exp == got
 
 
-def test_federated_introspection_query_Service():
+def test_federated_introspection_query_service():
     pass

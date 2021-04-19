@@ -5,10 +5,32 @@ from federation.directive import (
     ExternalDirective
 )
 from federation.graph import FederatedGraph
+from hiku.graph import (
+    Field,
+    GraphTransformer,
+    Option,
+)
 from hiku.introspection.graphql import (
     GraphQLIntrospection,
-    ValidateGraph,
 )
+from hiku.types import (
+    Sequence,
+    Any,
+)
+
+
+class AddFederationFields(GraphTransformer):
+    def visit_root(self, obj):
+        root = super().visit_root(obj)
+        root.fields.append(self.get_entities_field())
+        return root
+
+    def get_entities_field(self):
+        # TODO _entities Sequence[Any] has to be Sequence[Union['_Entity']]
+        return Field('_entities', Sequence[Any], lambda: None, options=[
+            # TODO representations Sequence[Any] has to be Sequence['_Any']
+            Option('representations', Sequence[Any])
+        ])
 
 
 class FederatedGraphQLIntrospection(GraphQLIntrospection):
@@ -22,15 +44,13 @@ class FederatedGraphQLIntrospection(GraphQLIntrospection):
             ProvidesDirective(),
             ExternalDirective()
         ])
+
+        # query_graph = AddFederationFields().visit(query_graph)
         super().__init__(query_graph, mutation_graph, directives)
 
     def visit_graph(self, obj):
-        ValidateGraph.validate(obj)
-        introspection_graph = self.__introspection_graph__()
-        items = [self.visit(node) for node in obj.items]
-        items.extend(introspection_graph.items)
-        graph = FederatedGraph(items, data_types=obj.data_types)
-        # TODO HACK
+        graph = super().visit_graph(obj)
+        graph = FederatedGraph(graph.items, data_types=graph.data_types)
         graph.extend_links = obj.extend_links
         graph.extend_nodes = obj.extend_nodes
         graph.extend_node_keys_map = obj.extend_node_keys_map

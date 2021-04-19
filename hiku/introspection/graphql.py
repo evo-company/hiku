@@ -4,7 +4,9 @@ import json
 from functools import partial
 from collections import OrderedDict
 
-from .directive import directive_registry
+from .directive import (
+    default_directives,
+)
 from ..graph import Graph, Root, Node, Link, Option, Field, Nothing
 from ..graph import GraphVisitor, GraphTransformer
 from ..types import (
@@ -16,7 +18,10 @@ from ..types import (
     TypeVisitor,
 )
 from ..types import Any, RecordMeta, AbstractTypeVisitor, UnionMeta
-from ..utils import listify
+from ..utils import (
+    listify,
+    cached_property,
+)
 from .types import (
     SCALAR,
     NON_NULL,
@@ -40,6 +45,22 @@ def _async_wrapper(func):
 
 QUERY_ROOT_NAME = 'Query'
 MUTATION_ROOT_NAME = 'Mutation'
+
+
+class SchemaInfo:
+
+    def __init__(self, query_graph, mutation_graph=None, directives=None):
+        self.query_graph = query_graph
+        self.data_types = query_graph.data_types
+        self.mutation_graph = mutation_graph
+
+        if not directives:
+            directives = []
+        self.directives = default_directives + directives
+
+    @cached_property
+    def directives_map(self):
+        return OrderedDict((d.name, d) for d in self.directives)
 
 
 class TypeIdent(AbstractTypeVisitor):
@@ -129,7 +150,7 @@ def na_many(schema, ids=None, options=None):
         return [[] for _ in ids]
 
 
-def _nodes_map(schema):
+def _nodes_map(schema: SchemaInfo):
     nodes = [(n.name, n) for n in schema.query_graph.nodes]
     nodes.append((QUERY_ROOT_NAME, schema.query_graph.root))
     if schema.mutation_graph is not None:
@@ -156,6 +177,11 @@ def root_schema_types(schema):
     yield SCALAR('Boolean')
     yield SCALAR('Float')
     yield SCALAR('Any')
+    yield SCALAR('_Any')
+    # TODO plan
+    # 1. _nodes_map has to return _entities Node
+    # 2. root_schema_types must return OBJECT(_entities)
+    # 3. type_fields_link must return _entities fields (representations field)
     for name in _nodes_map(schema):
         yield OBJECT(name)
     for name, type_ in schema.data_types.items():
@@ -188,7 +214,7 @@ def root_schema_mutation_type(schema):
 
 def root_schema_directives(schema):
     return [
-        DIRECTIVE(directive) for directive in directive_registry.keys()
+        DIRECTIVE(directive.name) for directive in schema.directives
     ]
 
 
@@ -238,7 +264,9 @@ def type_fields_link(schema, ids, options):
                 node = nodes_map[ident.name]
                 field_idents = [
                     FieldIdent(ident.name, f.name)
-                    for f in node.fields if not f.name.startswith('_')
+                    # TODO _entities and _service will be skipped here
+                    # for f in node.fields if not f.name.startswith('_')
+                    for f in node.fields
                 ]
             else:
                 type_ = schema.data_types[ident.name]
@@ -357,7 +385,7 @@ def input_value_info(schema, fields, ids):
                     'defaultValue': None}
             yield [info[f.name] for f in fields]
         elif isinstance(ident, DirectiveArgIdent):
-            directive = directive_registry[ident.name]
+            directive = schema.directives_map[ident.name]
             args = directive.args
             for arg_name, arg in args.items():
                 info = {'id': ident,
@@ -384,7 +412,7 @@ def input_value_type_link(schema, ids):
             field_type = data_type.__field_types__[ident.key]
             yield type_ident.visit(field_type)
         elif isinstance(ident, DirectiveArgIdent):
-            directive = directive_registry[ident.name]
+            directive = schema.directives_map[ident.name]
             for arg in directive.args.values():
                 yield arg.type
         else:
@@ -394,8 +422,8 @@ def input_value_type_link(schema, ids):
 @listify
 def directive_value_info(schema, fields, ids):
     for ident in ids:
-        if ident.name in directive_registry:
-            directive = directive_registry[ident.name]
+        if ident.name in schema.directives_map:
+            directive = schema.directives_map[ident.name]
             yield from directive.value_info(fields)
 
 
@@ -611,14 +639,6 @@ class AddIntrospection(GraphTransformer):
         return graph
 
 
-class SchemaInfo:
-
-    def __init__(self, query_graph, mutation_graph=None):
-        self.query_graph = query_graph
-        self.data_types = query_graph.data_types
-        self.mutation_graph = mutation_graph
-
-
 class GraphQLIntrospection(GraphTransformer):
     """Adds GraphQL introspection into synchronous graph
 
@@ -640,11 +660,7 @@ class GraphQLIntrospection(GraphTransformer):
             operation type
         :param directives: custom directives
         """
-        self._schema = SchemaInfo(query_graph, mutation_graph)
-
-        if directives:
-            for directive in directives:
-                directive_registry[directive.name] = directive
+        self._schema = SchemaInfo(query_graph, mutation_graph, directives)
 
     def __type_name__(self, node_name):
         return Field('__typename', String,
