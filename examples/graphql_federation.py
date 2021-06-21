@@ -6,14 +6,19 @@ from typing import (
 
 from flask import Flask, request, jsonify
 
+from federation.directive import KeyDirective
 from federation.endpoint import FederatedGraphQLEndpoint
 from federation.engine import Engine
 from federation.graph import (
     FederatedGraph,
-    ExtendLink,
-    ExtendNode,
 )
-from hiku.graph import Root, Field, Option
+from hiku.graph import (
+    Root,
+    Field,
+    Option,
+    Node,
+    Link,
+)
 from hiku.types import (
     Integer,
     TypeRef,
@@ -66,13 +71,13 @@ def link_astronauts():
 
 
 QUERY_GRAPH = FederatedGraph([
-    ExtendNode('Astronaut', [
+   Node('Astronaut', [
         Field('id', Integer, astronaut_resolver),
         Field('name', String, astronaut_resolver),
         Field('age', Integer, astronaut_resolver),
-    ], keys=['id']),
+    ], directives=[KeyDirective('id')]),
     Root([
-        ExtendLink(
+        Link(
             'astronaut',
             Optional[TypeRef['Astronaut']],
             direct_link_id,
@@ -81,7 +86,7 @@ QUERY_GRAPH = FederatedGraph([
                 Option('id', Integer)
             ],
         ),
-        ExtendLink(
+        Link(
             'astronauts',
             Sequence[TypeRef['Astronaut']],
             link_astronauts,
