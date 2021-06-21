@@ -22,7 +22,13 @@ from collections import defaultdict
 
 from .types import RecordMeta, OptionalMeta, SequenceMeta, get_type
 from .query import Node, Field, Link
-from .graph import Link as GraphLink, Field as GraphField, Many, Maybe
+from .graph import (
+    Link as GraphLink,
+    Field as GraphField,
+    Many,
+    Maybe,
+    Graph,
+)
 from .utils import cached_property
 
 
@@ -153,7 +159,7 @@ def _denormalize(graph, graph_obj, result, query_obj):
             return _denormalize(graph, graph_obj, result, query_obj.node)
 
 
-def denormalize(graph, result):
+def denormalize(graph: Graph, result: Proxy) -> dict:
     """Transforms normalized result (graph) into simple hierarchical structure
 
     This hierarchical structure will follow query structure.
