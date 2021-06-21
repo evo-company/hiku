@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 from itertools import chain
 from functools import reduce
 from collections import OrderedDict
+from typing import List
 
 from .types import OptionalMeta, SequenceMeta, TypeRefMeta, Record, Any
 from .utils import cached_property, const
@@ -277,7 +278,7 @@ class Node(AbstractNode):
         ])
 
     """
-    def __init__(self, name, fields, *, description=None):
+    def __init__(self, name, fields, *, description=None, directives=None):
         """
         :param name: name of the node
         :param fields: list of fields and links
@@ -286,6 +287,7 @@ class Node(AbstractNode):
         self.name = name
         self.fields = fields
         self.description = description
+        self.directives = directives
 
     def __repr__(self):
         return '{}({!r}, {!r}, ...)'.format(self.__class__.__name__, self.name,
@@ -468,7 +470,7 @@ class GraphTransformer(AbstractGraphVisitor):
 
     def visit_node(self, obj):
         return Node(obj.name, [self.visit(f) for f in obj.fields],
-                    description=obj.description)
+                    description=obj.description, directives=obj.directives)
 
     def visit_root(self, obj):
         return Root([self.visit(f) for f in obj.fields])
@@ -478,7 +480,7 @@ class GraphTransformer(AbstractGraphVisitor):
                      obj.data_types)
 
 
-def apply(graph, transformers):
+def apply(graph: Graph, transformers: List[GraphTransformer]) -> Graph:
     """Helper function to apply graph transformations
 
     Example:
