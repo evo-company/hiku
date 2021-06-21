@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from typing import (
     List,
     NamedTuple,
@@ -13,34 +14,34 @@ from hiku.introspection.types import (
 )
 
 
+# TODO one Arg represents introspection and holds value, thats inconvenient
+from hiku.utils import cached_property
+
+
 class Arg(NamedTuple):
+    name: str
+    value: Any # TODO can be boolean, string etc.
     description: str
     type: Any
 
 
 class Directive(ABC):
-    @property
-    @abstractmethod
-    def name(self) -> List[str]:
-        pass
+    name: str
+    locations: List[str]
+    description: str
 
     @property
     @abstractmethod
-    def locations(self) -> List[str]:
-        pass
-
-    @property
-    @abstractmethod
-    def description(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def args(self) -> Dict[str, Arg]:
+    def args(self) -> List[Arg]:
         """Directive arguments"""
         pass
 
+    @cached_property
+    def args_map(self) -> 'OrderedDict[str, Arg]':
+        return OrderedDict((arg.name, arg) for arg in self.args)
+
     def value_info(self, fields):
+        """TODO value info is a hack, need visitor"""
         info = {'name': self.name,
                 'description': self.description,
                 'locations': self.locations}
@@ -48,60 +49,47 @@ class Directive(ABC):
 
 
 class IncludeDirective(Directive):
-    @property
-    def name(self) -> str:
-        return 'include'
+    name = 'include'
+    locations = ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']
+    description = (
+        'Directs the executor to include this field or fragment '
+        'only when the `if` argument is true.'
+    )
 
     @property
-    def locations(self) -> List[str]:
-        return ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']
-
-    @property
-    def description(self) -> str:
-        return (
-            'Directs the executor to include this field or fragment '
-            'only when the `if` argument is true.'
-        )
-
-    @property
-    def args(self) -> Dict[str, Arg]:
-        return {
-            'if': Arg(
+    def args(self) -> List[Arg]:
+        return [
+            Arg(
+                name='if',
                 description='Included when true.',
-                type=NON_NULL(SCALAR('Boolean'))
+                type=NON_NULL(SCALAR('Boolean')),
+                value=None
             )
-        }
+        ]
 
 
 class SkipDirective(Directive):
-    @property
-    def name(self) -> str:
-        return 'skip'
+    name = 'skip'
+    locations = ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']
+    description = (
+        'Directs the executor to skip this field or fragment '
+        'when the `if` argument is true.'
+    )
 
     @property
-    def locations(self) -> List[str]:
-        return ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']
-
-    @property
-    def description(self) -> str:
-        return (
-            'Directs the executor to skip this field or fragment '
-            'when the `if` argument is true.'
-        )
-
-    @property
-    def args(self) -> Dict[str, Arg]:
-        return {
-            'if': Arg(
+    def args(self) -> List[Arg]:
+        return [
+            Arg(
+                name='if',
                 description='Skipped when true.',
-                type=NON_NULL(SCALAR('Boolean'))
+                type=NON_NULL(SCALAR('Boolean')),
+                value=None
             )
-        }
+        ]
 
 
-# TODO I think we should not have statically declared directives
-#  in package. It should be dynamically created
-default_directives = [
-    SkipDirective(),
-    IncludeDirective(),
-]
+def get_default_directives():
+    return [
+        SkipDirective(),
+        IncludeDirective(),
+    ]
