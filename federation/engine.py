@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import List
 
 from federation.graph import FederatedGraph
 from hiku.engine import (
@@ -7,6 +8,19 @@ from hiku.engine import (
     Context,
 )
 from hiku.executors.queue import Queue
+
+
+class KeyNotFound(Exception):
+    def __init__(self, key, rep):
+        super().__init__(f'No key "{key}" in representation "{rep}"')
+
+
+def get_keys(graph, typename) -> List[int]:
+    node = graph.nodes_map[typename]
+    return [
+        d.args_map['fields'].value for d in
+        filter(lambda d: d.name == 'key', node.directives)
+    ]
 
 
 class Engine:
@@ -31,15 +45,15 @@ class Engine:
 
             for rep in representations:
                 typename = rep['__typename']
-                keys = graph.extend_node_keys_map[typename]
+                keys = get_keys(graph, typename)
                 # TODO refactor [0], apollo has __resolveReference to pass ident as is
                 key = keys[0]
+                if key not in rep:
+                    raise KeyNotFound(key, rep)
                 ident = rep[key]
 
                 type_ids_map[typename].append(ident)
 
-            # TODO hiku federation can support multiple __typename in one query
-            #  but I do not know if its required
             for typename in type_ids_map:
                 ids = type_ids_map[typename]
                 node = graph.nodes_map[typename]
