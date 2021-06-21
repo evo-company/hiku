@@ -294,7 +294,7 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
         return merge([node])
 
 
-def read(src, variables=None, operation_name=None):
+def read(src: str, variables=None, operation_name=None) -> Node:
     """Reads a query from the GraphQL document
 
     Example:
