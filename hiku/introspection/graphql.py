@@ -1,11 +1,13 @@
 import re
 import json
+import typing as t
 
 from functools import partial
 from collections import OrderedDict
 
 from .directive import (
-    default_directives,
+    get_default_directives,
+    Directive,
 )
 from ..graph import Graph, Root, Node, Link, Option, Field, Nothing
 from ..graph import GraphVisitor, GraphTransformer
@@ -49,14 +51,19 @@ MUTATION_ROOT_NAME = 'Mutation'
 
 class SchemaInfo:
 
-    def __init__(self, query_graph, mutation_graph=None, directives=None):
+    def __init__(
+        self,
+        query_graph: Graph,
+        mutation_graph: t.Optional[Graph] = None,
+        directives: t.Optional[Directive] = None,
+        scalars: t.Optional[SCALAR] = None,
+    ):
         self.query_graph = query_graph
         self.data_types = query_graph.data_types
         self.mutation_graph = mutation_graph
 
-        if not directives:
-            directives = []
-        self.directives = default_directives + directives
+        self.directives = get_default_directives() + (directives or [])
+        self.scalars = get_default_scalars() + (scalars or [])
 
     @cached_property
     def directives_map(self):
@@ -70,7 +77,13 @@ class TypeIdent(AbstractTypeVisitor):
         self._input_mode = input_mode
 
     def visit_any(self, obj):
-        return SCALAR('Any')
+        # TODO(extensible) this NON_NULL fixes representation _Any
+        # But be carefull, there was no notnull originally
+        name = 'Any'
+        if hasattr(obj, '__type_name__'):
+            name = obj.__type_name__
+
+        return NON_NULL(SCALAR(name))
 
     def visit_mapping(self, obj):
         return SCALAR('Any')
@@ -85,7 +98,7 @@ class TypeIdent(AbstractTypeVisitor):
         return NON_NULL(LIST(self.visit(obj.__item_type__)))
 
     def visit_union(self, obj):
-        pass
+        return UNION(obj.__type_name__)
 
     def visit_optional(self, obj):
         ident = self.visit(obj.__type__)
@@ -170,35 +183,27 @@ def type_link(schema, options):
         return Nothing
 
 
+def get_default_scalars():
+    return [
+        SCALAR('String'),
+        SCALAR('Int'),
+        SCALAR('Boolean'),
+        SCALAR('Float'),
+        SCALAR('Any')
+    ]
+
+
 @listify
-def root_schema_types(schema):
-    yield SCALAR('String')
-    yield SCALAR('Int')
-    yield SCALAR('Boolean')
-    yield SCALAR('Float')
-    yield SCALAR('Any')
-    yield SCALAR('_Any')
-    # TODO plan
-    # 1. _nodes_map has to return _entities Node
-    # 2. root_schema_types must return OBJECT(_entities)
-    # 3. type_fields_link must return _entities fields (representations field)
+def root_schema_types(schema: SchemaInfo):
+    for scalar in schema.scalars:
+        yield scalar
+
     for name in _nodes_map(schema):
         yield OBJECT(name)
     for name, type_ in schema.data_types.items():
         if isinstance(type_, RecordMeta):
             yield OBJECT(name)
             yield INPUT_OBJECT(name)
-        if isinstance(type_, UnionMeta):
-            # TODO TypeIdent will return NON_NULL item_type
-            # this may be not desirable
-            type_ident = TypeIdent(None)
-            yield UNION(
-                name,
-                tuple(
-                    type_ident.visit(item_type) for item_type
-                    in type_.__item_types__
-                )
-            )
 
 
 def root_schema_query_type(schema):
@@ -287,6 +292,7 @@ def type_fields_link(schema, ids, options):
 def type_possible_types_link(schema, ids):
     for ident in ids:
         if isinstance(ident, UNION):
+            # TODO so what to do with unions ?
             yield ident.possible_types
         else:
             yield []
@@ -386,12 +392,11 @@ def input_value_info(schema, fields, ids):
             yield [info[f.name] for f in fields]
         elif isinstance(ident, DirectiveArgIdent):
             directive = schema.directives_map[ident.name]
-            args = directive.args
-            for arg_name, arg in args.items():
+            for arg in directive.args:
                 info = {'id': ident,
-                        'name': arg_name,
+                        'name': arg.name,
                         'description': arg.description,
-                        'defaultValue': None}  # TODO to arg ?
+                        'defaultValue': None}
                 yield [info[f.name] for f in fields]
         else:
             raise TypeError(repr(ident))
@@ -413,7 +418,7 @@ def input_value_type_link(schema, ids):
             yield type_ident.visit(field_type)
         elif isinstance(ident, DirectiveArgIdent):
             directive = schema.directives_map[ident.name]
-            for arg in directive.args.values():
+            for arg in directive.args:
                 yield arg.type
         else:
             raise TypeError(repr(ident))
@@ -428,7 +433,14 @@ def directive_value_info(schema, fields, ids):
 
 
 def directive_args_link(schema, ids):
-    return [[DirectiveArgIdent(ident)] for ident in ids]
+    links = []
+    for ident in ids:
+        directive = schema.directives_map[ident]
+        if directive.args:
+            links.append([DirectiveArgIdent(ident)])
+        else:
+            links.append([])
+    return links
 
 
 GRAPH = Graph([
@@ -652,15 +664,27 @@ class GraphQLIntrospection(GraphTransformer):
         graph = apply(graph, [GraphQLIntrospection(graph)])
 
     """
-    def __init__(self, query_graph, mutation_graph=None, directives=None):
+    def __init__(
+        self,
+        query_graph,
+        mutation_graph=None,
+        directives=None,
+        scalars=None
+    ):
         """
         :param query_graph: graph, where Root node represents Query root
             operation type
         :param mutation_graph: graph, where Root node represents Mutation root
             operation type
         :param directives: custom directives
+        :param scalars: custom scalars
         """
-        self._schema = SchemaInfo(query_graph, mutation_graph, directives)
+        self._schema = SchemaInfo(
+            query_graph,
+            mutation_graph,
+            directives,
+            scalars
+        )
 
     def __type_name__(self, node_name):
         return Field('__typename', String,
