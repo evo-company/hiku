@@ -2,15 +2,16 @@ from collections import defaultdict
 from typing import TypedDict
 from unittest import TestCase
 
-from federation.endpoint import denormalize
+from federation.directive import KeyDirective
+from federation.endpoint import denormalize_entities
 from federation.graph import (
-    ExtendNode,
     FederatedGraph,
-    ExtendLink,
 )
 from hiku.graph import (
     Root,
     Field,
+    Node,
+    Link,
 )
 
 from hiku.result import (
@@ -63,18 +64,18 @@ def direct_link(ids):
     return ids
 
 
-AstronautNode = ExtendNode('Astronaut', [
+AstronautNode = Node('Astronaut', [
     Field('id', Integer, astronaut_resolver),
     Field('name', String, astronaut_resolver),
     Field('age', Integer, astronaut_resolver),
-], keys=['id'])
+], directives=[KeyDirective('id')])
 
-PlanetNode = ExtendNode('Planet', [
+PlanetNode = Node('Planet', [
     Field('name', String, planet_resolver),
     Field('order', Integer, planet_resolver),
-], keys=['name'])
+], directives=[KeyDirective('name')])
 
-AstronautsLink = ExtendLink(
+AstronautsLink = Link(
     'astronauts',
     Sequence[TypeRef['Astronaut']],
     mock_link,
@@ -127,7 +128,7 @@ class TestDenormalize(TestCase):
             )
         ])
         result = Proxy(INDEX, ROOT, query)
-        data = denormalize(
+        data = denormalize_entities(
             GRAPH,
             query,
             result
@@ -158,7 +159,7 @@ class TestDenormalize(TestCase):
             )
         ])
         result = Proxy(INDEX, ROOT, query)
-        data = denormalize(
+        data = denormalize_entities(
             GRAPH,
             query,
             result
