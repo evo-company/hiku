@@ -1,3 +1,4 @@
+from unittest import TestCase
 from unittest.mock import ANY
 
 from federation.directive import (
@@ -8,11 +9,15 @@ from federation.directive import (
 )
 from federation.graph import (
     FederatedGraph,
-    ExtendNode,
-    ExtendLink,
 )
 from federation.introspection import FederatedGraphQLIntrospection
-from hiku.graph import Root, Field, Node, Link, apply, Option
+from hiku.graph import (
+    Root,
+    Field,
+    Node,
+    apply,
+    Link,
+)
 from hiku.introspection.directive import (
     Directive,
     SkipDirective,
@@ -22,8 +27,7 @@ from hiku.introspection.types import (
     NON_NULL,
     SCALAR,
 )
-from hiku.types import String, Integer, Sequence, TypeRef, Boolean, Float, Any
-from hiku.types import Optional, Record
+from hiku.types import String, Integer, Sequence, TypeRef
 from hiku.result import denormalize
 from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
@@ -191,12 +195,13 @@ def _type(name, kind, **kwargs):
 
 def _directive(directive: Directive):
     args = []
-    for arg_name, arg in directive.args.items():
+    for arg in directive.args:
         if arg.type == NON_NULL(SCALAR('Boolean')):
-            args.append(_ival(arg_name, _non_null(_BOOL), description=ANY))
+            args.append(_ival(arg.name, _non_null(_BOOL), description=ANY))
         elif arg.type == NON_NULL(SCALAR('String')):
-            args.append(_ival(arg_name, _non_null(_STR), description=ANY))
-
+            args.append(_ival(arg.name, _non_null(_STR), description=ANY))
+        else:
+            raise TypeError('unsupported argument type: %s' % arg.type)
     return {
         'name': directive.name,
         'description': directive.description,
@@ -205,7 +210,18 @@ def _directive(directive: Directive):
     }
 
 
-def _schema(types, with_mutation=False):
+def _ival(name, type_, **kwargs):
+    data = {
+        'name': name,
+        'type': type_,
+        'description': None,
+        'defaultValue': None,
+    }
+    data.update(kwargs)
+    return data
+
+
+def _schema(types, with_mutation=False) -> dict:
     names = [t['name'] for t in types]
     assert 'Query' in names, names
     return {
@@ -223,17 +239,6 @@ def _schema(types, with_mutation=False):
             'types': SCALARS + types,
         }
     }
-
-
-def _ival(name, type_, **kwargs):
-    data = {
-        'name': name,
-        'type': type_,
-        'description': None,
-        'defaultValue': None,
-    }
-    data.update(kwargs)
-    return data
 
 
 SCALARS = [
@@ -260,14 +265,14 @@ def introspect(query_graph, mutation_graph=None):
     return denormalize(query_graph, norm_result)
 
 
-AstronautNode = ExtendNode('Astronaut', [
+AstronautNode = Node('Astronaut', [
     Field('id', Integer, _noop),
     Field('name', String, _noop),
     Field('age', Integer, _noop),
-], keys=['id'])
+], directives=[KeyDirective('id')])
 
 
-AstronautsLink = ExtendLink(
+AstronautsLink = Link(
     'astronauts',
     Sequence[TypeRef['Astronaut']],
     _noop,
@@ -280,56 +285,44 @@ ROOT_FIELDS = [
 ]
 
 
-def test_federated_introspection_query_directives():
-    graph = FederatedGraph([
-        AstronautNode,
-        Root(ROOT_FIELDS),
-    ])
-
-    exp = _schema([
-        _type('Astronaut', 'OBJECT', fields=[
-            _field('id', _non_null(_INT)),
-            _field('name', _non_null(_STR)),
-            _field('age', _non_null(_INT)),
-        ]),
-        _type('Query', 'OBJECT', fields=[
-            _field('astronauts', _seq_of(_obj('Astronaut'))),
-        ]),
-    ])
-    assert exp == introspect(graph)
+GRAPH = FederatedGraph([
+    AstronautNode,
+    Root(ROOT_FIELDS),
+])
 
 
-def test_federated_introspection_query_entities():
-    graph = FederatedGraph([
-        AstronautNode,
-        Root(ROOT_FIELDS),
-    ])
+class TestFederatedGraphIntrospection(TestCase):
+    def test_apply_introspection_graph(self):
+        query_graph = apply(GRAPH, [
+            FederatedGraphQLIntrospection(GRAPH),
+        ])
+        self.assertIn('astronauts', query_graph.root.fields_map)
+        entities = list(filter(lambda x: x.name == '_entities', query_graph.root.fields))
+        self.assertEqual(len(entities), 1)
+        self.assertIn('_entities', query_graph.root.fields_map)
 
-    exp = _schema([
-        _type('Astronaut', 'OBJECT', fields=[
-            _field('id', _non_null(_INT)),
-            _field('name', _non_null(_STR)),
-            _field('age', _non_null(_INT)),
-        ]),
-        _type('Query', 'OBJECT', fields=[
-            _field('astronauts', _seq_of(_obj('Astronaut'))),
-            _field(
-                '_entities',
-                # _seq_of_nullable(_union('_Entity', [_obj('Astronaut')])),
-                _seq_of_nullable(_union('_Entity')),
-                args=[
-                    _ival(
-                        'representations',
-                        _seq_of(_ANY_FEDERATED),
-                        defaultValue='null'
-                    ),
-                ]
-            ),
-        ]),
-    ])
-    got = introspect(graph)
-    assert exp == got
-
-
-def test_federated_introspection_query_service():
-    pass
+    def test_federated_introspection_query_entities(self):
+        exp = _schema([
+            _type('Astronaut', 'OBJECT', fields=[
+                _field('id', _non_null(_INT)),
+                _field('name', _non_null(_STR)),
+                _field('age', _non_null(_INT)),
+            ]),
+            _type('Query', 'OBJECT', fields=[
+                _field('astronauts', _seq_of(_obj('Astronaut'))),
+                _field(
+                    '_entities',
+                    # TODO _seq_of_nullable(_union('_Entity', [_obj('Astronaut')])),
+                    _seq_of_nullable(_union('_Entity')),
+                    args=[
+                        _ival(
+                            'representations',
+                            _seq_of(_ANY_FEDERATED),
+                            defaultValue=ANY
+                        ),
+                    ]
+                ),
+            ]),
+        ])
+        got = introspect(GRAPH)
+        self.assertEqual(exp, got)
