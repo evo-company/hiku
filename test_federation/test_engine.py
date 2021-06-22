@@ -7,13 +7,14 @@ from unittest import TestCase
 from federation.directive import KeyDirective
 from federation.endpoint import denormalize_entities
 from federation.engine import Engine
-from federation.graph import FederatedGraph
+from federation.validate import validate
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import (
     Root,
     Field,
     Link,
     Node,
+    Graph,
 )
 
 from hiku.types import (
@@ -22,7 +23,6 @@ from hiku.types import (
     TypeRef,
     Sequence,
 )
-from hiku.validate.query import validate
 
 
 class Astronaut(TypedDict):
@@ -101,7 +101,7 @@ def direct_link(ids):
     return ids
 
 
-GRAPH = FederatedGraph([
+GRAPH = Graph([
     Node('Astronaut', [
         Field('id', Integer, astronaut_resolver),
         Field('name', String, astronaut_resolver),
@@ -184,7 +184,7 @@ class TestEngine(TestCase):
         data = denormalize_entities(
             GRAPH,
             query,
-            result
+            result.data
         )
 
         expect = [{
@@ -221,7 +221,7 @@ class TestEngine(TestCase):
         data = denormalize_entities(
             GRAPH,
             query,
-            result
+            result.data
         )
 
         expect = [

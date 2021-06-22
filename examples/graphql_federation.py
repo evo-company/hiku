@@ -9,15 +9,13 @@ from flask import Flask, request, jsonify
 from federation.directive import KeyDirective
 from federation.endpoint import FederatedGraphQLEndpoint
 from federation.engine import Engine
-from federation.graph import (
-    FederatedGraph,
-)
 from hiku.graph import (
     Root,
     Field,
     Option,
     Node,
     Link,
+    Graph,
 )
 from hiku.types import (
     Integer,
@@ -70,7 +68,7 @@ def link_astronauts():
     return [1, 2]
 
 
-QUERY_GRAPH = FederatedGraph([
+QUERY_GRAPH = Graph([
    Node('Astronaut', [
         Field('id', Integer, astronaut_resolver),
         Field('name', String, astronaut_resolver),

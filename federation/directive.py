@@ -20,8 +20,7 @@ class KeyDirective(Directive):
             Arg(
                 name='fields',
                 description='',
-                type=NON_NULL(SCALAR('String')), # TODO maybe use here different type ? Such as Optional[String]
-                 # Because we already know how to encode it
+                type=NON_NULL(SCALAR('String')),
                 value=key
             )
         ]

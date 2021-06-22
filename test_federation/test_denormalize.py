@@ -4,14 +4,12 @@ from unittest import TestCase
 
 from federation.directive import KeyDirective
 from federation.endpoint import denormalize_entities
-from federation.graph import (
-    FederatedGraph,
-)
 from hiku.graph import (
     Root,
     Field,
     Node,
     Link,
+    Graph,
 )
 
 from hiku.result import (
@@ -87,7 +85,7 @@ ROOT_FIELDS = [
     AstronautsLink,
 ]
 
-GRAPH = FederatedGraph([
+GRAPH = Graph([
     AstronautNode,
     PlanetNode,
     Root(ROOT_FIELDS),

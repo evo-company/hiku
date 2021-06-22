@@ -19,7 +19,7 @@ from ..types import (
     Optional,
     TypeVisitor,
 )
-from ..types import Any, RecordMeta, AbstractTypeVisitor, UnionMeta
+from ..types import Any, RecordMeta, AbstractTypeVisitor
 from ..utils import (
     listify,
     cached_property,
@@ -30,7 +30,6 @@ from .types import (
     LIST,
     INPUT_OBJECT,
     OBJECT,
-    UNION,
     DIRECTIVE,
     FieldIdent,
     FieldArgIdent,
@@ -77,13 +76,7 @@ class TypeIdent(AbstractTypeVisitor):
         self._input_mode = input_mode
 
     def visit_any(self, obj):
-        # TODO(extensible) this NON_NULL fixes representation _Any
-        # But be carefull, there was no notnull originally
-        name = 'Any'
-        if hasattr(obj, '__type_name__'):
-            name = obj.__type_name__
-
-        return NON_NULL(SCALAR(name))
+        return SCALAR('Any')
 
     def visit_mapping(self, obj):
         return SCALAR('Any')
@@ -96,9 +89,6 @@ class TypeIdent(AbstractTypeVisitor):
 
     def visit_sequence(self, obj):
         return NON_NULL(LIST(self.visit(obj.__item_type__)))
-
-    def visit_union(self, obj):
-        return UNION(obj.__type_name__)
 
     def visit_optional(self, obj):
         ident = self.visit(obj.__type__)
@@ -251,10 +241,6 @@ def type_info(schema, fields, ids):
             info = {'id': ident,
                     'name': ident.name,
                     'kind': 'SCALAR'}
-        elif isinstance(ident, UNION):
-            info = {'id': ident,
-                    'name': ident.name,
-                    'kind': 'UNION'}
         else:
             raise TypeError(repr(ident))
         yield [info.get(f.name) for f in fields]
@@ -269,9 +255,7 @@ def type_fields_link(schema, ids, options):
                 node = nodes_map[ident.name]
                 field_idents = [
                     FieldIdent(ident.name, f.name)
-                    # TODO _entities and _service will be skipped here
-                    # for f in node.fields if not f.name.startswith('_')
-                    for f in node.fields
+                    for f in node.fields if not f.name.startswith('_')
                 ]
             else:
                 type_ = schema.data_types[ident.name]
@@ -284,16 +268,6 @@ def type_fields_link(schema, ids, options):
                                 'which is not acceptable for GraphQL in order '
                                 'to define schema type'.format(ident.name))
             yield field_idents
-        else:
-            yield []
-
-
-@listify
-def type_possible_types_link(schema, ids):
-    for ident in ids:
-        if isinstance(ident, UNION):
-            # TODO so what to do with unions ?
-            yield ident.possible_types
         else:
             yield []
 
@@ -460,8 +434,8 @@ GRAPH = Graph([
              requires='id'),
 
         # INTERFACE and UNION only
-        Link('possibleTypes', Sequence[TypeRef['__Type']],
-             type_possible_types_link, requires='id'),
+        Link('possibleTypes', Sequence[TypeRef['__Type']], na_many,
+             requires='id'),
 
         # ENUM only
         Link('enumValues', Sequence[TypeRef['__EnumValue']], na_many,

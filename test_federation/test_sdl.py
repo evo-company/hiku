@@ -3,9 +3,6 @@ from unittest import TestCase
 from federation.directive import KeyDirective
 from federation.endpoint import FederatedGraphQLEndpoint
 from federation.engine import Engine
-from federation.graph import (
-    FederatedGraph,
-)
 from federation.introspection import FederatedGraphQLIntrospection
 from federation.sdl import print_sdl
 from hiku.executors.sync import SyncExecutor
@@ -16,6 +13,7 @@ from hiku.graph import (
     apply,
     Node,
     Link,
+    Graph,
 )
 from hiku.types import (
     Integer,
@@ -61,7 +59,7 @@ ROOT_FIELDS = [
     AstronautsLink,
 ]
 
-GRAPH = FederatedGraph([
+GRAPH = Graph([
     AstronautNode,
     Root(ROOT_FIELDS),
 ])

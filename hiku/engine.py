@@ -420,7 +420,7 @@ class Engine:
     def __init__(self, executor):
         self.executor = executor
 
-    def execute(self, graph, query, ctx=None) -> Proxy:
+    def execute(self, graph, query, ctx=None):
         if ctx is None:
             ctx = {}
         query = InitOptions(graph).visit(query)

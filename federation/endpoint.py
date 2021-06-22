@@ -1,6 +1,11 @@
 from abc import abstractmethod
 from contextlib import contextmanager
-from federation.engine import get_keys
+from federation.engine import (
+    get_keys,
+    Result,
+    ServiceResult,
+    EntitiesResult,
+)
 from typing import (
     List,
     Dict,
@@ -10,22 +15,33 @@ from typing import (
 from federation.introspection import (
     FederatedGraphQLIntrospection,
     AsyncFederatedGraphQLIntrospection,
+    is_introspection_query,
+    extend_with_federation,
 )
+from federation.validate import validate
 
-from federation.sdl import print_sdl
 from hiku.denormalize.graphql import (
     DenormalizeGraphQL,
 )
 from hiku.endpoint.graphql import (
     BaseGraphQLEndpoint,
-    _process_query,
     _type_names,
     _switch_graph,
     GraphQLError,
+    _StripQuery,
 )
-from federation.graph import FederatedGraph
+from hiku.graph import Graph
 from hiku.query import Node
 from hiku.result import Proxy, Reference
+
+
+def _process_query(graph, query):
+    stripped_query = _StripQuery().visit(query)
+    errors = validate(graph, stripped_query)
+    if errors:
+        raise GraphQLError(errors=errors)
+    else:
+        return stripped_query
 
 
 def denormalize_entity(entity, result):
@@ -48,7 +64,7 @@ def denormalize_entity(entity, result):
 
 
 def denormalize_entities(
-    graph: FederatedGraph,
+    graph: Graph,
     query: Node,
     result: Proxy
 ) -> List[Dict[str, Any]]:
@@ -89,17 +105,19 @@ class BaseFederatedGraphEndpoint(BaseGraphQLEndpoint):
         yield {}
 
     @staticmethod
-    def process_service_query(graph):
-        return {'_service': {'sdl': print_sdl(graph)}}
+    def postprocess_result(result: Result, graph, op):
+        if isinstance(result, ServiceResult):
+            return {'_service': {'sdl': result.data}}
+        elif isinstance(result, EntitiesResult):
+            return {
+                '_entities': denormalize_entities(graph, op.query, result.data)
+            }
 
-    @staticmethod
-    def postprocess_result(result, graph, op):
         type_name = _type_names[op.type]
 
-        if '_entities' in op.query.fields_map:
-            data = {'_entities': denormalize_entities(graph, op.query, result)}
-        else:
-            data = DenormalizeGraphQL(graph, result, type_name).process(op.query)
+        data = DenormalizeGraphQL(graph, result.data, type_name).process(op.query)
+        if is_introspection_query(op.query):
+            extend_with_federation(data)
         return data
 
 
@@ -111,10 +129,7 @@ class FederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
     """
     introspection_cls = FederatedGraphQLIntrospection
 
-    def execute(self, graph: FederatedGraph, op, ctx):
-        if '_service' in op.query.fields_map:
-            return self.process_service_query(graph)
-
+    def execute(self, graph: Graph, op, ctx):
         stripped_query = _process_query(graph, op.query)
         result = self.engine.execute(graph, stripped_query, ctx)
         return self.postprocess_result(result, graph, op)
@@ -134,10 +149,7 @@ class FederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
 class AsyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
     introspection_cls = AsyncFederatedGraphQLIntrospection
 
-    async def execute(self, graph: FederatedGraph, op, ctx):
-        if '_service' in op.query.fields_map:
-            return self.process_service_query(graph)
-
+    async def execute(self, graph: Graph, op, ctx):
         stripped_query = _process_query(graph, op.query)
         result = await self.engine.execute(graph, stripped_query, ctx)
         return self.postprocess_result(result, graph, op)

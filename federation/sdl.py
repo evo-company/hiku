@@ -11,7 +11,6 @@ from graphql.pyutils import (
     FrozenList,
 )
 
-from federation.graph import FederatedGraph
 from hiku.graph import (
     Link,
     Nothing,
@@ -39,7 +38,6 @@ from hiku.types import (
     AnyMeta,
     FloatMeta,
     BooleanMeta,
-    UnionMeta,
 )
 
 
@@ -83,17 +81,13 @@ def _encode_type(value) -> ast.TypeNode:
         elif isinstance(val, BooleanMeta):
             return 'Boolean'
         elif isinstance(val, SequenceMeta):
-            # TODO not sure Optional will be applied to __item_type__
-            # But to be honest, hiku does not support Optional Sequence type
             return ast.ListTypeNode(type=_encode_type(val.__item_type__))
         elif isinstance(val, AnyMeta):
-            return str(val)  # TODO maybe just Any ?
+            return 'Any'
         elif isinstance(val, FloatMeta):
             return 'Float'
-        elif isinstance(val, UnionMeta):
-            return val.__type_name__  # TODO not sure
         elif val is None:
-            return '' # TODO empty string correct?
+            return ''
         else:
             raise TypeError('Unsupported type: {!r}'.format(val))
 
@@ -106,25 +100,16 @@ def _encode_default_value(value) -> Optional[ast.ValueNode]:
 
     if value is None:
         return ast.NullValueNode()
-    # Others serialize based on their corresponding Python scalar types.
+
     if isinstance(value, bool):
         return ast.BooleanValueNode(value=value)
 
-    # Python ints and floats correspond nicely to Int and Float values.
     if isinstance(value, int):
         return ast.IntValueNode(value=f"{value:d}")
     if isinstance(value, float) and isfinite(value):
         return ast.FloatValueNode(value=f"{value:g}")
 
     if isinstance(value, str):
-        # TODO # Enum types use Enum literals.
-        # if is_enum_type(type_):
-        #     return EnumValueNode(value=serialized)
-
-        # # TODO ID types can use Int literals.
-        # if type_ is GraphQLID and _re_integer_string.match(serialized):
-        #     return IntValueNode(value=serialized)
-
         return ast.StringValueNode(value=value)
 
     raise TypeError(f"Cannot convert value to AST: {inspect(value)}.")
@@ -160,7 +145,7 @@ def _encode_directive_arg_type(value) -> Type[ast.ValueNode]:
 
 # GraphVisitor
 class Exporter(GraphVisitor):
-    def visit_graph(self, obj: FederatedGraph):
+    def visit_graph(self, obj: Graph):
         """List of ObjectTypeDefinitionNode and ObjectTypeExtensionNode"""
         return [self.visit(item) for item in obj.items]
 
@@ -219,7 +204,7 @@ class Exporter(GraphVisitor):
         )
 
 
-def get_ast(graph: FederatedGraph) -> ast.DocumentNode:
+def get_ast(graph: Graph) -> ast.DocumentNode:
     graph = _StripGraph().visit(graph)
     return ast.DocumentNode(definitions=Exporter().visit(graph))
 
@@ -256,6 +241,6 @@ class _StripGraph(GraphTransformer):
         )
 
 
-def print_sdl(graph: FederatedGraph) -> str:
+def print_sdl(graph: Graph) -> str:
     """Print graphql AST into a string"""
     return print_ast(get_ast(graph))

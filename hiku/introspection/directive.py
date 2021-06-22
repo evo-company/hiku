@@ -14,13 +14,12 @@ from hiku.introspection.types import (
 )
 
 
-# TODO one Arg represents introspection and holds value, thats inconvenient
 from hiku.utils import cached_property
 
 
 class Arg(NamedTuple):
     name: str
-    value: Any # TODO can be boolean, string etc.
+    value: Any
     description: str
     type: Any
 
@@ -41,7 +40,6 @@ class Directive(ABC):
         return OrderedDict((arg.name, arg) for arg in self.args)
 
     def value_info(self, fields):
-        """TODO value info is a hack, need visitor"""
         info = {'name': self.name,
                 'description': self.description,
                 'locations': self.locations}

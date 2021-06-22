@@ -7,16 +7,14 @@ from federation.directive import (
     ExternalDirective,
     ProvidesDirective,
 )
-from federation.graph import (
-    FederatedGraph,
-)
-from federation.introspection import FederatedGraphQLIntrospection
+from federation.endpoint import FederatedGraphQLEndpoint
+from federation.engine import Engine
 from hiku.graph import (
     Root,
     Field,
     Node,
-    apply,
     Link,
+    Graph,
 )
 from hiku.introspection.directive import (
     Directive,
@@ -28,95 +26,12 @@ from hiku.introspection.types import (
     SCALAR,
 )
 from hiku.types import String, Integer, Sequence, TypeRef
-from hiku.result import denormalize
-from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
-from hiku.validate.query import validate
-from hiku.readers.graphql import read
+from test_federation.utils import INTROSPECTION_QUERY
 
 
 def _noop():
     raise NotImplementedError
-
-
-QUERY = """
-query IntrospectionQuery {
-    __schema {
-        queryType { name }
-        mutationType { name }
-        types { ...FullType }
-        directives {
-            name
-            description
-            locations
-            args { ...InputValue }
-        }
-    }
-}
-
-fragment FullType on __Type {
-    kind
-    name
-    description
-    fields(includeDeprecated: true) {
-        name
-        description
-        args { ...InputValue }
-        type { ...TypeRef }
-        isDeprecated
-        deprecationReason
-    }
-    inputFields { ...InputValue }
-    interfaces { ...TypeRef }
-    enumValues(includeDeprecated: true) {
-        name
-        description
-        isDeprecated
-        deprecationReason
-    }
-    possibleTypes { ...TypeRef }
-}
-
-fragment InputValue on __InputValue {
-    name
-    description
-    type { ...TypeRef }
-    defaultValue
-}
-
-fragment TypeRef on __Type {
-    kind
-    name
-    ofType {
-        kind
-        name
-        ofType {
-            kind
-            name
-            ofType {
-                kind
-                name
-                ofType {
-                    kind
-                    name
-                    ofType {
-                    kind
-                    name
-                        ofType {
-                        kind
-                        name
-                            ofType {
-                                kind
-                                name
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-"""
 
 
 def _non_null(t):
@@ -139,18 +54,12 @@ def _iobj(name):
     return {'kind': 'INPUT_OBJECT', 'name': name, 'ofType': None}
 
 
-def _union(name, possible_types = None):
-    union = {
+def _union(name, possible_types=None):
+    return {
         'kind': 'UNION',
         'name': name,
+        'possibleTypes': possible_types
     }
-
-    if possible_types:
-        union["possibleTypes"] = possible_types
-    else:
-        union["ofType"] = None
-
-    return union
 
 def _seq_of(_type):
     return {'kind': 'NON_NULL', 'name': None,
@@ -236,7 +145,7 @@ def _schema(types, with_mutation=False) -> dict:
             ],
             'mutationType': {'name': 'Mutation'} if with_mutation else None,
             'queryType': {'name': 'Query'},
-            'types': SCALARS + types,
+            'types': SCALARS + types + [_type('_Any', 'SCALAR')],
         }
     }
 
@@ -247,22 +156,20 @@ SCALARS = [
     _type('Boolean', 'SCALAR'),
     _type('Float', 'SCALAR'),
     _type('Any', 'SCALAR'),
-    _type('_Any', 'SCALAR'),
 ]
 
 
-def introspect(query_graph, mutation_graph=None):
-    engine = Engine(SyncExecutor())
-    query_graph = apply(query_graph, [
-        FederatedGraphQLIntrospection(query_graph, mutation_graph),
-    ])
+def execute(graph, query_string):
+    graphql_endpoint = FederatedGraphQLEndpoint(
+        Engine(SyncExecutor()),
+        graph,
+    )
 
-    query = read(QUERY)
-    errors = validate(query_graph, query)
-    assert not errors
+    return graphql_endpoint.dispatch(query_string)
 
-    norm_result = engine.execute(query_graph, query)
-    return denormalize(query_graph, norm_result)
+
+def introspect(query_graph):
+    return execute(query_graph, {'query': INTROSPECTION_QUERY})
 
 
 AstronautNode = Node('Astronaut', [
@@ -285,7 +192,7 @@ ROOT_FIELDS = [
 ]
 
 
-GRAPH = FederatedGraph([
+GRAPH = Graph([
     AstronautNode,
     Root(ROOT_FIELDS),
 ])
@@ -293,6 +200,7 @@ GRAPH = FederatedGraph([
 
 class TestFederatedGraphIntrospection(TestCase):
     def test_federated_introspection_query_entities(self):
+        self.maxDiff = None
         exp = _schema([
             _type('Astronaut', 'OBJECT', fields=[
                 _field('id', _non_null(_INT)),
@@ -303,8 +211,7 @@ class TestFederatedGraphIntrospection(TestCase):
                 _field('astronauts', _seq_of(_obj('Astronaut'))),
                 _field(
                     '_entities',
-                    # TODO _seq_of_nullable(_union('_Entity', [_obj('Astronaut')])),
-                    _seq_of_nullable(_union('_Entity')),
+                    _seq_of_nullable(_union('_Entity', [_obj('Astronaut')])),
                     args=[
                         _ival(
                             'representations',
@@ -316,4 +223,4 @@ class TestFederatedGraphIntrospection(TestCase):
             ]),
         ])
         got = introspect(GRAPH)
-        self.assertEqual(exp, got)
+        self.assertEqual(exp, got['data'])
