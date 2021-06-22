@@ -292,15 +292,6 @@ GRAPH = FederatedGraph([
 
 
 class TestFederatedGraphIntrospection(TestCase):
-    def test_apply_introspection_graph(self):
-        query_graph = apply(GRAPH, [
-            FederatedGraphQLIntrospection(GRAPH),
-        ])
-        self.assertIn('astronauts', query_graph.root.fields_map)
-        entities = list(filter(lambda x: x.name == '_entities', query_graph.root.fields))
-        self.assertEqual(len(entities), 1)
-        self.assertIn('_entities', query_graph.root.fields_map)
-
     def test_federated_introspection_query_entities(self):
         exp = _schema([
             _type('Astronaut', 'OBJECT', fields=[
