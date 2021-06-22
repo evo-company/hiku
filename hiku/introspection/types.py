@@ -21,7 +21,7 @@ DIRECTIVE = _namedtuple('DIRECTIVE', 'name')
 INPUT_OBJECT = _namedtuple('INPUT_OBJECT', 'name')
 LIST = _namedtuple('LIST', 'of_type')
 NON_NULL = _namedtuple('NON_NULL', 'of_type')
-UNION = _namedtuple('UNION', 'name, possible_types')
+UNION = _namedtuple('UNION', 'name')
 
 FieldIdent = _namedtuple('FieldIdent', 'node, name')
 FieldArgIdent = _namedtuple('FieldArgIdent', 'node, field, name')

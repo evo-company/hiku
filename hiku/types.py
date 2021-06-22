@@ -18,16 +18,6 @@ class GenericMeta(type):
         raise NotImplementedError(type(cls))
 
 
-class AnyMeta(GenericMeta):
-
-    def accept(cls, visitor):
-        return visitor.visit_any(cls)
-
-
-class Any(metaclass=AnyMeta):
-    pass
-
-
 class BooleanMeta(GenericMeta):
 
     def accept(cls, visitor):
@@ -92,6 +82,23 @@ class TypingMeta(GenericMeta):
             return super(TypingMeta, self).__repr__()
 
 
+# TODO(extensible)
+class AnyMeta(TypingMeta):
+
+    def __cls_init__(cls, name=None):
+        cls.__type_name__ = name or 'Any'
+
+    def __cls_repr__(self):
+        return '{}[{!r}]'.format(self.__name__, self.__type_name__)
+
+    def accept(cls, visitor):
+        return visitor.visit_any(cls)
+
+
+class Any(metaclass=AnyMeta):
+    pass
+
+
 class OptionalMeta(TypingMeta):
 
     def __cls_init__(cls, type_):
@@ -124,14 +131,13 @@ class Sequence(metaclass=SequenceMeta):
     pass
 
 
+# TODO I was suggested to not to add this union type
 class UnionMeta(TypingMeta):
-    def __cls_init__(cls, item_types):
-        cls.__item_types__ = tuple(
-            _maybe_typeref(item_type) for item_type in item_types
-        )
+    def __cls_init__(cls, type_name):
+        cls.__type_name__ = type_name
 
     def __cls_repr__(self):
-        return '{}[{!r}]'.format(self.__name__, self.__item_types__)
+        return '{}[{!r}]'.format(self.__name__, self.__type_name__)
 
     def accept(cls, visitor):
         return visitor.visit_union(cls)
@@ -300,8 +306,10 @@ class TypeVisitor(AbstractTypeVisitor):
         self.visit(obj.__item_type__)
 
     def visit_union(self, obj):
-        for item_type in obj.__item_types__:
-            self.visit(item_type)
+        # TODO very dumb implementation
+        return obj.__type_name__
+        # for item_type in obj.__item_types__:
+        #     self.visit(item_type)
 
     def visit_mapping(self, obj):
         self.visit(obj.__key_type__)
