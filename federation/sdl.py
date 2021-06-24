@@ -2,13 +2,14 @@ from math import isfinite
 from typing import (
     Type,
     Optional,
+    Iterable,
+    List,
 )
 
 from graphql.language.printer import print_ast
 from graphql.language import ast
 from graphql.pyutils import (
     inspect,
-    FrozenList,
 )
 
 from hiku.graph import (
@@ -20,6 +21,7 @@ from hiku.graph import (
     Root,
     GraphTransformer,
     Graph,
+    Option,
 )
 from hiku.introspection.directive import (
     Directive,
@@ -38,6 +40,7 @@ from hiku.types import (
     AnyMeta,
     FloatMeta,
     BooleanMeta,
+    Record,
 )
 
 
@@ -112,6 +115,11 @@ def _encode_default_value(value) -> Optional[ast.ValueNode]:
     if isinstance(value, str):
         return ast.StringValueNode(value=value)
 
+    if isinstance(value, Iterable) and not isinstance(value, str):
+        maybe_value_nodes = (_encode_default_value(item) for item in value)
+        value_nodes = list(filter(None, maybe_value_nodes))
+        return ast.ListValueNode(values=[value_nodes])
+
     raise TypeError(f"Cannot convert value to AST: {inspect(value)}.")
 
 
@@ -145,9 +153,17 @@ def _encode_directive_arg_type(value) -> Type[ast.ValueNode]:
 
 # GraphVisitor
 class Exporter(GraphVisitor):
-    def visit_graph(self, obj: Graph):
+    def visit_graph(self, obj: Graph) -> List[ast.DefinitionNode]:
         """List of ObjectTypeDefinitionNode and ObjectTypeExtensionNode"""
-        return [self.visit(item) for item in obj.items]
+        return [
+            self.get_any_type(),
+            *[self.visit_record(type_name, type_)
+              for type_name, type_ in obj.data_types.items()],
+            *[self.visit(item) for item in obj.items]
+        ]
+
+    def get_any_type(self):
+        return ast.ScalarTypeDefinitionNode(name=_name('Any'))
 
     def visit_root(self, obj: Root):
         return ast.ObjectTypeExtensionNode(
@@ -159,13 +175,15 @@ class Exporter(GraphVisitor):
     def visit_field(self, obj: Field):
         return ast.FieldDefinitionNode(
             name=_name(obj.name),
-            type=_encode_type(obj.type)
+            type=_encode_type(obj.type),
+            arguments=[self.visit_option(o) for o in obj.options],
+            directives=[self.visit_directive(d) for d in obj.directives]
         )
 
     def visit_directive(self, obj: Directive):
         return ast.DirectiveNode(
             name=_name(obj.name),
-            arguments=FrozenList([self.visit_directive_arg(arg) for arg in obj.args])
+            arguments=[self.visit_directive_arg(arg) for arg in obj.args]
         )
 
     def visit_directive_arg(self, arg: Arg):
@@ -175,32 +193,39 @@ class Exporter(GraphVisitor):
         )
 
     def visit_node(self, obj: Node):
-        fields = [self.visit_field(field) for field in obj.fields]
-
-        directives = []
-        if obj.directives:
-            directives = FrozenList([self.visit_directive(d) for d in obj.directives])
+        fields = [self.visit(field) for field in obj.fields]
 
         return ast.ObjectTypeDefinitionNode(
             name=_name(obj.name),
             fields=fields,
-            directives=directives
+            directives=[self.visit_directive(d) for d in obj.directives]
         )
 
     def visit_link(self, obj: Link):
-        arguments = []
-        if obj.options:
-            for opt in obj.options:
-                arguments.append(ast.InputValueDefinitionNode(
-                    name=_name(opt.name),
-                    description=opt.description,
-                    type=_encode_type(opt.type),
-                    default_value=_encode_default_value(opt.default),
-                ))
         return ast.FieldDefinitionNode(
             name=_name(obj.name),
-            arguments=arguments,
+            arguments=[self.visit_option(o) for o in obj.options],
             type=_encode_type(obj.type)
+        )
+
+    def visit_option(self, obj: Option):
+        return ast.InputValueDefinitionNode(
+            name=_name(obj.name),
+            description=obj.description,
+            type=_encode_type(obj.type),
+            default_value=_encode_default_value(obj.default),
+        )
+
+    def visit_record(self, type_name: str, obj: Record):
+        def new_field(name: str, type_):
+            return ast.FieldDefinitionNode(
+                name=_name(name),
+                type=_encode_type(type_),
+            )
+        fields = [new_field(f_name, field) for f_name, field in obj.__field_types__.items()]
+        return ast.ObjectTypeDefinitionNode(
+            name=_name(type_name),
+            fields=fields,
         )
 
 

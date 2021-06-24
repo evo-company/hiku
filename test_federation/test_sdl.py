@@ -1,6 +1,10 @@
 from unittest import TestCase
 
-from federation.directive import KeyDirective
+from federation.directive import (
+    KeyDirective,
+    ExternalDirective,
+    ExtendsDirective,
+)
 from federation.endpoint import FederatedGraphQLEndpoint
 from federation.engine import Engine
 from federation.introspection import FederatedGraphQLIntrospection
@@ -21,6 +25,7 @@ from hiku.types import (
     TypeRef,
     Sequence,
     Optional,
+    Record,
 )
 
 
@@ -28,41 +33,56 @@ def mock_link(): pass
 def mock_resolver(): pass
 
 
-AstronautLink = Link(
-    'astronaut',
-    TypeRef['Astronaut'],
-    mock_link,
-    requires=None,
-    options=[
-        Option('id', Optional[Integer])
-    ],
-)
+def noop_resolver(ids):
+    raise Exception(f'noop resolver entered with {ids}')
 
-AstronautsLink = Link(
-    'astronauts',
-    Sequence[TypeRef['Astronaut']],
-    mock_link,
-    requires=None,
-    options=None,
-)
 
-AstronautNode = Node('Astronaut', [
-    Field('id', Integer, mock_resolver),
-    Field('name', String, mock_resolver),
-    Field('age', Integer, mock_resolver),
-], directives=[
-    KeyDirective('id')
-])
+def cart_order_resolver(ids):
+    raise Exception(f'cart->order resolver entered with {ids}')
 
-ROOT_FIELDS = [
-    AstronautLink,
-    AstronautsLink,
-]
+
+data_types = {
+    'Status': Record[{
+        'id': Integer,
+        'title': String,
+    }],
+}
+
 
 GRAPH = Graph([
-    AstronautNode,
-    Root(ROOT_FIELDS),
-])
+    Node('Order', [
+        Field('cartId', Integer, noop_resolver,
+              directives=[ExternalDirective()]),
+        Field('cart', TypeRef['Cart'], cart_order_resolver),
+    ], directives=[KeyDirective('cartId'), ExtendsDirective()]),
+    Node('Cart', [
+        Field('id', Integer, mock_resolver),
+        Field('status', TypeRef['Status'], mock_resolver),
+        Link('items', Sequence[TypeRef['CartItem']], mock_link,
+             requires='id')
+    ], directives=[KeyDirective('id')]),
+    Node('CartItem', [
+        Field('id', Integer, mock_resolver),
+        Field('cart_id', Integer, mock_resolver),
+        Field('name', String, mock_resolver),
+        Field('photo', Optional[String], lambda: None, options=[
+            Option('width', Integer),
+            Option('height', Integer),
+        ]),
+    ]),
+    Root([
+        Link(
+            'cart',
+            Optional[TypeRef['Cart']],
+            mock_link,
+            requires=None,
+            options=[
+                Option('id', Integer)
+            ],
+        ),
+    ]),
+], data_types=data_types)
+
 
 INTROSPECTED_GRAPH = apply(GRAPH, [
     FederatedGraphQLIntrospection(GRAPH),
@@ -80,31 +100,69 @@ def execute(graph, query_string):
 
 class TestSDL(TestCase):
     def test_print_graph_sdl(self):
-        sdlected = print_sdl(GRAPH)
+        sdl = print_sdl(GRAPH)
         expected = [
-            'type Astronaut @key(fields: "id") {',
+            'scalar Any',
+            '',
+            'type Status {',
             '  id: Int!',
+            '  title: String!',
+            '}',
+            '',
+            'type Order @key(fields: "cartId") @extends {',
+            '  cartId: Int! @external',
+            '  cart: Cart!',
+            '}',
+            '',
+            'type Cart @key(fields: "id") {',
+            '  id: Int!',
+            '  status: Status!',
+            '  items: [CartItem!]!',
+            '}',
+            '',
+            'type CartItem {',
+            '  id: Int!',
+            '  cart_id: Int!',
             '  name: String!',
-            '  age: Int!', '}',
+            '  photo(width: Int!, height: Int!): String',
+            '}',
             '',
             'extend type Query {',
-            '  astronaut(id: Int): Astronaut!',
-            '  astronauts: [Astronaut!]!',
+            '  cart(id: Int!): Cart',
             '}'
         ]
-        self.assertEqual(sdlected.splitlines(), expected)
+        self.assertEqual(sdl.splitlines(), expected)
 
     def test_print_introspected_graph_sdl(self):
-        sdlected = print_sdl(INTROSPECTED_GRAPH)
+        sdl = print_sdl(INTROSPECTED_GRAPH)
         expected = [
-            'type Astronaut @key(fields: "id") {',
+            'scalar Any',
+            '',
+            'type Status {',
             '  id: Int!',
+            '  title: String!',
+            '}',
+            '',
+            'type Order @key(fields: "cartId") @extends {',
+            '  cartId: Int! @external',
+            '  cart: Cart!',
+            '}',
+            '',
+            'type Cart @key(fields: "id") {',
+            '  id: Int!',
+            '  status: Status!',
+            '  items: [CartItem!]!',
+            '}',
+            '',
+            'type CartItem {',
+            '  id: Int!',
+            '  cart_id: Int!',
             '  name: String!',
-            '  age: Int!', '}',
+            '  photo(width: Int!, height: Int!): String',
+            '}',
             '',
             'extend type Query {',
-            '  astronaut(id: Int): Astronaut!',
-            '  astronauts: [Astronaut!]!',
+            '  cart(id: Int!): Cart',
             '}'
         ]
-        self.assertEqual(sdlected.splitlines(), expected)
+        self.assertEqual(sdl.splitlines(), expected)
