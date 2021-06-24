@@ -91,10 +91,27 @@ class ExternalDirective(Directive):
     https://www.apollographql.com/docs/federation/federation-spec/#external
     """
     name = 'external'
-    locations = ['external']
+    locations = ['FIELD_DEFINITION']
     description = (
         'The @external directive is used to mark a field '
         'as owned by another service.'
+    )
+
+    @property
+    def args(self) -> List[Arg]:
+        return []
+
+
+class ExtendsDirective(Directive):
+    """
+    Apollo Federation supports using an @extends directive in place of extend
+    type to annotate type references
+    https://www.apollographql.com/docs/federation/federation-spec/
+    """
+    name = 'extends'
+    locations = ['OBJECT', 'INTERFACE']
+    description = (
+        'The @extends directive is used instead of "extend type" syntax.'
     )
 
     @property
