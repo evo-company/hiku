@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from asyncio import gather
 from contextlib import contextmanager
 from federation.engine import (
     get_keys,
@@ -45,22 +46,17 @@ def _process_query(graph, query):
 
 
 def denormalize_entity(entity, result):
-    res = {}
-    index = result.__idx__
-
-    def _denormalize(val):
-        if isinstance(val, list):
-            return [_denormalize(item) for item in val]
-        elif isinstance(val, Reference):
-            data = index[val.node]
-            return data[val.ident]
+    def _denormalize(value):
+        if isinstance(value, list):
+            return [_denormalize(item) for item in value]
+        if isinstance(value, dict):
+            return {key: _denormalize(val) for key, val in value.items() if not key.startswith('_')}
+        elif isinstance(value, Reference):
+            return _denormalize(result.__idx__[value.node][value.ident])
         else:
-            return val
+            return value
 
-    for key, val in entity.items():
-        res[key] = _denormalize(val)
-
-    return res
+    return _denormalize(entity)
 
 
 def denormalize_entities(
@@ -117,7 +113,7 @@ class BaseFederatedGraphEndpoint(BaseGraphQLEndpoint):
 
         data = DenormalizeGraphQL(graph, result.data, type_name).process(op.query)
         if is_introspection_query(op.query):
-            extend_with_federation(data)
+            extend_with_federation(graph, data)
         return data
 
 
@@ -151,7 +147,7 @@ class AsyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
 
     async def execute(self, graph: Graph, op, ctx):
         stripped_query = _process_query(graph, op.query)
-        result = await self.engine.execute(graph, stripped_query, ctx)
+        result = await self.engine.execute_async(graph, stripped_query, ctx)
         return self.postprocess_result(result, graph, op)
 
     async def dispatch(self, data):
@@ -159,8 +155,20 @@ class AsyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
             graph, op = _switch_graph(
                 data, self.query_graph, self.mutation_graph,
             )
+
             with self.context(op) as ctx:
                 result = await self.execute(graph, op, ctx)
             return {'data': result}
         except GraphQLError as e:
             return {'errors': [{'message': e} for e in e.errors]}
+
+
+class AsyncBatchFederatedGraphQLEndpoint(AsyncFederatedGraphQLEndpoint):
+    async def dispatch(self, data):
+        if isinstance(data, list):
+            return await gather(*(
+                super().dispatch(item)
+                for item in data
+            ))
+        else:
+            return await super().dispatch(data)
