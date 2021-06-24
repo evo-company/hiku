@@ -6,7 +6,11 @@ from typing import (
 
 from flask import Flask, request, jsonify
 
-from federation.directive import KeyDirective
+from federation.directive import (
+    KeyDirective,
+    ExternalDirective,
+    ExtendsDirective,
+)
 from federation.endpoint import FederatedGraphQLEndpoint
 from federation.engine import Engine
 from hiku.graph import (
@@ -21,75 +25,110 @@ from hiku.types import (
     Integer,
     TypeRef,
     String,
-    Sequence,
     Optional,
+    Sequence,
 )
 from hiku.executors.sync import SyncExecutor
 
 log = logging.getLogger(__name__)
 
 
-class Astronaut(TypedDict):
+class Cart(TypedDict):
     id: int
+    status: str
+
+
+class CartItem(TypedDict):
+    id: int
+    cart_id: int
     name: str
-    age: int
 
 
-default_astronaut = Astronaut(id=99, name='Default Astro', age=99)
-astronauts = {
-    1: Astronaut(id=1, name='Max', age=20),
-    2: Astronaut(id=2, name='Bob', age=25),
+def get_by_id(id_, collection):
+    for item in collection:
+        if item['id'] == id_:
+            return item
+
+
+def find_all_by_id(id_, collection, key='id'):
+    for item in collection:
+        if item[key] == id_:
+            yield item
+
+
+data = {
+    'carts': [
+        Cart(id=1, status='NEW'),
+        Cart(id=2, status='ORDERED'),
+    ],
+    'cart_items': [
+        CartItem(id=10, cart_id=1, name='Ipad'),
+        CartItem(id=20, cart_id=2, name='Book'),
+        CartItem(id=21, cart_id=2, name='Pen'),
+    ]
 }
 
 
-def astronaut_resolver(fields, ids):
-    def _get_field(f: Field, astronaut: Astronaut):
-        if f.name == 'id':
-            return astronaut['id']
-        if f.name == 'name':
-            return astronaut['name']
-        if f.name == 'age':
-            return astronaut['age']
+def cart_resolver(fields, ids):
+    for cart_id in ids:
+        cart = get_by_id(cart_id, data['carts'])
+        yield [cart[f.name] for f in fields]
 
-    res = []
 
-    for astro_id in ids:
-        astronaut = astronauts.get(astro_id, default_astronaut)
-        res.append([_get_field(f, astronaut) for f in fields])
+def cart_item_resolver(fields, ids):
+    for item_id in ids:
+        item = get_by_id(item_id, data['cart_items'])
+        yield [item[f.name] for f in fields]
 
-    return res
+
+def link_cart_items(cart_ids):
+    for cart_id in cart_ids:
+        yield [item['id'] for item
+               in find_all_by_id(cart_id, data['cart_items'], key='cart_id')]
 
 
 def direct_link_id(opts):
     return opts['id']
 
 
-def link_astronauts():
-    return [1, 2]
+def ids_resolver(fields, ids):
+    return [[id_] for id_ in ids]
+
+
+def direct_link(ids):
+    return ids
 
 
 QUERY_GRAPH = Graph([
-   Node('Astronaut', [
-        Field('id', Integer, astronaut_resolver),
-        Field('name', String, astronaut_resolver),
-        Field('age', Integer, astronaut_resolver),
+    Node('Order', [
+        Field('cartId', Optional[Integer], ids_resolver,
+              directives=[ExternalDirective()]),
+        Link('cart', TypeRef['Cart'], direct_link, requires='cartId'),
+    ], directives=[KeyDirective('cartId'), ExtendsDirective()]),
+    Node('Cart', [
+        Field('id', Integer, cart_resolver),
+        Field('status', String, cart_resolver),
+        Link('items', Sequence[TypeRef['CartItem']], link_cart_items,
+             requires='id')
     ], directives=[KeyDirective('id')]),
+    Node('CartItem', [
+        Field('id', Integer, cart_item_resolver),
+        Field('cart_id', Integer, cart_item_resolver),
+        Field('name', String, cart_item_resolver),
+        Field('photo', Optional[String], lambda: None, options=[
+            Option('width', Integer),
+            Option('height', Integer),
+        ]),
+    ]),
     Root([
         Link(
-            'astronaut',
-            Optional[TypeRef['Astronaut']],
+            'cart',
+            Optional[TypeRef['Cart']],
             direct_link_id,
             requires=None,
             options=[
                 Option('id', Integer)
             ],
-        ),
-        Link(
-            'astronauts',
-            Sequence[TypeRef['Astronaut']],
-            link_astronauts,
-            requires=None,
-            options=None,
         ),
     ]),
 ])
@@ -104,7 +143,7 @@ graphql_endpoint = FederatedGraphQLEndpoint(
 )
 
 
-@app.route('/graphql', methods={'POST', 'OPTIONS'})
+@app.route('/graphql', methods={'POST'})
 def handle_graphql():
     data = request.get_json()
     result = graphql_endpoint.dispatch(data)
