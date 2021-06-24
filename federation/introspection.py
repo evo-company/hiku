@@ -4,6 +4,7 @@ from federation.directive import (
     ProvidesDirective,
     ExternalDirective
 )
+from hiku.graph import Graph
 from hiku.introspection.graphql import (
     GraphQLIntrospection,
     AsyncGraphQLIntrospection,
@@ -14,11 +15,12 @@ def is_introspection_query(query):
     return '__schema' in query.fields_map
 
 
-_ANY_FEDERATED = {'kind': 'SCALAR', 'name': '_Any', 'ofType': None}
-
-
 def _obj(name):
     return {'kind': 'OBJECT', 'name': name, 'ofType': None}
+
+
+def _non_null(t):
+    return {'kind': 'NON_NULL', 'name': None, 'ofType': t}
 
 
 def _union(name, possible_types=None):
@@ -42,17 +44,15 @@ def _field(name, type_, **kwargs):
     return data
 
 
-def _seq_of(_type):
-    return {'kind': 'NON_NULL', 'name': None,
-            'ofType': {'kind': 'LIST', 'name': None,
-                       'ofType': {'kind': 'NON_NULL', 'name': None,
-                                  'ofType': _type}}}
-
-
 def _seq_of_nullable(_type):
     return {'kind': 'NON_NULL', 'name': None,
             'ofType': {'kind': 'LIST', 'name': None,
                        'ofType': _type}}
+
+
+def _seq_of(_type):
+    return _seq_of_nullable({'kind': 'NON_NULL', 'name': None,
+                            'ofType': _type})
 
 
 def _ival(name, type_, **kwargs):
@@ -64,6 +64,7 @@ def _ival(name, type_, **kwargs):
     }
     data.update(kwargs)
     return data
+
 
 def _type(name, kind, **kwargs):
     data = {
@@ -80,18 +81,35 @@ def _type(name, kind, **kwargs):
     return data
 
 
-def extend_with_federation(data: dict):
-    data['__schema']['types'].append(_type('_Any', 'SCALAR'))
+def extend_with_federation(graph: Graph, data: dict):
+    union_types = []
+    for node in graph.nodes:
+        if 'key' in node.directives_map:
+            union_types.append(_obj(node.name))
 
+    data['__schema']['types'].append(_type('_Any', 'SCALAR'))
+    data['__schema']['types'].append(
+        _type('_Entity', 'UNION', possibleTypes=union_types)
+    )
+    data['__schema']['types'].append(
+        _type('_Service', 'OBJECT',
+              fields=[_field('sdl', _type('String', 'SCALAR'))])
+    )
+
+    entities_field = _field(
+        '_entities',
+        _seq_of_nullable(_union('_Entity', union_types)),
+        args=[_ival('representations', _seq_of(_type('_Any', 'SCALAR')))]
+    )
+
+    service_field = _field(
+        '_service',
+        _non_null(_obj('_Service')),
+    )
     for t in data['__schema']['types']:
         if t['kind'] == 'OBJECT' and t['name'] == 'Query':
-            t['fields'].append(
-                _field(
-                    '_entities',
-                    _seq_of_nullable(_union('_Entity', [_obj('Astronaut')])),
-                    args=[_ival('representations', _seq_of(_ANY_FEDERATED))]
-                )
-            )
+            t['fields'].append(entities_field)
+            t['fields'].append(service_field)
 
 
 class FederatedGraphQLIntrospection(GraphQLIntrospection):
