@@ -110,7 +110,7 @@ class Field(AbstractField):
     - ``ids`` - list node identifiers
 
     """
-    def __init__(self, name, type_, func, *, options=None, description=None):
+    def __init__(self, name, type_, func, *, options=None, description=None, directives=None):
         """
         :param str name: name of the field
         :param type_: type of the field or ``None``
@@ -123,6 +123,7 @@ class Field(AbstractField):
         self.func = func
         self.options = options or ()
         self.description = description
+        self.directives = directives or ()
 
     def __repr__(self):
         return '{}({!r}, {!r}, {!r})'.format(self.__class__.__name__, self.name,
@@ -131,6 +132,10 @@ class Field(AbstractField):
     @cached_property
     def options_map(self):
         return OrderedDict((op.name, op) for op in self.options)
+
+    @cached_property
+    def directives_map(self):
+        return OrderedDict((f.name, f) for f in self.directives)
 
     def accept(self, visitor):
         return visitor.visit_field(self)
@@ -287,7 +292,7 @@ class Node(AbstractNode):
         self.name = name
         self.fields = fields
         self.description = description
-        self.directives = directives
+        self.directives = directives or ()
 
     def __repr__(self):
         return '{}({!r}, {!r}, ...)'.format(self.__class__.__name__, self.name,
@@ -296,6 +301,10 @@ class Node(AbstractNode):
     @cached_property
     def fields_map(self):
         return OrderedDict((f.name, f) for f in self.fields)
+
+    @cached_property
+    def directives_map(self):
+        return OrderedDict((f.name, f) for f in self.directives)
 
     def accept(self, visitor):
         return visitor.visit_node(self)
@@ -460,7 +469,7 @@ class GraphTransformer(AbstractGraphVisitor):
     def visit_field(self, obj):
         return Field(obj.name, obj.type, obj.func,
                      options=[self.visit(op) for op in obj.options],
-                     description=obj.description)
+                     description=obj.description, directives=obj.directives)
 
     def visit_link(self, obj):
         return Link(obj.name, obj.type, obj.func,
