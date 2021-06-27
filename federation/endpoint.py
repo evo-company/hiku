@@ -1,12 +1,7 @@
 from abc import abstractmethod
 from asyncio import gather
 from contextlib import contextmanager
-from federation.engine import (
-    get_keys,
-    Result,
-    ServiceResult,
-    EntitiesResult,
-)
+from federation.engine import get_keys
 from typing import (
     List,
     Dict,
@@ -45,44 +40,28 @@ def _process_query(graph, query):
         return stripped_query
 
 
-def denormalize_entity(entity, result):
-    def _denormalize(value):
-        if isinstance(value, list):
-            return [_denormalize(item) for item in value]
-        if isinstance(value, dict):
-            return {key: _denormalize(val) for key, val in value.items() if not key.startswith('_')}
-        elif isinstance(value, Reference):
-            return _denormalize(result.__idx__[value.node][value.ident])
-        else:
-            return value
-
-    return _denormalize(entity)
-
-
 def denormalize_entities(
     graph: Graph,
     query: Node,
-    result: Proxy
+    result: Proxy,
+    type_name: str
 ) -> List[Dict[str, Any]]:
+
     entities_link = query.fields_map['_entities']
+    node = entities_link.node
     representations = entities_link.options['representations']
 
     entities = []
-    for rep in representations:
-        typename = rep['__typename']
-
-        data = result.__idx__[typename]
-        keys = get_keys(graph, typename)
-
-        # TODO implement multiple keys like ['id', 'sku']
-        entity = {}
-        for key in keys:
-            ident = rep[key]
-            entity = data[ident]
-            if isinstance(entity, dict):
-                entity = denormalize_entity(entity, result)
-
-        entities.append(entity)
+    for r in representations:
+        typename = r['__typename']
+        for key in get_keys(graph, typename):
+            if key not in r:
+                continue
+            ident = r[key]
+            result.__ref__ = Reference(typename, ident)
+            # TODO how to populate result the way to run denormalize only once ?
+            data = DenormalizeGraphQL(graph, result, type_name).process(node)
+            entities.append(data)
 
     return entities
 
@@ -101,17 +80,20 @@ class BaseFederatedGraphEndpoint(BaseGraphQLEndpoint):
         yield {}
 
     @staticmethod
-    def postprocess_result(result: Result, graph, op):
-        if isinstance(result, ServiceResult):
-            return {'_service': {'sdl': result.data}}
-        elif isinstance(result, EntitiesResult):
+    def postprocess_result(result: Proxy, graph, op):
+        if '_service' in op.query.fields_map:
+            return {'_service': {'sdl': result.__idx__['sdl']}}
+        elif '_entities' in op.query.fields_map:
+            type_name = _type_names[op.type]
             return {
-                '_entities': denormalize_entities(graph, op.query, result.data)
+                '_entities': denormalize_entities(
+                    graph, op.query, result, type_name
+                )
             }
 
         type_name = _type_names[op.type]
 
-        data = DenormalizeGraphQL(graph, result.data, type_name).process(op.query)
+        data = DenormalizeGraphQL(graph, result, type_name).process(op.query)
         if is_introspection_query(op.query):
             extend_with_federation(graph, data)
         return data
@@ -170,5 +152,5 @@ class AsyncBatchFederatedGraphQLEndpoint(AsyncFederatedGraphQLEndpoint):
                 super().dispatch(item)
                 for item in data
             ))
-        else:
-            return await super().dispatch(data)
+
+        return await super().dispatch(data)
