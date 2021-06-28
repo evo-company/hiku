@@ -1,7 +1,7 @@
 from collections import defaultdict
 
-from federation.sdl import print_sdl
-from federation.utils import get_keys
+from .sdl import print_sdl
+from .utils import get_keys
 from hiku.engine import (
     InitOptions,
     Query,
@@ -12,6 +12,11 @@ from hiku.graph import Graph
 from hiku.result import (
     Proxy,
     Index,
+    ROOT,
+)
+from ..query import (
+    Node,
+    Field,
 )
 
 
@@ -21,10 +26,11 @@ class Engine:
 
     def execute_service(self, graph):
         idx = Index()
-        idx['sdl'] = print_sdl(graph)
-        return Proxy(idx, None, None)
+        idx[ROOT.node] = Index()
+        idx[ROOT.node][ROOT.ident] = {'sdl': print_sdl(graph)}
+        return Proxy(idx, ROOT, Node(fields=[Field('sdl')]))
 
-    def _execute_entities(self, graph, query, ctx):
+    def execute_entities(self, graph, query, ctx):
         entities_link = query.fields_map['_entities']
         query = entities_link.node
         representations = entities_link.options['representations']
@@ -40,8 +46,6 @@ class Engine:
             for key in get_keys(graph, typename):
                 if key not in rep:
                     continue
-                # TODO validate - what if none keys in reps ?
-                #  Or this should be handled by federation ?
                 ident = rep[key]
 
                 type_ids_map[typename].append(ident)
@@ -53,14 +57,7 @@ class Engine:
 
         return self.executor.process(queue, query_workflow)
 
-    # TODO For AnyIOExecutor this can fail
-    def execute_entities(self, graph, query, ctx):
-        return self._execute_entities(graph, query, ctx)
-
-    async def execute_entities_async(self, graph, query, ctx):
-        return await self._execute_entities(graph, query, ctx)
-
-    def _execute_query(self, graph, query, ctx):
+    def execute_query(self, graph, query, ctx):
         query = InitOptions(graph).visit(query)
         queue = Queue(self.executor)
         task_set = queue.fork(None)
@@ -68,13 +65,6 @@ class Engine:
 
         query_workflow.start()
         return self.executor.process(queue, query_workflow)
-
-    # TODO For AnyIOExecutor this can fail
-    def execute_query(self, graph, query, ctx):
-        return self._execute_query(graph, query, ctx)
-
-    async def execute_query_async(self, graph, query, ctx):
-        return await self._execute_query(graph, query, ctx)
 
     def execute(self, graph: Graph, query, ctx=None) -> Proxy:
         if ctx is None:
@@ -86,14 +76,3 @@ class Engine:
             return self.execute_entities(graph, query, ctx)
 
         return self.execute_query(graph, query, ctx)
-
-    async def execute_async(self, graph: Graph, query, ctx=None) -> Proxy:
-        if ctx is None:
-            ctx = {}
-
-        if '_service' in query.fields_map:
-            return self.execute_service(graph)
-        elif '_entities' in query.fields_map:
-            return await self.execute_entities_async(graph, query, ctx)
-
-        return await self.execute_query_async(graph, query, ctx)

@@ -1,8 +1,8 @@
-from federation.directive import (
-    KeyDirective,
-    RequiresDirective,
-    ProvidesDirective,
-    ExternalDirective
+from .directive import (
+    Key,
+    Requires,
+    Provides,
+    External
 )
 from hiku.graph import Graph
 from hiku.introspection.graphql import (
@@ -117,18 +117,18 @@ class FederatedGraphQLIntrospection(GraphQLIntrospection):
     Federation-aware introspection
     https://www.apollographql.com/docs/federation/federation-spec/#federation-schema-specification
     """
-    def __init__(self, query_graph, mutation_graph=None, directives=None, scalars=None):
+    def __init__(self, query_graph, mutation_graph=None, directives=None):
         if not directives:
             directives = []
 
         directives.extend([
-            KeyDirective(),
-            RequiresDirective(),
-            ProvidesDirective(),
-            ExternalDirective()
+            Key(),
+            Requires(),
+            Provides(),
+            External()
         ])
 
-        super().__init__(query_graph, mutation_graph, directives, scalars)
+        super().__init__(query_graph, mutation_graph, directives)
 
 
 class AsyncFederatedGraphQLIntrospection(

@@ -1,31 +1,21 @@
-from typing import (
-    List,
-    Optional,
-)
+from typing import List, Optional
 
-from hiku.introspection.directive import (
-    Directive,
-    Arg,
-)
-from hiku.introspection.types import (
-    SCALAR,
-    NON_NULL,
-)
+from hiku.directive import Directive, Arg
+from hiku.types import String
 
 
-class KeyDirective(Directive):
-    # key is a key arg with value
+class Key(Directive):
+    """https://www.apollographql.com/docs/federation/federation-spec/#key"""
     def __init__(self, key: Optional[str] = None):
         self._args = [
             Arg(
                 name='fields',
                 description='',
-                type=NON_NULL(SCALAR('String')),
+                type=String,
                 value=key
             )
         ]
 
-    """https://www.apollographql.com/docs/federation/federation-spec/#key"""
     name = 'key'
     locations = ['OBJECT', 'INTERFACE']
     description = (
@@ -39,7 +29,7 @@ class KeyDirective(Directive):
         return self._args
 
 
-class ProvidesDirective(Directive):
+class Provides(Directive):
     """
     https://www.apollographql.com/docs/federation/federation-spec/#provides
     """
@@ -57,13 +47,13 @@ class ProvidesDirective(Directive):
             Arg(
                 name='fields',
                 description='',
-                type=NON_NULL(SCALAR('String')),
+                type=String,
                 value=None
             )
         ]
 
 
-class RequiresDirective(Directive):
+class Requires(Directive):
     """
     https://www.apollographql.com/docs/federation/federation-spec/#requires
     """
@@ -80,13 +70,13 @@ class RequiresDirective(Directive):
             Arg(
                 name='fields',
                 description='',
-                type=NON_NULL(SCALAR('String')),
+                type=String,
                 value=None
             )
         ]
 
 
-class ExternalDirective(Directive):
+class External(Directive):
     """
     https://www.apollographql.com/docs/federation/federation-spec/#external
     """
@@ -102,7 +92,7 @@ class ExternalDirective(Directive):
         return []
 
 
-class ExtendsDirective(Directive):
+class Extends(Directive):
     """
     Apollo Federation supports using an @extends directive in place of extend
     type to annotate type references

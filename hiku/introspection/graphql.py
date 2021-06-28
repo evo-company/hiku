@@ -5,10 +5,7 @@ import typing as t
 from functools import partial
 from collections import OrderedDict
 
-from .directive import (
-    get_default_directives,
-    Directive,
-)
+from ..directive import get_default_directives, Directive
 from ..graph import Graph, Root, Node, Link, Option, Field, Nothing
 from ..graph import GraphVisitor, GraphTransformer
 from ..types import (
@@ -55,14 +52,11 @@ class SchemaInfo:
         query_graph: Graph,
         mutation_graph: t.Optional[Graph] = None,
         directives: t.Optional[Directive] = None,
-        scalars: t.Optional[SCALAR] = None,
     ):
         self.query_graph = query_graph
         self.data_types = query_graph.data_types
         self.mutation_graph = mutation_graph
-
         self.directives = get_default_directives() + (directives or [])
-        self.scalars = get_default_scalars() + (scalars or [])
 
     @cached_property
     def directives_map(self):
@@ -173,20 +167,13 @@ def type_link(schema, options):
         return Nothing
 
 
-def get_default_scalars():
-    return [
-        SCALAR('String'),
-        SCALAR('Int'),
-        SCALAR('Boolean'),
-        SCALAR('Float'),
-        SCALAR('Any')
-    ]
-
-
 @listify
 def root_schema_types(schema: SchemaInfo):
-    for scalar in schema.scalars:
-        yield scalar
+    yield SCALAR('String')
+    yield SCALAR('Int')
+    yield SCALAR('Boolean')
+    yield SCALAR('Float')
+    yield SCALAR('Any')
 
     for name in _nodes_map(schema):
         yield OBJECT(name)
@@ -393,7 +380,7 @@ def input_value_type_link(schema, ids):
         elif isinstance(ident, DirectiveArgIdent):
             directive = schema.directives_map[ident.name]
             for arg in directive.args:
-                yield arg.type
+                yield type_ident.visit(arg.type)
         else:
             raise TypeError(repr(ident))
 
@@ -403,7 +390,10 @@ def directive_value_info(schema, fields, ids):
     for ident in ids:
         if ident.name in schema.directives_map:
             directive = schema.directives_map[ident.name]
-            yield from directive.value_info(fields)
+            info = {'name': directive.name,
+                    'description': directive.description,
+                    'locations': directive.locations}
+            yield [info[f.name] for f in fields]
 
 
 def directive_args_link(schema, ids):
@@ -643,7 +633,6 @@ class GraphQLIntrospection(GraphTransformer):
         query_graph,
         mutation_graph=None,
         directives=None,
-        scalars=None
     ):
         """
         :param query_graph: graph, where Root node represents Query root
@@ -651,13 +640,11 @@ class GraphQLIntrospection(GraphTransformer):
         :param mutation_graph: graph, where Root node represents Mutation root
             operation type
         :param directives: custom directives
-        :param scalars: custom scalars
         """
         self._schema = SchemaInfo(
             query_graph,
             mutation_graph,
             directives,
-            scalars
         )
 
     def __type_name__(self, node_name):

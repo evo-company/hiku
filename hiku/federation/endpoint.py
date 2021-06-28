@@ -1,20 +1,20 @@
 from abc import abstractmethod
 from asyncio import gather
 from contextlib import contextmanager
-from federation.engine import get_keys
 from typing import (
     List,
     Dict,
     Any,
 )
 
-from federation.introspection import (
+from .utils import get_keys
+from .introspection import (
     FederatedGraphQLIntrospection,
     AsyncFederatedGraphQLIntrospection,
     is_introspection_query,
     extend_with_federation,
 )
-from federation.validate import validate
+from .validate import validate
 
 from hiku.denormalize.graphql import (
     DenormalizeGraphQL,
@@ -59,7 +59,6 @@ def denormalize_entities(
                 continue
             ident = r[key]
             result.__ref__ = Reference(typename, ident)
-            # TODO how to populate result the way to run denormalize only once ?
             data = DenormalizeGraphQL(graph, result, type_name).process(node)
             entities.append(data)
 
@@ -82,7 +81,7 @@ class BaseFederatedGraphEndpoint(BaseGraphQLEndpoint):
     @staticmethod
     def postprocess_result(result: Proxy, graph, op):
         if '_service' in op.query.fields_map:
-            return {'_service': {'sdl': result.__idx__['sdl']}}
+            return {'_service': {'sdl': result['sdl']}}
         elif '_entities' in op.query.fields_map:
             type_name = _type_names[op.type]
             return {
@@ -129,7 +128,7 @@ class AsyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
 
     async def execute(self, graph: Graph, op, ctx):
         stripped_query = _process_query(graph, op.query)
-        result = await self.engine.execute_async(graph, stripped_query, ctx)
+        result = await self.engine.execute(graph, stripped_query, ctx)
         return self.postprocess_result(result, graph, op)
 
     async def dispatch(self, data):

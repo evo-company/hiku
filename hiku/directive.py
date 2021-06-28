@@ -2,18 +2,15 @@ from collections import OrderedDict
 from typing import (
     List,
     NamedTuple,
-    Dict,
     Any,
 )
 
 from abc import ABC, abstractmethod
 
-from hiku.introspection.types import (
-    NON_NULL,
-    SCALAR,
+from hiku.types import (
+    Boolean,
+    GenericMeta,
 )
-
-
 from hiku.utils import cached_property
 
 
@@ -21,7 +18,7 @@ class Arg(NamedTuple):
     name: str
     value: Any
     description: str
-    type: Any
+    type: GenericMeta
 
 
 class Directive(ABC):
@@ -33,20 +30,13 @@ class Directive(ABC):
     @abstractmethod
     def args(self) -> List[Arg]:
         """Directive arguments"""
-        pass
 
     @cached_property
     def args_map(self) -> 'OrderedDict[str, Arg]':
         return OrderedDict((arg.name, arg) for arg in self.args)
 
-    def value_info(self, fields):
-        info = {'name': self.name,
-                'description': self.description,
-                'locations': self.locations}
-        yield [info[f.name] for f in fields]
 
-
-class IncludeDirective(Directive):
+class Include(Directive):
     name = 'include'
     locations = ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']
     description = (
@@ -60,13 +50,13 @@ class IncludeDirective(Directive):
             Arg(
                 name='if',
                 description='Included when true.',
-                type=NON_NULL(SCALAR('Boolean')),
+                type=Boolean,
                 value=None
             )
         ]
 
 
-class SkipDirective(Directive):
+class Skip(Directive):
     name = 'skip'
     locations = ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']
     description = (
@@ -80,7 +70,7 @@ class SkipDirective(Directive):
             Arg(
                 name='if',
                 description='Skipped when true.',
-                type=NON_NULL(SCALAR('Boolean')),
+                type=Boolean,
                 value=None
             )
         ]
@@ -88,6 +78,6 @@ class SkipDirective(Directive):
 
 def get_default_directives():
     return [
-        SkipDirective(),
-        IncludeDirective(),
+        Skip(),
+        Include(),
     ]

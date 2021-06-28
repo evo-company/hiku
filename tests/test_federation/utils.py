@@ -1,36 +1,26 @@
-import logging
-
-from typing import (
-    TypedDict,
-)
-
-from flask import Flask, request, jsonify
+from typing import TypedDict
 
 from hiku.federation.directive import (
-    Key,
     External,
+    Key,
     Extends,
 )
-from hiku.federation.endpoint import FederatedGraphQLEndpoint
-from hiku.federation.engine import Engine
 from hiku.graph import (
-    Root,
-    Field,
-    Option,
-    Node,
-    Link,
     Graph,
+    Node,
+    Field,
+    Link,
+    Option,
+    Root,
 )
 from hiku.types import (
+    Record,
     Integer,
-    TypeRef,
     String,
-    Optional,
+    TypeRef,
     Sequence,
+    Optional,
 )
-from hiku.executors.sync import SyncExecutor
-
-log = logging.getLogger(__name__)
 
 
 class Cart(TypedDict):
@@ -75,16 +65,28 @@ def cart_resolver(fields, ids):
         yield [cart[f.name] for f in fields]
 
 
+async def async_cart_resolver(fields, ids):
+    return cart_resolver(fields, ids)
+
+
 def cart_item_resolver(fields, ids):
     for item_id in ids:
         item = get_by_id(item_id, data['cart_items'])
         yield [item[f.name] for f in fields]
 
 
+async def async_cart_item_resolver(fields, ids):
+    return cart_item_resolver(fields, ids)
+
+
 def link_cart_items(cart_ids):
     for cart_id in cart_ids:
         yield [item['id'] for item
                in find_all_by_id(cart_id, data['cart_items'], key='cart_id')]
+
+
+async def async_link_cart_items(ids):
+    return link_cart_items(ids)
 
 
 def direct_link_id(opts):
@@ -95,11 +97,26 @@ def ids_resolver(fields, ids):
     return [[id_] for id_ in ids]
 
 
+async def async_ids_resolver(fields, ids):
+    return [[id_] for id_ in ids]
+
+
 def direct_link(ids):
     return ids
 
 
-QUERY_GRAPH = Graph([
+async def async_direct_link(ids):
+    return ids
+
+data_types = {
+    'Status': Record[{
+        'id': Integer,
+        'title': String,
+    }],
+}
+
+
+GRAPH = Graph([
     Node('Order', [
         Field('cartId', Integer, ids_resolver,
               directives=[External()]),
@@ -107,7 +124,7 @@ QUERY_GRAPH = Graph([
     ], directives=[Key('cartId'), Extends()]),
     Node('Cart', [
         Field('id', Integer, cart_resolver),
-        Field('status', String, cart_resolver),
+        Field('status', TypeRef['Status'], cart_resolver),
         Link('items', Sequence[TypeRef['CartItem']], link_cart_items,
              requires='id')
     ], directives=[Key('id')]),
@@ -124,36 +141,46 @@ QUERY_GRAPH = Graph([
         Link(
             'cart',
             Optional[TypeRef['Cart']],
-            direct_link_id,
+            ids_resolver,
             requires=None,
             options=[
                 Option('id', Integer)
             ],
         ),
     ]),
-])
+], data_types=data_types)
 
 
-app = Flask(__name__)
-
-graphql_endpoint = FederatedGraphQLEndpoint(
-    Engine(SyncExecutor()),
-    QUERY_GRAPH,
-)
-
-
-@app.route('/graphql', methods={'POST'})
-def handle_graphql():
-    data = request.get_json()
-    result = graphql_endpoint.dispatch(data)
-    resp = jsonify(result)
-    return resp
-
-
-def main():
-    logging.basicConfig()
-    app.run(port=5000)
-
-
-if __name__ == '__main__':
-    main()
+ASYNC_GRAPH = Graph([
+    Node('Order', [
+        Field('cartId', Integer, async_ids_resolver,
+              directives=[External()]),
+        Link('cart', TypeRef['Cart'], async_direct_link, requires='cartId'),
+    ], directives=[Key('cartId'), Extends()]),
+    Node('Cart', [
+        Field('id', Integer, async_cart_resolver),
+        Field('status', TypeRef['Status'], async_cart_resolver),
+        Link('items', Sequence[TypeRef['CartItem']], async_link_cart_items,
+             requires='id')
+    ], directives=[Key('id')]),
+    Node('CartItem', [
+        Field('id', Integer, async_cart_item_resolver),
+        Field('cart_id', Integer, async_cart_item_resolver),
+        Field('name', String, async_cart_item_resolver),
+        Field('photo', Optional[String], lambda: None, options=[
+            Option('width', Integer),
+            Option('height', Integer),
+        ]),
+    ]),
+    Root([
+        Link(
+            'cart',
+            Optional[TypeRef['Cart']],
+            async_ids_resolver,
+            requires=None,
+            options=[
+                Option('id', Integer)
+            ],
+        ),
+    ]),
+], data_types=data_types)

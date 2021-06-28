@@ -11,90 +11,11 @@ from hiku.executors.sync import SyncExecutor
 from hiku.validate.query import validate
 from hiku.readers.graphql import read
 from hiku.introspection.graphql import GraphQLIntrospection
+from tests.utils import INTROSPECTION_QUERY
 
 
 def _noop():
     raise NotImplementedError
-
-
-QUERY = """
-query IntrospectionQuery {
-    __schema {
-        queryType { name }
-        mutationType { name }
-        types { ...FullType }
-        directives {
-            name
-            description
-            locations
-            args { ...InputValue }
-        }
-    }
-}
-
-fragment FullType on __Type {
-    kind
-    name
-    description
-    fields(includeDeprecated: true) {
-        name
-        description
-        args { ...InputValue }
-        type { ...TypeRef }
-        isDeprecated
-        deprecationReason
-    }
-    inputFields { ...InputValue }
-    interfaces { ...TypeRef }
-    enumValues(includeDeprecated: true) {
-        name
-        description
-        isDeprecated
-        deprecationReason
-    }
-    possibleTypes { ...TypeRef }
-}
-
-fragment InputValue on __InputValue {
-    name
-    description
-    type { ...TypeRef }
-    defaultValue
-}
-
-fragment TypeRef on __Type {
-    kind
-    name
-    ofType {
-        kind
-        name
-        ofType {
-            kind
-            name
-            ofType {
-                kind
-                name
-                ofType {
-                    kind
-                    name
-                    ofType {
-                    kind
-                    name
-                        ofType {
-                        kind
-                        name
-                            ofType {
-                                kind
-                                name
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-"""
 
 
 def _non_null(t):
@@ -204,7 +125,7 @@ def introspect(query_graph, mutation_graph=None):
         GraphQLIntrospection(query_graph, mutation_graph),
     ])
 
-    query = read(QUERY)
+    query = read(INTROSPECTION_QUERY)
     errors = validate(query_graph, query)
     assert not errors
 

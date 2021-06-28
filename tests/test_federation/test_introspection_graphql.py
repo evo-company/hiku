@@ -1,33 +1,22 @@
 from unittest import TestCase
 from unittest.mock import ANY
 
-from federation.directive import (
-    KeyDirective,
-    RequiresDirective,
-    ExternalDirective,
-    ProvidesDirective,
+from hiku.federation.directive import (
+    Key,
+    Requires,
+    External,
+    Provides,
 )
-from federation.endpoint import FederatedGraphQLEndpoint
-from federation.engine import Engine
-from hiku.graph import (
-    Root,
-    Field,
-    Node,
-    Link,
-    Graph,
-)
-from hiku.introspection.directive import (
-    Directive,
-    SkipDirective,
-    IncludeDirective,
-)
-from hiku.introspection.types import (
-    NON_NULL,
-    SCALAR,
-)
-from hiku.types import String, Integer, Sequence, TypeRef
+from hiku.federation.endpoint import FederatedGraphQLEndpoint
+from hiku.federation.engine import Engine
+from hiku.directive import Directive, Skip, Include
 from hiku.executors.sync import SyncExecutor
-from test_federation.utils import INTROSPECTION_QUERY
+from hiku.types import (
+    BooleanMeta,
+    StringMeta,
+)
+from .utils import GRAPH
+from ..utils import INTROSPECTION_QUERY
 
 
 def _noop():
@@ -43,7 +32,6 @@ _STR = {'kind': 'SCALAR', 'name': 'String', 'ofType': None}
 _BOOL = {'kind': 'SCALAR', 'name': 'Boolean', 'ofType': None}
 _FLOAT = {'kind': 'SCALAR', 'name': 'Float', 'ofType': None}
 _ANY = {'kind': 'SCALAR', 'name': 'Any', 'ofType': None}
-_ANY_FEDERATED = {'kind': 'SCALAR', 'name': '_Any', 'ofType': None}
 
 
 def _obj(name):
@@ -105,9 +93,9 @@ def _type(name, kind, **kwargs):
 def _directive(directive: Directive):
     args = []
     for arg in directive.args:
-        if arg.type == NON_NULL(SCALAR('Boolean')):
+        if isinstance(arg.type, BooleanMeta):
             args.append(_ival(arg.name, _non_null(_BOOL), description=ANY))
-        elif arg.type == NON_NULL(SCALAR('String')):
+        elif isinstance(arg.type, StringMeta):
             args.append(_ival(arg.name, _non_null(_STR), description=ANY))
         else:
             raise TypeError('unsupported argument type: %s' % arg.type)
@@ -136,16 +124,16 @@ def _schema(types, with_mutation=False) -> dict:
     return {
         '__schema': {
             'directives': [
-                _directive(SkipDirective()),
-                _directive(IncludeDirective()),
-                _directive(KeyDirective()),
-                _directive(RequiresDirective()),
-                _directive(ProvidesDirective()),
-                _directive(ExternalDirective()),
+                _directive(Skip()),
+                _directive(Include()),
+                _directive(Key()),
+                _directive(Requires()),
+                _directive(Provides()),
+                _directive(External()),
             ],
             'mutationType': {'name': 'Mutation'} if with_mutation else None,
             'queryType': {'name': 'Query'},
-            'types': SCALARS + types + [_type('_Any', 'SCALAR')],
+            'types': SCALARS + types,
         }
     }
 
@@ -172,54 +160,76 @@ def introspect(query_graph):
     return execute(query_graph, {'query': INTROSPECTION_QUERY})
 
 
-AstronautNode = Node('Astronaut', [
-    Field('id', Integer, _noop),
-    Field('name', String, _noop),
-    Field('age', Integer, _noop),
-], directives=[KeyDirective('id')])
-
-
-AstronautsLink = Link(
-    'astronauts',
-    Sequence[TypeRef['Astronaut']],
-    _noop,
-    requires=None,
-    options=None,
-)
-
-ROOT_FIELDS = [
-    AstronautsLink,
-]
-
-
-GRAPH = Graph([
-    AstronautNode,
-    Root(ROOT_FIELDS),
-])
-
-
 class TestFederatedGraphIntrospection(TestCase):
     def test_federated_introspection_query_entities(self):
         self.maxDiff = None
         exp = _schema([
-            _type('Astronaut', 'OBJECT', fields=[
+            _type('Order', 'OBJECT', fields=[
+                _field('cartId', _non_null(_INT)),
+                _field('cart', _non_null(_obj('Cart'))),
+            ]),
+            _type('Cart', 'OBJECT', fields=[
                 _field('id', _non_null(_INT)),
+                _field('status', _non_null(_obj('Status'))),
+                _field('items', _seq_of(_obj('CartItem'))),
+            ]),
+            _type('CartItem', 'OBJECT', fields=[
+                _field('id', _non_null(_INT)),
+                _field('cart_id', _non_null(_INT)),
                 _field('name', _non_null(_STR)),
-                _field('age', _non_null(_INT)),
+                _field('photo', _STR, args=[
+                    _ival(
+                        'width',
+                        _non_null(_INT),
+                        defaultValue=ANY
+                    ),
+                    _ival(
+                        'height',
+                        _non_null(_INT),
+                        defaultValue=ANY
+                    ),
+                ]),
             ]),
             _type('Query', 'OBJECT', fields=[
-                _field('astronauts', _seq_of(_obj('Astronaut'))),
+                _field('cart', _obj('Cart'), args=[
+                    _ival(
+                        'id',
+                        _non_null(_INT),
+                        defaultValue=ANY
+                    ),
+                ]),
                 _field(
                     '_entities',
-                    _seq_of_nullable(_union('_Entity', [_obj('Astronaut')])),
+                    _seq_of_nullable(
+                        _union('_Entity', [_obj('Order'), _obj('Cart')])
+                    ),
                     args=[
                         _ival(
                             'representations',
-                            _seq_of(_ANY_FEDERATED),
+                            _seq_of(_type('_Any', 'SCALAR')),
                             defaultValue=ANY
                         ),
                     ]
                 ),
+                _field(
+                    '_service',
+                    _non_null(_obj('_Service')),
+                ),
+            ]),
+            _type('Status', 'OBJECT', fields=[
+                _field('id', _non_null(_INT)),
+                _field('title', _non_null(_STR)),
+            ]),
+            _type('IOStatus', 'INPUT_OBJECT', inputFields=[
+                _ival('id', _non_null(_INT)),
+                _ival('title', _non_null(_STR)),
+            ]),
+            _type('_Any', 'SCALAR'),
+            _type('_Entity', 'UNION', possibleTypes=[
+                _obj('Order'), _obj('Cart')
+            ]),
+            _type('_Service', 'OBJECT', fields=[
+                _field('sdl', _type('String', 'SCALAR')),
             ]),
         ])
         got = introspect(GRAPH)

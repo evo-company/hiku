@@ -1,6 +1,5 @@
 from math import isfinite
 from typing import (
-    Type,
     Optional,
     Iterable,
     List,
@@ -8,9 +7,7 @@ from typing import (
 
 from graphql.language.printer import print_ast
 from graphql.language import ast
-from graphql.pyutils import (
-    inspect,
-)
+from graphql.pyutils import inspect
 
 from hiku.graph import (
     Link,
@@ -23,13 +20,9 @@ from hiku.graph import (
     Graph,
     Option,
 )
-from hiku.introspection.directive import (
+from .directive import (
     Directive,
     Arg,
-)
-from hiku.introspection.types import (
-    NON_NULL,
-    SCALAR,
 )
 from hiku.types import (
     IntegerMeta,
@@ -48,33 +41,20 @@ def _name(value):
     return ast.NameNode(value=value) if value is not None else None
 
 
+def coerce_type(x):
+    if isinstance(x, str):
+        return _name(x)
+    return x
+
+
+def _non_null_type(val):
+    return ast.NonNullTypeNode(type=coerce_type(val))
+
+
 def _encode_type(value) -> ast.TypeNode:
-    def coerce(x):
-        if isinstance(x, str):
-            return _name(x)
-        return x
-
-    def _non_null(val):
-        return ast.NonNullTypeNode(type=coerce(val))
-
-    # TODO refactor
-    def not_null(func):
-        def dec(*args, **kw):
-            val = func(*args, **kw)
-            if isinstance(val, tuple):
-                (type_, optional) = val
-                if optional:
-                    return coerce(type_)
-                return _non_null(type_)
-            if kw.get('optional'):
-                return val, True
-            return _non_null(val)
-        return dec
-
-    @not_null
-    def _encode(val, optional: bool = False):
+    def _encode(val):
         if isinstance(val, OptionalMeta):
-            return _encode(val.__type__, optional=True)
+            return _encode(val.__type__), True
         elif isinstance(val, TypeRefMeta):
             return val.__type_name__
         elif isinstance(val, IntegerMeta):
@@ -94,7 +74,14 @@ def _encode_type(value) -> ast.TypeNode:
         else:
             raise TypeError('Unsupported type: {!r}'.format(val))
 
-    return _encode(value)
+    encoded = _encode(value)
+    if isinstance(encoded, tuple):
+        [type_, optional] = encoded
+        if optional:
+            return coerce_type(type_)
+        return _non_null_type(type_)
+
+    return _non_null_type(encoded)
 
 
 def _encode_default_value(value) -> Optional[ast.ValueNode]:
@@ -123,35 +110,34 @@ def _encode_default_value(value) -> Optional[ast.ValueNode]:
     raise TypeError(f"Cannot convert value to AST: {inspect(value)}.")
 
 
-def _encode_option_type(value):
-    """TODO seems like we can reuse encode from _encode_type"""
-    if isinstance(value, IntegerMeta):
-        # TODO NonNull
-        return ast.NamedTypeNode(name=_name('Int'))
-    if isinstance(value, StringMeta):
-        return ast.NamedTypeNode(name=_name('String'))
-    if isinstance(value, OptionalMeta):
-        return _encode_option_type(value.__type__)
-    elif isinstance(value, SequenceMeta):
-        return ast.ListTypeNode(type=_encode_type(value.__item_type__))
-    else:
-        raise TypeError('Unsupported option type: {!r}'.format(value))
+def _encode_directive_arg_type(type_, value) -> ast.ValueNode:
+    def get_value_node(t, val):
+        if isinstance(t, OptionalMeta):
+            return get_value_node(t.__type__, val)
+        elif isinstance(t, TypeRefMeta):
+            return get_value_node(t.__type_name__, val)
+        elif isinstance(t, IntegerMeta):
+            return ast.IntValueNode(value=val)
+        elif isinstance(t, StringMeta):
+            return ast.StringValueNode(value=val)
+        elif isinstance(t, BooleanMeta):
+            return ast.BooleanValueNode(value=val)
+        elif isinstance(t, SequenceMeta):
+            return ast.ListValueNode(values=[
+                get_value_node(t.__item_type__, v) for v in val
+            ])
+        elif isinstance(t, AnyMeta):
+            return ast.StringValueNode(value=val)
+        elif isinstance(t, FloatMeta):
+            return ast.FloatValueNode(value=val)
+        elif t is None:
+            return ast.NullValueNode()
+        else:
+            raise TypeError('Unsupported arg type: {!r}'.format(value))
+
+    return get_value_node(type_, value)
 
 
-def _encode_directive_arg_type(value) -> Type[ast.ValueNode]:
-    def _encode(val):
-        if val == 'String':
-            return ast.StringValueNode
-
-    if isinstance(value, NON_NULL):
-        return _encode_directive_arg_type(value.of_type)
-    elif isinstance(value, SCALAR):
-        return _encode(value.name)
-    else:
-        raise TypeError('Unsupported arg type: {!r}'.format(value))
-
-
-# GraphVisitor
 class Exporter(GraphVisitor):
     def visit_graph(self, obj: Graph) -> List[ast.DefinitionNode]:
         """List of ObjectTypeDefinitionNode and ObjectTypeExtensionNode"""
@@ -189,7 +175,7 @@ class Exporter(GraphVisitor):
     def visit_directive_arg(self, arg: Arg):
         return ast.ArgumentNode(
             name=_name(arg.name),
-            value=_encode_directive_arg_type(arg.type)(value=arg.value)
+            value=_encode_directive_arg_type(arg.type, arg.value)
         )
 
     def visit_node(self, obj: Node):
@@ -222,7 +208,8 @@ class Exporter(GraphVisitor):
                 name=_name(name),
                 type=_encode_type(type_),
             )
-        fields = [new_field(f_name, field) for f_name, field in obj.__field_types__.items()]
+        fields = [new_field(f_name, field)
+                  for f_name, field in obj.__field_types__.items()]
         return ast.ObjectTypeDefinitionNode(
             name=_name(type_name),
             fields=fields,
