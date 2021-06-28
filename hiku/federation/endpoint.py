@@ -16,9 +16,8 @@ from .introspection import (
 )
 from .validate import validate
 
-from hiku.denormalize.graphql import (
-    DenormalizeGraphQL,
-)
+from hiku.denormalize.graphql import DenormalizeGraphQL
+from hiku.federation.denormalize import DenormalizeEntityGraphQL
 from hiku.endpoint.graphql import (
     BaseGraphQLEndpoint,
     _type_names,
@@ -44,7 +43,6 @@ def denormalize_entities(
     graph: Graph,
     query: Node,
     result: Proxy,
-    type_name: str
 ) -> List[Dict[str, Any]]:
 
     entities_link = query.fields_map['_entities']
@@ -59,7 +57,9 @@ def denormalize_entities(
                 continue
             ident = r[key]
             result.__ref__ = Reference(typename, ident)
-            data = DenormalizeGraphQL(graph, result, type_name).process(node)
+            data = DenormalizeEntityGraphQL(
+                graph, result, typename
+            ).process(node)
             entities.append(data)
 
     return entities
@@ -83,10 +83,9 @@ class BaseFederatedGraphEndpoint(BaseGraphQLEndpoint):
         if '_service' in op.query.fields_map:
             return {'_service': {'sdl': result['sdl']}}
         elif '_entities' in op.query.fields_map:
-            type_name = _type_names[op.type]
             return {
                 '_entities': denormalize_entities(
-                    graph, op.query, result, type_name
+                    graph, op.query, result
                 )
             }
 
@@ -128,7 +127,7 @@ class AsyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
 
     async def execute(self, graph: Graph, op, ctx):
         stripped_query = _process_query(graph, op.query)
-        result = await self.engine.execute(graph, stripped_query, ctx)
+        result = await self.engine.execute_async(graph, stripped_query, ctx)
         return self.postprocess_result(result, graph, op)
 
     async def dispatch(self, data):

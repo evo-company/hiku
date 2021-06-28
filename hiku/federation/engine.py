@@ -1,3 +1,4 @@
+import inspect
 from collections import defaultdict
 
 from .sdl import print_sdl
@@ -76,3 +77,9 @@ class Engine:
             return self.execute_entities(graph, query, ctx)
 
         return self.execute_query(graph, query, ctx)
+
+    async def execute_async(self, graph: Graph, query, ctx=None) -> Proxy:
+        result = self.execute(graph, query, ctx)
+        if inspect.iscoroutine(result):
+            return await result
+        return result

@@ -66,7 +66,6 @@ def test_execute_sync_executor():
         GRAPH,
         QUERY,
         result,
-        'Query'
     )
 
     expect = [
@@ -86,7 +85,6 @@ async def test_execute_async_executor():
         GRAPH,
         QUERY,
         result,
-        'Query'
     )
 
     expect = [
