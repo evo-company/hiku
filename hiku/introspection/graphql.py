@@ -1,11 +1,11 @@
 import re
 import json
 import typing as t
+from dataclasses import dataclass
 
 from functools import partial
 from collections import OrderedDict
 
-from ..directive import get_default_directives, Directive
 from ..graph import Graph, Root, Node, Link, Option, Field, Nothing
 from ..graph import GraphVisitor, GraphTransformer
 from ..types import (
@@ -35,6 +35,61 @@ from .types import (
 )
 
 
+@dataclass
+class Directive:
+    @dataclass
+    class Argument:
+        name: str
+        type_ident: t.Any
+        description: str
+        default_value: t.Any
+
+    name: str
+    locations: t.List[str]
+    description: str
+    args: t.List[Argument]
+
+    @property
+    def args_map(self):
+        return OrderedDict((arg.name, arg) for arg in self.args)
+
+
+_BUILTIN_DIRECTIVES = (
+    Directive(
+        name='skip',
+        locations=['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'],
+        description=(
+            'Directs the executor to skip this field or fragment '
+            'when the `if` argument is true.'
+        ),
+        args=[
+            Directive.Argument(
+                name='if',
+                type_ident=NON_NULL(SCALAR('Boolean')),
+                description='Skipped when true.',
+                default_value=None,
+            ),
+        ],
+    ),
+    Directive(
+        name='include',
+        locations=['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'],
+        description=(
+            'Directs the executor to include this field or fragment '
+            'only when the `if` argument is true.'
+        ),
+        args=[
+            Directive.Argument(
+                name='if',
+                type_ident=NON_NULL(SCALAR('Boolean')),
+                description='Included when true.',
+                default_value=None,
+            ),
+        ],
+    ),
+)
+
+
 def _async_wrapper(func):
     async def wrapper(*args, **kwargs):
         return func(*args, **kwargs)
@@ -51,12 +106,12 @@ class SchemaInfo:
         self,
         query_graph: Graph,
         mutation_graph: t.Optional[Graph] = None,
-        directives: t.Optional[Directive] = None,
+        directives: t.Optional[t.Sequence[Directive]] = None,
     ):
         self.query_graph = query_graph
         self.data_types = query_graph.data_types
         self.mutation_graph = mutation_graph
-        self.directives = get_default_directives() + (directives or [])
+        self.directives = directives or ()
 
     @cached_property
     def directives_map(self):
@@ -353,12 +408,12 @@ def input_value_info(schema, fields, ids):
             yield [info[f.name] for f in fields]
         elif isinstance(ident, DirectiveArgIdent):
             directive = schema.directives_map[ident.name]
-            for arg in directive.args:
-                info = {'id': ident,
-                        'name': arg.name,
-                        'description': arg.description,
-                        'defaultValue': None}
-                yield [info[f.name] for f in fields]
+            arg = directive.args_map[ident.arg]
+            info = {'id': ident,
+                    'name': arg.name,
+                    'description': arg.description,
+                    'defaultValue': arg.default_value}
+            yield [info[f.name] for f in fields]
         else:
             raise TypeError(repr(ident))
 
@@ -380,7 +435,7 @@ def input_value_type_link(schema, ids):
         elif isinstance(ident, DirectiveArgIdent):
             directive = schema.directives_map[ident.name]
             for arg in directive.args:
-                yield type_ident.visit(arg.type)
+                yield arg.type_ident
         else:
             raise TypeError(repr(ident))
 
@@ -400,10 +455,8 @@ def directive_args_link(schema, ids):
     links = []
     for ident in ids:
         directive = schema.directives_map[ident]
-        if directive.args:
-            links.append([DirectiveArgIdent(ident)])
-        else:
-            links.append([])
+        links.append([DirectiveArgIdent(ident, arg.name)
+                      for arg in directive.args])
     return links
 
 
@@ -628,23 +681,19 @@ class GraphQLIntrospection(GraphTransformer):
         graph = apply(graph, [GraphQLIntrospection(graph)])
 
     """
-    def __init__(
-        self,
-        query_graph,
-        mutation_graph=None,
-        directives=None,
-    ):
+    __directives__ = _BUILTIN_DIRECTIVES
+
+    def __init__(self, query_graph, mutation_graph=None):
         """
         :param query_graph: graph, where Root node represents Query root
             operation type
         :param mutation_graph: graph, where Root node represents Mutation root
             operation type
-        :param directives: custom directives
         """
         self._schema = SchemaInfo(
             query_graph,
             mutation_graph,
-            directives,
+            self.__directives__,
         )
 
     def __type_name__(self, node_name):

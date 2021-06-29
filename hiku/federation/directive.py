@@ -1,110 +1,53 @@
-from typing import List, Optional
-
-from hiku.directive import Directive, Arg
-from hiku.types import String
+class _DirectiveBase:
+    pass
 
 
-class Key(Directive):
-    """https://www.apollographql.com/docs/federation/federation-spec/#key"""
-    def __init__(self, key: Optional[str] = None):
-        self._args = [
-            Arg(
-                name='fields',
-                description='',
-                type=String,
-                value=key
-            )
-        ]
+class Key(_DirectiveBase):
+    """
+    https://www.apollographql.com/docs/federation/federation-spec/#key
+    """
+    def __init__(self, fields):
+        self.fields = fields
 
-    name = 'key'
-    locations = ['OBJECT', 'INTERFACE']
-    description = (
-        'The @key directive is used to indicate a combination '
-        'of fields that can be used to uniquely identify and '
-        'fetch an object or interface.'
-    )
-
-    @property
-    def args(self) -> List[Arg]:
-        return self._args
+    def accept(self, visitor):
+        return visitor.visit_key_directive(self)
 
 
-class Provides(Directive):
+class Provides(_DirectiveBase):
     """
     https://www.apollographql.com/docs/federation/federation-spec/#provides
     """
-    name = 'provides'
-    locations = ['FIELD_DEFINITION']
-    description = (
-        'The @provides directive is used to annotate the expected returned '
-        'fieldset from a field on a base type that is guaranteed to be '
-        'selectable by the gateway'
-    )
+    def __init__(self, fields):
+        self.fields = fields
 
-    @property
-    def args(self) -> List[Arg]:
-        return [
-            Arg(
-                name='fields',
-                description='',
-                type=String,
-                value=None
-            )
-        ]
+    def accept(self, visitor):
+        return visitor.visit_provides_directive(self)
 
 
-class Requires(Directive):
+class Requires(_DirectiveBase):
     """
     https://www.apollographql.com/docs/federation/federation-spec/#requires
     """
-    name = 'requires'
-    locations = ['FIELD_DEFINITION']
-    description = (
-        'The @requires directive is used to annotate the required input '
-        'fieldset from a base type for a resolver.'
-    )
+    def __init__(self, fields):
+        self.fields = fields
 
-    @property
-    def args(self) -> List[Arg]:
-        return [
-            Arg(
-                name='fields',
-                description='',
-                type=String,
-                value=None
-            )
-        ]
+    def accept(self, visitor):
+        return visitor.visit_requires_directive(self)
 
 
-class External(Directive):
+class External(_DirectiveBase):
     """
     https://www.apollographql.com/docs/federation/federation-spec/#external
     """
-    name = 'external'
-    locations = ['FIELD_DEFINITION']
-    description = (
-        'The @external directive is used to mark a field '
-        'as owned by another service.'
-    )
-
-    @property
-    def args(self) -> List[Arg]:
-        return []
+    def accept(self, visitor):
+        return visitor.visit_external_directive(self)
 
 
-class Extends(Directive):
+class Extends(_DirectiveBase):
     """
     Apollo Federation supports using an @extends directive in place of extend
     type to annotate type references
     https://www.apollographql.com/docs/federation/federation-spec/
     """
-    name = 'extends'
-    locations = ['OBJECT', 'INTERFACE']
-    description = (
-        'The @extends directive is used instead of "extend type" syntax.'
-    )
-
-    @property
-    def args(self) -> List[Arg]:
-        return []
-
+    def accept(self, visitor):
+        return visitor.visit_extends_directive(self)

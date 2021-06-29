@@ -20,10 +20,6 @@ from hiku.graph import (
     Graph,
     Option,
 )
-from .directive import (
-    Directive,
-    Arg,
-)
 from hiku.types import (
     IntegerMeta,
     TypeRefMeta,
@@ -110,99 +106,8 @@ def _encode_default_value(value) -> Optional[ast.ValueNode]:
     raise TypeError(f"Cannot convert value to AST: {inspect(value)}.")
 
 
-def _encode_directive_arg_type(type_, value) -> ast.ValueNode:
-    def get_value_node(t, val):
-        if isinstance(t, OptionalMeta):
-            return get_value_node(t.__type__, val)
-        elif isinstance(t, TypeRefMeta):
-            return get_value_node(t.__type_name__, val)
-        elif isinstance(t, IntegerMeta):
-            return ast.IntValueNode(value=val)
-        elif isinstance(t, StringMeta):
-            return ast.StringValueNode(value=val)
-        elif isinstance(t, BooleanMeta):
-            return ast.BooleanValueNode(value=val)
-        elif isinstance(t, SequenceMeta):
-            return ast.ListValueNode(values=[
-                get_value_node(t.__item_type__, v) for v in val
-            ])
-        elif isinstance(t, AnyMeta):
-            return ast.StringValueNode(value=val)
-        elif isinstance(t, FloatMeta):
-            return ast.FloatValueNode(value=val)
-        elif t is None:
-            return ast.NullValueNode()
-        else:
-            raise TypeError('Unsupported arg type: {!r}'.format(value))
-
-    return get_value_node(type_, value)
-
-
 class Exporter(GraphVisitor):
-    def visit_graph(self, obj: Graph) -> List[ast.DefinitionNode]:
-        """List of ObjectTypeDefinitionNode and ObjectTypeExtensionNode"""
-        return [
-            self.get_any_type(),
-            *[self.visit_record(type_name, type_)
-              for type_name, type_ in obj.data_types.items()],
-            *[self.visit(item) for item in obj.items]
-        ]
-
-    def get_any_type(self):
-        return ast.ScalarTypeDefinitionNode(name=_name('Any'))
-
-    def visit_root(self, obj: Root):
-        return ast.ObjectTypeExtensionNode(
-            name=_name('Query'),
-            fields=[self.visit(item) for item in obj.fields],
-            directives=[]
-        )
-
-    def visit_field(self, obj: Field):
-        return ast.FieldDefinitionNode(
-            name=_name(obj.name),
-            type=_encode_type(obj.type),
-            arguments=[self.visit_option(o) for o in obj.options],
-            directives=[self.visit_directive(d) for d in obj.directives]
-        )
-
-    def visit_directive(self, obj: Directive):
-        return ast.DirectiveNode(
-            name=_name(obj.name),
-            arguments=[self.visit_directive_arg(arg) for arg in obj.args]
-        )
-
-    def visit_directive_arg(self, arg: Arg):
-        return ast.ArgumentNode(
-            name=_name(arg.name),
-            value=_encode_directive_arg_type(arg.type, arg.value)
-        )
-
-    def visit_node(self, obj: Node):
-        fields = [self.visit(field) for field in obj.fields]
-
-        return ast.ObjectTypeDefinitionNode(
-            name=_name(obj.name),
-            fields=fields,
-            directives=[self.visit_directive(d) for d in obj.directives]
-        )
-
-    def visit_link(self, obj: Link):
-        return ast.FieldDefinitionNode(
-            name=_name(obj.name),
-            arguments=[self.visit_option(o) for o in obj.options],
-            type=_encode_type(obj.type)
-        )
-
-    def visit_option(self, obj: Option):
-        return ast.InputValueDefinitionNode(
-            name=_name(obj.name),
-            description=obj.description,
-            type=_encode_type(obj.type),
-            default_value=_encode_default_value(obj.default),
-        )
-
-    def visit_record(self, type_name: str, obj: Record):
+    def export_record(self, type_name: str, obj: Record):
         def new_field(name: str, type_):
             return ast.FieldDefinitionNode(
                 name=_name(name),
@@ -214,6 +119,95 @@ class Exporter(GraphVisitor):
             name=_name(type_name),
             fields=fields,
         )
+
+    def visit_graph(self, obj: Graph) -> List[ast.DefinitionNode]:
+        """List of ObjectTypeDefinitionNode and ObjectTypeExtensionNode"""
+        return [
+            self.get_any_type(),
+            *[self.export_record(type_name, type_)
+              for type_name, type_ in obj.data_types.items()],
+            *[self.visit(item) for item in obj.items]
+        ]
+
+    def get_any_type(self):
+        return ast.ScalarTypeDefinitionNode(name=_name('Any'))
+
+    def visit_root(self, obj: Root):
+        return ast.ObjectTypeExtensionNode(
+            name=_name('Query'),
+            fields=[self.visit(item) for item in obj.fields],
+        )
+
+    def visit_field(self, obj: Field):
+        return ast.FieldDefinitionNode(
+            name=_name(obj.name),
+            type=_encode_type(obj.type),
+            arguments=[self.visit(o) for o in obj.options],
+            directives=[self.visit(d) for d in obj.directives]
+        )
+
+    def visit_node(self, obj: Node):
+        fields = [self.visit(field) for field in obj.fields]
+
+        return ast.ObjectTypeDefinitionNode(
+            name=_name(obj.name),
+            fields=fields,
+            directives=[self.visit(d) for d in obj.directives]
+        )
+
+    def visit_link(self, obj: Link):
+        return ast.FieldDefinitionNode(
+            name=_name(obj.name),
+            arguments=[self.visit(o) for o in obj.options],
+            type=_encode_type(obj.type)
+        )
+
+    def visit_option(self, obj: Option):
+        return ast.InputValueDefinitionNode(
+            name=_name(obj.name),
+            description=obj.description,
+            type=_encode_type(obj.type),
+            default_value=_encode_default_value(obj.default),
+        )
+
+    def visit_key_directive(self, obj):
+        return ast.DirectiveNode(
+            name=_name('key'),
+            arguments=[
+                ast.ArgumentNode(
+                    name=_name('fields'),
+                    value=ast.StringValueNode(value=obj.fields),
+                ),
+            ],
+        )
+
+    def visit_provides_directive(self, obj):
+        return ast.DirectiveNode(
+            name=_name('provides'),
+            arguments=[
+                ast.ArgumentNode(
+                    name=_name('fields'),
+                    value=ast.StringValueNode(value=obj.fields),
+                ),
+            ],
+        )
+
+    def visit_requires_directive(self, obj):
+        return ast.DirectiveNode(
+            name=_name('requires'),
+            arguments=[
+                ast.ArgumentNode(
+                    name=_name('fields'),
+                    value=ast.StringValueNode(value=obj.fields),
+                ),
+            ],
+        )
+
+    def visit_external_directive(self, obj):
+        return ast.DirectiveNode(name=_name('external'))
+
+    def visit_extends_directive(self, obj):
+        return ast.DirectiveNode(name=_name('extends'))
 
 
 def get_ast(graph: Graph) -> ast.DocumentNode:

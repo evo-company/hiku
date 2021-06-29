@@ -1,12 +1,11 @@
 from typing import List
 
-from hiku.graph import Graph
+from ..graph import Graph
+
+from .directive import Key
 
 
 def get_keys(graph: Graph, typename: str) -> List[int]:
     """Get all 'key' directives fields"""
     node = graph.nodes_map[typename]
-    return [
-        d.args_map['fields'].value for d in
-        filter(lambda d: d.name == 'key', node.directives)
-    ]
+    return [d.fields for d in node.directives if isinstance(d, Key)]

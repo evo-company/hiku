@@ -1,20 +1,9 @@
 from unittest import TestCase
 from unittest.mock import ANY
 
-from hiku.federation.directive import (
-    Key,
-    Requires,
-    External,
-    Provides,
-)
 from hiku.federation.endpoint import FederatedGraphQLEndpoint
 from hiku.federation.engine import Engine
-from hiku.directive import Directive, Skip, Include
 from hiku.executors.sync import SyncExecutor
-from hiku.types import (
-    BooleanMeta,
-    StringMeta,
-)
 from .utils import GRAPH
 from ..utils import INTROSPECTION_QUERY
 
@@ -32,6 +21,7 @@ _STR = {'kind': 'SCALAR', 'name': 'String', 'ofType': None}
 _BOOL = {'kind': 'SCALAR', 'name': 'Boolean', 'ofType': None}
 _FLOAT = {'kind': 'SCALAR', 'name': 'Float', 'ofType': None}
 _ANY = {'kind': 'SCALAR', 'name': 'Any', 'ofType': None}
+_FIELDSET = {'kind': 'SCALAR', 'name': '_FieldSet', 'ofType': None}
 
 
 def _obj(name):
@@ -90,20 +80,30 @@ def _type(name, kind, **kwargs):
     return data
 
 
-def _directive(directive: Directive):
-    args = []
-    for arg in directive.args:
-        if isinstance(arg.type, BooleanMeta):
-            args.append(_ival(arg.name, _non_null(_BOOL), description=ANY))
-        elif isinstance(arg.type, StringMeta):
-            args.append(_ival(arg.name, _non_null(_STR), description=ANY))
-        else:
-            raise TypeError('unsupported argument type: %s' % arg.type)
+def _field_directive(name, args):
     return {
-        'name': directive.name,
-        'description': directive.description,
-        "locations": directive.locations,
-        "args": args,
+        'name': name,
+        'description': ANY,
+        'locations': ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'],
+        'args': args,
+    }
+
+
+def _object_directive(name, args):
+    return {
+        'name': name,
+        'description': ANY,
+        'locations': ['OBJECT', 'INTERFACE'],
+        'args': args,
+    }
+
+
+def _field_def_directive(name, args):
+    return {
+        'name': name,
+        'description': ANY,
+        'locations': ['FIELD_DEFINITION'],
+        'args': args,
     }
 
 
@@ -124,12 +124,22 @@ def _schema(types, with_mutation=False) -> dict:
     return {
         '__schema': {
             'directives': [
-                _directive(Skip()),
-                _directive(Include()),
-                _directive(Key()),
-                _directive(Requires()),
-                _directive(Provides()),
-                _directive(External()),
+                _field_directive('skip', [
+                    _ival('if', _non_null(_BOOL), description=ANY),
+                ]),
+                _field_directive('include', [
+                    _ival('if', _non_null(_BOOL), description=ANY),
+                ]),
+                _object_directive('key', [
+                    _ival('fields', _non_null(_FIELDSET), description=ANY),
+                ]),
+                _field_def_directive('provides', [
+                    _ival('fields', _non_null(_FIELDSET), description=ANY),
+                ]),
+                _field_def_directive('requires', [
+                    _ival('fields', _non_null(_FIELDSET), description=ANY),
+                ]),
+                _field_def_directive('external', []),
             ],
             'mutationType': {'name': 'Mutation'} if with_mutation else None,
             'queryType': {'name': 'Query'},
@@ -225,6 +235,7 @@ class TestFederatedGraphIntrospection(TestCase):
                 _ival('title', _non_null(_STR)),
             ]),
             _type('_Any', 'SCALAR'),
+            _type('_FieldSet', 'SCALAR'),
             _type('_Entity', 'UNION', possibleTypes=[
                 _obj('Order'), _obj('Cart')
             ]),
