@@ -133,10 +133,6 @@ class Field(AbstractField):
     def options_map(self):
         return OrderedDict((op.name, op) for op in self.options)
 
-    @cached_property
-    def directives_map(self):
-        return OrderedDict((f.name, f) for f in self.directives)
-
     def accept(self, visitor):
         return visitor.visit_field(self)
 
@@ -301,10 +297,6 @@ class Node(AbstractNode):
     @cached_property
     def fields_map(self):
         return OrderedDict((f.name, f) for f in self.fields)
-
-    @cached_property
-    def directives_map(self):
-        return OrderedDict((f.name, f) for f in self.directives)
 
     def accept(self, visitor):
         return visitor.visit_node(self)
