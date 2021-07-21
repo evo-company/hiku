@@ -1,28 +1,93 @@
 import re
 import json
+import typing as t
+from dataclasses import dataclass
 
 from functools import partial
-from collections import namedtuple, OrderedDict
+from collections import OrderedDict
 
 from ..graph import Graph, Root, Node, Link, Option, Field, Nothing
 from ..graph import GraphVisitor, GraphTransformer
-from ..types import TypeRef, String, Sequence, Boolean, Optional, TypeVisitor
+from ..types import (
+    TypeRef,
+    String,
+    Sequence,
+    Boolean,
+    Optional,
+    TypeVisitor,
+)
 from ..types import Any, RecordMeta, AbstractTypeVisitor
-from ..utils import listify
+from ..utils import (
+    listify,
+    cached_property,
+)
+from .types import (
+    SCALAR,
+    NON_NULL,
+    LIST,
+    INPUT_OBJECT,
+    OBJECT,
+    DIRECTIVE,
+    FieldIdent,
+    FieldArgIdent,
+    InputObjectFieldIdent,
+    DirectiveArgIdent,
+)
 
 
-def _namedtuple(typename, field_names):
-    """Fixes hashing for different tuples with same content
-    """
-    base = namedtuple(typename, field_names)
+@dataclass
+class Directive:
+    @dataclass
+    class Argument:
+        name: str
+        type_ident: t.Any
+        description: str
+        default_value: t.Any
 
-    def __hash__(self):
-        return hash((self.__class__, super(base, self).__hash__()))
+    name: str
+    locations: t.List[str]
+    description: str
+    args: t.List[Argument]
 
-    return type(typename, (base,), {
-        '__slots__': (),
-        '__hash__': __hash__,
-    })
+    @property
+    def args_map(self):
+        return OrderedDict((arg.name, arg) for arg in self.args)
+
+
+_BUILTIN_DIRECTIVES = (
+    Directive(
+        name='skip',
+        locations=['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'],
+        description=(
+            'Directs the executor to skip this field or fragment '
+            'when the `if` argument is true.'
+        ),
+        args=[
+            Directive.Argument(
+                name='if',
+                type_ident=NON_NULL(SCALAR('Boolean')),
+                description='Skipped when true.',
+                default_value=None,
+            ),
+        ],
+    ),
+    Directive(
+        name='include',
+        locations=['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'],
+        description=(
+            'Directs the executor to include this field or fragment '
+            'only when the `if` argument is true.'
+        ),
+        args=[
+            Directive.Argument(
+                name='if',
+                type_ident=NON_NULL(SCALAR('Boolean')),
+                description='Included when true.',
+                default_value=None,
+            ),
+        ],
+    ),
+)
 
 
 def _async_wrapper(func):
@@ -31,20 +96,26 @@ def _async_wrapper(func):
     return wrapper
 
 
-SCALAR = _namedtuple('SCALAR', 'name')
-OBJECT = _namedtuple('OBJECT', 'name')
-DIRECTIVE = _namedtuple('DIRECTIVE', 'name')
-INPUT_OBJECT = _namedtuple('INPUT_OBJECT', 'name')
-LIST = _namedtuple('LIST', 'of_type')
-NON_NULL = _namedtuple('NON_NULL', 'of_type')
-
-FieldIdent = _namedtuple('FieldIdent', 'node, name')
-FieldArgIdent = _namedtuple('FieldArgIdent', 'node, field, name')
-InputObjectFieldIdent = _namedtuple('InputObjectFieldIdent', 'name, key')
-DirectiveArgIdent = _namedtuple('DirectiveArgIdent', 'name')
-
 QUERY_ROOT_NAME = 'Query'
 MUTATION_ROOT_NAME = 'Mutation'
+
+
+class SchemaInfo:
+
+    def __init__(
+        self,
+        query_graph: Graph,
+        mutation_graph: t.Optional[Graph] = None,
+        directives: t.Optional[t.Sequence[Directive]] = None,
+    ):
+        self.query_graph = query_graph
+        self.data_types = query_graph.data_types
+        self.mutation_graph = mutation_graph
+        self.directives = directives or ()
+
+    @cached_property
+    def directives_map(self):
+        return OrderedDict((d.name, d) for d in self.directives)
 
 
 class TypeIdent(AbstractTypeVisitor):
@@ -131,7 +202,7 @@ def na_many(schema, ids=None, options=None):
         return [[] for _ in ids]
 
 
-def _nodes_map(schema):
+def _nodes_map(schema: SchemaInfo):
     nodes = [(n.name, n) for n in schema.query_graph.nodes]
     nodes.append((QUERY_ROOT_NAME, schema.query_graph.root))
     if schema.mutation_graph is not None:
@@ -152,12 +223,13 @@ def type_link(schema, options):
 
 
 @listify
-def root_schema_types(schema):
+def root_schema_types(schema: SchemaInfo):
     yield SCALAR('String')
     yield SCALAR('Int')
     yield SCALAR('Boolean')
     yield SCALAR('Float')
     yield SCALAR('Any')
+
     for name in _nodes_map(schema):
         yield OBJECT(name)
     for name, type_ in schema.data_types.items():
@@ -178,7 +250,9 @@ def root_schema_mutation_type(schema):
 
 
 def root_schema_directives(schema):
-    return [DIRECTIVE('skip'), DIRECTIVE('include')]
+    return [
+        DIRECTIVE(directive.name) for directive in schema.directives
+    ]
 
 
 @listify
@@ -309,16 +383,6 @@ def type_input_object_input_fields_link(schema, ids):
             yield []
 
 
-_arg_descriptions = {
-    'include': (
-        'Included when true.'
-    ),
-    'skip': (
-        'Skipped when true.'
-    ),
-}
-
-
 @listify
 def input_value_info(schema, fields, ids):
     nodes_map = _nodes_map(schema)
@@ -343,10 +407,12 @@ def input_value_info(schema, fields, ids):
                     'defaultValue': None}
             yield [info[f.name] for f in fields]
         elif isinstance(ident, DirectiveArgIdent):
+            directive = schema.directives_map[ident.name]
+            arg = directive.args_map[ident.arg]
             info = {'id': ident,
-                    'name': 'if',
-                    'description': _arg_descriptions[ident.name],
-                    'defaultValue': None}
+                    'name': arg.name,
+                    'description': arg.description,
+                    'defaultValue': arg.default_value}
             yield [info[f.name] for f in fields]
         else:
             raise TypeError(repr(ident))
@@ -367,34 +433,31 @@ def input_value_type_link(schema, ids):
             field_type = data_type.__field_types__[ident.key]
             yield type_ident.visit(field_type)
         elif isinstance(ident, DirectiveArgIdent):
-            yield NON_NULL(SCALAR('Boolean'))
+            directive = schema.directives_map[ident.name]
+            for arg in directive.args:
+                yield arg.type_ident
         else:
             raise TypeError(repr(ident))
-
-
-_directive_descriptions = {
-    'include': (
-        'Directs the executor to include this field or fragment '
-        'only when the `if` argument is true.'
-    ),
-    'skip': (
-        'Directs the executor to skip this field or fragment '
-        'when the `if` argument is true.'
-    ),
-}
 
 
 @listify
 def directive_value_info(schema, fields, ids):
     for ident in ids:
-        info = {'name': ident.name,
-                'description': _directive_descriptions.get(ident.name),
-                'locations': ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']}
-        yield [info[f.name] for f in fields]
+        if ident.name in schema.directives_map:
+            directive = schema.directives_map[ident.name]
+            info = {'name': directive.name,
+                    'description': directive.description,
+                    'locations': directive.locations}
+            yield [info[f.name] for f in fields]
 
 
 def directive_args_link(schema, ids):
-    return [[DirectiveArgIdent(ident)] for ident in ids]
+    links = []
+    for ident in ids:
+        directive = schema.directives_map[ident]
+        links.append([DirectiveArgIdent(ident, arg.name)
+                      for arg in directive.args])
+    return links
 
 
 GRAPH = Graph([
@@ -605,14 +668,6 @@ class AddIntrospection(GraphTransformer):
         return graph
 
 
-class SchemaInfo:
-
-    def __init__(self, query_graph, mutation_graph=None):
-        self.query_graph = query_graph
-        self.data_types = query_graph.data_types
-        self.mutation_graph = mutation_graph
-
-
 class GraphQLIntrospection(GraphTransformer):
     """Adds GraphQL introspection into synchronous graph
 
@@ -626,6 +681,8 @@ class GraphQLIntrospection(GraphTransformer):
         graph = apply(graph, [GraphQLIntrospection(graph)])
 
     """
+    __directives__ = _BUILTIN_DIRECTIVES
+
     def __init__(self, query_graph, mutation_graph=None):
         """
         :param query_graph: graph, where Root node represents Query root
@@ -633,7 +690,11 @@ class GraphQLIntrospection(GraphTransformer):
         :param mutation_graph: graph, where Root node represents Mutation root
             operation type
         """
-        self._schema = SchemaInfo(query_graph, mutation_graph)
+        self._schema = SchemaInfo(
+            query_graph,
+            mutation_graph,
+            self.__directives__,
+        )
 
     def __type_name__(self, node_name):
         return Field('__typename', String,

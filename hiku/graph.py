@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 from itertools import chain
 from functools import reduce
 from collections import OrderedDict
+from typing import List
 
 from .types import OptionalMeta, SequenceMeta, TypeRefMeta, Record, Any
 from .utils import cached_property, const
@@ -109,7 +110,7 @@ class Field(AbstractField):
     - ``ids`` - list node identifiers
 
     """
-    def __init__(self, name, type_, func, *, options=None, description=None):
+    def __init__(self, name, type_, func, *, options=None, description=None, directives=None):
         """
         :param str name: name of the field
         :param type_: type of the field or ``None``
@@ -122,6 +123,7 @@ class Field(AbstractField):
         self.func = func
         self.options = options or ()
         self.description = description
+        self.directives = directives or ()
 
     def __repr__(self):
         return '{}({!r}, {!r}, {!r})'.format(self.__class__.__name__, self.name,
@@ -277,7 +279,7 @@ class Node(AbstractNode):
         ])
 
     """
-    def __init__(self, name, fields, *, description=None):
+    def __init__(self, name, fields, *, description=None, directives=None):
         """
         :param name: name of the node
         :param fields: list of fields and links
@@ -286,6 +288,7 @@ class Node(AbstractNode):
         self.name = name
         self.fields = fields
         self.description = description
+        self.directives = directives or ()
 
     def __repr__(self):
         return '{}({!r}, {!r}, ...)'.format(self.__class__.__name__, self.name,
@@ -458,7 +461,7 @@ class GraphTransformer(AbstractGraphVisitor):
     def visit_field(self, obj):
         return Field(obj.name, obj.type, obj.func,
                      options=[self.visit(op) for op in obj.options],
-                     description=obj.description)
+                     description=obj.description, directives=obj.directives)
 
     def visit_link(self, obj):
         return Link(obj.name, obj.type, obj.func,
@@ -468,7 +471,7 @@ class GraphTransformer(AbstractGraphVisitor):
 
     def visit_node(self, obj):
         return Node(obj.name, [self.visit(f) for f in obj.fields],
-                    description=obj.description)
+                    description=obj.description, directives=obj.directives)
 
     def visit_root(self, obj):
         return Root([self.visit(f) for f in obj.fields])
@@ -478,7 +481,7 @@ class GraphTransformer(AbstractGraphVisitor):
                      obj.data_types)
 
 
-def apply(graph, transformers):
+def apply(graph: Graph, transformers: List[GraphTransformer]) -> Graph:
     """Helper function to apply graph transformations
 
     Example:
