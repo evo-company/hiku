@@ -90,6 +90,16 @@ def _field_directive(name, args):
     }
 
 
+def _directive_deprecated():
+    return {
+        'name': 'deprecated',
+        'description': ANY,
+        "locations": ["FIELD_DEFINITION", "ENUM_VALUE"],
+        "args": [
+            _ival('reason', _STR, description=ANY),
+        ],
+    }
+
 def _object_directive(name, args):
     return {
         'name': name,
@@ -131,6 +141,7 @@ def _schema(types, with_mutation=False) -> dict:
                 _field_directive('include', [
                     _ival('if', _non_null(_BOOL), description=ANY),
                 ]),
+                _directive_deprecated(),
                 _object_directive('key', [
                     _ival('fields', _non_null(_FIELDSET), description=ANY),
                 ]),

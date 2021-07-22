@@ -1,8 +1,7 @@
-class _DirectiveBase:
-    pass
+from hiku.directives import DirectiveBase
 
 
-class Key(_DirectiveBase):
+class Key(DirectiveBase):
     """
     https://www.apollographql.com/docs/federation/federation-spec/#key
     """
@@ -13,7 +12,7 @@ class Key(_DirectiveBase):
         return visitor.visit_key_directive(self)
 
 
-class Provides(_DirectiveBase):
+class Provides(DirectiveBase):
     """
     https://www.apollographql.com/docs/federation/federation-spec/#provides
     """
@@ -24,7 +23,7 @@ class Provides(_DirectiveBase):
         return visitor.visit_provides_directive(self)
 
 
-class Requires(_DirectiveBase):
+class Requires(DirectiveBase):
     """
     https://www.apollographql.com/docs/federation/federation-spec/#requires
     """
@@ -35,7 +34,7 @@ class Requires(_DirectiveBase):
         return visitor.visit_requires_directive(self)
 
 
-class External(_DirectiveBase):
+class External(DirectiveBase):
     """
     https://www.apollographql.com/docs/federation/federation-spec/#external
     """
@@ -43,7 +42,7 @@ class External(_DirectiveBase):
         return visitor.visit_external_directive(self)
 
 
-class Extends(_DirectiveBase):
+class Extends(DirectiveBase):
     """
     Apollo Federation supports using an @extends directive in place of extend
     type to annotate type references

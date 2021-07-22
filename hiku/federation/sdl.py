@@ -209,6 +209,17 @@ class Exporter(GraphVisitor):
     def visit_extends_directive(self, obj):
         return ast.DirectiveNode(name=_name('extends'))
 
+    def visit_deprecated_directive(self, obj):
+        return ast.DirectiveNode(
+            name=_name('deprecated'),
+            arguments=[
+                ast.ArgumentNode(
+                    name=_name('reason'),
+                    value=ast.StringValueNode(value=obj.reason),
+                ),
+            ],
+        )
+
 
 def get_ast(graph: Graph) -> ast.DocumentNode:
     graph = _StripGraph().visit(graph)

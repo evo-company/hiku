@@ -1,3 +1,4 @@
+from hiku.directives import Deprecated
 from hiku.federation.directive import (
     External,
     Key,
@@ -118,7 +119,12 @@ GRAPH = Graph([
     Node('CartItem', [
         Field('id', Integer, cart_item_resolver),
         Field('cart_id', Integer, cart_item_resolver),
-        Field('name', String, cart_item_resolver),
+        Field(
+            'name',
+            String,
+            cart_item_resolver,
+            directives=[Deprecated('do not use')]
+        ),
         Field('photo', Optional[String], lambda: None, options=[
             Option('width', Integer),
             Option('height', Integer),

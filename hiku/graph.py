@@ -96,6 +96,16 @@ class Field(AbstractField):
             ]),
         ])
 
+    Example with directives::
+
+        graph = Graph([
+            Root([
+                Field('lorem-ipsum', String, func,
+                      options=[Option('words', Integer, default=50)],
+                      directives=[Deprecated('use another field')]),
+            ]),
+        ])
+
     Data loading protocol::
 
         # root node fields
