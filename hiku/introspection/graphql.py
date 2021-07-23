@@ -5,6 +5,7 @@ import typing as t
 from functools import partial
 from collections import OrderedDict
 
+from ..directives import get_deprecated
 from ..graph import Graph, Root, Node, Link, Option, Field, Nothing
 from ..graph import GraphVisitor, GraphTransformer
 from ..types import (
@@ -80,6 +81,19 @@ _BUILTIN_DIRECTIVES = (
                 name='if',
                 type_ident=NON_NULL(SCALAR('Boolean')),
                 description='Included when true.',
+                default_value=None,
+            ),
+        ],
+    ),
+    Directive(
+        name='deprecated',
+        locations=['FIELD_DEFINITION', 'ENUM_VALUE'],
+        description='Marks the field or enum value as deprecated',
+        args=[
+            Directive.Argument(
+                name='reason',
+                type_ident=SCALAR('String'),
+                description='Deprecation reason.',
                 default_value=None,
             ),
         ],
@@ -327,11 +341,15 @@ def field_info(schema, fields, ids):
         if ident.node in nodes_map:
             node = nodes_map[ident.node]
             field = node.fields_map[ident.name]
+            deprecated = None
+            if isinstance(field, (Field, Link)):
+                deprecated = get_deprecated(field)
+
             info = {'id': ident,
                     'name': field.name,
                     'description': field.description,
-                    'isDeprecated': False,
-                    'deprecationReason': None}
+                    'isDeprecated': bool(deprecated),
+                    'deprecationReason': deprecated and deprecated.reason}
         else:
             info = {'id': ident,
                     'name': ident.name,

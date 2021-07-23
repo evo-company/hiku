@@ -159,7 +159,8 @@ class Exporter(GraphVisitor):
         return ast.FieldDefinitionNode(
             name=_name(obj.name),
             arguments=[self.visit(o) for o in obj.options],
-            type=_encode_type(obj.type)
+            type=_encode_type(obj.type),
+            directives=[self.visit(d) for d in obj.directives]
         )
 
     def visit_option(self, obj: Option):
@@ -208,6 +209,17 @@ class Exporter(GraphVisitor):
 
     def visit_extends_directive(self, obj):
         return ast.DirectiveNode(name=_name('extends'))
+
+    def visit_deprecated_directive(self, obj):
+        return ast.DirectiveNode(
+            name=_name('deprecated'),
+            arguments=[
+                ast.ArgumentNode(
+                    name=_name('reason'),
+                    value=ast.StringValueNode(value=obj.reason),
+                ),
+            ],
+        )
 
 
 def get_ast(graph: Graph) -> ast.DocumentNode:

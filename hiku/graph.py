@@ -96,6 +96,16 @@ class Field(AbstractField):
             ]),
         ])
 
+    Example with directives::
+
+        graph = Graph([
+            Root([
+                Field('lorem-ipsum', String, func,
+                      options=[Option('words', Integer, default=50)],
+                      directives=[Deprecated('use another field')]),
+            ]),
+        ])
+
     Data loading protocol::
 
         # root node fields
@@ -118,6 +128,7 @@ class Field(AbstractField):
         :param func: function to load field's data
         :param options: list of acceptable options
         :param description: description of the field
+        :param directives: list of directives for the field
         """
         self.name = name
         self.type = type_
@@ -189,6 +200,17 @@ class Link(AbstractLink):
             ]),
         ])
 
+    Example with directives::
+
+        graph = Graph([
+            Node('user', [...]),
+            Root([
+                Link('users', Sequence[TypeRef['user']], func, requires=None,
+                     options=[Option('limit', Integer, default=100)],
+                     directives=[Deprecated('do not use')]),
+            ]),
+        ])
+
     Identifiers loading function protocol::
 
         # From root node or if requires is None:
@@ -225,7 +247,8 @@ class Link(AbstractLink):
     options.
     """
     def __init__(
-        self, name, type_, func, *, requires, options=None, description=None
+        self, name, type_, func, *, requires, options=None, description=None,
+        directives=None
     ):
         """
         :param name: name of the link
@@ -235,6 +258,7 @@ class Link(AbstractLink):
                          identifiers of the linked node
         :param options: list of acceptable options
         :param description: description of the link
+        :param directives: list of directives for the link
         """
         type_enum, node = get_type_enum(type_)
 
@@ -246,6 +270,7 @@ class Link(AbstractLink):
         self.requires = requires
         self.options = options or ()
         self.description = description
+        self.directives = directives or ()
 
     def __repr__(self):
         return '{}({!r}, {!r}, {!r}, ...)'.format(self.__class__.__name__,
@@ -468,7 +493,7 @@ class GraphTransformer(AbstractGraphVisitor):
         return Link(obj.name, obj.type, obj.func,
                     requires=obj.requires,
                     options=[self.visit(op) for op in obj.options],
-                    description=obj.description)
+                    description=obj.description, directives=obj.directives)
 
     def visit_node(self, obj):
         return Node(obj.name, [self.visit(f) for f in obj.fields],

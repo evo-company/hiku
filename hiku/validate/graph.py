@@ -2,7 +2,12 @@ from itertools import chain
 from contextlib import contextmanager
 from collections import Counter
 
-from ..graph import GraphVisitor, Root
+from ..directives import Deprecated
+from ..graph import (
+    GraphVisitor,
+    Root,
+    Field,
+)
 from ..graph import AbstractNode, AbstractField, AbstractLink, AbstractOption
 
 from .errors import Errors
@@ -78,9 +83,21 @@ class GraphValidator(GraphVisitor):
         path = self._ctx + ([obj] if obj is not None else [])
         return ''.join(self._name_formatter.visit(i) for i in path)
 
+    def _validate_deprecated_duplicates(self, obj):
+        deprecated_count = sum(
+            (1 for d in obj.directives if isinstance(d, Deprecated)))
+        if deprecated_count > 1:
+            self.errors.report(
+                'Deprecated directive must be used only once for "{}", found {}'
+                .format(self._format_path(obj), deprecated_count)
+            )
+
     def visit_option(self, obj):
         # TODO: check option default value according to the option type
         pass
+
+    def visit_field(self, obj: Field):
+        self._validate_deprecated_duplicates(obj)
 
     def visit_link(self, obj):
         invalid = [f for f in obj.options
@@ -109,6 +126,8 @@ class GraphValidator(GraphVisitor):
                     .format(obj.name, obj.requires, self._format_path())
                 )
 
+        self._validate_deprecated_duplicates(obj)
+
     def visit_node(self, obj):
         node_name = obj.name or 'root'
         invalid = [f for f in obj.fields
@@ -130,6 +149,9 @@ class GraphValidator(GraphVisitor):
                 'Duplicated names found in the "{}" node: {}'
                 .format(node_name, self._format_names(duplicates))
             )
+
+        if sum((1 for d in obj.directives if isinstance(d, Deprecated))) > 0:
+            self.errors.report('Deprecated directive can not be used in Node')
 
     def visit_root(self, obj):
         self.visit_node(obj)

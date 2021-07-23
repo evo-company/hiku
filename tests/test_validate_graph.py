@@ -1,5 +1,6 @@
 import pytest
 
+from hiku.directives import Deprecated
 from hiku.graph import Graph, Node, Field, Root, Link, Option
 from hiku.types import TypeRef, Sequence
 from hiku.validate.graph import GraphValidationError
@@ -134,4 +135,45 @@ def test_link_contain_invalid_types():
         ],
         [('Invalid types provided as link "bar.baz" options: {!r}'
           .format(int))],
+    )
+
+
+def test_node_uses_deprecated_directive():
+    check_errors(
+        [
+            Node('bar', [
+                Field('id', None, _fields_func),
+            ], directives=[Deprecated('do not use')]),
+        ],
+        ['Deprecated directive can not be used in Node'],
+    )
+
+
+def test_field_uses_more_than_one_deprecated_directive():
+    check_errors(
+        [
+            Node('bar', [
+                Field('id', None, _fields_func, directives=[
+                    Deprecated('do not use'),
+                    Deprecated('do not use 2'),
+                ]),
+            ]),
+        ],
+        ['Deprecated directive must be used only once for "bar.id", found 2'],
+    )
+
+
+def test_link_uses_more_than_one_deprecated_directive():
+    check_errors(
+        [
+            Node('foo', []),
+            Node('bar', [
+                Link('baz', Sequence[TypeRef['foo']],
+                     _link_func, requires=None, directives=[
+                    Deprecated('do not use'),
+                    Deprecated('do not use 2'),
+                ])
+            ]),
+        ],
+        ['Deprecated directive must be used only once for "bar.baz", found 2'],
     )
