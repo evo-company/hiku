@@ -162,7 +162,8 @@ def test_introspection_query():
         Root([
             Field('_cowered', String, _noop),
             Field('entero', Float, _noop),
-            Field('oldField', Float, _noop, directives=[Deprecated('obsolete')]),
+            Field('oldField', Float, _noop,
+                  directives=[Deprecated('obsolete')]),
             Link('oldLink', Sequence[TypeRef['decian']], _noop, requires=None,
                  directives=[Deprecated('obsolete link')]),
             Link('toma', Sequence[TypeRef['decian']], _noop, requires=None),

@@ -89,7 +89,7 @@ class GraphValidator(GraphVisitor):
         if deprecated_count > 1:
             self.errors.report(
                 'Deprecated directive must be used only once for "{}", found {}'
-                    .format(self._format_path(obj), deprecated_count)
+                .format(self._format_path(obj), deprecated_count)
             )
 
     def visit_option(self, obj):
