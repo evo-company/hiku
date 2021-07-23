@@ -1,9 +1,5 @@
 import logging
 
-from typing import (
-    TypedDict,
-)
-
 from flask import Flask, request, jsonify
 
 from hiku.federation.directive import (
@@ -33,17 +29,6 @@ from hiku.executors.sync import SyncExecutor
 log = logging.getLogger(__name__)
 
 
-class Cart(TypedDict):
-    id: int
-    status: str
-
-
-class CartItem(TypedDict):
-    id: int
-    cart_id: int
-    name: str
-
-
 def get_by_id(id_, collection):
     for item in collection:
         if item['id'] == id_:
@@ -58,13 +43,13 @@ def find_all_by_id(id_, collection, key='id'):
 
 data = {
     'carts': [
-        Cart(id=1, status='NEW'),
-        Cart(id=2, status='ORDERED'),
+        dict(id=1, status='NEW'),
+        dict(id=2, status='ORDERED'),
     ],
     'cart_items': [
-        CartItem(id=10, cart_id=1, name='Ipad'),
-        CartItem(id=20, cart_id=2, name='Book'),
-        CartItem(id=21, cart_id=2, name='Pen'),
+        dict(id=10, cart_id=1, name='Ipad'),
+        dict(id=20, cart_id=2, name='Book'),
+        dict(id=21, cart_id=2, name='Pen'),
     ]
 }
 

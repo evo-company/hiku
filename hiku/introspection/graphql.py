@@ -1,7 +1,6 @@
 import re
 import json
 import typing as t
-from dataclasses import dataclass
 
 from functools import partial
 from collections import OrderedDict
@@ -35,10 +34,8 @@ from .types import (
 )
 
 
-@dataclass
-class Directive:
-    @dataclass
-    class Argument:
+class Directive(t.NamedTuple):
+    class Argument(t.NamedTuple):
         name: str
         type_ident: t.Any
         description: str
