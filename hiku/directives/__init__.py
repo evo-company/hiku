@@ -1,6 +1,12 @@
-from typing import Optional
+from typing import (
+    Optional,
+    Union,
+)
 
-from hiku.graph import Field
+from hiku.graph import (
+    Field,
+    Link,
+)
 
 
 class DirectiveBase:
@@ -18,7 +24,7 @@ class Deprecated(DirectiveBase):
         return visitor.visit_deprecated_directive(self)
 
 
-def get_deprecated(field: Field) -> Optional[Deprecated]:
+def get_deprecated(field: Union[Field, Link]) -> Optional[Deprecated]:
     """Get deprecated directive"""
     return next(
         (d for d in field.directives if isinstance(d, Deprecated)),

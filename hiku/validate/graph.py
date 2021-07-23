@@ -83,18 +83,21 @@ class GraphValidator(GraphVisitor):
         path = self._ctx + ([obj] if obj is not None else [])
         return ''.join(self._name_formatter.visit(i) for i in path)
 
-    def visit_option(self, obj):
-        # TODO: check option default value according to the option type
-        pass
-
-    def visit_field(self, obj: Field):
+    def _validate_deprecated_duplicates(self, obj):
         deprecated_count = sum(
             (1 for d in obj.directives if isinstance(d, Deprecated)))
         if deprecated_count > 1:
             self.errors.report(
                 'Deprecated directive must be used only once for "{}", found {}'
-                .format(self._format_path(obj), deprecated_count)
+                    .format(self._format_path(obj), deprecated_count)
             )
+
+    def visit_option(self, obj):
+        # TODO: check option default value according to the option type
+        pass
+
+    def visit_field(self, obj: Field):
+        self._validate_deprecated_duplicates(obj)
 
     def visit_link(self, obj):
         invalid = [f for f in obj.options
@@ -122,6 +125,8 @@ class GraphValidator(GraphVisitor):
                     'Link "{}" requires missing field "{}" in the "{}" node'
                     .format(obj.name, obj.requires, self._format_path())
                 )
+
+        self._validate_deprecated_duplicates(obj)
 
     def visit_node(self, obj):
         node_name = obj.name or 'root'

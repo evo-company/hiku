@@ -90,15 +90,14 @@ def _field_directive(name, args):
     }
 
 
-def _directive_deprecated():
+def _field_enum_directive(name, args):
     return {
-        'name': 'deprecated',
+        'name': name,
         'description': ANY,
-        "locations": ["FIELD_DEFINITION", "ENUM_VALUE"],
-        "args": [
-            _ival('reason', _STR, description=ANY),
-        ],
+        'locations': ['FIELD_DEFINITION', 'ENUM_VALUE'],
+        'args': args,
     }
+
 
 def _object_directive(name, args):
     return {
@@ -141,7 +140,9 @@ def _schema(types, with_mutation=False) -> dict:
                 _field_directive('include', [
                     _ival('if', _non_null(_BOOL), description=ANY),
                 ]),
-                _directive_deprecated(),
+                _field_enum_directive('deprecated', [
+                    _ival('reason', _STR, description=ANY)
+                ]),
                 _object_directive('key', [
                     _ival('fields', _non_null(_FIELDSET), description=ANY),
                 ]),
@@ -188,6 +189,9 @@ class TestFederatedGraphIntrospection(TestCase):
         exp = _schema([
             _type('Order', 'OBJECT', fields=[
                 _field('cartId', _non_null(_INT)),
+                _field('oldCart', _non_null(_obj('Cart')),
+                       isDeprecated=True,
+                       deprecationReason='use cart instead'),
                 _field('cart', _non_null(_obj('Cart'))),
             ]),
             _type('Cart', 'OBJECT', fields=[
@@ -198,7 +202,9 @@ class TestFederatedGraphIntrospection(TestCase):
             _type('CartItem', 'OBJECT', fields=[
                 _field('id', _non_null(_INT)),
                 _field('cart_id', _non_null(_INT)),
-                _field('name', _non_null(_STR)),
+                _field('name', _non_null(_STR),
+                       isDeprecated=True,
+                       deprecationReason='do not use'),
                 _field('photo', _STR, args=[
                     _ival(
                         'width',

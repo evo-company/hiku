@@ -161,3 +161,18 @@ def test_field_uses_more_than_one_deprecated_directive():
         ],
         ['Deprecated directive must be used only once for "bar.id", found 2'],
     )
+
+def test_link_uses_more_than_one_deprecated_directive():
+    check_errors(
+        [
+            Node('foo', []),
+            Node('bar', [
+                Link('baz', Sequence[TypeRef['foo']],
+                     _link_func, requires=None, directives=[
+                    Deprecated('do not use'),
+                    Deprecated('do not use 2'),
+                ])
+            ]),
+        ],
+        ['Deprecated directive must be used only once for "bar.baz", found 2'],
+    )

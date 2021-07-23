@@ -84,14 +84,12 @@ def _directive(name):
     }
 
 
-def _directive_deprecated():
+def _field_enum_directive(name, args):
     return {
-        'name': 'deprecated',
+        'name': name,
         'description': ANY,
-        "locations": ["FIELD_DEFINITION", "ENUM_VALUE"],
-        "args": [
-            _ival('reason', _STR, description=ANY),
-        ],
+        'locations': ['FIELD_DEFINITION', 'ENUM_VALUE'],
+        'args': args,
     }
 
 
@@ -103,7 +101,9 @@ def _schema(types, with_mutation=False):
             'directives': [
                 _directive('skip'),
                 _directive('include'),
-                _directive_deprecated(),
+                _field_enum_directive('deprecated', [
+                    _ival('reason', _STR, description=ANY)
+                ])
             ],
             'mutationType': {'name': 'Mutation'} if with_mutation else None,
             'queryType': {'name': 'Query'},
@@ -163,6 +163,8 @@ def test_introspection_query():
             Field('_cowered', String, _noop),
             Field('entero', Float, _noop),
             Field('oldField', Float, _noop, directives=[Deprecated('obsolete')]),
+            Link('oldLink', Sequence[TypeRef['decian']], _noop, requires=None,
+                 directives=[Deprecated('obsolete link')]),
             Link('toma', Sequence[TypeRef['decian']], _noop, requires=None),
         ]),
     ])
@@ -185,6 +187,12 @@ def test_introspection_query():
                 _non_null(_FLOAT),
                 isDeprecated=True,
                 deprecationReason='obsolete',
+            ),
+            _field(
+                'oldLink',
+                _seq_of(_obj('decian')),
+                isDeprecated=True,
+                deprecationReason='obsolete link',
             ),
             _field('toma', _seq_of(_obj('decian'))),
         ]),

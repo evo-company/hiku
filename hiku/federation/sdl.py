@@ -159,7 +159,8 @@ class Exporter(GraphVisitor):
         return ast.FieldDefinitionNode(
             name=_name(obj.name),
             arguments=[self.visit(o) for o in obj.options],
-            type=_encode_type(obj.type)
+            type=_encode_type(obj.type),
+            directives=[self.visit(d) for d in obj.directives]
         )
 
     def visit_option(self, obj: Option):

@@ -342,7 +342,7 @@ def field_info(schema, fields, ids):
             node = nodes_map[ident.node]
             field = node.fields_map[ident.name]
             deprecated = None
-            if isinstance(field, Field):
+            if isinstance(field, (Field, Link)):
                 deprecated = get_deprecated(field)
 
             info = {'id': ident,

@@ -108,6 +108,8 @@ GRAPH = Graph([
     Node('Order', [
         Field('cartId', Integer, ids_resolver,
               directives=[External()]),
+        Link('oldCart', TypeRef['Cart'], direct_link, requires='cartId',
+             directives=[Deprecated('use cart instead')]),
         Link('cart', TypeRef['Cart'], direct_link, requires='cartId'),
     ], directives=[Key('cartId'), Extends()]),
     Node('Cart', [
