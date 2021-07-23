@@ -110,7 +110,8 @@ class Field(AbstractField):
     - ``ids`` - list node identifiers
 
     """
-    def __init__(self, name, type_, func, *, options=None, description=None, directives=None):
+    def __init__(self, name, type_, func, *, options=None, description=None,
+                 directives=None):
         """
         :param str name: name of the field
         :param type_: type of the field or ``None``

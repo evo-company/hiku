@@ -39,6 +39,7 @@ def _union(name, possible_types=None):
         'possibleTypes': possible_types
     }
 
+
 def _seq_of(_type):
     return {'kind': 'NON_NULL', 'name': None,
             'ofType': {'kind': 'LIST', 'name': None,
