@@ -12,6 +12,12 @@ from .result import Proxy, Index, ROOT, Reference
 from .executors.queue import Workflow, Queue
 
 
+UNHASHABLE_FIX_MSG = (
+    'Probably link returns list of unhashable types. Consider adding __hash__ '
+    'method or use hashable type.'
+)
+
+
 def _yield_options(graph_obj, query_obj):
     options = query_obj.options or {}
     for option in graph_obj.options:
@@ -162,7 +168,17 @@ def store_fields(index, node, query_fields, ids, query_result):
         assert ids is not None
         node_idx = index[node.name]
         for i, row in zip(ids, query_result):
-            node_idx[i].update(zip(names, row))
+            try:
+                idx = node_idx[i]
+            except TypeError as e:
+                raise TypeError(
+                    'Unhashable type {!r}: '
+                    'node {}, fields {}. {}'.format(
+                        type(i), node.name, names, UNHASHABLE_FIX_MSG
+                    )
+                ) from e
+
+            idx.update(zip(names, row))
     else:
         assert ids is None
         index.root.update(zip(names, query_result))
