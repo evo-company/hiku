@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -19,7 +19,7 @@ jobs:
         python -m pip install tox tox-gh-actions codecov
         python -m pip install -r requirements-tox.txt
     - name: Run flake8
-      if: startsWith(matrix.python-version, '3.9')
+      if: startsWith(matrix.python-version, '3.10')
       run: tox -e flake8
     - name: Run unit tests
       run: tox -- --cov
