@@ -23,7 +23,12 @@ Release process
 
 Hiku supports semver versioning.
 
-#. Update the version number in the `hiku/__init__.py`` file.
+#. Update the version number in the ``hiku/__init__.py`` file.
 #. Update the changelog in the `docs/changelog/changes_0X.rst` file.
 #. Merge changes into master.
-#. Create annotated tag. This will trigger a new release action on GitHub and publish new package to `pypi`.
+#. Run `lets release <version> -m 'your release message'`. This will create and push annotated tag. When new tag pushed, new release action on GitHub will publish new package to `pypi`.
+
+Documentation release
+~~~~~~~~~~~~~~~~~~~~~
+
+Documentation released on new commits in master.

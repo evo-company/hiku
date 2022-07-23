@@ -1,4 +1,4 @@
-FROM python:3.6.8-slim as base
+FROM python:3.7.13-slim as base
 
 WORKDIR /work
 
