@@ -16,8 +16,8 @@ jobs:
     - run: npm ci
     - run: ./node_modules/.bin/webpack -p
     - run: ls -la hiku/console/assets
-    - run: python setup.py sdist
-    - run: pip3 install twine
+    - run: pip3 install wheel twine
+    - run: python setup.py sdist bdist_wheel
     - run: twine upload dist/*
       env:
         TWINE_USERNAME: "__token__"
