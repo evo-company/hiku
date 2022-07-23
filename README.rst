@@ -99,13 +99,13 @@ Contributing
 Use Tox_ in order to test and lint your changes.
 
 .. _Tox: https://tox.readthedocs.io/
-.. |project| image:: https://img.shields.io/badge/vmagamedov%2Fhiku-blueviolet.svg?logo=github
-.. _project: https://github.com/vmagamedov/hiku
+.. |project| image:: https://img.shields.io/badge/evo-company%2Fhiku-blueviolet.svg?logo=github
+.. _project: https://github.com/evo-company/hiku
 .. |documentation| image:: https://img.shields.io/badge/docs-hiku.rtfd.io-blue.svg
 .. _documentation: https://hiku.readthedocs.io/en/latest/
 .. |version| image:: https://img.shields.io/pypi/v/hiku.svg?label=stable&color=green
 .. _version: https://pypi.org/project/hiku/
-.. |tag| image:: https://img.shields.io/github/tag/vmagamedov/hiku.svg?label=latest
+.. |tag| image:: https://img.shields.io/github/tag/evo-company/hiku.svg?label=latest
 .. _tag: https://pypi.org/project/hiku/#history
 .. |license| image:: https://img.shields.io/pypi/l/hiku.svg
-.. _license: https://github.com/vmagamedov/hiku/blob/master/LICENSE.txt
+.. _license: https://github.com/evo-company/hiku/blob/master/LICENSE.txt
