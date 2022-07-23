@@ -1,6 +1,27 @@
 shell: bash
 
 commands:
+  release:
+    description: Create tag and push
+    options: |
+      Usage: lets release <version> --message=<message>
+      Options:
+        <version>       Set version
+        --message=<message>, -m    Release message
+      Example:
+        lets release 0.7.1 --message="Added federation"
+        lets release 0.7.2rc1 --message="Added feature"
+    cmd: |
+      version=$(grep -oP "(\d+\.\d+\.\d+(rc\d+)?)"  hiku/__init__.py)
+      if [[ "$version" != "${LETSOPT_VERSION}" ]]; then
+        echo "Version mismatch: hiku/__init__.py ${version} != release ${LETSOPT_VERSION}"
+        echo "Update hiku/__init__.py version to ${LETSOPT_VERSION}, push to remote and try again"
+        exit 1
+      fi
+
+      git tag -a v${LETSOPT_VERSION} -m "${LETSOPT_MESSAGE}"
+      git push --tags
+  
   _build-docs:
     description: Build docker image for docs
     cmd: docker build -t hiku-docs -f docker/Dockerfile .
