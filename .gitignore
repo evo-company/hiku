@@ -12,3 +12,4 @@ env
 .idea
 .cache
 .pytest_cache
+.vscode

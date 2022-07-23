@@ -4,14 +4,14 @@
   "main": "webpack.config.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vmagamedov/hiku.git"
+    "url": "git+https://github.com/evo-company/hiku.git"
   },
   "author": "",
   "license": "BSD-3-Clause",
   "bugs": {
-    "url": "https://github.com/vmagamedov/hiku/issues"
+    "url": "https://github.com/evo-company/hiku/issues"
   },
-  "homepage": "https://github.com/vmagamedov/hiku#readme",
+  "homepage": "https://github.com/evo-company/hiku#readme",
   "devDependencies": {
     "babel-core": "^6.14.0",
     "babel-loader": "^6.2.5",

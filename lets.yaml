@@ -1,0 +1,17 @@
+shell: bash
+
+commands:
+  _build-docs:
+    description: Build docker image for docs
+    cmd: docker build -t hiku-docs -f docker/Dockerfile .
+
+  docs:
+    description: Build docs
+    depends: [_build-docs]
+    cmd: |
+      docker run --rm \
+        -w /work \
+        -v $(pwd):/work \
+        -e PYTHONPATH=. \
+        hiku-docs \
+        sphinx-build -b html docs build

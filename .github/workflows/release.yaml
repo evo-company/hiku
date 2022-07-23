@@ -20,5 +20,5 @@ jobs:
     - run: pip3 install twine
     - run: twine upload dist/*
       env:
-        TWINE_USERNAME: "__token__"
+        TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
         TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}

@@ -12,7 +12,7 @@ Simplest one-field graph
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. note:: Source code of this example can be found
-    `on GitHub <https://github.com/vmagamedov/hiku/blob/master/docs/basics/test_stage1.py>`_.
+    `on GitHub <https://github.com/evo-company/hiku/blob/master/docs/basics/test_stage1.py>`_.
 
 Let's define graph with only one field, which is easy to compute, for example it
 would be a current time:
@@ -58,7 +58,7 @@ Introducing nodes and links
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. note:: Source code of this example can be found
-    `on GitHub <https://github.com/vmagamedov/hiku/blob/master/docs/basics/test_stage2.py>`_.
+    `on GitHub <https://github.com/evo-company/hiku/blob/master/docs/basics/test_stage2.py>`_.
 
 This is cool, but what if we want to return some application data? First of all
 lets define our data:
@@ -112,7 +112,7 @@ Linking node to node
 ~~~~~~~~~~~~~~~~~~~~
 
 .. note:: Source code of this example can be found
-    `on GitHub <https://github.com/vmagamedov/hiku/blob/master/docs/basics/test_stage3.py>`_.
+    `on GitHub <https://github.com/evo-company/hiku/blob/master/docs/basics/test_stage3.py>`_.
 
 Let's extend our data with one more entity - ``Actor``:
 

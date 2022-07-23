@@ -11,7 +11,7 @@ Prerequisites
 ~~~~~~~~~~~~~
 
 .. note:: Source code of this example can be found
-    `on GitHub <https://github.com/vmagamedov/hiku/blob/master/docs/test_subgraph.py>`_.
+    `on GitHub <https://github.com/evo-company/hiku/blob/master/docs/test_subgraph.py>`_.
 
 In order to show this feature we will try to adapt our
 :doc:`previous example <database>`, ``actor`` table was removed and ``image``

@@ -12,5 +12,7 @@ User's Guide
   asyncio
   graphql
   protobuf
+  federation
   reference/index
   changelog/index
+  development

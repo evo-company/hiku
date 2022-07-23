@@ -22,7 +22,7 @@ setup(
     long_description_content_type='text/x-rst',
     author='Vladimir Magamedov',
     author_email='vladimir@magamedov.com',
-    url='https://github.com/vmagamedov/hiku',
+    url='https://github.com/evo-company/hiku',
     packages=find_packages(exclude=['test*']),
     include_package_data=True,
     license='BSD-3-Clause',
