@@ -2,7 +2,10 @@ shell: bash
 
 commands:
   release:
-    description: Create tag and push
+    description: |
+      Update version in hiku/__init__.py
+      Create new annotated tag
+      Push changes to remote
     options: |
       Usage: lets release <version> --message=<message>
       Options:
@@ -12,27 +15,45 @@ commands:
         lets release 0.7.1 --message="Added federation"
         lets release 0.7.2rc1 --message="Added feature"
     cmd: |
-      version=$(grep -oP "(\d+\.\d+\.\d+(rc\d+)?)"  hiku/__init__.py)
-      if [[ "$version" != "${LETSOPT_VERSION}" ]]; then
-        echo "Version mismatch: hiku/__init__.py ${version} != release ${LETSOPT_VERSION}"
-        echo "Update hiku/__init__.py version to ${LETSOPT_VERSION}, push to remote and try again"
-        exit 1
-      fi
-
+      echo "__version__ = '${LETSOPT_VERSION}'" > hiku/__init__.py
+      git add hiku/__init__.py
+      git commit -m "Release ${LETSOPT_VERSION}"
       git tag -a v${LETSOPT_VERSION} -m "${LETSOPT_MESSAGE}"
       git push --tags
   
+  _build-examples:
+    description: Build docker image for examples
+    cmd: docker build -t hiku-examples -f Dockerfile --target examples .
+  
   _build-docs:
     description: Build docker image for docs
-    cmd: docker build -t hiku-docs -f docker/Dockerfile .
+    cmd: docker build -t hiku-docs -f Dockerfile --target docs .
+
+  _build-tests:
+    description: Build docker image for test
+    cmd: docker build -t hiku-tests -f Dockerfile --target tests .
 
   docs:
     description: Build docs
     depends: [_build-docs]
-    cmd: |
-      docker run --rm \
-        -w /work \
-        -v $(pwd):/work \
-        -e PYTHONPATH=. \
-        hiku-docs \
-        sphinx-build -b html docs build
+    cmd: docker-compose run --rm docs
+
+  test:
+    description: Run tests
+    depends: [_build-tests]
+    cmd: docker-compose run --rm test
+
+  examples-federation:
+    description: Run federation app from examples
+    depends: [_build-examples]
+    cmd: docker-compose up examples-federation
+
+  examples-flask:
+    description: Run flask app from examples
+    depends: [_build-examples]
+    cmd: docker-compose up examples-flask
+
+  examples-aiohttp:
+    description: Run aiohttp app from examples
+    depends: [_build-examples]
+    cmd: docker-compose up examples-aiohttp
