@@ -25,6 +25,8 @@ RUN python3 -m pip install \
     -r requirements-tests.txt
 RUN python3 -m pip install tox
 
+RUN python3 -m pip install tox
+
 FROM tests as examples
 
 RUN python3 -m pip install \

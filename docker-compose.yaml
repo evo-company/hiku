@@ -33,8 +33,8 @@ services:
               
   examples-aiohttp:
     <<: *examples-base
-    command: python3 examples/graphql_aiohttp.py
-
+    command: python3 examples/graphql_aiohttp.py  
+    
   test-base: &test-base
     <<: *base
     image: hiku-tests

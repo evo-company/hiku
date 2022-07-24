@@ -1,13 +1,15 @@
 import inspect
 import warnings
+import dataclasses
 
+from typing import Any
 from functools import partial
 from itertools import chain, repeat
 from collections import defaultdict
-from collections.abc import Sequence, Mapping
+from collections.abc import Sequence, Mapping, Hashable
 
 from . import query as hiku_query
-from .graph import Link, Maybe, One, Many, Nothing, Field
+from .graph import Link, Maybe, Node, One, Many, Nothing, Field
 from .result import Proxy, Index, ROOT, Reference
 from .executors.queue import Workflow, Queue
 
@@ -149,6 +151,18 @@ def _check_store_fields(node, fields, ids, result):
                             expected, result))
 
 
+def _is_hashable(obj: Any) -> bool:
+    if not isinstance(obj, Hashable):
+        return False
+
+    try:
+        hash(obj)
+    except TypeError:
+        return False
+
+    return True
+
+
 def store_fields(index, node, query_fields, ids, query_result):
     if inspect.isgenerator(query_result):
         warnings.warn('Data loading functions should not return generators',
@@ -200,11 +214,49 @@ _LINK_REF_MAKER = {
 }
 
 
+class ResultTypeError(TypeError):
+    def __init__(self, node: Node, link: Link, obj: Any):
+        self.node = node
+        self.link = link
+        self.obj = obj
+        super().__init__(self._format_error())
+
+    def _format_error(self) -> str:
+        node = self.node.name or 'Root'
+        link = f"Link '{node}.{self.link.name}'"
+        resolver = self.link.func.__name__
+        unhashable = f'{self.obj!r}'
+
+        hint = "\nHint: Consider adding __hash__ method or use hashable type."
+        if (
+            dataclasses.is_dataclass(self.obj)
+            and not getattr(self.obj, dataclasses._PARAMS).frozen
+        ):
+            hint = (
+                f"\nHint: Use @dataclass(frozen=True) to "
+                f"make '{self.obj.__class__.__name__}' class hashable"
+            )
+
+        if self.link.requires is not None:
+            return (
+                f"{link} requires Field '{node}.{self.link.requires}' "
+                f"which contains unashable data: {unhashable}.{hint}"
+            )
+
+        return (
+            f"{link} resolver '{resolver}' returns "
+            f"unhashable object: {unhashable}.{hint}"
+        )
+
+
 def _check_store_links(node, link, ids, result):
     if node.name is not None and link.requires is not None:
         assert ids is not None
         if link.type_enum is Maybe or link.type_enum is One:
             if isinstance(result, Sequence) and len(result) == len(ids):
+                for r in result:
+                    if not _is_hashable(r):
+                        raise ResultTypeError(node, link, r)
                 return
             else:
                 expected = 'list (len: {})'.format(len(ids))
@@ -214,6 +266,9 @@ def _check_store_links(node, link, ids, result):
                 and len(result) == len(ids)
                 and all(isinstance(r, Sequence) for r in result)
             ):
+                for r in result:
+                    if not _is_hashable(r):
+                        raise ResultTypeError(node, link, r)
                 return
             else:
                 expected = 'list (len: {}) of lists'.format(len(ids))
@@ -221,9 +276,14 @@ def _check_store_links(node, link, ids, result):
             raise TypeError(link.type_enum)
     else:
         if link.type_enum is Maybe or link.type_enum is One:
+            if not _is_hashable(result):
+                raise ResultTypeError(node, link, result)
             return
         elif link.type_enum is Many:
             if isinstance(result, Sequence):
+                for r in result:
+                    if not _is_hashable(r):
+                        raise ResultTypeError(node, link, r)
                 return
             else:
                 expected = 'list'
