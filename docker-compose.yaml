@@ -1,0 +1,49 @@
+version: '3'
+
+services:
+  docs:
+    image: hiku-docs
+    working_dir: /work
+    volumes:
+      - ./:/work
+    environment:
+      PYTHONPATH: .
+    command: sphinx-build -b html docs build
+
+  examples-base: &examples-base
+    image: hiku-examples
+    working_dir: /work
+    init: true
+    environment:
+      PYTHONPATH: .
+      PYTHONBUFFERED: 1
+    volumes:
+      - ./:/work
+    ports:
+      - 5000:5000
+
+  examples-federation:
+    <<: *examples-base
+    command: python3 examples/graphql_federation.py  
+          
+  examples-flask:
+    <<: *examples-base
+    command: python3 examples/graphql_flask.py  
+              
+  examples-aiohttp:
+    <<: *examples-base
+    command: python3 examples/graphql_aiohttp.py  
+    
+  test:
+    image: hiku-tests
+    working_dir: /work
+    volumes:
+      - ./:/work
+    environment:
+      PYTHONPATH: .
+    depends_on:
+      - pg
+    command: py.test
+
+  pg:
+    image: postgres:13-alpine

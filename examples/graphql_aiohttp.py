@@ -55,7 +55,7 @@ async def handle_graphql(request):
 
 
 def main():
-    logging.basicConfig()
+    logging.basicConfig(level=logging.DEBUG)
     app = web.Application()
     app.add_routes([
         web.post('/graphql', handle_graphql),
@@ -63,7 +63,7 @@ def main():
     app['graphql-endpoint'] = AsyncGraphQLEndpoint(
         Engine(AsyncIOExecutor()), QUERY_GRAPH, MUTATION_GRAPH,
     )
-    web.run_app(app)
+    web.run_app(app, host='0.0.0.0', port=5000)
 
 
 if __name__ == "__main__":

@@ -29,5 +29,5 @@ html_theme_options = {
 
 
 def setup(app):
-    app.add_stylesheet('style.css?r=1')
-    app.add_stylesheet('fixes.css?r=1')
+    app.add_css_file('style.css?r=1')
+    app.add_css_file('fixes.css?r=1')
