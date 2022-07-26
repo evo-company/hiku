@@ -1,3 +1,5 @@
+import typing as t
+
 from math import isfinite
 from typing import (
     Optional,
@@ -100,7 +102,9 @@ def _encode_default_value(value) -> Optional[ast.ValueNode]:
 
     if isinstance(value, Iterable) and not isinstance(value, str):
         maybe_value_nodes = (_encode_default_value(item) for item in value)
-        value_nodes = list(filter(None, maybe_value_nodes))
+        value_nodes: t.List[ast.ValueNode] = list(
+            filter(None, maybe_value_nodes)
+        )
         return ast.ListValueNode(values=[value_nodes])
 
     raise TypeError(f"Cannot convert value to AST: {inspect(value)}.")

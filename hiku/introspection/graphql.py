@@ -2,6 +2,7 @@ import re
 import json
 import typing as t
 
+from dataclasses import dataclass
 from functools import partial
 from collections import OrderedDict
 
@@ -35,8 +36,10 @@ from .types import (
 )
 
 
-class Directive(t.NamedTuple):
-    class Argument(t.NamedTuple):
+@dataclass(frozen=True)
+class Directive:
+    @dataclass(frozen=True)
+    class Argument:
         name: str
         type_ident: t.Any
         description: str
@@ -696,7 +699,7 @@ class GraphQLIntrospection(GraphTransformer):
         graph = apply(graph, [GraphQLIntrospection(graph)])
 
     """
-    __directives__ = _BUILTIN_DIRECTIVES
+    __directives__: t.Tuple[Directive, ...] = _BUILTIN_DIRECTIVES
 
     def __init__(self, query_graph, mutation_graph=None):
         """

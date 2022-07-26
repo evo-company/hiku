@@ -6,13 +6,22 @@
     are used to fetch any data from any data source.
 
 """
+import typing as t
+
 from abc import ABC, abstractmethod
 from itertools import chain
 from functools import reduce
 from collections import OrderedDict
 from typing import List
 
-from .types import OptionalMeta, SequenceMeta, TypeRefMeta, Record, Any
+from .types import (
+    OptionalMeta,
+    SequenceMeta,
+    TypeRefMeta,
+    Record,
+    Any,
+    GenericMeta,
+)
 from .utils import cached_property, const
 
 
@@ -52,7 +61,14 @@ class Option(AbstractOption):
         Option('size', Integer, default=100)
 
     """
-    def __init__(self, name, type_, *, default=Nothing, description=None):
+    def __init__(
+        self,
+        name: str,
+        type_: GenericMeta,
+        *,
+        default: t.Any = Nothing,
+        description: t.Optional[str] = None
+    ):
         """
         :param name: name of the option
         :param type_: type of the option or ``None``

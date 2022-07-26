@@ -144,6 +144,7 @@ class Mapping(metaclass=MappingMeta):
 
 
 class RecordMeta(TypingMeta):
+    __field_types__: OrderedDict
 
     def __cls_init__(cls, field_types):
         if hasattr(field_types, 'items'):
@@ -162,7 +163,7 @@ class RecordMeta(TypingMeta):
 
 
 class Record(metaclass=RecordMeta):
-    pass
+    __field_types__: OrderedDict
 
 
 class CallableMeta(TypingMeta):

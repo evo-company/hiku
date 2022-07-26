@@ -59,6 +59,11 @@ commands:
     depends: [_build-tests]
     cmd: docker-compose run --rm test-base tox -e flake8
 
+  mypy:
+    description: Run mypy
+    depends: [_build-tests]
+    cmd: docker-compose run --rm test-base tox -e mypy
+
   reqs:
     description: Update requirements.txt
     cmd: pip-compile -U requirements.in
