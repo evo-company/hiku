@@ -81,7 +81,12 @@ class SplitQuery(hiku_query.QueryVisitor):
         graph_obj = self._node.fields_map[obj.name]
         if isinstance(graph_obj, Link):
             if graph_obj.requires:
-                self.visit(hiku_query.Field(graph_obj.requires))
+                if isinstance(graph_obj.requires, str):
+                    requires = [graph_obj.requires]
+                else:
+                    requires = graph_obj.requires
+                for req in requires:
+                    self.visit(hiku_query.Field(req))
             self._links.append((graph_obj, obj))
         else:
             assert isinstance(graph_obj, Field), type(graph_obj)
@@ -128,6 +133,7 @@ class GroupQuery(hiku_query.QueryVisitor):
 def _check_store_fields(node, fields, ids, result):
     if node.name is not None:
         assert ids is not None
+
         if (
             isinstance(result, Sequence)
             and len(result) == len(ids)
@@ -155,6 +161,10 @@ def store_fields(index, node, query_fields, ids, query_result):
                       DeprecationWarning)
         query_result = list(query_result)
 
+    # TODO Mapping
+    if isinstance(query_result, dict):
+        query_result = [[query_result[f.name] for f in query_fields]]
+
     _check_store_fields(node, query_fields, ids, query_result)
 
     names = [f.index_key for f in query_fields]
@@ -172,7 +182,17 @@ def link_reqs(index, node, link, ids):
     if node.name is not None:
         assert ids is not None
         node_idx = index[node.name]
-        return [node_idx[i][link.requires] for i in ids]
+        if isinstance(link.requires, str):
+            return [node_idx[i][link.requires] for i in ids]
+
+        if len(link.requires) == 1:
+            return [node_idx[i][link.requires[0]] for i in ids]
+
+        # IMPROVEMENT: if link.requires is a list, we can return requires as dict
+        res = {}
+        for req in link.requires:
+            res[req] = [node_idx[i][req] for i in ids]
+        return res
     else:
         return index.root[link.requires]
 
@@ -320,6 +340,10 @@ class Query(Workflow):
             self._process_node_ordered(node, query, ids)
             return
 
+        # TODO we get two identical Field('id') after split
+        #  this is because we are extracting fields from Link.requires
+        #  hence when several links in one node requires same field, split will collect all of them
+        #  Probably we can deduplicate those fields by name or some hash
         fields, links = SplitQuery(node).split(query)
 
         to_func = {}
@@ -338,8 +362,13 @@ class Query(Workflow):
             schedule = partial(self._schedule_link, node,
                                graph_link, query_link, ids)
             if graph_link.requires:
-                dep = to_dep[to_func[graph_link.requires]]
-                self._queue.add_callback(dep, schedule)
+                if isinstance(graph_link.requires, list):
+                    for req in graph_link.requires:
+                        dep = to_dep[to_func[req]]
+                        self._queue.add_callback(dep, schedule)
+                else:
+                    dep = to_dep[to_func[graph_link.requires]]
+                    self._queue.add_callback(dep, schedule)
             else:
                 schedule()
 

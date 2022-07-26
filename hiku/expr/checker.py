@@ -1,7 +1,14 @@
 from contextlib import contextmanager
 from collections import deque
 
-from ..types import Sequence, SequenceMeta, Record, RecordMeta, get_type
+from ..types import (
+    Sequence,
+    SequenceMeta,
+    Record,
+    RecordMeta,
+    get_type,
+    TypeRefMeta,
+)
 from ..types import MappingMeta, OptionalMeta, Any, AnyMeta
 
 from .refs import NamedRef, Ref
@@ -45,7 +52,14 @@ def node_type(types, node):
     return get_type(types, node.__ref__.to)
 
 
-def check_type(types, t1, t2):
+def node_name(node):
+    if isinstance(node.__ref__.to, TypeRefMeta):
+        return node.__ref__.to.__type_name__
+    return node.__ref__.name
+
+
+# TODO find some normal way for displaying node where field is missing
+def check_type(types, t1_name, t1, t2):
     t1 = get_type(types, t1)
     t2 = get_type(types, t2)
     if isinstance(t2, AnyMeta):
@@ -53,21 +67,21 @@ def check_type(types, t1, t2):
     else:
         if isinstance(t1, type(t2)):
             if isinstance(t2, OptionalMeta):
-                check_type(types, t1.__type__, t2.__type__)
+                check_type(types, t1.__name__, t1.__type__, t2.__type__)
             elif isinstance(t2, SequenceMeta):
-                check_type(types, t1.__item_type__, t2.__item_type__)
+                check_type(types, t1.__name__, t1.__item_type__, t2.__item_type__)
             elif isinstance(t2, MappingMeta):
-                check_type(types, t1.__key_type__, t2.__key_type__)
-                check_type(types, t1.__value_type__, t2.__value_type__)
+                check_type(types, t1.__name__, t1.__key_type__, t2.__key_type__)
+                check_type(types, t1.__name__, t1.__value_type__, t2.__value_type__)
             elif isinstance(t2, RecordMeta):
                 for key, v2 in t2.__field_types__.items():
                     v1 = t1.__field_types__.get(key)
                     if v1 is None:
-                        raise TypeError('Missing field "{}"'.format(key))
+                        raise TypeError('Missing field "{}" at node "{}". You either add field to node or use correct node'.format(key, t1_name))
                     v1 = get_type(types, v1)
-                    check_type(types, v1, v2)
+                    check_type(types, key, v1, v2)
         elif isinstance(t2, OptionalMeta):
-            check_type(types, t1, t2.__type__)
+            check_type(types, t1.__name__, t1, t2.__type__)
         else:
             raise TypeError('Types mismatch, {!r} != {!r}'.format(t1, t2))
 
@@ -85,7 +99,8 @@ class Checker(NodeTransformer):
         assert hasattr(obj, '__ref__'), 'Object does not have a reference'
 
         ref_to = node_type(self.types, obj)
-        check_type(self.types, ref_to, Record[{name.name: Any}])
+        ref_to_name = node_name(obj)
+        check_type(self.types, ref_to_name, ref_to, Record[{name.name: Any}])
 
         res = ref_to.__field_types__.get(name.name)
         assert res is not None, 'Undefined field name: {}'.format(name.name)
@@ -99,7 +114,8 @@ class Checker(NodeTransformer):
         col = self.visit(col)
         assert hasattr(col, '__ref__'), 'Object does not have a reference'
         col_type = node_type(self.types, col)
-        check_type(self.types, col_type, Sequence[Any])
+        col_name = node_name(col)
+        check_type(self.types, col_name, col_type, Sequence[Any])
         var = Symbol(var.name)
         var.__ref__ = Ref(col.__ref__, col_type.__item_type__)
         with self.env.push({var.name: var.__ref__}):
@@ -137,9 +153,14 @@ class Checker(NodeTransformer):
         for arg, arg_type in zip(args, fn_type.__arg_types__):
             ref = getattr(arg, '__ref__', None)
             if ref is not None:
-                check_type(self.types, node_type(self.types, arg), arg_type)
+                if isinstance(ref.to, TypeRefMeta):
+                    ref_name = ref.to.__type_name__
+                else:
+                    ref_name = getattr(ref, 'name', 'No ref name')
+                check_type(self.types, ref_name, node_type(self.types, arg), arg_type)
             else:
-                check_type(self.types, Any, arg_type)
+                # TODO arg is None, duno what name
+                check_type(self.types, '', Any, arg_type)
         return Tuple([sym] + args)
 
     def visit_tuple(self, node):

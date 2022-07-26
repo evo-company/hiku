@@ -110,6 +110,29 @@ def define(*types, **kwargs):
 
         @wraps(fn)
         def expr(*args):
+            from hiku.sources.graph import SubGraph
+            from hiku.sources.graph import BoundExpr
+
+            if not len(args):
+                return _Func(expr, args)
+
+            args_ = []
+            sg_ = None
+            for arg in args:
+                if isinstance(arg, SubGraph):
+                    # TODO we disallow multiple SubGraph args at the moment
+                    return arg.c(_Func(expr, [S.this]))
+
+                elif isinstance(arg, BoundExpr):
+                    if sg_ is None:
+                        sg_ = arg.sub_graph
+                    args_.append(arg.expr)
+                else:
+                    args_.append(arg)
+
+            if sg_ is not None:
+                return sg_.c(_Func(expr, args_))
+
             return _Func(expr, args)
 
         expr.__def_name__ = name

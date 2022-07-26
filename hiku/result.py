@@ -113,6 +113,9 @@ def _denormalize_type(type_, result, query_obj):
             return (_denormalize_type(type_.__type__, result, query_obj)
                     if result is not None else None)
         else:
+            # TODO if we use Field('name', sg.c()) this will be converted
+            #  to link, and therefor we will endup here, but type_ will be TypeRef,
+            #  not record meta. So maybe update docs with examples, or add suggest here how to fix that ?
             assert isinstance(type_, RecordMeta), type(type_)
             field_types = type_.__field_types__
             return {

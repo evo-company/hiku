@@ -127,3 +127,19 @@ class SubGraph:
 
     def c(self, expr):
         return self.compile(expr)
+
+    @property
+    def field(self):
+        # something we can call .company_id on it
+        return FieldProxy(self)
+
+    # alias for field
+    f = field
+
+
+class FieldProxy:
+    def __init__(self, sg):
+        self.__sg = sg
+
+    def __getattr__(self, item):
+        return self.__sg.c(getattr(S.this, item))

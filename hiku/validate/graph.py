@@ -115,16 +115,22 @@ class GraphValidator(GraphVisitor):
         graph_nodes_map = {e.name for e in self.items if e.name is not None}
         if obj.node not in graph_nodes_map:
             self.errors.report(
-                'Link "{}" points to the missing node "{}"'
+                'Link "{}" points to the missing node "{}".\nMaybe you forgot to add nodes to Graph declaration'
                 .format(self._format_path(obj), obj.node)
             )
 
         if obj.requires is not None:
-            if obj.requires not in self.ctx.fields_map:
-                self.errors.report(
-                    'Link "{}" requires missing field "{}" in the "{}" node'
-                    .format(obj.name, obj.requires, self._format_path())
-                )
+            if isinstance(obj.requires, str):
+                requires = [obj.requires]
+            else:
+                requires = obj.requires
+
+            for req in requires:
+                if req not in self.ctx.fields_map:
+                    self.errors.report(
+                        'Link "{}" requires missing field "{}" in the "{}" node'
+                        .format(obj.name, req, self._format_path())
+                    )
 
         self._validate_deprecated_duplicates(obj)
 
