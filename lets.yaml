@@ -1,5 +1,9 @@
 shell: bash
 
+env:
+  CURRENT_UID:
+    sh: echo "`id -u`:`id -g`"
+
 commands:
   release:
     description: |
@@ -20,17 +24,24 @@ commands:
       git commit -m "Release ${LETSOPT_VERSION}"
       git tag -a v${LETSOPT_VERSION} -m "${LETSOPT_MESSAGE}"
       git push --tags
-  
+
+  _build-base:
+    description: Build base docker image
+    cmd: docker build -t hiku-base -f Dockerfile --target base .
+
   _build-examples:
     description: Build docker image for examples
+    depends: [_build-base]
     cmd: docker build -t hiku-examples -f Dockerfile --target examples .
   
   _build-docs:
     description: Build docker image for docs
+    depends: [_build-base]
     cmd: docker build -t hiku-docs -f Dockerfile --target docs .
 
   _build-tests:
     description: Build docker image for test
+    depends: [_build-base]
     cmd: docker build -t hiku-tests -f Dockerfile --target tests .
 
   docs:
@@ -42,6 +53,23 @@ commands:
     description: Run tests
     depends: [_build-tests]
     cmd: docker-compose run --rm test
+
+  flake:
+    description: Run flake8
+    depends: [_build-tests]
+    cmd: docker-compose run --rm test-base tox -e flake8
+
+  reqs:
+    description: Update requirements.txt
+    cmd: pip-compile -U requirements.in
+
+  reqs-docs:
+    description: Update requirements-docs.txt
+    cmd: pip-compile -U requirements-docs.in
+
+  reqs-tests:
+    description: Update requirements-tests.txt
+    cmd: pip-compile -U requirements-tests.in
 
   examples-federation:
     description: Run federation app from examples
