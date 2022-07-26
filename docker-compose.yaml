@@ -1,24 +1,25 @@
-version: '3'
+version: '3.7'
 
 services:
-  docs:
-    image: hiku-docs
+  base: &base
+    image: hiku-base
     working_dir: /work
+    user: ${CURRENT_UID}
     volumes:
       - ./:/work
-    environment:
-      PYTHONPATH: .
-    command: sphinx-build -b html docs build
-
-  examples-base: &examples-base
-    image: hiku-examples
-    working_dir: /work
     init: true
     environment:
       PYTHONPATH: .
       PYTHONBUFFERED: 1
-    volumes:
-      - ./:/work
+
+  docs:
+    <<: *base
+    image: hiku-docs
+    command: sphinx-build -b html docs build
+
+  examples-base: &examples-base
+    <<: *base
+    image: hiku-examples
     ports:
       - 5000:5000
 
@@ -32,15 +33,14 @@ services:
               
   examples-aiohttp:
     <<: *examples-base
-    command: python3 examples/graphql_aiohttp.py  
-    
-  test:
+    command: python3 examples/graphql_aiohttp.py
+
+  test-base: &test-base
+    <<: *base
     image: hiku-tests
-    working_dir: /work
-    volumes:
-      - ./:/work
-    environment:
-      PYTHONPATH: .
+
+  test:
+    <<: *test-base
     depends_on:
       - pg
     command: py.test

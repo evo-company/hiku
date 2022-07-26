@@ -23,6 +23,7 @@ COPY requirements-tests.txt .
 RUN python3 -m pip install \
     --no-deps --no-cache-dir --disable-pip-version-check \
     -r requirements-tests.txt
+RUN python3 -m pip install tox
 
 FROM tests as examples
 
