@@ -5,6 +5,10 @@ from typing import (
     List,
     Dict,
     Any,
+    Optional,
+    Tuple,
+    overload,
+    Iterator,
 )
 
 from .utils import get_keys
@@ -28,9 +32,10 @@ from hiku.endpoint.graphql import (
 from hiku.graph import Graph
 from hiku.query import Node
 from hiku.result import Proxy, Reference
+from hiku.readers.graphql import Operation
 
 
-def _process_query(graph, query):
+def _process_query(graph: Graph, query: Node) -> Node:
     stripped_query = _StripQuery().visit(query)
     errors = validate(graph, stripped_query)
     if errors:
@@ -67,19 +72,21 @@ def denormalize_entities(
 
 class BaseFederatedGraphEndpoint(BaseGraphQLEndpoint):
     @abstractmethod
-    def execute(self, graph, op, ctx):
+    def execute(
+        self, graph: Graph, op: Operation, ctx: Optional[Dict]
+    ) -> Dict:
         pass
 
     @abstractmethod
-    def dispatch(self, data):
+    def dispatch(self, data: Dict) -> Dict:
         pass
 
     @contextmanager
-    def context(self, op):
+    def context(self, op: Operation) -> Iterator[Dict]:
         yield {}
 
     @staticmethod
-    def postprocess_result(result: Proxy, graph, op):
+    def postprocess_result(result: Proxy, graph: Graph, op: Operation) -> Dict:
         if '_service' in op.query.fields_map:
             return {'_service': {'sdl': result['sdl']}}
         elif '_entities' in op.query.fields_map:
@@ -105,12 +112,14 @@ class FederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
     """
     introspection_cls = FederatedGraphQLIntrospection
 
-    def execute(self, graph: Graph, op, ctx):
+    def execute(
+        self, graph: Graph, op: Operation, ctx: Optional[Dict]
+    ) -> Dict:
         stripped_query = _process_query(graph, op.query)
         result = self.engine.execute(graph, stripped_query, ctx)
         return self.postprocess_result(result, graph, op)
 
-    def dispatch(self, data):
+    def dispatch(self, data: Dict) -> Dict:
         try:
             graph, op = _switch_graph(
                 data, self.query_graph, self.mutation_graph,
@@ -125,12 +134,14 @@ class FederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
 class AsyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
     introspection_cls = AsyncFederatedGraphQLIntrospection
 
-    async def execute(self, graph: Graph, op, ctx):
+    async def execute(  # type: ignore[override]
+        self, graph: Graph, op: Operation, ctx: Optional[Dict]
+    ) -> Dict:
         stripped_query = _process_query(graph, op.query)
         result = await self.engine.execute_async(graph, stripped_query, ctx)
         return self.postprocess_result(result, graph, op)
 
-    async def dispatch(self, data):
+    async def dispatch(self, data: Dict) -> Dict:  # type: ignore[override]
         try:
             graph, op = _switch_graph(
                 data, self.query_graph, self.mutation_graph,
@@ -144,7 +155,15 @@ class AsyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
 
 
 class AsyncBatchFederatedGraphQLEndpoint(AsyncFederatedGraphQLEndpoint):
-    async def dispatch(self, data):
+    @overload  # type: ignore[override]
+    async def dispatch(self, data: List[Dict]) -> Tuple[Dict, ...]:
+        ...
+
+    @overload
+    async def dispatch(self, data: Dict) -> Dict:
+        ...
+
+    async def dispatch(self, data):  # type: ignore[no-untyped-def]
         if isinstance(data, list):
             return await gather(*(
                 super().dispatch(item)

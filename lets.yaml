@@ -60,9 +60,14 @@ commands:
     cmd: docker-compose run --rm test-base tox -e flake8
 
   mypy:
-    description: Run mypy
+    description: |
+      Run mypy
+      Examples:
+        lets mypy
+        lets mypy hiku/graph.py
     depends: [_build-tests]
-    cmd: docker-compose run --rm test-base tox -e mypy
+    cmd: |
+      docker-compose run --rm test-base tox -e mypy -- $LETS_COMMAND_ARGS
 
   reqs:
     description: Update requirements.txt
