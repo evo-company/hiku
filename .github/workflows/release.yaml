@@ -13,9 +13,6 @@ jobs:
     - uses: actions/setup-python@v2
       with:
         python-version: "3.7"
-    - run: npm ci
-    - run: ./node_modules/.bin/webpack -p
-    - run: ls -la hiku/console/assets
     - run: pip3 install wheel twine
     - run: python setup.py sdist bdist_wheel
     - run: twine upload dist/*
