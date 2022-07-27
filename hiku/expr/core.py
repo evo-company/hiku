@@ -19,7 +19,7 @@ from .nodes import Symbol, Tuple, List, Keyword, Dict
 
 THIS = 'this'
 
-_Func = namedtuple('__func__', 'expr, args')
+_Func = namedtuple('_Func', 'expr, args')
 
 
 class _DotHandler:

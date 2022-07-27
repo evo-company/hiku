@@ -1,3 +1,7 @@
 node_modules
 __pycache__
 .vscode
+.tox
+.pytest_cache
+.mypy_cache
+hiku.egg-info

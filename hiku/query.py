@@ -44,6 +44,8 @@
     .. _Datomic Pull API: http://docs.datomic.com/pull.html
     .. _om.next: https://github.com/omcljs/om/wiki/Documentation-(om.next)
 """
+import typing as t
+
 from itertools import chain
 from collections import OrderedDict
 from collections.abc import Sequence
@@ -62,7 +64,7 @@ def _compute_hash(obj):
 
 
 class Base:
-    __attrs__ = ()
+    __attrs__: t.Tuple[str, ...] = ()
 
     def __repr__(self):
         kwargs = ', '.join('{}={!r}'.format(attr, self.__dict__[attr])

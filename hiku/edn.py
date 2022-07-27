@@ -5,7 +5,7 @@ from uuid import UUID
 from decimal import Decimal
 from datetime import datetime
 from itertools import chain
-from json.encoder import encode_basestring, encode_basestring_ascii
+from json.encoder import encode_basestring, encode_basestring_ascii  # type: ignore # noqa: E501
 
 
 class ImmutableDict(dict):
@@ -20,8 +20,8 @@ class ImmutableDict(dict):
         raise TypeError("{} object is immutable"
                         .format(self.__class__.__name__))
 
-    __delitem__ = __setitem__ = _immutable
-    clear = pop = popitem = setdefault = update = _immutable
+    __delitem__ = __setitem__ = _immutable  # type: ignore
+    clear = pop = popitem = setdefault = update = _immutable  # type: ignore
 
 
 class Symbol(str):
