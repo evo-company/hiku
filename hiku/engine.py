@@ -1,10 +1,12 @@
 import inspect
 import warnings
+import dataclasses
 
+from typing import Any
 from functools import partial
 from itertools import chain, repeat
 from collections import defaultdict
-from collections.abc import Sequence, Mapping
+from collections.abc import Sequence, Mapping, Hashable
 
 from . import query as hiku_query
 from .graph import Link, Maybe, One, Many, Nothing, Field
@@ -149,6 +151,18 @@ def _check_store_fields(node, fields, ids, result):
                             expected, result))
 
 
+def _is_hashable(obj: Any) -> bool:
+    if not isinstance(obj, Hashable):
+        return False
+
+    try:
+        hash(obj)
+    except TypeError:
+        return False
+
+    return True
+
+
 def store_fields(index, node, query_fields, ids, query_result):
     if inspect.isgenerator(query_result):
         warnings.warn('Data loading functions should not return generators',
@@ -200,12 +214,33 @@ _LINK_REF_MAKER = {
 }
 
 
+HASH_HINT = "\nHint: Consider adding __hash__ method or use hashable type."
+DATACLASS_HINT = "\nHint: Use @dataclass(frozen=True) to make object hashable."
+
+
+def _hashable_hint(obj: Any) -> str:
+    if isinstance(obj, Sequence):
+        return _hashable_hint(obj[0])
+
+    if (
+        dataclasses.is_dataclass(obj)
+        and not getattr(obj, dataclasses._PARAMS).frozen  # type: ignore[attr-defined]  # noqa: E501
+    ):
+        return DATACLASS_HINT
+
+    return HASH_HINT
+
+
 def _check_store_links(node, link, ids, result):
+    hint = ''
     if node.name is not None and link.requires is not None:
         assert ids is not None
         if link.type_enum is Maybe or link.type_enum is One:
             if isinstance(result, Sequence) and len(result) == len(ids):
-                return
+                if all(map(_is_hashable, result)):
+                    return
+                expected = 'list of hashable objects'
+                hint = _hashable_hint(result)
             else:
                 expected = 'list (len: {})'.format(len(ids))
         elif link.type_enum is Many:
@@ -214,25 +249,40 @@ def _check_store_links(node, link, ids, result):
                 and len(result) == len(ids)
                 and all(isinstance(r, Sequence) for r in result)
             ):
-                return
+                unhashable = False
+                for items in result:
+                    if not all(map(_is_hashable, items)):
+                        unhashable = True
+                        break
+
+                if not unhashable:
+                    return
+                expected = 'list (len: {}) of lists of hashable objects'.format(len(ids))  # noqa: E501
+                hint = _hashable_hint(result)
             else:
                 expected = 'list (len: {}) of lists'.format(len(ids))
         else:
             raise TypeError(link.type_enum)
     else:
         if link.type_enum is Maybe or link.type_enum is One:
-            return
+            if _is_hashable(result):
+                return
+            expected = 'hashable object'
+            hint = _hashable_hint(result)
         elif link.type_enum is Many:
             if isinstance(result, Sequence):
-                return
+                if all(map(_is_hashable, result)):
+                    return
+                expected = 'list of hashable objects'
+                hint = _hashable_hint(result)
             else:
                 expected = 'list'
         else:
             raise TypeError(link.type_enum)
     raise TypeError('Can\'t store link values, node: {!r}, link: {!r}, '
-                    'expected: {}, returned: {!r}'
+                    'expected: {}, returned: {!r}{}'
                     .format(node.name or '__root__', link.name,
-                            expected, result))
+                            expected, result, hint))
 
 
 def store_links(index, node, graph_link, query_link, ids, query_result):
