@@ -6,7 +6,7 @@ Changes in 0.7
 
   - Dropped support for Python 3.6, which ended support on 2021-12-23
   - Added support for Python 3.10
-  - Added support for `Apollo Federation (v1) <https://www.apollographql.com/docs/federation/v1/>`_`
+  - Added support for `Apollo Federation (v1) <https://www.apollographql.com/docs/federation/v1/>`_
   - [internal] Refactored introspection directives
   - Added graph directives support
   
@@ -26,7 +26,7 @@ Changes in 0.7
                         directives=[Deprecated('use another field')]),
               ]),
           ])
-  
+  - Added mypy and typings to codebase
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
