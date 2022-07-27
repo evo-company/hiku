@@ -23,7 +23,7 @@ commands:
       git add hiku/__init__.py
       git commit -m "Release ${LETSOPT_VERSION}"
       git tag -a v${LETSOPT_VERSION} -m "${LETSOPT_MESSAGE}"
-      git push --tags
+      git push origin master --tags
 
   _build-base:
     description: Build base docker image
@@ -33,7 +33,7 @@ commands:
     description: Build docker image for examples
     depends: [_build-base]
     cmd: docker build -t hiku-examples -f Dockerfile --target examples .
-  
+
   _build-docs:
     description: Build docker image for docs
     depends: [_build-base]
