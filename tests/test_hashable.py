@@ -3,7 +3,7 @@ import pytest
 from dataclasses import dataclass
 
 from hiku.builder import build, Q
-from hiku.engine import Engine, ResultTypeError
+from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import Graph, Node, Field, Root, Link, Option
 from hiku.types import (
@@ -65,7 +65,7 @@ def test_link_requires_field_with_unhashable_data():
         ]),
     ])
 
-    with pytest.raises(ResultTypeError) as err:
+    with pytest.raises(TypeError) as err:
         execute(GRAPH, build([
             Q.user[
                 Q.id,
@@ -74,9 +74,10 @@ def test_link_requires_field_with_unhashable_data():
                 ]
             ]
         ]))
+
     err.match(
-        "Link 'user.info' requires Field 'user._data' "
-        "which contains unashable data:"
+        r"Can't store link values, node: 'user', link: 'info', "
+        r"expected: list of hashable objects, returned:(.*UserData)"
     )
 
 
@@ -114,17 +115,18 @@ def test_link_to_sequence():
         ]),
     ])
 
-    with pytest.raises(ResultTypeError) as err:
+    with pytest.raises(TypeError) as err:
         execute(GRAPH, build([
             Q.user[
                 Q.id,
                 Q.tags[Q.name]
             ]
         ]))
-    # TODO this message does not make sense in this scenario
+
     err.match(
-        "Link 'user.tags' requires Field 'user.id' "
-        "which contains unashable data:"
+        r"Can't store link values, node: 'user', link: 'tags', "
+        r"expected: list \(len: 1\) of lists of hashable objects, "
+        r"returned:(.*Tag)"
     )
 
 
@@ -152,10 +154,12 @@ def test_root_link_resolver_returns_unhashable_data():
         ]),
     ])
 
-    with pytest.raises(ResultTypeError) as err:
+    with pytest.raises(TypeError) as err:
         execute(GRAPH, build([Q.user[Q.id]]))
+
     err.match(
-        "Link 'Root.user' resolver 'link_user' returns unhashable object:"
+        r"Can't store link values, node: '__root__', link: 'user', "
+        r"expected: hashable object, returned:(.*User)"
     )
 
 
@@ -180,11 +184,12 @@ def test_root_link_requires_field_with_unhashable_data():
         ]),
     ])
 
-    with pytest.raises(ResultTypeError) as err:
+    with pytest.raises(TypeError) as err:
         execute(GRAPH, build([Q.user[Q.id]]))
+
     err.match(
-        "Link 'Root.user' requires Field 'Root._user' "
-        "which contains unashable data:"
+        r"Can't store link values, node: '__root__', link: 'user', "
+        r"expected: hashable object, returned:(.*User)"
     )
 
 
@@ -214,8 +219,10 @@ def test_root_link_options_unhashable_data():
         ]),
     ])
 
-    with pytest.raises(ResultTypeError) as err:
+    with pytest.raises(TypeError) as err:
         execute(GRAPH, build([Q.user(id=1)[Q.id]]))
+
     err.match(
-        "Link 'Root.user' resolver 'link_options' returns unhashable object:"
+        r"Can't store link values, node: '__root__', link: 'user', "
+        r"expected: hashable object, returned:(.*User)"
     )
