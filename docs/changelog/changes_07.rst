@@ -9,12 +9,12 @@ Changes in 0.7
   - Added support for `Apollo Federation (v1) <https://www.apollographql.com/docs/federation/v1/>`_
   - [internal] Refactored introspection directives
   - Added graph directives support
-  
+
     - Added ``directives`` argument to :py:class:`hiku.graph.Field`
     - Added ``directives`` argument to :py:class:`hiku.graph.Link`
-  
+
   - Added ``Deprecated`` directive
-  
+
     .. code-block:: python
 
           from hiku.directives import Deprecated
@@ -27,6 +27,7 @@ Changes in 0.7
               ]),
           ])
   - Added mypy and typings to codebase
+  - Added checks for unhashable link results and extend errors. This must improve developer experience.
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
