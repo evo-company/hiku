@@ -37,13 +37,12 @@ Nothing = const('Nothing')
 
 
 class AbstractBase(ABC):
-
     @abstractmethod
-    def accept(self, visitor):
+    def accept(self, visitor: 'AbstractGraphVisitor') -> None:
         pass
 
 
-class AbstractOption(AbstractBase):
+class AbstractOption(AbstractBase, ABC):
     pass
 
 
@@ -80,11 +79,11 @@ class Option(AbstractOption):
         self.default = default
         self.description = description
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '{}({!r}, {!r}, ...)'.format(self.__class__.__name__,
                                             self.name, self.type)
 
-    def accept(self, visitor):
+    def accept(self, visitor: 'AbstractGraphVisitor') -> t.Any:
         return visitor.visit_option(self)
 
 
