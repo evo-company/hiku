@@ -1,10 +1,18 @@
 from abc import ABC, abstractmethod
 from asyncio import gather
+from typing import Dict
 
-from ..graph import apply
+from ..graph import (
+    apply,
+    Graph,
+)
 from ..query import QueryTransformer
 from ..validate.query import validate
-from ..readers.graphql import read_operation, OperationType
+from ..readers.graphql import (
+    read_operation,
+    OperationType,
+    Operation,
+)
 from ..denormalize.graphql import DenormalizeGraphQL
 from ..introspection.graphql import AsyncGraphQLIntrospection, QUERY_ROOT_NAME
 from ..introspection.graphql import GraphQLIntrospection, MUTATION_ROOT_NAME
@@ -76,16 +84,28 @@ class BaseGraphQLEndpoint(ABC):
         else:
             self.mutation_graph = None
 
+
+class BaseSyncGraphQLEndpoint(BaseGraphQLEndpoint):
     @abstractmethod
-    def execute(self, graph, op, ctx):
+    def execute(self, graph: Graph, op: Operation, ctx: Dict) -> Dict:
         pass
 
     @abstractmethod
-    def dispatch(self, data):
+    def dispatch(self, data: Dict) -> Dict:
         pass
 
 
-class GraphQLEndpoint(BaseGraphQLEndpoint):
+class BaseAsyncGraphQLEndpoint(BaseGraphQLEndpoint):
+    @abstractmethod
+    async def execute(self, graph: Graph, op: Operation, ctx: Dict) -> Dict:
+        pass
+
+    @abstractmethod
+    async def dispatch(self, data: Dict) -> Dict:
+        pass
+
+
+class GraphQLEndpoint(BaseSyncGraphQLEndpoint):
     introspection_cls = GraphQLIntrospection
 
     def execute(self, graph, op, ctx):
@@ -117,7 +137,7 @@ class BatchGraphQLEndpoint(GraphQLEndpoint):
             return super(BatchGraphQLEndpoint, self).dispatch(data)
 
 
-class AsyncGraphQLEndpoint(BaseGraphQLEndpoint):
+class AsyncGraphQLEndpoint(BaseAsyncGraphQLEndpoint):
     introspection_cls = AsyncGraphQLIntrospection
 
     async def execute(self, graph, op, ctx):
