@@ -21,8 +21,15 @@ from .types import (
     Record,
     Any,
     GenericMeta,
+    AnyMeta,
+    RecordMeta,
 )
-from .utils import cached_property, const
+from .utils import (
+    cached_property,
+    const,
+    Const,
+)
+from .directives import DirectiveBase
 
 
 Maybe = const('Maybe')
@@ -34,6 +41,7 @@ Many = const('Many')
 #: Special constant that is used by links with :py:class:`~hiku.types.Optional`
 #: type in order to indicate that there is nothing to link to
 Nothing = const('Nothing')
+NothingType = Const
 
 
 class AbstractBase(ABC):
@@ -87,8 +95,22 @@ class Option(AbstractOption):
         return visitor.visit_option(self)
 
 
-class AbstractField(AbstractBase):
+class AbstractField(AbstractBase, ABC):
     pass
+
+
+RootFieldFunc = t.Callable[[t.List['Field']], List[t.Any]]
+NotRootFieldFunc = t.Callable[[t.List['Field'], List[t.Any]], List[List[t.Any]]]
+NotRootFieldFuncInject = t.Callable[
+    [t.Any, t.List['Field'], List[t.Any]], List[List[t.Any]]
+]
+
+FieldType = t.Optional[GenericMeta]
+FieldFunc = t.Union[
+    RootFieldFunc,
+    NotRootFieldFunc,
+    NotRootFieldFuncInject,
+]
 
 
 class Field(AbstractField):
@@ -135,8 +157,16 @@ class Field(AbstractField):
     - ``ids`` - list node identifiers
 
     """
-    def __init__(self, name, type_, func, *, options=None, description=None,
-                 directives=None):
+    def __init__(
+        self,
+        name: str,
+        type_: FieldType,
+        func: FieldFunc,
+        *,
+        options: t.Optional[t.Sequence[Option]] = None,
+        description: t.Optional[str] = None,
+        directives: t.Optional[t.Sequence[DirectiveBase]] = None
+    ):
         """
         :param str name: name of the field
         :param type_: type of the field or ``None``
@@ -152,23 +182,28 @@ class Field(AbstractField):
         self.description = description
         self.directives = directives or ()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '{}({!r}, {!r}, {!r})'.format(self.__class__.__name__, self.name,
                                              self.type, self.func)
 
     @cached_property
-    def options_map(self):
+    def options_map(self) -> OrderedDict:
         return OrderedDict((op.name, op) for op in self.options)
 
-    def accept(self, visitor):
+    def accept(self, visitor: 'AbstractGraphVisitor') -> t.Any:
         return visitor.visit_field(self)
 
 
-class AbstractLink(AbstractBase):
+class AbstractLink(AbstractBase, ABC):
     pass
 
 
-def get_type_enum(type_):
+LinkType = t.Union[
+    TypeRefMeta, OptionalMeta[TypeRefMeta], SequenceMeta[TypeRefMeta]
+]
+
+
+def get_type_enum(type_: LinkType) -> t.Tuple[Const, str]:
     if isinstance(type_, TypeRefMeta):
         return One, type_.__type_name__
     elif isinstance(type_, OptionalMeta):
@@ -178,6 +213,51 @@ def get_type_enum(type_):
         if isinstance(type_.__item_type__, TypeRefMeta):
             return Many, type_.__item_type__.__type_name__
     raise TypeError('Invalid type specified: {!r}'.format(type_))
+
+
+LT = t.TypeVar('LT')
+LR = t.TypeVar('LR')
+
+RootLinkOne = t.Callable[[], LR]
+RootLinkOneInject = t.Callable[[t.Any], LR]
+
+RootLinkMaybe = t.Callable[[], t.Union[LR, NothingType]]
+RootLinkMaybeInject = t.Callable[[t.Any], t.Union[LR, NothingType]]
+
+RootLinkMany = t.Callable[[], t.List[LR]]
+RootLinkManyInject = t.Callable[[t.Any], t.List[LR]]
+
+LinkOne = t.Callable[[List[LT]], t.List[LR]]
+LinkOneInject = t.Callable[[t.Any, List[LT]], t.List[LR]]
+
+LinkMaybe = t.Callable[[List[LT]], t.List[t.Union[LR, NothingType]]]
+LinkMaybeInject = t.Callable[
+    [t.Any, List[LT]], t.List[t.Union[LR, NothingType]]]
+
+LinkMany = t.Callable[[List[LT]], t.List[t.List[LR]]]
+LinkManyInject = t.Callable[[t.Any, List[LT]], t.List[t.List[LR]]]
+
+LinkFunc = t.Union[
+    RootLinkOne,
+    RootLinkOneInject,
+    RootLinkMaybe,
+    RootLinkMaybeInject,
+    RootLinkMany,
+    RootLinkManyInject,
+    LinkOne,
+    LinkOneInject,
+    LinkMaybe,
+    LinkMaybeInject,
+    LinkMany,
+    LinkManyInject
+]
+
+LinkOneFunc = t.Union[
+    RootLinkOne, RootLinkOneInject, LinkOne, LinkOneInject]
+LinkMaybeFunc = t.Union[
+    RootLinkMaybe, RootLinkMaybeInject, LinkMaybe, LinkMaybeInject]
+LinkManyFunc = t.Union[
+    RootLinkMany, RootLinkManyInject, LinkMany, LinkManyInject]
 
 
 class Link(AbstractLink):
@@ -261,8 +341,58 @@ class Link(AbstractLink):
     Where ``options`` is a mapping ``str: value`` of provided in the query
     options.
     """
+
+    @t.overload
     def __init__(
-        self, name, type_, func, *, requires, options=None, description=None,
+        self,
+        name: str,
+        type_: TypeRefMeta,
+        func: LinkOneFunc,
+        *,
+        requires: t.Optional[str],
+        options: t.Optional[t.Sequence[Option]] = None,
+        description: t.Optional[str] = None,
+        directives: t.Optional[t.Sequence[DirectiveBase]] = None
+    ):
+        ...
+
+    @t.overload
+    def __init__(
+        self,
+        name: str,
+        type_: OptionalMeta[TypeRefMeta],
+        func: LinkMaybeFunc,
+        *,
+        requires: t.Optional[str],
+        options: t.Optional[t.Sequence[Option]] = None,
+        description: t.Optional[str] = None,
+        directives: t.Optional[t.Sequence[DirectiveBase]] = None
+    ):
+        ...
+
+    @t.overload
+    def __init__(
+        self,
+        name: str,
+        type_: SequenceMeta[TypeRefMeta],
+        func: LinkManyFunc,
+        *,
+        requires: t.Optional[str],
+        options: t.Optional[t.Sequence[Option]] = None,
+        description: t.Optional[str] = None,
+        directives: t.Optional[t.Sequence[DirectiveBase]] = None
+    ):
+        ...
+
+    def __init__(  # type: ignore[no-untyped-def]
+        self,
+        name,
+        type_,
+        func,
+        *,
+        requires,
+        options=None,
+        description=None,
         directives=None
     ):
         """
@@ -287,20 +417,20 @@ class Link(AbstractLink):
         self.description = description
         self.directives = directives or ()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '{}({!r}, {!r}, {!r}, ...)'.format(self.__class__.__name__,
                                                   self.name, self.type,
                                                   self.func)
 
     @cached_property
-    def options_map(self):
+    def options_map(self) -> OrderedDict:
         return OrderedDict((op.name, op) for op in self.options)
 
-    def accept(self, visitor):
+    def accept(self, visitor: 'AbstractGraphVisitor') -> t.Any:
         return visitor.visit_link(self)
 
 
-class AbstractNode(AbstractBase):
+class AbstractNode(AbstractBase, ABC):
     pass
 
 
@@ -320,7 +450,14 @@ class Node(AbstractNode):
         ])
 
     """
-    def __init__(self, name, fields, *, description=None, directives=None):
+    def __init__(
+        self,
+        name: t.Optional[str],
+        fields: t.List[t.Union[Field, Link]],
+        *,
+        description: t.Optional[str] = None,
+        directives: t.Optional[t.Sequence[DirectiveBase]] = None
+    ):
         """
         :param name: name of the node
         :param fields: list of fields and links
@@ -331,15 +468,15 @@ class Node(AbstractNode):
         self.description = description
         self.directives = directives or ()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '{}({!r}, {!r}, ...)'.format(self.__class__.__name__, self.name,
                                             self.fields)
 
     @cached_property
-    def fields_map(self):
+    def fields_map(self) -> OrderedDict:
         return OrderedDict((f.name, f) for f in self.fields)
 
-    def accept(self, visitor):
+    def accept(self, visitor: 'AbstractGraphVisitor') -> t.Any:
         return visitor.visit_node(self)
 
 
@@ -358,21 +495,24 @@ class Root(Node):
         ])
 
     """
-    def __init__(self, items):
+    def __init__(
+        self,
+        items: t.List[t.Union[Field, Link]],
+    ):
         """
         :param items: list of fields, links and singleton nodes
         """
         super(Root, self).__init__(None, items)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '{}({!r}, {!r})'.format(self.__class__.__name__, self.name,
                                        self.fields)
 
-    def accept(self, visitor):
+    def accept(self, visitor: 'AbstractGraphVisitor') -> t.Any:
         return visitor.visit_root(self)
 
 
-class AbstractGraph(AbstractBase):
+class AbstractGraph(AbstractBase, ABC):
     pass
 
 
@@ -388,7 +528,11 @@ class Graph(AbstractGraph):
         ])
 
     """
-    def __init__(self, items, data_types=None):
+    def __init__(
+        self,
+        items: t.List[Node],
+        data_types: t.Optional[t.Dict[str, RecordMeta]] = None
+    ):
         """
         :param items: list of nodes
         """
@@ -400,124 +544,124 @@ class Graph(AbstractGraph):
         self.data_types = data_types or {}
         self.__types__ = GraphTypes.get_types(self.items, self.data_types)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '{}({!r})'.format(self.__class__.__name__, self.items)
 
-    def iter_root(self):
+    def iter_root(self) -> t.Iterator[t.Union[Field, Link]]:
         for node in self.items:
             if node.name is None:
                 for field in node.fields:
                     yield field
 
-    def iter_nodes(self):
+    def iter_nodes(self) -> t.Iterator[t.Union[Node]]:
         for node in self.items:
             if node.name is not None:
                 yield node
 
     @cached_property
-    def root(self):
+    def root(self) -> Root:
         return Root(list(self.iter_root()))
 
     @cached_property
-    def nodes(self):
+    def nodes(self) -> t.List[Node]:
         return list(self.iter_nodes())
 
     @cached_property
-    def nodes_map(self):
+    def nodes_map(self) -> OrderedDict:
         return OrderedDict((e.name, e) for e in self.iter_nodes())
 
-    def accept(self, visitor):
+    def accept(self, visitor: 'AbstractGraphVisitor') -> t.Any:
         return visitor.visit_graph(self)
 
 
 class AbstractGraphVisitor(ABC):
 
     @abstractmethod
-    def visit(self, obj):
+    def visit(self, obj: t.Any) -> t.Any:
         pass
 
     @abstractmethod
-    def visit_option(self, obj):
+    def visit_option(self, obj: Option) -> t.Any:
         pass
 
     @abstractmethod
-    def visit_field(self, obj):
+    def visit_field(self, obj: Field) -> t.Any:
         pass
 
     @abstractmethod
-    def visit_link(self, obj):
+    def visit_link(self, obj: Link) -> t.Any:
         pass
 
     @abstractmethod
-    def visit_node(self, obj):
+    def visit_node(self, obj: Node) -> t.Any:
         pass
 
     @abstractmethod
-    def visit_root(self, obj):
+    def visit_root(self, obj: Root) -> t.Any:
         pass
 
     @abstractmethod
-    def visit_graph(self, obj):
+    def visit_graph(self, obj: Graph) -> t.Any:
         pass
 
 
 class GraphVisitor(AbstractGraphVisitor):
 
-    def visit(self, obj):
+    def visit(self, obj: t.Any) -> t.Any:
         return obj.accept(self)
 
-    def visit_option(self, obj):
+    def visit_option(self, obj: 'Option') -> t.Any:
         pass
 
-    def visit_field(self, obj):
+    def visit_field(self, obj: Field) -> t.Any:
         for option in obj.options:
             self.visit(option)
 
-    def visit_link(self, obj):
+    def visit_link(self, obj: Link) -> t.Any:
         for option in obj.options:
             self.visit(option)
 
-    def visit_node(self, obj):
+    def visit_node(self, obj: Node) -> t.Any:
         for item in obj.fields:
             self.visit(item)
 
-    def visit_root(self, obj):
+    def visit_root(self, obj: Root) -> t.Any:
         for item in obj.fields:
             self.visit(item)
 
-    def visit_graph(self, obj):
+    def visit_graph(self, obj: Graph) -> t.Any:
         for item in obj.items:
             self.visit(item)
 
 
 class GraphTransformer(AbstractGraphVisitor):
 
-    def visit(self, obj):
+    def visit(self, obj: t.Any) -> t.Any:
         return obj.accept(self)
 
-    def visit_option(self, obj):
+    def visit_option(self, obj: Option) -> Option:
         return Option(obj.name, obj.type, default=obj.default,
                       description=obj.description)
 
-    def visit_field(self, obj):
+    def visit_field(self, obj: Field) -> Field:
         return Field(obj.name, obj.type, obj.func,
                      options=[self.visit(op) for op in obj.options],
                      description=obj.description, directives=obj.directives)
 
-    def visit_link(self, obj):
+    def visit_link(self, obj: Link) -> Link:
         return Link(obj.name, obj.type, obj.func,
                     requires=obj.requires,
                     options=[self.visit(op) for op in obj.options],
                     description=obj.description, directives=obj.directives)
 
-    def visit_node(self, obj):
+    def visit_node(self, obj: Node) -> Node:
         return Node(obj.name, [self.visit(f) for f in obj.fields],
                     description=obj.description, directives=obj.directives)
 
-    def visit_root(self, obj):
+    def visit_root(self, obj: Root) -> Root:
         return Root([self.visit(f) for f in obj.fields])
 
-    def visit_graph(self, obj):
+    def visit_graph(self, obj: Graph) -> Graph:
         return Graph([self.visit(node) for node in obj.items],
                      obj.data_types)
 
@@ -532,24 +676,24 @@ def apply(graph: Graph, transformers: List[GraphTransformer]) -> Graph:
         graph = hiku.graph.apply(graph, [AsyncGraphQLIntrospection()])
 
     """
-    return reduce(lambda g, t: t.visit(g), transformers, graph)
+    return reduce(lambda g, tr: tr.visit(g), transformers, graph)
 
 
 class GraphInit(GraphTransformer):
 
     @classmethod
-    def init(cls, items):
+    def init(cls, items: t.List[Node]) -> t.List[Node]:
         self = cls()
         return [self.visit(i) for i in items]
 
-    def visit_field(self, obj):
+    def visit_field(self, obj: Field) -> Field:
         field = super(GraphInit, self).visit_field(obj)
         postprocess = getattr(field.func, '__postprocess__', None)
         if postprocess is not None:
             postprocess(field)
         return field
 
-    def visit_link(self, obj):
+    def visit_link(self, obj: Link) -> Link:
         link = super(GraphInit, self).visit_link(obj)
         postprocess = getattr(link.func, '__postprocess__', None)
         if postprocess is not None:
@@ -559,7 +703,9 @@ class GraphInit(GraphTransformer):
 
 class GraphTypes(GraphVisitor):
 
-    def _visit_graph(self, items, data_types):
+    def _visit_graph(
+        self, items: t.List[Node], data_types: t.Dict[str, RecordMeta]
+    ) -> t.Dict[str, RecordMeta]:
         types = OrderedDict(data_types)
         roots = []
         for item in items:
@@ -573,20 +719,22 @@ class GraphTypes(GraphVisitor):
         return types
 
     @classmethod
-    def get_types(cls, items, data_types):
+    def get_types(
+        cls, items: t.List[Node], data_types: t.Dict[str, RecordMeta]
+    ) -> t.Dict[str, RecordMeta]:
         return cls()._visit_graph(items, data_types)
 
-    def visit_graph(self, obj):
+    def visit_graph(self, obj: Graph) -> t.Dict[str, RecordMeta]:
         return self._visit_graph(obj.items, obj.data_types)
 
-    def visit_node(self, obj):
+    def visit_node(self, obj: Node) -> RecordMeta:
         return Record[[(f.name, self.visit(f)) for f in obj.fields]]
 
-    def visit_root(self, obj):
+    def visit_root(self, obj: Root) -> RecordMeta:
         return Record[[(f.name, self.visit(f)) for f in obj.fields]]
 
-    def visit_link(self, obj):
+    def visit_link(self, obj: Link) -> LinkType:
         return obj.type
 
-    def visit_field(self, obj):
+    def visit_field(self, obj: Field) -> t.Union[FieldType, AnyMeta]:
         return obj.type or Any

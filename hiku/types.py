@@ -1,3 +1,5 @@
+import typing as t
+
 from abc import abstractmethod, ABC
 from collections import OrderedDict
 
@@ -71,13 +73,13 @@ class Float(metaclass=FloatMeta):
 class TypingMeta(GenericMeta):
     __final__ = False
 
-    def __cls_init__(cls, *args):
+    def __cls_init__(cls, parameters: t.Any):
         raise NotImplementedError(type(cls))
 
     def __cls_repr__(cls):
         raise NotImplementedError(type(cls))
 
-    def __getitem__(cls, parameters):
+    def __getitem__(cls, parameters: t.Any):
         if cls.__final__:
             raise TypeError('Cannot substitute parameters in {!r}'.format(cls))
         type_ = cls.__class__(cls.__name__, cls.__bases__, dict(cls.__dict__))
@@ -92,9 +94,12 @@ class TypingMeta(GenericMeta):
             return super(TypingMeta, self).__repr__()
 
 
-class OptionalMeta(TypingMeta):
+TR = t.TypeVar('TR', 'TypingMeta', 'TypeRefMeta', str)
 
-    def __cls_init__(cls, type_):
+
+class OptionalMeta(TypingMeta, t.Generic[TR]):
+
+    def __cls_init__(cls, type_: TR):
         cls.__type__ = _maybe_typeref(type_)
 
     def __cls_repr__(self):
@@ -108,9 +113,9 @@ class Optional(metaclass=OptionalMeta):
     pass
 
 
-class SequenceMeta(TypingMeta):
+class SequenceMeta(TypingMeta, t.Generic[TR]):
 
-    def __cls_init__(cls, item_type):
+    def __cls_init__(cls, item_type: TR):
         cls.__item_type__ = _maybe_typeref(item_type)
 
     def __cls_repr__(self):
@@ -146,11 +151,19 @@ class Mapping(metaclass=MappingMeta):
 class RecordMeta(TypingMeta):
     __field_types__: OrderedDict
 
-    def __cls_init__(cls, field_types):
+    def __cls_init__(
+        cls,
+        field_types: t.Union[
+            t.Dict[str, TR],
+            t.List[t.Tuple[str, TR]]
+        ]
+    ):
+        items: t.Iterable
         if hasattr(field_types, 'items'):
-            items = field_types.items()
+            field_types = t.cast(t.Dict[str, TR], field_types)
+            items = list(field_types.items())
         else:
-            items = field_types
+            items = list(field_types)
         cls.__field_types__ = OrderedDict(
             (key, _maybe_typeref(val)) for key, val in items
         )
@@ -169,7 +182,7 @@ class Record(metaclass=RecordMeta):
 class CallableMeta(TypingMeta):
 
     def __cls_init__(cls, arg_types):
-        cls.__arg_types__ = [_maybe_typeref(t) for t in arg_types]
+        cls.__arg_types__ = [_maybe_typeref(typ) for typ in arg_types]
 
     def __cls_repr__(self):
         return '{}[{}]'.format(self.__name__,
@@ -185,8 +198,10 @@ class Callable(metaclass=CallableMeta):
 
 class TypeRefMeta(TypingMeta):
 
-    def __cls_init__(cls, name):
-        cls.__type_name__ = name
+    def __cls_init__(cls, *args: str):
+        assert len(args) == 1, f'{cls.__name__} takes exactly one argument'
+
+        cls.__type_name__ = args[0]
 
     def __cls_repr__(self):
         return '{}[{!r}]'.format(self.__name__, self.__type_name__)
@@ -199,8 +214,8 @@ class TypeRef(metaclass=TypeRefMeta):
     pass
 
 
-def _maybe_typeref(t):
-    return TypeRef[t] if isinstance(t, str) else t
+def _maybe_typeref(typ: TR) -> TypeRefMeta:
+    return TypeRef[typ] if isinstance(typ, str) else typ
 
 
 class AbstractTypeVisitor(ABC):
@@ -292,8 +307,8 @@ class TypeVisitor(AbstractTypeVisitor):
             self.visit(arg_type)
 
 
-def get_type(types, t):
-    if isinstance(t, TypeRefMeta):
-        return types[t.__type_name__]
+def get_type(types: t.Dict[str, TypingMeta], typ: TypingMeta) -> TypingMeta:
+    if isinstance(typ, TypeRefMeta):
+        return types[typ.__type_name__]
     else:
-        return t
+        return typ
