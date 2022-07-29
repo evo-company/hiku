@@ -2,11 +2,20 @@ import inspect
 import warnings
 import dataclasses
 
-from typing import Any
+from typing import (
+    Any,
+    TypeVar,
+    Callable,
+    cast,
+)
 from functools import partial
 from itertools import chain, repeat
 from collections import defaultdict
 from collections.abc import Sequence, Mapping, Hashable
+from typing_extensions import (
+    ParamSpec,
+    Concatenate,
+)
 
 from . import query as hiku_query
 from .graph import Link, Maybe, One, Many, Nothing, Field
@@ -326,7 +335,7 @@ def link_result_to_ids(from_list, link_type, result):
 
 class Query(Workflow):
 
-    def __init__(self, queue, task_set, graph, query, ctx):
+    def __init__(self, queue, task_set, graph, query, ctx: 'Context'):
         self._queue = queue
         self._task_set = task_set
         self._graph = graph
@@ -437,12 +446,23 @@ class Query(Workflow):
         return dep
 
 
-def pass_context(func):
-    func.__pass_context__ = True
-    return func
+R = TypeVar('R')
+P = ParamSpec('P')
 
 
-def _do_pass_context(func):
+def pass_context(
+    func: Callable[P, R]
+) -> Callable[Concatenate['Context', P], R]:
+    """Decorator to pass context to a function as a first argument.
+
+    Can be used on functions for ``Field`` and ``Link``.
+    Can not be used on functions with ``@define`` decorator
+    """
+    func.__pass_context__ = True  # type: ignore[attr-defined]
+    return cast(Callable[Concatenate['Context', P], R], func)
+
+
+def _do_pass_context(func: Callable) -> bool:
     return getattr(func, '__pass_context__', False)
 
 

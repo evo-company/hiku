@@ -111,7 +111,7 @@ class FederatedGraphQLEndpoint(
         self, graph: Graph, op: Operation, ctx: Optional[Dict]
     ) -> Dict:
         stripped_query = _process_query(graph, op.query)
-        result = self.engine.execute(graph, stripped_query, ctx)
+        result = self.engine.execute(graph, stripped_query, ctx or {})
         return self.postprocess_result(result, graph, op)
 
     def dispatch(self, data: Dict) -> Dict:

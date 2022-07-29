@@ -3,3 +3,4 @@ sqlalchemy
 protobuf
 aiopg
 prometheus-client
+typing-extensions

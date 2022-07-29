@@ -31,7 +31,7 @@ from hiku.types import (
     AnyMeta,
     FloatMeta,
     BooleanMeta,
-    Record,
+    RecordMeta,
 )
 
 
@@ -111,7 +111,7 @@ def _encode_default_value(value) -> Optional[ast.ValueNode]:
 
 
 class Exporter(GraphVisitor):
-    def export_record(self, type_name: str, obj: Record):
+    def export_record(self, type_name: str, obj: RecordMeta):
         def new_field(name: str, type_):
             return ast.FieldDefinitionNode(
                 name=_name(name),
