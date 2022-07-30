@@ -1,7 +1,11 @@
 name: Test
 on:
-- push
-- pull_request
+  # Trigger the workflow on pushes to only the 'master' branch (this avoids duplicate checks being run pull requests)
+  push:
+    branches: [master]
+  # Trigger the workflow on any pull request
+  pull_request:
+
 jobs:
   test:
     runs-on: ubuntu-latest
