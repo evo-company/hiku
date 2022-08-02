@@ -99,13 +99,27 @@ class AbstractField(AbstractBase, ABC):
     pass
 
 
-RootFieldFunc = t.Callable[[t.List['Field']], List[t.Any]]
-NotRootFieldFunc = t.Callable[[t.List['Field'], List[t.Any]], List[List[t.Any]]]
+R = t.TypeVar('R')
+
+SyncAsync = t.Union[R, t.Awaitable[R]]
+
+RootFieldFunc = t.Callable[
+    [t.List['Field']],
+    SyncAsync[List[t.Any]]
+]
+NotRootFieldFunc = t.Callable[
+    [t.List['Field'], List[t.Any]],
+    SyncAsync[List[List[t.Any]]]
+]
 NotRootFieldFuncInject = t.Callable[
-    [t.Any, t.List['Field'], List[t.Any]], List[List[t.Any]]
+    [t.Any, t.List['Field'], List[t.Any]],
+    SyncAsync[List[List[t.Any]]]
 ]
 
+
 FieldType = t.Optional[GenericMeta]
+# TODO: write hiku mypy plugin to allow distinguishing between Root and non-Root
+# fields and its functions
 FieldFunc = t.Union[
     RootFieldFunc,
     NotRootFieldFunc,
@@ -215,49 +229,40 @@ def get_type_enum(type_: LinkType) -> t.Tuple[Const, str]:
     raise TypeError('Invalid type specified: {!r}'.format(type_))
 
 
-LT = t.TypeVar('LT')
-LR = t.TypeVar('LR')
+LT = t.TypeVar('LT', bound=t.Hashable)
+LR = t.TypeVar('LR', bound=t.Hashable)
 
-RootLinkOne = t.Callable[[], LR]
-RootLinkOneInject = t.Callable[[t.Any], LR]
+MaybeLink = t.Union[LR, NothingType]
+RootLinkT = t.Union[
+    t.Callable[[], SyncAsync[LR]],
+    t.Callable[[t.Any], SyncAsync[LR]]
+]
 
-RootLinkMaybe = t.Callable[[], t.Union[LR, NothingType]]
-RootLinkMaybeInject = t.Callable[[t.Any], t.Union[LR, NothingType]]
+LinkT = t.Union[
+    t.Callable[[List[LT]], SyncAsync[LR]],
+    t.Callable[[t.Any, List[LT]], SyncAsync[LR]]
+]
 
-RootLinkMany = t.Callable[[], t.List[LR]]
-RootLinkManyInject = t.Callable[[t.Any], t.List[LR]]
+RootLinkOne = RootLinkT[LR]
+RootLinkMaybe = RootLinkT[MaybeLink]
+RootLinkMany = RootLinkT[t.List[LR]]
 
-LinkOne = t.Callable[[List[LT]], t.List[LR]]
-LinkOneInject = t.Callable[[t.Any, List[LT]], t.List[LR]]
-
-LinkMaybe = t.Callable[[List[LT]], t.List[t.Union[LR, NothingType]]]
-LinkMaybeInject = t.Callable[
-    [t.Any, List[LT]], t.List[t.Union[LR, NothingType]]]
-
-LinkMany = t.Callable[[List[LT]], t.List[t.List[LR]]]
-LinkManyInject = t.Callable[[t.Any, List[LT]], t.List[t.List[LR]]]
+LinkOne = LinkT[LT, t.List[LR]]
+LinkMaybe = LinkT[LT, t.List[MaybeLink]]
+LinkMany = LinkT[LT, t.List[t.List[LR]]]
 
 LinkFunc = t.Union[
     RootLinkOne,
-    RootLinkOneInject,
     RootLinkMaybe,
-    RootLinkMaybeInject,
     RootLinkMany,
-    RootLinkManyInject,
     LinkOne,
-    LinkOneInject,
     LinkMaybe,
-    LinkMaybeInject,
     LinkMany,
-    LinkManyInject
 ]
 
-LinkOneFunc = t.Union[
-    RootLinkOne, RootLinkOneInject, LinkOne, LinkOneInject]
-LinkMaybeFunc = t.Union[
-    RootLinkMaybe, RootLinkMaybeInject, LinkMaybe, LinkMaybeInject]
-LinkManyFunc = t.Union[
-    RootLinkMany, RootLinkManyInject, LinkMany, LinkManyInject]
+LinkOneFunc = t.Union[RootLinkOne, LinkOne]
+LinkMaybeFunc = t.Union[RootLinkMaybe, LinkMaybe]
+LinkManyFunc = t.Union[RootLinkMany, LinkMany]
 
 
 class Link(AbstractLink):
