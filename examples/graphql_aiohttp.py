@@ -1,8 +1,16 @@
 import logging
+from typing import Dict
 
 from aiohttp import web
 
-from hiku.types import String, Boolean, Integer, TypeRef, Record
+from hiku.types import (
+    String,
+    Boolean,
+    Integer,
+    TypeRef,
+    Record,
+    RecordMeta,
+)
 from hiku.graph import Graph, Root, Field, Option
 from hiku.engine import Engine
 from hiku.endpoint.graphql import AsyncGraphQLEndpoint
@@ -24,7 +32,7 @@ async def action_func(fields):
     return results
 
 
-DATA_TYPES = {
+DATA_TYPES: Dict[str, RecordMeta] = {
     'Point': Record[{
         'x': Integer,
         'y': Integer,

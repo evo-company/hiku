@@ -94,13 +94,13 @@ class TypingMeta(GenericMeta):
             return super(TypingMeta, self).__repr__()
 
 
-TR = t.TypeVar('TR', 'TypingMeta', 'TypeRefMeta', str)
+T = t.TypeVar('T', bound='GenericMeta')
 
 
-class OptionalMeta(TypingMeta, t.Generic[TR]):
+class OptionalMeta(TypingMeta, t.Generic[T]):
 
-    def __cls_init__(cls, type_: TR):
-        cls.__type__ = _maybe_typeref(type_)
+    def __cls_init__(cls, type_: T):
+        cls.__type__: GenericMeta = _maybe_typeref(type_)
 
     def __cls_repr__(self):
         return '{}[{!r}]'.format(self.__name__, self.__type__)
@@ -113,10 +113,10 @@ class Optional(metaclass=OptionalMeta):
     pass
 
 
-class SequenceMeta(TypingMeta, t.Generic[TR]):
+class SequenceMeta(TypingMeta, t.Generic[T]):
 
-    def __cls_init__(cls, item_type: TR):
-        cls.__item_type__ = _maybe_typeref(item_type)
+    def __cls_init__(cls, item_type: T):
+        cls.__item_type__: GenericMeta = _maybe_typeref(item_type)
 
     def __cls_repr__(self):
         return '{}[{!r}]'.format(self.__name__, self.__item_type__)
@@ -154,13 +154,13 @@ class RecordMeta(TypingMeta):
     def __cls_init__(
         cls,
         field_types: t.Union[
-            t.Dict[str, TR],
-            t.List[t.Tuple[str, TR]]
+            t.Dict[str, T],
+            t.List[t.Tuple[str, T]]
         ]
     ):
         items: t.Iterable
         if hasattr(field_types, 'items'):
-            field_types = t.cast(t.Dict[str, TR], field_types)
+            field_types = t.cast(t.Dict[str, T], field_types)
             items = list(field_types.items())
         else:
             items = list(field_types)
@@ -214,7 +214,17 @@ class TypeRef(metaclass=TypeRefMeta):
     pass
 
 
-def _maybe_typeref(typ: TR) -> TypeRefMeta:
+@t.overload
+def _maybe_typeref(typ: str) -> TypeRefMeta:
+    ...
+
+
+@t.overload
+def _maybe_typeref(typ: GenericMeta) -> GenericMeta:
+    ...
+
+
+def _maybe_typeref(typ: t.Union[str, GenericMeta]) -> GenericMeta:
     return TypeRef[typ] if isinstance(typ, str) else typ
 
 
@@ -307,7 +317,7 @@ class TypeVisitor(AbstractTypeVisitor):
             self.visit(arg_type)
 
 
-def get_type(types: t.Dict[str, TypingMeta], typ: TypingMeta) -> TypingMeta:
+def get_type(types: t.Dict[str, GenericMeta], typ: GenericMeta) -> GenericMeta:
     if isinstance(typ, TypeRefMeta):
         return types[typ.__type_name__]
     else:

@@ -21,6 +21,7 @@ from .types import (
     Record,
     Any,
     GenericMeta,
+    TypingMeta,
     AnyMeta,
     RecordMeta,
 )
@@ -118,8 +119,6 @@ NotRootFieldFuncInject = t.Callable[
 
 
 FieldType = t.Optional[GenericMeta]
-# TODO: write hiku mypy plugin to allow distinguishing between Root and non-Root
-# fields and its functions
 FieldFunc = t.Union[
     RootFieldFunc,
     NotRootFieldFunc,
@@ -217,7 +216,7 @@ LinkType = t.Union[
 ]
 
 
-def get_type_enum(type_: LinkType) -> t.Tuple[Const, str]:
+def get_type_enum(type_: TypingMeta) -> t.Tuple[Const, str]:
     if isinstance(type_, TypeRefMeta):
         return One, type_.__type_name__
     elif isinstance(type_, OptionalMeta):
@@ -244,11 +243,11 @@ LinkT = t.Union[
 ]
 
 RootLinkOne = RootLinkT[LR]
-RootLinkMaybe = RootLinkT[MaybeLink]
+RootLinkMaybe = RootLinkT[MaybeLink[LR]]
 RootLinkMany = RootLinkT[t.List[LR]]
 
 LinkOne = LinkT[LT, t.List[LR]]
-LinkMaybe = LinkT[LT, t.List[MaybeLink]]
+LinkMaybe = LinkT[LT, t.List[MaybeLink[LR]]]
 LinkMany = LinkT[LT, t.List[t.List[LR]]]
 
 LinkFunc = t.Union[
