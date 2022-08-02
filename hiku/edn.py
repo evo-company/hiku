@@ -100,7 +100,8 @@ def coroutine(func):
 @coroutine
 def appender(lst):
     while True:
-        lst.append((yield))
+        v = yield
+        lst.append(v)
 
 
 def inst_handler(time_string):
@@ -140,7 +141,7 @@ _NIL = object()
 @coroutine
 def tag_handler(tag_name, tag_handlers):
     while True:
-        c = (yield)
+        c = yield
         if c in STOP_CHARS + '{"[(\\#':
             break
         tag_name += c
@@ -148,7 +149,8 @@ def tag_handler(tag_name, tag_handlers):
     handler = parser(appender(elements), tag_handlers)
     handler.send(c)
     while not elements:
-        handler.send((yield))
+        v = yield
+        handler.send(v)
     if tag_name in tag_handlers:
         yield tag_handlers[tag_name](elements[0]), True
     else:
@@ -158,9 +160,9 @@ def tag_handler(tag_name, tag_handlers):
 
 @coroutine
 def character_handler():
-    r = (yield)
+    r = yield
     while 1:
-        c = (yield)
+        c = yield
         if not c.isalpha():
             if len(r) == 1:
                 yield r, False
@@ -179,7 +181,7 @@ def parse_number(s):
 @coroutine
 def number_handler(s):
     while 1:
-        c = (yield)
+        c = yield
         if c in "0123456789+-eEMN.":
             s += c
         else:
@@ -189,7 +191,7 @@ def number_handler(s):
 @coroutine
 def symbol_handler(s):
     while 1:
-        c = (yield)
+        c = yield
         if c in '}])' + STOP_CHARS:
             if s[0] == ':':
                 yield Keyword(s[1:]), False
@@ -209,7 +211,7 @@ def symbol_handler(s):
 def parser(target, tag_handlers, stop=None):
     handler = None
     while True:
-        c = (yield)
+        c = yield
         if handler:
             v = handler.send(c)
             if v is None:
@@ -229,14 +231,15 @@ def parser(target, tag_handlers, stop=None):
         if c in STOP_CHARS:
             continue
         if c == ';':
-            while (yield) != '\n':
+            v = yield
+            while v != '\n':
                 pass
         elif c == '"':
             chars = []
             while 1:
-                char = (yield)
+                char = yield
                 if char == '\\':
-                    char = (yield)
+                    char = yield
                     char2 = _CHAR_MAP.get(char)
                     if char2 is not None:
                         chars.append(char2)
@@ -252,7 +255,7 @@ def parser(target, tag_handlers, stop=None):
         elif c in '0123456789':
             handler = number_handler(c)
         elif c in '-.':
-            c2 = (yield)
+            c2 = yield
             if c2.isdigit():  # .5 should be an error
                 handler = number_handler(c + c2)
             else:
@@ -261,7 +264,7 @@ def parser(target, tag_handlers, stop=None):
             handler = symbol_handler(c)
         elif c in '[({#':
             if c == '#':
-                c2 = (yield)
+                c2 = yield
                 if c2 != '{':
                     handler = tag_handler(c2, tag_handlers)
                     continue
@@ -270,7 +273,8 @@ def parser(target, tag_handlers, stop=None):
             p = parser(appender(lst), tag_handlers, stop=end_char)
             try:
                 while 1:
-                    p.send((yield))
+                    v = yield
+                    p.send(v)
             except StopIteration:
                 pass
             if c == '[':

@@ -1,7 +1,12 @@
 from collections import deque
 
 from ..query import Field, Link
-from ..types import TypeRefMeta, SequenceMeta, OptionalMeta
+from ..types import (
+    TypeRefMeta,
+    SequenceMeta,
+    OptionalMeta,
+    GenericMeta,
+)
 
 from .base import Denormalize
 
@@ -20,6 +25,7 @@ class DenormalizeGraphQL(Denormalize):
 
     def visit_link(self, obj: Link):
         type_ = self._type[-1].__field_types__[obj.name]
+        type_ref: GenericMeta
         if isinstance(type_, TypeRefMeta):
             type_ref = type_
         elif isinstance(type_, SequenceMeta):
