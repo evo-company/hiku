@@ -39,11 +39,11 @@ services:
     <<: *base
     image: hiku-tests
 
-  test:
+  pytest:
     <<: *test-base
     depends_on:
       - pg
-    command: py.test
+    entrypoint: py.test
 
   pg:
     image: postgres:13-alpine

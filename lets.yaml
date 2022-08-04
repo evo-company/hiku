@@ -52,7 +52,12 @@ commands:
   test:
     description: Run tests
     depends: [_build-tests]
-    cmd: docker-compose run --rm test
+    cmd: docker-compose run --rm pytest
+
+  bench:
+    description: Run benchmarks
+    depends: [_build-tests]
+    cmd: docker-compose run --rm pytest tests/benchmarks $@
 
   flake:
     description: Run flake8
