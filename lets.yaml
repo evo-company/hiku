@@ -69,6 +69,11 @@ commands:
     cmd: |
       docker-compose run --rm test-base tox -e mypy -- $LETS_COMMAND_ARGS
 
+  stubgen:
+    depends: [_build-tests]
+    cmd: |
+      docker-compose run --rm test-base stubgen -p hiku -o stub
+
   reqs:
     description: Update requirements.txt
     cmd: pip-compile -U requirements.in
