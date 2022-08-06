@@ -6,23 +6,23 @@ from collections import OrderedDict
 
 class GenericMeta(type):
 
-    def __repr__(cls):
+    def __repr__(cls) -> str:
         return cls.__name__
 
-    def __eq__(cls, other):
+    def __eq__(cls, other: t.Any) -> bool:
         return (cls.__class__ is other.__class__
                 and cls.__dict__ == other.__dict__)
 
-    def __ne__(cls, other):
+    def __ne__(cls, other: t.Any) -> bool:
         return not cls.__eq__(other)
 
-    def accept(cls, visitor):
+    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
         raise NotImplementedError(type(cls))
 
 
 class AnyMeta(GenericMeta):
 
-    def accept(cls, visitor):
+    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
         return visitor.visit_any(cls)
 
 
@@ -32,7 +32,7 @@ class Any(metaclass=AnyMeta):
 
 class BooleanMeta(GenericMeta):
 
-    def accept(cls, visitor):
+    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
         return visitor.visit_boolean(cls)
 
 
@@ -42,7 +42,7 @@ class Boolean(metaclass=BooleanMeta):
 
 class StringMeta(GenericMeta):
 
-    def accept(cls, visitor):
+    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
         return visitor.visit_string(cls)
 
 
@@ -52,7 +52,7 @@ class String(metaclass=StringMeta):
 
 class IntegerMeta(GenericMeta):
 
-    def accept(cls, visitor):
+    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
         return visitor.visit_integer(cls)
 
 
@@ -62,7 +62,7 @@ class Integer(metaclass=IntegerMeta):
 
 class FloatMeta(GenericMeta):
 
-    def accept(cls, visitor):
+    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
         return visitor.visit_float(cls)
 
 
@@ -73,13 +73,13 @@ class Float(metaclass=FloatMeta):
 class TypingMeta(GenericMeta):
     __final__ = False
 
-    def __cls_init__(cls, parameters: t.Any):
+    def __cls_init__(cls, parameters: t.Any) -> None:
         raise NotImplementedError(type(cls))
 
-    def __cls_repr__(cls):
+    def __cls_repr__(cls) -> str:
         raise NotImplementedError(type(cls))
 
-    def __getitem__(cls, parameters: t.Any):
+    def __getitem__(cls, parameters: t.Any) -> 'TypingMeta':
         if cls.__final__:
             raise TypeError('Cannot substitute parameters in {!r}'.format(cls))
         type_ = cls.__class__(cls.__name__, cls.__bases__, dict(cls.__dict__))
@@ -87,7 +87,7 @@ class TypingMeta(GenericMeta):
         type_.__final__ = True
         return type_
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.__final__:
             return self.__cls_repr__()
         else:
@@ -99,13 +99,13 @@ T = t.TypeVar('T', bound='GenericMeta')
 
 class OptionalMeta(TypingMeta, t.Generic[T]):
 
-    def __cls_init__(cls, type_: T):
+    def __cls_init__(cls, type_: T) -> None:
         cls.__type__: GenericMeta = _maybe_typeref(type_)
 
-    def __cls_repr__(self):
+    def __cls_repr__(self) -> str:
         return '{}[{!r}]'.format(self.__name__, self.__type__)
 
-    def accept(cls, visitor):
+    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
         return visitor.visit_optional(cls)
 
 
@@ -115,13 +115,13 @@ class Optional(metaclass=OptionalMeta):
 
 class SequenceMeta(TypingMeta, t.Generic[T]):
 
-    def __cls_init__(cls, item_type: T):
+    def __cls_init__(cls, item_type: T) -> None:
         cls.__item_type__: GenericMeta = _maybe_typeref(item_type)
 
-    def __cls_repr__(self):
+    def __cls_repr__(self) -> str:
         return '{}[{!r}]'.format(self.__name__, self.__item_type__)
 
-    def accept(cls, visitor):
+    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
         return visitor.visit_sequence(cls)
 
 
@@ -131,16 +131,17 @@ class Sequence(metaclass=SequenceMeta):
 
 class MappingMeta(TypingMeta):
 
-    def __cls_init__(cls, params):
+    # TODO: not sure about this type signature
+    def __cls_init__(cls, params: t.Tuple[T, T]) -> None:
         key_type, value_type = params
         cls.__key_type__ = _maybe_typeref(key_type)
         cls.__value_type__ = _maybe_typeref(value_type)
 
-    def __cls_repr__(self):
+    def __cls_repr__(self) -> str:
         return '{}[{!r}, {!r}]'.format(self.__name__, self.__key_type__,
                                        self.__value_type__)
 
-    def accept(cls, visitor):
+    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
         return visitor.visit_mapping(cls)
 
 
@@ -157,7 +158,7 @@ class RecordMeta(TypingMeta):
             t.Dict[str, T],
             t.List[t.Tuple[str, T]]
         ]
-    ):
+    ) -> None:
         items: t.Iterable
         if hasattr(field_types, 'items'):
             field_types = t.cast(t.Dict[str, T], field_types)
@@ -168,10 +169,10 @@ class RecordMeta(TypingMeta):
             (key, _maybe_typeref(val)) for key, val in items
         )
 
-    def __cls_repr__(self):
+    def __cls_repr__(self) -> str:
         return '{}[{!r}]'.format(self.__name__, dict(self.__field_types__))
 
-    def accept(cls, visitor):
+    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
         return visitor.visit_record(cls)
 
 
@@ -181,14 +182,14 @@ class Record(metaclass=RecordMeta):
 
 class CallableMeta(TypingMeta):
 
-    def __cls_init__(cls, arg_types):
+    def __cls_init__(cls, arg_types: t.Iterable[T]) -> None:
         cls.__arg_types__ = [_maybe_typeref(typ) for typ in arg_types]
 
-    def __cls_repr__(self):
+    def __cls_repr__(self) -> str:
         return '{}[{}]'.format(self.__name__,
                                ', '.join(map(repr, self.__arg_types__)))
 
-    def accept(cls, visitor):
+    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
         return visitor.visit_callable(cls)
 
 
@@ -198,15 +199,15 @@ class Callable(metaclass=CallableMeta):
 
 class TypeRefMeta(TypingMeta):
 
-    def __cls_init__(cls, *args: str):
+    def __cls_init__(cls, *args: str) -> None:
         assert len(args) == 1, f'{cls.__name__} takes exactly one argument'
 
         cls.__type_name__ = args[0]
 
-    def __cls_repr__(self):
+    def __cls_repr__(self) -> str:
         return '{}[{!r}]'.format(self.__name__, self.__type_name__)
 
-    def accept(cls, visitor):
+    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
         return visitor.visit_typeref(cls)
 
 
@@ -230,89 +231,89 @@ def _maybe_typeref(typ: t.Union[str, GenericMeta]) -> GenericMeta:
 
 class AbstractTypeVisitor(ABC):
 
-    def visit(self, obj):
+    def visit(self, obj: GenericMeta) -> t.Any:
         return obj.accept(self)
 
     @abstractmethod
-    def visit_any(self, obj):
+    def visit_any(self, obj: AnyMeta) -> t.Any:
         pass
 
     @abstractmethod
-    def visit_boolean(self, obj):
+    def visit_boolean(self, obj: BooleanMeta) -> t.Any:
         pass
 
     @abstractmethod
-    def visit_string(self, obj):
+    def visit_string(self, obj: StringMeta) -> t.Any:
         pass
 
     @abstractmethod
-    def visit_integer(self, obj):
+    def visit_integer(self, obj: IntegerMeta) -> t.Any:
         pass
 
     @abstractmethod
-    def visit_float(self, obj):
+    def visit_float(self, obj: FloatMeta) -> t.Any:
         pass
 
     @abstractmethod
-    def visit_typeref(self, obj):
+    def visit_typeref(self, obj: TypeRefMeta) -> t.Any:
         pass
 
     @abstractmethod
-    def visit_optional(self, obj):
+    def visit_optional(self, obj: OptionalMeta) -> t.Any:
         pass
 
     @abstractmethod
-    def visit_sequence(self, obj):
+    def visit_sequence(self, obj: SequenceMeta) -> t.Any:
         pass
 
     @abstractmethod
-    def visit_mapping(self, obj):
+    def visit_mapping(self, obj: MappingMeta) -> t.Any:
         pass
 
     @abstractmethod
-    def visit_record(self, obj):
+    def visit_record(self, obj: RecordMeta) -> t.Any:
         pass
 
     @abstractmethod
-    def visit_callable(self, obj):
+    def visit_callable(self, obj: CallableMeta) -> t.Any:
         pass
 
 
 class TypeVisitor(AbstractTypeVisitor):
 
-    def visit_any(self, obj):
+    def visit_any(self, obj: AnyMeta) -> t.Any:
         pass
 
-    def visit_boolean(self, obj):
+    def visit_boolean(self, obj: BooleanMeta) -> t.Any:
         pass
 
-    def visit_string(self, obj):
+    def visit_string(self, obj: StringMeta) -> t.Any:
         pass
 
-    def visit_integer(self, obj):
+    def visit_integer(self, obj: IntegerMeta) -> t.Any:
         pass
 
-    def visit_float(self, obj):
+    def visit_float(self, obj: FloatMeta) -> t.Any:
         pass
 
-    def visit_typeref(self, obj):
+    def visit_typeref(self, obj: TypeRefMeta) -> t.Any:
         pass
 
-    def visit_optional(self, obj):
+    def visit_optional(self, obj: OptionalMeta) -> t.Any:
         self.visit(obj.__type__)
 
-    def visit_sequence(self, obj):
+    def visit_sequence(self, obj: SequenceMeta) -> t.Any:
         self.visit(obj.__item_type__)
 
-    def visit_mapping(self, obj):
+    def visit_mapping(self, obj: MappingMeta) -> t.Any:
         self.visit(obj.__key_type__)
         self.visit(obj.__value_type__)
 
-    def visit_record(self, obj):
+    def visit_record(self, obj: RecordMeta) -> t.Any:
         for value_type in obj.__field_types__.values():
             self.visit(value_type)
 
-    def visit_callable(self, obj):
+    def visit_callable(self, obj: CallableMeta) -> t.Any:
         for arg_type in obj.__arg_types__:
             self.visit(arg_type)
 
