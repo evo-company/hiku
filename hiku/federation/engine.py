@@ -1,5 +1,10 @@
 import inspect
 from collections import defaultdict
+from typing import (
+    Optional,
+    Dict,
+    Any,
+)
 
 from .sdl import print_sdl
 from .utils import get_keys
@@ -22,16 +27,22 @@ from ..query import (
 
 
 class Engine:
-    def __init__(self, executor):
+    # TODO: add type for executor
+    def __init__(self, executor: Any):
         self.executor = executor
 
-    def execute_service(self, graph):
+    def execute_service(self, graph: Graph) -> Proxy:
         idx = Index()
         idx[ROOT.node] = Index()
         idx[ROOT.node][ROOT.ident] = {'sdl': print_sdl(graph)}
         return Proxy(idx, ROOT, Node(fields=[Field('sdl')]))
 
-    def execute_entities(self, graph, query, ctx):
+    def execute_entities(
+        self,
+        graph: Graph,
+        query: Node,
+        ctx: Dict
+    ) -> Proxy:
         entities_link = query.fields_map['_entities']
         query = entities_link.node
         representations = entities_link.options['representations']
@@ -58,7 +69,12 @@ class Engine:
 
         return self.executor.process(queue, query_workflow)
 
-    def execute_query(self, graph, query, ctx):
+    def execute_query(
+        self,
+        graph: Graph,
+        query: Node,
+        ctx: Dict
+    ) -> Proxy:
         query = InitOptions(graph).visit(query)
         queue = Queue(self.executor)
         task_set = queue.fork(None)
@@ -67,7 +83,12 @@ class Engine:
         query_workflow.start()
         return self.executor.process(queue, query_workflow)
 
-    def execute(self, graph: Graph, query, ctx=None) -> Proxy:
+    def execute(
+        self,
+        graph: Graph,
+        query: Node,
+        ctx: Optional[Dict] = None
+    ) -> Proxy:
         if ctx is None:
             ctx = {}
 
@@ -78,7 +99,12 @@ class Engine:
 
         return self.execute_query(graph, query, ctx)
 
-    async def execute_async(self, graph: Graph, query, ctx=None) -> Proxy:
+    async def execute_async(
+        self,
+        graph: Graph,
+        query: Node,
+        ctx: Optional[Dict] = None
+    ) -> Proxy:
         result = self.execute(graph, query, ctx)
         if inspect.iscoroutine(result):
             return await result

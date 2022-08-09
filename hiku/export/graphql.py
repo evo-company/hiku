@@ -1,13 +1,23 @@
+from typing import (
+    Any,
+    Optional,
+)
+
 from graphql.language import ast
 
-from ..query import QueryVisitor, Field
+from ..query import (
+    QueryVisitor,
+    Field,
+    Node,
+    Link,
+)
 
 
-def _name(value):
+def _name(value: Any) -> Optional[ast.NameNode]:
     return ast.NameNode(value=value) if value is not None else None
 
 
-def _encode(value):
+def _encode(value: Any) -> ast.ValueNode:
     if value is None:
         return ast.NullValueNode()
     elif isinstance(value, bool):
@@ -31,7 +41,7 @@ def _encode(value):
 
 class Exporter(QueryVisitor):
 
-    def visit_field(self, obj: Field):
+    def visit_field(self, obj: Field) -> ast.FieldNode:
         arguments = None
         if obj.options:
             arguments = [ast.ArgumentNode(name=_name(key), value=_encode(val))
@@ -42,7 +52,7 @@ class Exporter(QueryVisitor):
             arguments=arguments,
         )
 
-    def visit_link(self, obj):
+    def visit_link(self, obj: Link) -> ast.FieldNode:
         arguments = None
         if obj.options:
             arguments = [ast.ArgumentNode(name=_name(key), value=_encode(val))
@@ -54,13 +64,13 @@ class Exporter(QueryVisitor):
             selection_set=self.visit(obj.node),
         )
 
-    def visit_node(self, obj):
+    def visit_node(self, obj: Node) -> ast.SelectionSetNode:
         return ast.SelectionSetNode(
             selections=[self.visit(f) for f in obj.fields],
         )
 
 
-def export(query):
+def export(query: Node) -> ast.DocumentNode:
     return ast.DocumentNode(definitions=[
         ast.OperationDefinitionNode(
             operation=ast.OperationType.QUERY,

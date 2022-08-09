@@ -25,6 +25,7 @@ from hiku.types import (
     Sequence,
 )
 from hiku.executors.sync import SyncExecutor
+from hiku.utils import listify
 
 log = logging.getLogger(__name__)
 
@@ -54,18 +55,21 @@ data = {
 }
 
 
+@listify
 def cart_resolver(fields, ids):
     for cart_id in ids:
         cart = get_by_id(cart_id, data['carts'])
         yield [cart[f.name] for f in fields]
 
 
+@listify
 def cart_item_resolver(fields, ids):
     for item_id in ids:
         item = get_by_id(item_id, data['cart_items'])
         yield [item[f.name] for f in fields]
 
 
+@listify
 def link_cart_items(cart_ids):
     for cart_id in cart_ids:
         yield [item['id'] for item
@@ -100,7 +104,7 @@ QUERY_GRAPH = Graph([
         Field('id', Integer, cart_item_resolver),
         Field('cart_id', Integer, cart_item_resolver),
         Field('name', String, cart_item_resolver),
-        Field('photo', Optional[String], lambda: None, options=[
+        Field('photo', Optional[String], cart_item_resolver, options=[
             Option('width', Integer),
             Option('height', Integer),
         ]),
