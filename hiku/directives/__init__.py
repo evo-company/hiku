@@ -1,7 +1,8 @@
 from typing import (
     Optional,
     Union,
-    TYPE_CHECKING
+    TYPE_CHECKING,
+    Any,
 )
 
 if TYPE_CHECKING:
@@ -19,7 +20,7 @@ class Deprecated(DirectiveBase):
     def __init__(self, reason: Optional[str] = None):
         self.reason = reason
 
-    def accept(self, visitor):
+    def accept(self, visitor: Any) -> Any:
         return visitor.visit_deprecated_directive(self)
 
 

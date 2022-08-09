@@ -459,7 +459,7 @@ class Node(AbstractNode):
     """
     def __init__(
         self,
-        name: t.Optional[str],
+        name: str,
         fields: t.List[t.Union[Field, Link]],
         *,
         description: t.Optional[str] = None,

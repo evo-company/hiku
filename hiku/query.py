@@ -184,11 +184,11 @@ class Node(Base):
         self.ordered = ordered
 
     @cached_property
-    def fields_map(self) -> OrderedDict[str, t.Union[Field, Link]]:
+    def fields_map(self) -> OrderedDict:
         return OrderedDict((f.name, f) for f in self.fields)
 
     @cached_property
-    def result_map(self) -> OrderedDict[str, t.Union[Field, Link]]:
+    def result_map(self) -> OrderedDict:
         return OrderedDict((f.result_key, f) for f in self.fields)
 
     def accept(self, visitor: 'QueryVisitor') -> t.Any:
