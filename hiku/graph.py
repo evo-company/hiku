@@ -15,8 +15,11 @@ from collections import OrderedDict
 from typing import List
 
 from .types import (
+    Optional,
     OptionalMeta,
+    Sequence,
     SequenceMeta,
+    TypeRef,
     TypeRefMeta,
     Record,
     Any,
@@ -212,7 +215,7 @@ class AbstractLink(AbstractBase, ABC):
 
 
 LinkType = t.Union[
-    TypeRefMeta, OptionalMeta[TypeRefMeta], SequenceMeta[TypeRefMeta]
+    t.Type[TypeRef], t.Type[Optional], t.Type[Sequence]
 ]
 
 
@@ -350,7 +353,7 @@ class Link(AbstractLink):
     def __init__(
         self,
         name: str,
-        type_: TypeRefMeta,
+        type_: t.Type[TypeRef],
         func: LinkOneFunc,
         *,
         requires: t.Optional[str],
@@ -364,7 +367,7 @@ class Link(AbstractLink):
     def __init__(
         self,
         name: str,
-        type_: OptionalMeta[TypeRefMeta],
+        type_: t.Type[Optional],
         func: LinkMaybeFunc,
         *,
         requires: t.Optional[str],
@@ -378,7 +381,7 @@ class Link(AbstractLink):
     def __init__(
         self,
         name: str,
-        type_: SequenceMeta[TypeRefMeta],
+        type_: t.Type[Sequence],
         func: LinkManyFunc,
         *,
         requires: t.Optional[str],
@@ -535,7 +538,7 @@ class Graph(AbstractGraph):
     def __init__(
         self,
         items: t.List[Node],
-        data_types: t.Optional[t.Dict[str, RecordMeta]] = None
+        data_types: t.Optional[t.Dict[str, t.Type[Record]]] = None
     ):
         """
         :param items: list of nodes
@@ -708,8 +711,8 @@ class GraphInit(GraphTransformer):
 class GraphTypes(GraphVisitor):
 
     def _visit_graph(
-        self, items: t.List[Node], data_types: t.Dict[str, RecordMeta]
-    ) -> t.Dict[str, RecordMeta]:
+        self, items: t.List[Node], data_types: t.Dict[str, t.Type[Record]]
+    ) -> t.Dict[str, t.Type[Record]]:
         types = OrderedDict(data_types)
         roots = []
         for item in items:
@@ -724,17 +727,17 @@ class GraphTypes(GraphVisitor):
 
     @classmethod
     def get_types(
-        cls, items: t.List[Node], data_types: t.Dict[str, RecordMeta]
-    ) -> t.Dict[str, RecordMeta]:
+        cls, items: t.List[Node], data_types: t.Dict[str, t.Type[Record]]
+    ) -> t.Dict[str, t.Type[Record]]:
         return cls()._visit_graph(items, data_types)
 
-    def visit_graph(self, obj: Graph) -> t.Dict[str, RecordMeta]:
+    def visit_graph(self, obj: Graph) -> t.Dict[str, t.Type[Record]]:
         return self._visit_graph(obj.items, obj.data_types)
 
-    def visit_node(self, obj: Node) -> RecordMeta:
+    def visit_node(self, obj: Node) -> t.Type[Record]:
         return Record[[(f.name, self.visit(f)) for f in obj.fields]]
 
-    def visit_root(self, obj: Root) -> RecordMeta:
+    def visit_root(self, obj: Root) -> t.Type[Record]:
         return Record[[(f.name, self.visit(f)) for f in obj.fields]]
 
     def visit_link(self, obj: Link) -> LinkType:

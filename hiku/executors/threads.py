@@ -1,15 +1,38 @@
-from concurrent.futures import wait, FIRST_COMPLETED
+from concurrent.futures import (
+    wait,
+    FIRST_COMPLETED,
+    Executor,
+    Future,
+)
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Any,
+)
+
+from hiku.executors.base import BaseExecutor
+from hiku.result import Proxy
+
+if TYPE_CHECKING:
+    from hiku.executors.queue import (
+        Queue,
+        Workflow,
+    )
 
 
-class ThreadsExecutor:
+class ThreadsExecutor(BaseExecutor):
 
-    def __init__(self, pool):
+    def __init__(self, pool: Executor):
         self._pool = pool
 
-    def submit(self, fn, *args, **kwargs):
+    def submit(self, fn: Callable, *args: Any, **kwargs: Any) -> Future:
         return self._pool.submit(fn, *args, **kwargs)
 
-    def process(self, queue, workflow):
+    def process(
+        self,
+        queue: 'Queue',
+        workflow: 'Workflow'
+    ) -> Proxy:
         while queue.__futures__:
             done, _ = wait(queue.__futures__, return_when=FIRST_COMPLETED)
             queue.progress(done)

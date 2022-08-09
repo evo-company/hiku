@@ -52,8 +52,10 @@ from collections.abc import Sequence
 
 from .utils import cached_property
 
+T = t.TypeVar('T', bound='Base')
 
-def _compute_hash(obj):
+
+def _compute_hash(obj: t.Any) -> int:
     if isinstance(obj, dict):
         return hash(tuple((_compute_hash(k), _compute_hash(v))
                           for k, v in sorted(obj.items())))
@@ -66,20 +68,20 @@ def _compute_hash(obj):
 class Base:
     __attrs__: t.Tuple[str, ...] = ()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         kwargs = ', '.join('{}={!r}'.format(attr, self.__dict__[attr])
                            for attr in self.__attrs__)
         return '{}({})'.format(self.__class__.__name__, kwargs)
 
-    def __eq__(self, other):
+    def __eq__(self, other: t.Any) -> bool:
         return (self.__class__ is other.__class__
                 and all(self.__dict__[attr] == other.__dict__[attr]
                         for attr in self.__attrs__))
 
-    def __ne__(self, other):
+    def __ne__(self, other: t.Any) -> bool:
         return not self.__eq__(other)
 
-    def copy(self, **kwargs):
+    def copy(self: T, **kwargs: t.Any) -> T:
         obj = self.__class__.__new__(self.__class__)
         obj.__dict__.update((attr, kwargs.get(attr, self.__dict__[attr]))
                             for attr in self.__attrs__)
@@ -87,23 +89,26 @@ class Base:
 
 
 class FieldBase(Base):
+    name: str
+    options: t.Optional[t.Dict[str, t.Any]]
+    alias: t.Optional[str]
 
     @cached_property
-    def result_key(self):
+    def result_key(self) -> str:
         if self.alias is not None:
             return self.alias
         else:
             return self.name
 
     @cached_property
-    def options_hash(self):
+    def options_hash(self) -> t.Optional[int]:
         if self.options:
             return _compute_hash(self.options)
         else:
             return None
 
     @cached_property
-    def index_key(self):
+    def index_key(self) -> str:
         if self.options_hash is not None:
             return '{}[{}]'.format(self.name, self.options_hash)
         else:
@@ -119,12 +124,17 @@ class Field(FieldBase):
     """
     __attrs__ = ('name', 'options', 'alias')
 
-    def __init__(self, name, options=None, alias=None):
+    def __init__(
+        self,
+        name: str,
+        options: t.Optional[t.Dict[str, t.Any]] = None,
+        alias: t.Optional[str] = None
+    ):
         self.name = name
         self.options = options
         self.alias = alias
 
-    def accept(self, visitor):
+    def accept(self, visitor: 'QueryVisitor') -> t.Any:
         return visitor.visit_field(self)
 
 
@@ -139,13 +149,19 @@ class Link(FieldBase):
     """
     __attrs__ = ('name', 'node', 'options', 'alias')
 
-    def __init__(self, name, node, options=None, alias=None):
+    def __init__(
+        self,
+        name: str,
+        node: 'Node',
+        options: t.Optional[t.Dict[str, t.Any]] = None,
+        alias: t.Optional[str] = None
+    ):
         self.name = name
         self.node = node
         self.options = options
         self.alias = alias
 
-    def accept(self, visitor):
+    def accept(self, visitor: 'QueryVisitor') -> t.Any:
         return visitor.visit_link(self)
 
 
@@ -159,29 +175,34 @@ class Node(Base):
     """
     __attrs__ = ('fields', 'ordered')
 
-    def __init__(self, fields, ordered=False):
+    def __init__(
+        self,
+        fields: t.List[t.Union[Field, Link]],
+        ordered: bool = False
+    ) -> None:
         self.fields = fields
         self.ordered = ordered
 
     @cached_property
-    def fields_map(self):
+    def fields_map(self) -> OrderedDict[str, t.Union[Field, Link]]:
         return OrderedDict((f.name, f) for f in self.fields)
 
     @cached_property
-    def result_map(self):
+    def result_map(self) -> OrderedDict[str, t.Union[Field, Link]]:
         return OrderedDict((f.result_key, f) for f in self.fields)
 
-    def accept(self, visitor):
+    def accept(self, visitor: 'QueryVisitor') -> t.Any:
         return visitor.visit_node(self)
 
 
-def _merge(nodes):
+def _merge(nodes: t.Iterable[Node]) -> t.Iterator[t.Union[Field, Link]]:
     fields = set()
     links = {}
     to_merge = OrderedDict()
     for field in chain.from_iterable(e.fields for e in nodes):
         key = (field.name, field.options_hash, field.alias)
         if field.__class__ is Link:
+            field = t.cast(Link, field)
             if key not in to_merge:
                 to_merge[key] = [field.node]
                 links[key] = field
@@ -196,7 +217,7 @@ def _merge(nodes):
         yield link.copy(node=merge(values))
 
 
-def merge(nodes):
+def merge(nodes: t.Iterable[Node]) -> Node:
     """Merges multiple queries into one query
 
     :param nodes: queries, represented as list of :py:class:`~hiku.query.Node`
@@ -209,30 +230,30 @@ def merge(nodes):
 
 class QueryVisitor:
 
-    def visit(self, obj):
+    def visit(self, obj: t.Any) -> t.Any:
         return obj.accept(self)
 
-    def visit_field(self, obj):
+    def visit_field(self, obj: Field) -> t.Any:
         pass
 
-    def visit_link(self, obj):
+    def visit_link(self, obj: Link) -> t.Any:
         self.visit(obj.node)
 
-    def visit_node(self, obj):
+    def visit_node(self, obj: Node) -> t.Any:
         for item in obj.fields:
             self.visit(item)
 
 
 class QueryTransformer:
 
-    def visit(self, obj):
+    def visit(self, obj: t.Any) -> t.Any:
         return obj.accept(self)
 
-    def visit_field(self, obj):
+    def visit_field(self, obj: Field) -> Field:
         return obj.copy()
 
-    def visit_link(self, obj):
+    def visit_link(self, obj: Link) -> Link:
         return obj.copy(node=self.visit(obj.node))
 
-    def visit_node(self, obj):
+    def visit_node(self, obj: Node) -> Node:
         return obj.copy(fields=[self.visit(f) for f in obj.fields])

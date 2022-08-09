@@ -70,16 +70,19 @@ class Float(metaclass=FloatMeta):
     pass
 
 
+TM = t.TypeVar('TM', bound='TypingMeta')
+
+
 class TypingMeta(GenericMeta):
     __final__ = False
 
-    def __cls_init__(cls, parameters: t.Any) -> None:
+    def __cls_init__(cls: TM, parameters: t.Any) -> None:
         raise NotImplementedError(type(cls))
 
-    def __cls_repr__(cls) -> str:
+    def __cls_repr__(cls: TM) -> str:
         raise NotImplementedError(type(cls))
 
-    def __getitem__(cls, parameters: t.Any) -> 'TypingMeta':
+    def __getitem__(cls: TM, parameters: t.Any) -> TM:
         if cls.__final__:
             raise TypeError('Cannot substitute parameters in {!r}'.format(cls))
         type_ = cls.__class__(cls.__name__, cls.__bases__, dict(cls.__dict__))
@@ -93,13 +96,13 @@ class TypingMeta(GenericMeta):
         else:
             return super(TypingMeta, self).__repr__()
 
+    def __hash__(self) -> int:
+        return hash(self.__name__)
 
-T = t.TypeVar('T', bound='GenericMeta')
 
+class OptionalMeta(TypingMeta):
 
-class OptionalMeta(TypingMeta, t.Generic[T]):
-
-    def __cls_init__(cls, type_: T) -> None:
+    def __cls_init__(cls, type_: GenericMeta) -> None:
         cls.__type__: GenericMeta = _maybe_typeref(type_)
 
     def __cls_repr__(self) -> str:
@@ -113,9 +116,9 @@ class Optional(metaclass=OptionalMeta):
     pass
 
 
-class SequenceMeta(TypingMeta, t.Generic[T]):
+class SequenceMeta(TypingMeta):
 
-    def __cls_init__(cls, item_type: T) -> None:
+    def __cls_init__(cls, item_type: GenericMeta) -> None:
         cls.__item_type__: GenericMeta = _maybe_typeref(item_type)
 
     def __cls_repr__(self) -> str:
@@ -131,8 +134,7 @@ class Sequence(metaclass=SequenceMeta):
 
 class MappingMeta(TypingMeta):
 
-    # TODO: not sure about this type signature
-    def __cls_init__(cls, params: t.Tuple[T, T]) -> None:
+    def __cls_init__(cls, params: t.Tuple[GenericMeta, GenericMeta]) -> None:
         key_type, value_type = params
         cls.__key_type__ = _maybe_typeref(key_type)
         cls.__value_type__ = _maybe_typeref(value_type)
@@ -155,13 +157,13 @@ class RecordMeta(TypingMeta):
     def __cls_init__(
         cls,
         field_types: t.Union[
-            t.Dict[str, T],
-            t.List[t.Tuple[str, T]]
+            t.Dict[str, GenericMeta],
+            t.List[t.Tuple[str, GenericMeta]]
         ]
     ) -> None:
         items: t.Iterable
         if hasattr(field_types, 'items'):
-            field_types = t.cast(t.Dict[str, T], field_types)
+            field_types = t.cast(t.Dict[str, GenericMeta], field_types)
             items = list(field_types.items())
         else:
             items = list(field_types)
@@ -182,7 +184,7 @@ class Record(metaclass=RecordMeta):
 
 class CallableMeta(TypingMeta):
 
-    def __cls_init__(cls, arg_types: t.Iterable[T]) -> None:
+    def __cls_init__(cls, arg_types: t.Iterable[GenericMeta]) -> None:
         cls.__arg_types__ = [_maybe_typeref(typ) for typ in arg_types]
 
     def __cls_repr__(self) -> str:
@@ -212,7 +214,7 @@ class TypeRefMeta(TypingMeta):
 
 
 class TypeRef(metaclass=TypeRefMeta):
-    pass
+    ...
 
 
 @t.overload
