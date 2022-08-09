@@ -173,7 +173,8 @@ class AsyncGraphQLEndpoint(BaseAsyncGraphQLEndpoint):
         self, graph: Graph, op: Operation, ctx: t.Optional[t.Dict]
     ) -> t.Dict:
         stripped_query = _process_query(graph, op.query)
-        result = await self.engine.execute(graph, stripped_query, ctx)
+        # TODO: create AsyncEngine class
+        result = await self.engine.execute(graph, stripped_query, ctx)  # type: ignore  # noqa: E501
         type_name = _type_names[op.type]
         return DenormalizeGraphQL(graph, result, type_name).process(op.query)
 

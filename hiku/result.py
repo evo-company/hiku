@@ -18,22 +18,37 @@
         on the client
 
 """
+import typing as t
+
 from collections import defaultdict
 
-from .types import RecordMeta, OptionalMeta, SequenceMeta, get_type
+from .types import (
+    RecordMeta,
+    OptionalMeta,
+    SequenceMeta,
+    get_type,
+    GenericMeta,
+)
 from .query import Node, Field, Link
-from .graph import Link as GraphLink, Field as GraphField, Many, Maybe
+from .graph import (
+    Link as GraphLink,
+    Field as GraphField,
+    Node as GraphNode,
+    Many,
+    Maybe,
+    Graph,
+)
 from .utils import cached_property
 
 
 class Reference:
     __slots__ = ('node', 'ident')
 
-    def __init__(self, node, ident):
+    def __init__(self, node: str, ident: t.Any) -> None:
         self.node = node
         self.ident = ident
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '<{}[{!r}]>'.format(self.node, self.ident)
 
 
@@ -42,14 +57,14 @@ ROOT = Reference('__root__', '__root__')
 
 class Index(defaultdict):
 
-    def __init__(self):
+    def __init__(self) -> None:
         super(Index, self).__init__(lambda: defaultdict(dict))
 
     @cached_property
-    def root(self):
+    def root(self) -> t.Dict:
         return self[ROOT.node][ROOT.ident]
 
-    def finish(self):
+    def finish(self) -> None:
         for value in self.values():
             value.default_factory = None
         self.default_factory = None
@@ -58,25 +73,25 @@ class Index(defaultdict):
 class Proxy:
     __slots__ = ('__idx__', '__ref__', '__node__')
 
-    def __init__(self, index, reference, node):
+    def __init__(self, index: Index, reference: Reference, node: Node) -> None:
         self.__idx__ = index
         self.__ref__ = reference
         self.__node__ = node
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> t.Any:
         try:
-            field = self.__node__.result_map[item]
+            field: t.Union[Field, Link] = self.__node__.result_map[item]
         except KeyError:
             raise KeyError("Field {!r} wasn't requested in the query"
                            .format(item))
 
         try:
-            obj = self.__idx__[self.__ref__.node][self.__ref__.ident]
+            obj: t.Dict = self.__idx__[self.__ref__.node][self.__ref__.ident]
         except KeyError:
             raise AssertionError('Object {}[{!r}] is missing in the index'
                                  .format(self.__ref__.node, self.__ref__.ident))
         try:
-            value = obj[field.index_key]
+            value: t.Any = obj[field.index_key]
         except KeyError:
             raise AssertionError('Field {}[{!r}].{} is missing in the index'
                                  .format(self.__ref__.node, self.__ref__.ident,
@@ -95,14 +110,18 @@ class Proxy:
         else:
             return value
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> t.Any:
         try:
             return self[name]
         except KeyError as e:
             raise AttributeError(e)
 
 
-def _denormalize_type(type_, result, query_obj):
+def _denormalize_type(
+    type_: GenericMeta,
+    result: t.Any,
+    query_obj: t.Union[Field, Link]
+) -> t.Any:
     if isinstance(query_obj, Field):
         return result
     elif isinstance(query_obj, Link):
@@ -123,8 +142,14 @@ def _denormalize_type(type_, result, query_obj):
     assert False, (type_, query_obj)
 
 
-def _denormalize(graph, graph_obj, result, query_obj):
+def _denormalize(
+    graph: Graph,
+    graph_obj: t.Union[GraphNode, GraphField, GraphLink],
+    result: t.Any,
+    query_obj: t.Union[Field, Link, Node]
+) -> t.Any:
     if isinstance(query_obj, Node):
+        assert isinstance(graph_obj, GraphNode)
         return {
             f.result_key: _denormalize(graph, graph_obj.fields_map[f.name],
                                        result[f.result_key], f)
@@ -137,6 +162,7 @@ def _denormalize(graph, graph_obj, result, query_obj):
     elif isinstance(query_obj, Link):
         if isinstance(graph_obj, GraphField):
             field_type = get_type(graph.data_types, graph_obj.type)
+            assert field_type is not None
             return _denormalize_type(field_type, result, query_obj)
 
         elif isinstance(graph_obj, GraphLink):
@@ -153,7 +179,7 @@ def _denormalize(graph, graph_obj, result, query_obj):
             return _denormalize(graph, graph_obj, result, query_obj.node)
 
 
-def denormalize(graph, result):
+def denormalize(graph: Graph, result: Proxy) -> t.Dict:
     """Transforms normalized result (graph) into simple hierarchical structure
 
     This hierarchical structure will follow query structure.

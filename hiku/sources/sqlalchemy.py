@@ -1,14 +1,45 @@
 from functools import partial
 from collections import defaultdict
+from typing import (
+    Optional,
+    Union,
+    List,
+    Any,
+    Tuple,
+    Callable,
+    Dict,
+    Iterable,
+)
 
 import sqlalchemy
+from sqlalchemy.engine import RowProxy
+from sqlalchemy.sql import Select
+from sqlalchemy.sql.elements import BinaryExpression
 
-from ..types import String, Integer
-from ..graph import Nothing, Maybe, One, Many
-from ..engine import pass_context
+from ..types import (
+    String,
+    Integer,
+    IntegerMeta,
+    StringMeta,
+)
+from ..graph import (
+    Nothing,
+    Maybe,
+    One,
+    Many,
+    Link,
+    Field,
+)
+from ..query import Field as QueryField
+from ..engine import (
+    pass_context,
+    Context,
+)
 
 
-def _translate_type(column):
+def _translate_type(
+    column: sqlalchemy.Column
+) -> Optional[Union[IntegerMeta, StringMeta]]:
     if isinstance(column.type, sqlalchemy.Integer):
         return Integer
     elif isinstance(column.type, sqlalchemy.Unicode):
@@ -17,7 +48,7 @@ def _translate_type(column):
         return None
 
 
-def _table_repr(table):
+def _table_repr(table: sqlalchemy.Table) -> str:
     return 'Table({})'.format(', '.join(
         [repr(table.name), repr(table.metadata), '...',
          'schema={!r}'.format(table.schema)]
@@ -27,7 +58,13 @@ def _table_repr(table):
 @pass_context
 class FieldsQuery:
 
-    def __init__(self, engine_key, from_clause, *, primary_key=None):
+    def __init__(
+        self,
+        engine_key: str,
+        from_clause: sqlalchemy.Table,
+        *,
+        primary_key: Optional[sqlalchemy.Column] = None
+    ) -> None:
         self.engine_key = engine_key
         self.from_clause = from_clause
         if primary_key is not None:
@@ -36,7 +73,7 @@ class FieldsQuery:
             # currently only one column supported
             self.primary_key, = from_clause.primary_key
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if isinstance(self.from_clause, sqlalchemy.Table):
             from_clause_repr = _table_repr(self.from_clause)
         else:
@@ -45,15 +82,21 @@ class FieldsQuery:
                 .format(self.__class__.__module__, self.__class__.__name__,
                         self.engine_key, from_clause_repr, self.primary_key))
 
-    def __postprocess__(self, field):
+    def __postprocess__(self, field: Field) -> None:
         if field.type is None:
             column = self.from_clause.c[field.name]
             field.type = _translate_type(column)
 
-    def in_impl(self, column, values):
+    def in_impl(
+        self, column: sqlalchemy.Column, values: Iterable
+    ) -> BinaryExpression:
         return column.in_(values)
 
-    def select_expr(self, fields_, ids):
+    def select_expr(
+        self,
+        fields_: List[QueryField],
+        ids: Iterable
+    ) -> Tuple[Select, Callable]:
         columns = [self.from_clause.c[f.name] for f in fields_]
         expr = (
             sqlalchemy.select([self.primary_key] + columns)
@@ -61,7 +104,7 @@ class FieldsQuery:
             .where(self.in_impl(self.primary_key, ids))
         )
 
-        def result_proc(rows):
+        def result_proc(rows: List[RowProxy]) -> List:
             rows_map = {row[self.primary_key]: [row[c] for c in columns]
                         for row in rows}
 
@@ -70,7 +113,12 @@ class FieldsQuery:
 
         return expr, result_proc
 
-    def __call__(self, ctx, fields_, ids):
+    def __call__(
+        self,
+        ctx: Context,
+        fields_: List[QueryField],
+        ids: List
+    ) -> Any:
         if not ids:
             return []
 
@@ -83,17 +131,17 @@ class FieldsQuery:
         return result_proc(rows)
 
 
-def _to_maybe_mapper(pairs, values):
-    mapping = dict(pairs)
+def _to_maybe_mapper(pairs: List[Tuple[Any, Any]], values: List) -> List:
+    mapping: Dict = dict(pairs)
     return [mapping.get(value, Nothing) for value in values]
 
 
-def _to_one_mapper(pairs, values):
+def _to_one_mapper(pairs: List[Tuple[Any, Any]], values: List) -> List:
     mapping = dict(pairs)
     return [mapping[value] for value in values]
 
 
-def _to_many_mapper(pairs, values):
+def _to_many_mapper(pairs: List[Tuple], values: List) -> List:
     mapping = defaultdict(list)
     for from_value, to_value in pairs:
         mapping[from_value].append(to_value)
@@ -102,7 +150,13 @@ def _to_many_mapper(pairs, values):
 
 class LinkQuery:
 
-    def __init__(self, engine_key, *, from_column, to_column):
+    def __init__(
+        self,
+        engine_key: str,
+        *,
+        from_column: sqlalchemy.Column,
+        to_column: sqlalchemy.Column
+    ) -> None:
         if from_column.table is not to_column.table:
             raise ValueError('from_column and to_column should belong to '
                              'one table')
@@ -111,12 +165,12 @@ class LinkQuery:
         self.from_column = from_column
         self.to_column = to_column
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return ('<{}.{}: engine_key={!r}, from_column={!r}, to_column={!r}>'
                 .format(self.__class__.__module__, self.__class__.__name__,
                         self.engine_key, self.from_column, self.to_column))
 
-    def __postprocess__(self, link):
+    def __postprocess__(self, link: Link) -> None:
         if link.type_enum is One:
             func = partial(self, _to_one_mapper)
         elif link.type_enum is Maybe:
@@ -127,10 +181,12 @@ class LinkQuery:
             raise TypeError(repr(link.type_enum))
         link.func = pass_context(func)
 
-    def in_impl(self, column, values):
+    def in_impl(
+        self, column: sqlalchemy.Column, values: Iterable
+    ) -> BinaryExpression:
         return column.in_(values)
 
-    def select_expr(self, ids):
+    def select_expr(self, ids: Iterable) -> Optional[Select]:
         # TODO: make this optional, but enabled by default
         filtered_ids = [i for i in set(ids) if i is not None]
         if filtered_ids:
@@ -142,7 +198,9 @@ class LinkQuery:
         else:
             return None
 
-    def __call__(self, result_proc, ctx, ids):
+    def __call__(
+        self, result_proc: Callable, ctx: Context, ids: Iterable
+    ) -> Any:
         expr = self.select_expr(ids)
         if expr is None:
             pairs = []

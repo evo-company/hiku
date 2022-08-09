@@ -320,7 +320,28 @@ class TypeVisitor(AbstractTypeVisitor):
             self.visit(arg_type)
 
 
-def get_type(types: t.Dict[str, GenericMeta], typ: GenericMeta) -> GenericMeta:
+@t.overload
+def get_type(
+    types: t.Dict[str, t.Type[Record]], typ: TypeRefMeta
+) -> t.Type[Record]:
+    ...
+
+
+@t.overload
+def get_type(
+    types: t.Dict[str, t.Type[Record]], typ: GenericMeta
+) -> GenericMeta:
+    ...
+
+
+@t.overload
+def get_type(
+    types: t.Dict[str, t.Type[Record]], typ: t.Optional[GenericMeta]
+) -> t.Optional[GenericMeta]:
+    ...
+
+
+def get_type(types, typ):  # type: ignore[no-untyped-def]
     if isinstance(typ, TypeRefMeta):
         return types[typ.__type_name__]
     else:

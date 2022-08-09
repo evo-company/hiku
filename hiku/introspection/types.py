@@ -2,7 +2,14 @@ from collections import namedtuple
 from typing import (
     Type,
     Any,
+    NamedTuple,
 )
+
+from typing_extensions import TypeAlias
+
+# Mark everything that _namedtuple creates as HashedNamedTuple,
+# so it will be easier to refactor types later
+HashedNamedTuple: TypeAlias = NamedTuple
 
 
 def _namedtuple(typename: str, field_names: str) -> Type:

@@ -14,6 +14,8 @@ from functools import reduce
 from collections import OrderedDict
 from typing import List
 
+from typing_extensions import TypeAlias
+
 from .types import (
     Optional,
     OptionalMeta,
@@ -26,7 +28,6 @@ from .types import (
     GenericMeta,
     TypingMeta,
     AnyMeta,
-    RecordMeta,
 )
 from .utils import (
     cached_property,
@@ -45,7 +46,7 @@ Many = const('Many')
 #: Special constant that is used by links with :py:class:`~hiku.types.Optional`
 #: type in order to indicate that there is nothing to link to
 Nothing = const('Nothing')
-NothingType = Const
+NothingType: TypeAlias = Const
 
 
 class AbstractBase(ABC):
@@ -107,15 +108,18 @@ R = t.TypeVar('R')
 
 SyncAsync = t.Union[R, t.Awaitable[R]]
 
+# (fields) -> []
 RootFieldFunc = t.Callable[
     [t.List['Field']],
     SyncAsync[List[t.Any]]
 ]
+# (fields, ids) -> [[]]
 NotRootFieldFunc = t.Callable[
     [t.List['Field'], List[t.Any]],
     SyncAsync[List[List[t.Any]]]
 ]
-NotRootFieldFuncInject = t.Callable[
+# (ctx, fields, ids) -> [[]]
+NotRootFieldFuncCtx = t.Callable[
     [t.Any, t.List['Field'], List[t.Any]],
     SyncAsync[List[List[t.Any]]]
 ]
@@ -125,7 +129,7 @@ FieldType = t.Optional[GenericMeta]
 FieldFunc = t.Union[
     RootFieldFunc,
     NotRootFieldFunc,
-    NotRootFieldFuncInject,
+    NotRootFieldFuncCtx,
 ]
 
 
@@ -232,26 +236,36 @@ def get_type_enum(type_: TypingMeta) -> t.Tuple[Const, str]:
 
 
 LT = t.TypeVar('LT', bound=t.Hashable)
-LR = t.TypeVar('LR', bound=t.Hashable)
+LR = t.TypeVar('LR', bound=t.Optional[t.Hashable])
 
 MaybeLink = t.Union[LR, NothingType]
 RootLinkT = t.Union[
+    # () -> LR
     t.Callable[[], SyncAsync[LR]],
-    t.Callable[[t.Any], SyncAsync[LR]]
+    # (opts) -> LR
+    t.Callable[[t.Any], SyncAsync[LR]],
+    # (ctx, opts) -> LR
+    t.Callable[[t.Any, t.Any], SyncAsync[LR]],
 ]
 
 LinkT = t.Union[
+    # (ids) -> []
     t.Callable[[List[LT]], SyncAsync[LR]],
-    t.Callable[[t.Any, List[LT]], SyncAsync[LR]]
+    # (ids, opts) -> []
+    t.Callable[[List[LT], t.Any], SyncAsync[LR]],
+    # (ctx, ids) -> []
+    t.Callable[[t.Any, List[LT]], SyncAsync[LR]],
+    # (ctx, ids, opts) -> []
+    t.Callable[[t.Any, List[LT], List], SyncAsync[LR]]
 ]
 
 RootLinkOne = RootLinkT[LR]
 RootLinkMaybe = RootLinkT[MaybeLink[LR]]
-RootLinkMany = RootLinkT[t.List[LR]]
+RootLinkMany = RootLinkT[List[LR]]
 
-LinkOne = LinkT[LT, t.List[LR]]
-LinkMaybe = LinkT[LT, t.List[MaybeLink[LR]]]
-LinkMany = LinkT[LT, t.List[t.List[LR]]]
+LinkOne = LinkT[LT, List[LR]]
+LinkMaybe = LinkT[LT, List[MaybeLink[LR]]]
+LinkMany = LinkT[LT, List[List[LR]]]
 
 LinkFunc = t.Union[
     RootLinkOne,
@@ -459,7 +473,7 @@ class Node(AbstractNode):
     """
     def __init__(
         self,
-        name: str,
+        name: t.Optional[str],
         fields: t.List[t.Union[Field, Link]],
         *,
         description: t.Optional[str] = None,

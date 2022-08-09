@@ -1,7 +1,17 @@
+from typing import (
+    Callable,
+    Iterable,
+    Any,
+    List,
+)
+
+import sqlalchemy
 from sqlalchemy import any_
+from sqlalchemy.sql.elements import BinaryExpression
 
 from . import sqlalchemy as _sa
-
+from ..engine import Context
+from ..query import Field
 
 # We are limiting fetch size to reduce CPU usage and avoid event-loop blocking
 FETCH_SIZE = 100
@@ -9,10 +19,19 @@ FETCH_SIZE = 100
 
 class FieldsQuery(_sa.FieldsQuery):
 
-    def in_impl(self, column, values):
+    def in_impl(
+        self,
+        column: sqlalchemy.Column,
+        values: Iterable
+    ) -> BinaryExpression:
         return column == any_(values)
 
-    async def __call__(self, ctx, fields_, ids):
+    async def __call__(
+        self,
+        ctx: Context,
+        fields_: List[Field],
+        ids: Iterable
+    ) -> List:
         if not ids:
             return []
 
@@ -34,10 +53,17 @@ class FieldsQuery(_sa.FieldsQuery):
 
 class LinkQuery(_sa.LinkQuery):
 
-    def in_impl(self, column, values):
+    def in_impl(
+        self, column: sqlalchemy.Column, values: Iterable
+    ) -> BinaryExpression:
         return column == any_(values)
 
-    async def __call__(self, result_proc, ctx, ids):
+    async def __call__(
+        self,
+        result_proc: Callable,
+        ctx: Context,
+        ids: Iterable
+    ) -> Any:
         expr = self.select_expr(ids)
         if expr is None:
             pairs = []

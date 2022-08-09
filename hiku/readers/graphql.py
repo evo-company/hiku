@@ -336,6 +336,7 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
             query_variables[name] = value
 
         self.query_name = query_name
+        assert self.query_name is not None
         self.query_variables = query_variables
         self.fragments_transformer = FragmentsTransformer(self.document,
                                                           self.query_name,

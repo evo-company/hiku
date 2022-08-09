@@ -6,13 +6,19 @@ from typing import (
     Dict,
     DefaultDict,
     List,
-    Set,
     Optional,
     Iterable,
+    Union,
 )
+
+from typing_extensions import Protocol
 
 from hiku.executors.base import BaseExecutor
 from hiku.result import Proxy
+
+
+class SubmitRes(Protocol):
+    def result(self) -> Any: ...
 
 
 class Workflow:
@@ -28,22 +34,21 @@ class TaskSet:
 
     def submit(
         self, fn: Callable, *args: Any, **kwargs: Any
-        # TODO must specify return type
-    ) -> Any:
+    ) -> SubmitRes:
         return self._queue.submit(self, fn, *args, **kwargs)
 
 
+# TODO: make queue generic over futures
 class Queue:
 
     def __init__(self, executor: BaseExecutor) -> None:
         self._executor = executor
         self._futures: Dict = {}
         self._forks: Dict = {}
-        # TODO maybe it is not Callable as key, check
-        self._callbacks: DefaultDict[Callable, List] = defaultdict(list)
+        self._callbacks: DefaultDict[Union[SubmitRes, TaskSet], List] = defaultdict(list)  # noqa: E501
 
     @property
-    def __futures__(self) -> List:  # TODO list of what ?
+    def __futures__(self) -> List:
         return list(chain.from_iterable(self._futures.values()))
 
     def progress(self, done: Iterable) -> None:
@@ -75,8 +80,7 @@ class Queue:
         fn: Callable,
         *args: Any,
         **kwargs: Any
-        # TODO ADD type for future, Maybe queue must be dependent (generic) on executor submit return type
-    ) -> Any:
+    ) -> SubmitRes:
         fut = self._executor.submit(fn, *args, **kwargs)
         self._futures[task_set].add(fut)
         return fut
@@ -89,5 +93,7 @@ class Queue:
             self._forks[from_].add(task_set)
         return task_set
 
-    def add_callback(self, obj: Callable, callback: Callable) -> None:
+    def add_callback(
+        self, obj: Union[SubmitRes, 'TaskSet'], callback: Callable
+    ) -> None:
         self._callbacks[obj].append(callback)

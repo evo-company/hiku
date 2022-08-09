@@ -36,7 +36,7 @@ class GraphValidator(GraphVisitor):
 
     class _NameFormatter(GraphVisitor):
 
-        def visit_node(self, obj: Node) -> str:
+        def visit_node(self, obj: Node) -> Optional[str]:
             return obj.name
 
         def visit_root(self, obj: Root) -> str:
