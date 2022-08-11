@@ -1,4 +1,5 @@
 import logging
+import typing as t
 
 from flask import Flask, request, jsonify
 
@@ -30,13 +31,18 @@ from hiku.utils import listify
 log = logging.getLogger(__name__)
 
 
-def get_by_id(id_, collection):
+def get_by_id(id_: int, collection: t.Iterable) -> t.Optional[t.Dict]:
     for item in collection:
         if item['id'] == id_:
             return item
 
+    return None
 
-def find_all_by_id(id_, collection, key='id'):
+
+@listify
+def find_all_by_id(
+    id_: int, collection: t.Iterable, key: str = 'id'
+) -> t.Iterator[t.Dict]:
     for item in collection:
         if item[key] == id_:
             yield item
@@ -56,35 +62,43 @@ data = {
 
 
 @listify
-def cart_resolver(fields, ids):
+def cart_resolver(
+    fields: t.List[Field], ids: t.List[int]
+) -> t.Iterator[t.List]:
     for cart_id in ids:
         cart = get_by_id(cart_id, data['carts'])
+        assert cart is not None
         yield [cart[f.name] for f in fields]
 
 
 @listify
-def cart_item_resolver(fields, ids):
+def cart_item_resolver(
+    fields: t.List[Field], ids: t.List[int]
+) -> t.Iterator[t.List]:
     for item_id in ids:
         item = get_by_id(item_id, data['cart_items'])
+        assert item is not None
         yield [item[f.name] for f in fields]
 
 
 @listify
-def link_cart_items(cart_ids):
+def link_cart_items(cart_ids: t.List[int]) -> t.Iterator[t.List]:
     for cart_id in cart_ids:
         yield [item['id'] for item
                in find_all_by_id(cart_id, data['cart_items'], key='cart_id')]
 
 
-def direct_link_id(opts):
+def direct_link_id(opts: t.Dict) -> int:
     return opts['id']
 
 
-def ids_resolver(fields, ids):
+def ids_resolver(
+    fields: t.List[Field], ids: t.List[int]
+) -> t.List[t.List[int]]:
     return [[id_] for id_ in ids]
 
 
-def direct_link(ids):
+def direct_link(ids: t.List) -> t.List:
     return ids
 
 
@@ -132,14 +146,14 @@ graphql_endpoint = FederatedGraphQLEndpoint(
 
 
 @app.route('/graphql', methods={'POST'})
-def handle_graphql():
+def handle_graphql() -> t.Dict:
     data = request.get_json()
     result = graphql_endpoint.dispatch(data)
     resp = jsonify(result)
     return resp
 
 
-def main():
+def main() -> None:
     logging.basicConfig()
     app.run(host='0.0.0.0', port=5000)
 
