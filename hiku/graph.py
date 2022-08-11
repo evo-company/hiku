@@ -14,16 +14,20 @@ from functools import reduce
 from collections import OrderedDict
 from typing import List
 
+from typing_extensions import TypeAlias
+
 from .types import (
+    Optional,
     OptionalMeta,
+    Sequence,
     SequenceMeta,
+    TypeRef,
     TypeRefMeta,
     Record,
     Any,
     GenericMeta,
     TypingMeta,
     AnyMeta,
-    RecordMeta,
 )
 from .utils import (
     cached_property,
@@ -42,7 +46,7 @@ Many = const('Many')
 #: Special constant that is used by links with :py:class:`~hiku.types.Optional`
 #: type in order to indicate that there is nothing to link to
 Nothing = const('Nothing')
-NothingType = Const
+NothingType: TypeAlias = Const
 
 
 class AbstractBase(ABC):
@@ -104,15 +108,18 @@ R = t.TypeVar('R')
 
 SyncAsync = t.Union[R, t.Awaitable[R]]
 
+# (fields) -> []
 RootFieldFunc = t.Callable[
     [t.List['Field']],
     SyncAsync[List[t.Any]]
 ]
+# (fields, ids) -> [[]]
 NotRootFieldFunc = t.Callable[
     [t.List['Field'], List[t.Any]],
     SyncAsync[List[List[t.Any]]]
 ]
-NotRootFieldFuncInject = t.Callable[
+# (ctx, fields, ids) -> [[]]
+NotRootFieldFuncCtx = t.Callable[
     [t.Any, t.List['Field'], List[t.Any]],
     SyncAsync[List[List[t.Any]]]
 ]
@@ -122,7 +129,7 @@ FieldType = t.Optional[GenericMeta]
 FieldFunc = t.Union[
     RootFieldFunc,
     NotRootFieldFunc,
-    NotRootFieldFuncInject,
+    NotRootFieldFuncCtx,
 ]
 
 
@@ -212,7 +219,7 @@ class AbstractLink(AbstractBase, ABC):
 
 
 LinkType = t.Union[
-    TypeRefMeta, OptionalMeta[TypeRefMeta], SequenceMeta[TypeRefMeta]
+    t.Type[TypeRef], t.Type[Optional], t.Type[Sequence]
 ]
 
 
@@ -229,26 +236,36 @@ def get_type_enum(type_: TypingMeta) -> t.Tuple[Const, str]:
 
 
 LT = t.TypeVar('LT', bound=t.Hashable)
-LR = t.TypeVar('LR', bound=t.Hashable)
+LR = t.TypeVar('LR', bound=t.Optional[t.Hashable])
 
 MaybeLink = t.Union[LR, NothingType]
 RootLinkT = t.Union[
+    # () -> LR
     t.Callable[[], SyncAsync[LR]],
-    t.Callable[[t.Any], SyncAsync[LR]]
+    # (opts) -> LR
+    t.Callable[[t.Any], SyncAsync[LR]],
+    # (ctx, opts) -> LR
+    t.Callable[[t.Any, t.Any], SyncAsync[LR]],
 ]
 
 LinkT = t.Union[
+    # (ids) -> []
     t.Callable[[List[LT]], SyncAsync[LR]],
-    t.Callable[[t.Any, List[LT]], SyncAsync[LR]]
+    # (ids, opts) -> []
+    t.Callable[[List[LT], t.Any], SyncAsync[LR]],
+    # (ctx, ids) -> []
+    t.Callable[[t.Any, List[LT]], SyncAsync[LR]],
+    # (ctx, ids, opts) -> []
+    t.Callable[[t.Any, List[LT], List], SyncAsync[LR]]
 ]
 
 RootLinkOne = RootLinkT[LR]
 RootLinkMaybe = RootLinkT[MaybeLink[LR]]
-RootLinkMany = RootLinkT[t.List[LR]]
+RootLinkMany = RootLinkT[List[LR]]
 
-LinkOne = LinkT[LT, t.List[LR]]
-LinkMaybe = LinkT[LT, t.List[MaybeLink[LR]]]
-LinkMany = LinkT[LT, t.List[t.List[LR]]]
+LinkOne = LinkT[LT, List[LR]]
+LinkMaybe = LinkT[LT, List[MaybeLink[LR]]]
+LinkMany = LinkT[LT, List[List[LR]]]
 
 LinkFunc = t.Union[
     RootLinkOne,
@@ -350,7 +367,7 @@ class Link(AbstractLink):
     def __init__(
         self,
         name: str,
-        type_: TypeRefMeta,
+        type_: t.Type[TypeRef],
         func: LinkOneFunc,
         *,
         requires: t.Optional[str],
@@ -364,7 +381,7 @@ class Link(AbstractLink):
     def __init__(
         self,
         name: str,
-        type_: OptionalMeta[TypeRefMeta],
+        type_: t.Type[Optional],
         func: LinkMaybeFunc,
         *,
         requires: t.Optional[str],
@@ -378,7 +395,7 @@ class Link(AbstractLink):
     def __init__(
         self,
         name: str,
-        type_: SequenceMeta[TypeRefMeta],
+        type_: t.Type[Sequence],
         func: LinkManyFunc,
         *,
         requires: t.Optional[str],
@@ -535,7 +552,7 @@ class Graph(AbstractGraph):
     def __init__(
         self,
         items: t.List[Node],
-        data_types: t.Optional[t.Dict[str, RecordMeta]] = None
+        data_types: t.Optional[t.Dict[str, t.Type[Record]]] = None
     ):
         """
         :param items: list of nodes
@@ -708,8 +725,8 @@ class GraphInit(GraphTransformer):
 class GraphTypes(GraphVisitor):
 
     def _visit_graph(
-        self, items: t.List[Node], data_types: t.Dict[str, RecordMeta]
-    ) -> t.Dict[str, RecordMeta]:
+        self, items: t.List[Node], data_types: t.Dict[str, t.Type[Record]]
+    ) -> t.Dict[str, t.Type[Record]]:
         types = OrderedDict(data_types)
         roots = []
         for item in items:
@@ -724,17 +741,17 @@ class GraphTypes(GraphVisitor):
 
     @classmethod
     def get_types(
-        cls, items: t.List[Node], data_types: t.Dict[str, RecordMeta]
-    ) -> t.Dict[str, RecordMeta]:
+        cls, items: t.List[Node], data_types: t.Dict[str, t.Type[Record]]
+    ) -> t.Dict[str, t.Type[Record]]:
         return cls()._visit_graph(items, data_types)
 
-    def visit_graph(self, obj: Graph) -> t.Dict[str, RecordMeta]:
+    def visit_graph(self, obj: Graph) -> t.Dict[str, t.Type[Record]]:
         return self._visit_graph(obj.items, obj.data_types)
 
-    def visit_node(self, obj: Node) -> RecordMeta:
+    def visit_node(self, obj: Node) -> t.Type[Record]:
         return Record[[(f.name, self.visit(f)) for f in obj.fields]]
 
-    def visit_root(self, obj: Root) -> RecordMeta:
+    def visit_root(self, obj: Root) -> t.Type[Record]:
         return Record[[(f.name, self.visit(f)) for f in obj.fields]]
 
     def visit_link(self, obj: Link) -> LinkType:

@@ -1,12 +1,23 @@
 from collections import namedtuple
+from typing import (
+    Type,
+    Any,
+    NamedTuple,
+)
+
+from typing_extensions import TypeAlias
+
+# Mark everything that _namedtuple creates as HashedNamedTuple,
+# so it will be easier to refactor types later
+HashedNamedTuple: TypeAlias = NamedTuple
 
 
-def _namedtuple(typename, field_names):
+def _namedtuple(typename: str, field_names: str) -> Type:
     """Fixes hashing for different tuples with same content
     """
-    base = namedtuple(typename, field_names)
+    base = namedtuple(typename, field_names)  # type: ignore[misc]
 
-    def __hash__(self):
+    def __hash__(self: Any) -> int:
         return hash((self.__class__, super(base, self).__hash__()))
 
     return type(typename, (base,), {

@@ -1,4 +1,14 @@
 import enum
+from typing import (
+    Optional,
+    Dict,
+    Iterator,
+    Union,
+    List,
+    cast,
+    Any,
+    Set,
+)
 
 from graphql.language import ast
 from graphql.language.parser import parse
@@ -8,45 +18,53 @@ from ..query import Node, Field, Link, merge
 
 class NodeVisitor:
 
-    def visit(self, obj):
+    def visit(self, obj: ast.Node) -> Any:
         visit_method = getattr(self, 'visit_{}'.format(obj.kind))
         if visit_method is None:
             raise NotImplementedError('Not implemented node type: {!r}'
                                       .format(obj))
         return visit_method(obj)
 
-    def visit_document(self, obj):
+    def visit_document(self, obj: ast.DocumentNode) -> None:
         for definition in obj.definitions:
             self.visit(definition)
 
-    def visit_operation_definition(self, obj):
+    def visit_operation_definition(
+        self, obj: ast.OperationDefinitionNode
+    ) -> Any:
         self.visit(obj.selection_set)
 
-    def visit_fragment_definition(self, obj):
+    def visit_fragment_definition(
+        self, obj: ast.FragmentDefinitionNode
+    ) -> Any:
         self.visit(obj.selection_set)
 
-    def visit_selection_set(self, obj):
+    def visit_selection_set(self, obj: ast.SelectionSetNode) -> Any:
         for i in obj.selections:
             self.visit(i)
 
-    def visit_field(self, obj):
+    def visit_field(self, obj: ast.FieldNode) -> Any:
         pass
 
-    def visit_fragment_spread(self, obj):
+    def visit_fragment_spread(self, obj: ast.FragmentSpreadNode) -> Any:
         pass
 
-    def visit_inline_fragment(self, obj):
+    def visit_inline_fragment(self, obj: ast.InlineFragmentNode) -> Any:
         self.visit(obj.selection_set)
 
 
 class OperationGetter(NodeVisitor):
 
-    def __init__(self, operation_name=None):
-        self._operations = {}
+    def __init__(self, operation_name: Optional[str] = None):
+        self._operations: Dict[Optional[str], ast.OperationDefinitionNode] = {}
         self._operation_name = operation_name
 
     @classmethod
-    def get(cls, doc, operation_name=None):
+    def get(
+        cls,
+        doc: ast.DocumentNode,
+        operation_name: Optional[str] = None
+    ) -> ast.OperationDefinitionNode:
         self = cls(operation_name=operation_name)
         self.visit(doc)
         if not self._operations:
@@ -64,10 +82,14 @@ class OperationGetter(NodeVisitor):
                 raise ValueError('Undefined operation name: {!r}'
                                  .format(self._operation_name))
 
-    def visit_fragment_definition(self, obj):
+    def visit_fragment_definition(
+        self, obj: ast.FragmentDefinitionNode
+    ) -> None:
         pass  # skip visit here
 
-    def visit_operation_definition(self, obj):
+    def visit_operation_definition(
+        self, obj: ast.OperationDefinitionNode
+    ) -> None:
         name = obj.name.value if obj.name is not None else None
         if name in self._operations:
             raise TypeError('Duplicate operation definition: {!r}'
@@ -77,13 +99,17 @@ class OperationGetter(NodeVisitor):
 
 class FragmentsCollector(NodeVisitor):
 
-    def __init__(self):
-        self.fragments_map = {}
+    def __init__(self) -> None:
+        self.fragments_map: Dict[str, ast.FragmentDefinitionNode] = {}
 
-    def visit_operation_definition(self, obj):
+    def visit_operation_definition(
+        self, obj: ast.OperationDefinitionNode
+    ) -> None:
         pass  # not interested in operations here
 
-    def visit_fragment_definition(self, obj):
+    def visit_fragment_definition(
+        self, obj: ast.FragmentDefinitionNode
+    ) -> None:
         if obj.name.value in self.fragments_map:
             raise TypeError('Duplicated fragment name: "{}"'
                             .format(obj.name.value))
@@ -92,32 +118,34 @@ class FragmentsCollector(NodeVisitor):
 
 class SelectionSetVisitMixin:
 
-    def transform_fragment(self, name):
+    def transform_fragment(self, name: str) -> List[Union[Field, Link]]:
         raise NotImplementedError(type(self))
 
     @property
-    def query_variables(self):
+    def query_variables(self) -> Dict:
         raise NotImplementedError(type(self))
 
     @property
-    def query_name(self):
+    def query_name(self) -> Optional[str]:
         raise NotImplementedError(type(self))
 
-    def lookup_variable(self, name):
+    def lookup_variable(self, name: str) -> Any:
         try:
             return self.query_variables[name]
         except KeyError:
             raise TypeError('Variable ${} is not defined in query {}'
                             .format(name, self.query_name or '<unnamed>'))
 
-    def visit_selection_set(self, obj):
+    def visit_selection_set(
+        self, obj: ast.SelectionSetNode
+    ) -> Iterator[Union[Field, Link]]:
         for i in obj.selections:
-            for j in self.visit(i):
+            for j in self.visit(i):  # type: ignore[attr-defined]
                 yield j
 
-    def _should_skip(self, obj):
+    def _should_skip(self, obj: ast.SelectionNode) -> Optional[bool]:
         if not obj.directives:
-            return
+            return None
 
         skip = next((d for d in obj.directives if d.name.value == 'skip'),
                     None)
@@ -131,7 +159,7 @@ class SelectionSetVisitMixin:
                 raise TypeError('@skip directive does not accept "{}" '
                                 'argument'
                                 .format(skip_arg.name.value))
-            return self.visit(skip_arg.value)
+            return self.visit(skip_arg.value)  # type: ignore[attr-defined]
 
         include = next((d for d in obj.directives if d.name.value == 'include'),
                        None)
@@ -145,14 +173,18 @@ class SelectionSetVisitMixin:
                 raise TypeError('@include directive does not accept "{}" '
                                 'argument'
                                 .format(include_arg.name.value))
-            return not self.visit(include_arg.value)
+            return not self.visit(include_arg.value)  # type: ignore[attr-defined] # noqa: E501
 
-    def visit_field(self, obj):
+        return None
+
+    def visit_field(
+        self, obj: ast.FieldNode
+    ) -> Iterator[Union[Field, Link]]:
         if self._should_skip(obj):
             return
 
         if obj.arguments:
-            options = {arg.name.value: self.visit(arg.value)
+            options = {arg.name.value: self.visit(arg.value)  # type: ignore[attr-defined] # noqa: E501
                        for arg in obj.arguments}
         else:
             options = None
@@ -165,69 +197,82 @@ class SelectionSetVisitMixin:
         if obj.selection_set is None:
             yield Field(obj.name.value, options=options, alias=alias)
         else:
-            node = Node(list(self.visit(obj.selection_set)))
+            node = Node(list(self.visit(obj.selection_set)))  # type: ignore[attr-defined] # noqa: E501
             yield Link(obj.name.value, node, options=options, alias=alias)
 
-    def visit_variable(self, obj):
+    def visit_variable(self, obj: ast.VariableNode) -> Any:
         return self.lookup_variable(obj.name.value)
 
-    def visit_null_value(self, obj):
+    def visit_null_value(self, obj: ast.NullValueNode) -> None:
         return None
 
-    def visit_int_value(self, obj):
+    def visit_int_value(self, obj: ast.IntValueNode) -> int:
         return int(obj.value)
 
-    def visit_float_value(self, obj):
+    def visit_float_value(self, obj: ast.FloatValueNode) -> float:
         return float(obj.value)
 
-    def visit_string_value(self, obj):
+    def visit_string_value(self, obj: ast.StringValueNode) -> str:
         return obj.value
 
-    def visit_boolean_value(self, obj):
+    def visit_boolean_value(self, obj: ast.BooleanValueNode) -> bool:
         return obj.value
 
-    def visit_enum_value(self, obj):
+    def visit_enum_value(self, obj: ast.EnumValueNode) -> str:
         return obj.value
 
-    def visit_list_value(self, obj):
-        return [self.visit(i) for i in obj.values]
+    def visit_list_value(self, obj: ast.ListValueNode) -> List:
+        return [self.visit(i) for i in obj.values]  # type: ignore[attr-defined]
 
-    def visit_object_value(self, obj):
-        return {f.name.value: self.visit(f.value) for f in obj.fields}
+    def visit_object_value(self, obj: ast.ObjectValueNode) -> Dict:
+        return {f.name.value: self.visit(f.value) for f in obj.fields}  # type: ignore[attr-defined] # noqa: E501
 
-    def visit_fragment_spread(self, obj):
+    def visit_fragment_spread(
+        self, obj: ast.FragmentSpreadNode
+    ) -> Iterator[Union[Field, Link]]:
         if self._should_skip(obj):
             return
         for i in self.transform_fragment(obj.name.value):
             yield i
 
-    def visit_inline_fragment(self, obj):
+    def visit_inline_fragment(
+        self, obj: ast.InlineFragmentNode
+    ) -> Iterator[Union[Field, Link]]:
         if self._should_skip(obj):
             return
-        for i in self.visit(obj.selection_set):
+        for i in self.visit(obj.selection_set):  # type: ignore[attr-defined]
             yield i
 
 
 class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
-    query_name = None
-    query_variables = None
+    query_name: str = ''
+    query_variables: Dict = {}
 
-    def __init__(self, document, query_name, query_variables):
+    def __init__(
+        self,
+        document: ast.DocumentNode,
+        query_name: str,
+        query_variables: Dict
+    ):
         collector = FragmentsCollector()
         collector.visit(document)
         self.query_name = query_name
         self.query_variables = query_variables
         self.fragments_map = collector.fragments_map
-        self.cache = {}
-        self.pending_fragments = set()
+        self.cache: Dict[str, List[Union[Field, Link]]] = {}
+        self.pending_fragments: Set[str] = set()
 
-    def transform_fragment(self, name):
+    def transform_fragment(self, name: str) -> List[Union[Field, Link]]:
         return self.visit(self.fragments_map[name])
 
-    def visit_operation_definition(self, obj):
+    def visit_operation_definition(
+        self, obj: ast.OperationDefinitionNode
+    ) -> None:
         pass  # not interested in operations here
 
-    def visit_fragment_definition(self, obj):
+    def visit_fragment_definition(
+        self, obj: ast.FragmentDefinitionNode
+    ) -> List[Union[Field, Link]]:
         if obj.name.value in self.cache:
             return self.cache[obj.name.value]
         else:
@@ -244,23 +289,35 @@ class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
 
 
 class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
-    query_name = None
-    query_variables = None
+    query_name: Optional[str] = None
+    query_variables: Optional[Dict[str, Any]] = None  # type: ignore[assignment]
     fragments_transformer = None
 
-    def __init__(self, document, variables=None):
+    def __init__(
+        self,
+        document: ast.DocumentNode,
+        variables: Optional[Dict] = None
+    ):
         self.document = document
         self.variables = variables
 
     @classmethod
-    def transform(cls, document, op, variables=None):
+    def transform(
+        cls,
+        document: ast.DocumentNode,
+        op: ast.OperationDefinitionNode,
+        variables: Optional[Dict] = None
+    ) -> Node:
         visitor = cls(document, variables)
         return visitor.visit(op)
 
-    def transform_fragment(self, name):
+    def transform_fragment(self, name: str) -> List[Union[Field, Link]]:
+        assert self.fragments_transformer
         return self.fragments_transformer.transform_fragment(name)
 
-    def visit_operation_definition(self, obj):
+    def visit_operation_definition(
+        self, obj: ast.OperationDefinitionNode
+    ) -> Node:
         variables = self.variables or {}
         query_name = obj.name.value if obj.name else '<unnamed>'
         query_variables = {}
@@ -279,6 +336,7 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
             query_variables[name] = value
 
         self.query_name = query_name
+        assert self.query_name is not None
         self.query_variables = query_variables
         self.fragments_transformer = FragmentsTransformer(self.document,
                                                           self.query_name,
@@ -294,7 +352,11 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
         return merge([node])
 
 
-def read(src, variables=None, operation_name=None):
+def read(
+    src: str,
+    variables: Optional[Dict] = None,
+    operation_name: Optional[str] = None
+) -> Node:
     """Reads a query from the GraphQL document
 
     Example:
@@ -331,7 +393,12 @@ class OperationType(enum.Enum):
 
 class Operation:
     """Represents requested GraphQL operation"""
-    def __init__(self, type_, query, name=None):
+    def __init__(
+        self,
+        type_: OperationType,
+        query: Node,
+        name: Optional[str] = None
+    ):
         #: type of the operation
         self.type = type_
         #: operation's query
@@ -340,7 +407,11 @@ class Operation:
         self.name = name
 
 
-def read_operation(src, variables=None, operation_name=None):
+def read_operation(
+    src: str,
+    variables: Optional[Dict] = None,
+    operation_name: Optional[str] = None
+) -> Operation:
     """Reads an operation from the GraphQL document
 
     Example:
@@ -359,9 +430,11 @@ def read_operation(src, variables=None, operation_name=None):
     doc = parse(src)
     op = OperationGetter.get(doc, operation_name=operation_name)
     query = GraphQLTransformer.transform(doc, op, variables)
-    type_ = OperationType._value2member_map_.get(op.operation)
+    type_ = cast(Optional[OperationType], (
+        OperationType._value2member_map_.get(op.operation)
+    ))
     name = op.name.value if op.name else None
     if type_ is None:
         raise TypeError('Unsupported operation type: {}'.format(op.operation))
-    else:
-        return Operation(type_, query, name)
+
+    return Operation(type_, query, name)

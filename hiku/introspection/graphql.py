@@ -7,7 +7,16 @@ from functools import partial
 from collections import OrderedDict
 
 from ..directives import get_deprecated
-from ..graph import Graph, Root, Node, Link, Option, Field, Nothing
+from ..graph import (
+    Graph,
+    Root,
+    Node,
+    Link,
+    Option,
+    Field,
+    Nothing,
+    NothingType,
+)
 from ..graph import GraphVisitor, GraphTransformer
 from ..types import (
     TypeRef,
@@ -16,6 +25,16 @@ from ..types import (
     Boolean,
     Optional,
     TypeVisitor,
+    AnyMeta,
+    MappingMeta,
+    CallableMeta,
+    SequenceMeta,
+    OptionalMeta,
+    TypeRefMeta,
+    StringMeta,
+    IntegerMeta,
+    FloatMeta,
+    BooleanMeta,
 )
 from ..types import Any, RecordMeta, AbstractTypeVisitor
 from ..utils import (
@@ -33,6 +52,7 @@ from .types import (
     FieldArgIdent,
     InputObjectFieldIdent,
     DirectiveArgIdent,
+    HashedNamedTuple,
 )
 
 
@@ -51,7 +71,7 @@ class Directive:
     args: t.List[Argument]
 
     @property
-    def args_map(self):
+    def args_map(self) -> OrderedDict:
         return OrderedDict((arg.name, arg) for arg in self.args)
 
 
@@ -104,8 +124,8 @@ _BUILTIN_DIRECTIVES = (
 )
 
 
-def _async_wrapper(func):
-    async def wrapper(*args, **kwargs):
+def _async_wrapper(func: t.Callable) -> t.Callable:
+    async def wrapper(*args: t.Any, **kwargs: t.Any) -> t.Any:
         return func(*args, **kwargs)
     return wrapper
 
@@ -128,36 +148,40 @@ class SchemaInfo:
         self.directives = directives or ()
 
     @cached_property
-    def directives_map(self):
+    def directives_map(self) -> OrderedDict:
         return OrderedDict((d.name, d) for d in self.directives)
 
 
 class TypeIdent(AbstractTypeVisitor):
 
-    def __init__(self, graph, input_mode=False):
+    def __init__(
+        self,
+        graph: Graph,
+        input_mode: bool = False
+    ) -> None:
         self._graph = graph
         self._input_mode = input_mode
 
-    def visit_any(self, obj):
+    def visit_any(self, obj: AnyMeta) -> HashedNamedTuple:
         return SCALAR('Any')
 
-    def visit_mapping(self, obj):
+    def visit_mapping(self, obj: MappingMeta) -> HashedNamedTuple:
         return SCALAR('Any')
 
-    def visit_record(self, obj):
+    def visit_record(self, obj: RecordMeta) -> HashedNamedTuple:
         return SCALAR('Any')
 
-    def visit_callable(self, obj):
+    def visit_callable(self, obj: CallableMeta) -> t.NoReturn:
         raise TypeError('Not expected here: {!r}'.format(obj))
 
-    def visit_sequence(self, obj):
+    def visit_sequence(self, obj: SequenceMeta) -> HashedNamedTuple:
         return NON_NULL(LIST(self.visit(obj.__item_type__)))
 
-    def visit_optional(self, obj):
+    def visit_optional(self, obj: OptionalMeta) -> HashedNamedTuple:
         ident = self.visit(obj.__type__)
         return ident.of_type if isinstance(ident, NON_NULL) else ident
 
-    def visit_typeref(self, obj):
+    def visit_typeref(self, obj: TypeRefMeta) -> HashedNamedTuple:
         if self._input_mode:
             assert obj.__type_name__ in self._graph.data_types, \
                 obj.__type_name__
@@ -165,16 +189,16 @@ class TypeIdent(AbstractTypeVisitor):
         else:
             return NON_NULL(OBJECT(obj.__type_name__))
 
-    def visit_string(self, obj):
+    def visit_string(self, obj: StringMeta) -> HashedNamedTuple:
         return NON_NULL(SCALAR('String'))
 
-    def visit_integer(self, obj):
+    def visit_integer(self, obj: IntegerMeta) -> HashedNamedTuple:
         return NON_NULL(SCALAR('Int'))
 
-    def visit_float(self, obj):
+    def visit_float(self, obj: FloatMeta) -> HashedNamedTuple:
         return NON_NULL(SCALAR('Float'))
 
-    def visit_boolean(self, obj):
+    def visit_boolean(self, obj: BooleanMeta) -> HashedNamedTuple:
         return NON_NULL(SCALAR('Boolean'))
 
 
@@ -185,7 +209,8 @@ class UnsupportedGraphQLType(TypeError):
 class TypeValidator(TypeVisitor):
 
     @classmethod
-    def is_valid(cls, type_):
+    def is_valid(cls, type_: t.Any) -> bool:
+        """TODO: probably not used method"""
         try:
             cls().visit(type_)
         except UnsupportedGraphQLType:
@@ -193,30 +218,34 @@ class TypeValidator(TypeVisitor):
         else:
             return True
 
-    def visit_any(self, obj):
+    def visit_any(self, obj: AnyMeta) -> t.NoReturn:
         raise UnsupportedGraphQLType()
 
-    def visit_record(self, obj):
+    def visit_record(self, obj: RecordMeta) -> t.NoReturn:
         # inline Record type can't be directly matched to GraphQL type system
         raise UnsupportedGraphQLType()
 
 
-def not_implemented(*args, **kwargs):
+def not_implemented(*args: t.Any, **kwargs: t.Any) -> t.NoReturn:
     raise NotImplementedError(args, kwargs)
 
 
-def na_maybe(schema):
+def na_maybe(schema: SchemaInfo) -> NothingType:
     return Nothing
 
 
-def na_many(schema, ids=None, options=None):
+def na_many(
+    schema: SchemaInfo,
+    ids: t.Optional[t.List] = None,
+    options: t.Optional[t.Any] = None
+) -> t.List[t.List]:
     if ids is None:
         return []
     else:
         return [[] for _ in ids]
 
 
-def _nodes_map(schema: SchemaInfo):
+def _nodes_map(schema: SchemaInfo) -> OrderedDict:
     nodes = [(n.name, n) for n in schema.query_graph.nodes]
     nodes.append((QUERY_ROOT_NAME, schema.query_graph.root))
     if schema.mutation_graph is not None:
@@ -224,11 +253,13 @@ def _nodes_map(schema: SchemaInfo):
     return OrderedDict(nodes)
 
 
-def schema_link(schema):
+def schema_link(schema: SchemaInfo) -> None:
     return None
 
 
-def type_link(schema, options):
+def type_link(
+    schema: SchemaInfo, options: t.Dict
+) -> t.Union[HashedNamedTuple, NothingType]:
     name = options['name']
     if name in _nodes_map(schema):
         return OBJECT(name)
@@ -237,7 +268,7 @@ def type_link(schema, options):
 
 
 @listify
-def root_schema_types(schema: SchemaInfo):
+def root_schema_types(schema: SchemaInfo) -> t.Iterator[HashedNamedTuple]:
     yield SCALAR('String')
     yield SCALAR('Int')
     yield SCALAR('Boolean')
@@ -252,25 +283,31 @@ def root_schema_types(schema: SchemaInfo):
             yield INPUT_OBJECT(name)
 
 
-def root_schema_query_type(schema):
+def root_schema_query_type(schema: SchemaInfo) -> HashedNamedTuple:
     return OBJECT(QUERY_ROOT_NAME)
 
 
-def root_schema_mutation_type(schema):
+def root_schema_mutation_type(
+    schema: SchemaInfo
+) -> t.Union[HashedNamedTuple, NothingType]:
     if schema.mutation_graph is not None:
         return OBJECT(MUTATION_ROOT_NAME)
     else:
         return Nothing
 
 
-def root_schema_directives(schema):
+def root_schema_directives(schema: SchemaInfo) -> t.List[HashedNamedTuple]:
     return [
         DIRECTIVE(directive.name) for directive in schema.directives
     ]
 
 
 @listify
-def type_info(schema, fields, ids):
+def type_info(
+    schema: SchemaInfo,
+    fields: t.List[Field],
+    ids: t.List
+) -> t.Iterator[t.List[t.Optional[t.Dict]]]:
     nodes_map = _nodes_map(schema)
     for ident in ids:
         if isinstance(ident, OBJECT):
@@ -303,7 +340,11 @@ def type_info(schema, fields, ids):
 
 
 @listify
-def type_fields_link(schema, ids, options):
+def type_fields_link(
+    schema: SchemaInfo,
+    ids: t.List,
+    options: t.List
+) -> t.Iterator[t.List[HashedNamedTuple]]:
     nodes_map = _nodes_map(schema)
     for ident in ids:
         if isinstance(ident, OBJECT):
@@ -329,7 +370,10 @@ def type_fields_link(schema, ids, options):
 
 
 @listify
-def type_of_type_link(schema, ids):
+def type_of_type_link(
+    schema: SchemaInfo,
+    ids: t.List
+) -> t.Iterator[t.Union[HashedNamedTuple, NothingType]]:
     for ident in ids:
         if isinstance(ident, (NON_NULL, LIST)):
             yield ident.of_type
@@ -338,7 +382,11 @@ def type_of_type_link(schema, ids):
 
 
 @listify
-def field_info(schema, fields, ids):
+def field_info(
+    schema: SchemaInfo,
+    fields: t.List[Field],
+    ids: t.List
+) -> t.Iterator[t.List[t.Dict]]:
     nodes_map = _nodes_map(schema)
     for ident in ids:
         if ident.node in nodes_map:
@@ -363,7 +411,10 @@ def field_info(schema, fields, ids):
 
 
 @listify
-def field_type_link(schema, ids):
+def field_type_link(
+    schema: SchemaInfo,
+    ids: t.List
+) -> t.Iterator[HashedNamedTuple]:
     nodes_map = _nodes_map(schema)
     type_ident = TypeIdent(schema.query_graph)
     for ident in ids:
@@ -378,7 +429,10 @@ def field_type_link(schema, ids):
 
 
 @listify
-def field_args_link(schema, ids):
+def field_args_link(
+    schema: SchemaInfo,
+    ids: t.List
+) -> t.Iterator[t.List[HashedNamedTuple]]:
     nodes_map = _nodes_map(schema)
     for ident in ids:
         if ident.node in nodes_map:
@@ -391,7 +445,10 @@ def field_args_link(schema, ids):
 
 
 @listify
-def type_input_object_input_fields_link(schema, ids):
+def type_input_object_input_fields_link(
+    schema: SchemaInfo,
+    ids: t.List
+) -> t.Iterator[t.List[HashedNamedTuple]]:
     for ident in ids:
         if isinstance(ident, INPUT_OBJECT):
             data_type = schema.data_types[ident.name]
@@ -402,7 +459,11 @@ def type_input_object_input_fields_link(schema, ids):
 
 
 @listify
-def input_value_info(schema, fields, ids):
+def input_value_info(
+    schema: SchemaInfo,
+    fields: t.List[Field],
+    ids: t.List
+) -> t.Iterator[t.List[t.Dict]]:
     nodes_map = _nodes_map(schema)
     for ident in ids:
         if isinstance(ident, FieldArgIdent):
@@ -437,7 +498,10 @@ def input_value_info(schema, fields, ids):
 
 
 @listify
-def input_value_type_link(schema, ids):
+def input_value_type_link(
+    schema: SchemaInfo,
+    ids: t.List
+) -> t.Iterator[HashedNamedTuple]:
     nodes_map = _nodes_map(schema)
     type_ident = TypeIdent(schema.query_graph, input_mode=True)
     for ident in ids:
@@ -459,7 +523,11 @@ def input_value_type_link(schema, ids):
 
 
 @listify
-def directive_value_info(schema, fields, ids):
+def directive_value_info(
+    schema: SchemaInfo,
+    fields: t.List[Field],
+    ids: t.List
+) -> t.Iterator[t.List[Any]]:
     for ident in ids:
         if ident.name in schema.directives_map:
             directive = schema.directives_map[ident.name]
@@ -469,7 +537,10 @@ def directive_value_info(schema, fields, ids):
             yield [info[f.name] for f in fields]
 
 
-def directive_args_link(schema, ids):
+def directive_args_link(
+    schema: SchemaInfo,
+    ids: t.List
+) -> t.List[t.List[HashedNamedTuple]]:
     links = []
     for ident in ids:
         directive = schema.directives_map[ident]
@@ -565,16 +636,16 @@ GRAPH = Graph([
 class ValidateGraph(GraphVisitor):
     _name_re = re.compile(r'^[_a-zA-Z]\w*$', re.ASCII)
 
-    def __init__(self):
-        self._path = []
-        self._errors = []
+    def __init__(self) -> None:
+        self._path: t.List[str] = []
+        self._errors: t.List[str] = []
 
-    def _add_error(self, name, description):
+    def _add_error(self, name: str, description: str) -> None:
         path = '.'.join(self._path + [name])
         self._errors.append('{}: {}'.format(path, description))
 
     @classmethod
-    def validate(cls, graph):
+    def validate(cls, graph: Graph) -> None:
         self = cls()
         self.visit(graph)
         if self._errors:
@@ -582,7 +653,8 @@ class ValidateGraph(GraphVisitor):
                              .format('\n'.join('- {}'.format(err)
                                                for err in self._errors)))
 
-    def visit_node(self, obj):
+    def visit_node(self, obj: Node) -> None:
+        assert obj.name is not None
         if not self._name_re.match(obj.name):
             self._add_error(obj.name,
                             'Invalid node name: {}'.format(obj.name))
@@ -594,7 +666,7 @@ class ValidateGraph(GraphVisitor):
             self._add_error(obj.name,
                             'No fields in the {} node'.format(obj.name))
 
-    def visit_root(self, obj):
+    def visit_root(self, obj: Root) -> None:
         if obj.fields:
             self._path.append('Root')
             super(ValidateGraph, self).visit_root(obj)
@@ -602,19 +674,19 @@ class ValidateGraph(GraphVisitor):
         else:
             self._add_error('Root', 'No fields in the Root node')
 
-    def visit_field(self, obj):
+    def visit_field(self, obj: Field) -> None:
         if not self._name_re.match(obj.name):
             self._add_error(obj.name,
                             'Invalid field name: {}'.format(obj.name))
         super(ValidateGraph, self).visit_field(obj)
 
-    def visit_link(self, obj):
+    def visit_link(self, obj: Link) -> None:
         if not self._name_re.match(obj.name):
             self._add_error(obj.name,
                             'Invalid link name: {}'.format(obj.name))
         super(ValidateGraph, self).visit_link(obj)
 
-    def visit_option(self, obj):
+    def visit_option(self, obj: Option) -> None:
         if not self._name_re.match(obj.name):
             self._add_error(obj.name,
                             'Invalid option name: {}'.format(obj.name))
@@ -623,11 +695,11 @@ class ValidateGraph(GraphVisitor):
 
 class BindToSchema(GraphTransformer):
 
-    def __init__(self, schema):
+    def __init__(self, schema: SchemaInfo) -> None:
         self.schema = schema
-        self._processed = {}
+        self._processed: t.Dict = {}
 
-    def visit_field(self, obj):
+    def visit_field(self, obj: Field) -> Field:
         field = super(BindToSchema, self).visit_field(obj)
         func = self._processed.get(obj.func)
         if func is None:
@@ -635,7 +707,7 @@ class BindToSchema(GraphTransformer):
         field.func = func
         return field
 
-    def visit_link(self, obj):
+    def visit_link(self, obj: Link) -> Link:
         link = super(BindToSchema, self).visit_link(obj)
         link.func = partial(link.func, self.schema)
         return link
@@ -643,10 +715,10 @@ class BindToSchema(GraphTransformer):
 
 class MakeAsync(GraphTransformer):
 
-    def __init__(self):
-        self._processed = {}
+    def __init__(self) -> None:
+        self._processed: t.Dict = {}
 
-    def visit_field(self, obj):
+    def visit_field(self, obj: Field) -> Field:
         field = super(MakeAsync, self).visit_field(obj)
         func = self._processed.get(obj.func)
         if func is None:
@@ -654,33 +726,41 @@ class MakeAsync(GraphTransformer):
         field.func = func
         return field
 
-    def visit_link(self, obj):
+    def visit_link(self, obj: Link) -> Link:
         link = super(MakeAsync, self).visit_link(obj)
         link.func = _async_wrapper(link.func)
         return link
 
 
-def type_name_field_func(node_name, fields, ids=None):
+def type_name_field_func(
+    node_name: str,
+    fields: t.List[Field],
+    ids: t.Optional[t.List] = None
+) -> t.List:
     return [[node_name] for _ in ids] if ids is not None else [node_name]
 
 
 class AddIntrospection(GraphTransformer):
 
-    def __init__(self, introspection_graph, type_name_field_factory):
+    def __init__(
+        self,
+        introspection_graph: Graph,
+        type_name_field_factory: t.Callable
+    ):
         self.introspection_graph = introspection_graph
         self.type_name_field_factory = type_name_field_factory
 
-    def visit_node(self, obj):
+    def visit_node(self, obj: Node) -> Node:
         node = super(AddIntrospection, self).visit_node(obj)
         node.fields.append(self.type_name_field_factory(obj.name))
         return node
 
-    def visit_root(self, obj):
+    def visit_root(self, obj: Root) -> Root:
         root = super(AddIntrospection, self).visit_root(obj)
         root.fields.append(self.type_name_field_factory(QUERY_ROOT_NAME))
         return root
 
-    def visit_graph(self, obj):
+    def visit_graph(self, obj: Graph) -> Graph:
         graph = super(AddIntrospection, self).visit_graph(obj)
         graph.items.extend(self.introspection_graph.items)
         return graph
@@ -701,7 +781,11 @@ class GraphQLIntrospection(GraphTransformer):
     """
     __directives__: t.Tuple[Directive, ...] = _BUILTIN_DIRECTIVES
 
-    def __init__(self, query_graph, mutation_graph=None):
+    def __init__(
+        self,
+        query_graph: Graph,
+        mutation_graph: t.Optional[Graph] = None
+    ) -> None:
         """
         :param query_graph: graph, where Root node represents Query root
             operation type
@@ -714,24 +798,24 @@ class GraphQLIntrospection(GraphTransformer):
             self.__directives__,
         )
 
-    def __type_name__(self, node_name):
+    def __type_name__(self, node_name: t.Optional[str]) -> Field:
         return Field('__typename', String,
                      partial(type_name_field_func, node_name))
 
-    def __introspection_graph__(self):
+    def __introspection_graph__(self) -> Graph:
         return BindToSchema(self._schema).visit(GRAPH)
 
-    def visit_node(self, obj):
+    def visit_node(self, obj: Node) -> Node:
         node = super(GraphQLIntrospection, self).visit_node(obj)
         node.fields.append(self.__type_name__(obj.name))
         return node
 
-    def visit_root(self, obj):
+    def visit_root(self, obj: Root) -> Root:
         root = super(GraphQLIntrospection, self).visit_root(obj)
         root.fields.append(self.__type_name__(QUERY_ROOT_NAME))
         return root
 
-    def visit_graph(self, obj):
+    def visit_graph(self, obj: Graph) -> Graph:
         ValidateGraph.validate(obj)
         introspection_graph = self.__introspection_graph__()
         items = [self.visit(node) for node in obj.items]
@@ -752,11 +836,11 @@ class AsyncGraphQLIntrospection(GraphQLIntrospection):
         graph = apply(graph, [AsyncGraphQLIntrospection(graph)])
 
     """
-    def __type_name__(self, node_name):
+    def __type_name__(self, node_name: t.Optional[str]) -> Field:
         return Field('__typename', String,
                      _async_wrapper(partial(type_name_field_func, node_name)))
 
-    def __introspection_graph__(self):
+    def __introspection_graph__(self) -> Graph:
         graph = super(AsyncGraphQLIntrospection, self).__introspection_graph__()
         graph = MakeAsync().visit(graph)
         return graph

@@ -1,4 +1,12 @@
+from typing import (
+    Dict,
+    Any,
+    List,
+    Optional,
+)
+
 from ..graph import Graph
+from ..query import Node as QueryNode
 
 from ..introspection.types import NON_NULL, SCALAR
 from ..introspection.graphql import Directive, GraphQLIntrospection
@@ -83,19 +91,19 @@ _DIRECTIVES = (
 )
 
 
-def is_introspection_query(query):
+def is_introspection_query(query: QueryNode) -> bool:
     return '__schema' in query.fields_map
 
 
-def _obj(name):
+def _obj(name: str) -> Dict:
     return {'kind': 'OBJECT', 'name': name, 'ofType': None}
 
 
-def _non_null(t):
+def _non_null(t: Any) -> Dict:
     return {'kind': 'NON_NULL', 'name': None, 'ofType': t}
 
 
-def _union(name, possible_types=None):
+def _union(name: str, possible_types: Optional[List] = None) -> Dict:
     return {
         'kind': 'UNION',
         'name': name,
@@ -103,8 +111,8 @@ def _union(name, possible_types=None):
     }
 
 
-def _field(name, type_, **kwargs):
-    data = {
+def _field(name: str, type_: Dict, **kwargs: Any) -> Dict:
+    data: Dict = {
         'args': [],
         'deprecationReason': None,
         'description': None,
@@ -116,18 +124,18 @@ def _field(name, type_, **kwargs):
     return data
 
 
-def _seq_of_nullable(_type):
+def _seq_of_nullable(_type: Dict) -> Dict:
     return {'kind': 'NON_NULL', 'name': None,
             'ofType': {'kind': 'LIST', 'name': None,
                        'ofType': _type}}
 
 
-def _seq_of(_type):
+def _seq_of(_type: Dict) -> Dict:
     return _seq_of_nullable({'kind': 'NON_NULL', 'name': None,
                             'ofType': _type})
 
 
-def _ival(name, type_, **kwargs):
+def _ival(name: str, type_: Dict, **kwargs: Any) -> Any:
     data = {
         'name': name,
         'type': type_,
@@ -138,8 +146,8 @@ def _ival(name, type_, **kwargs):
     return data
 
 
-def _type(name, kind, **kwargs):
-    data = {
+def _type(name: str, kind: str, **kwargs: Any) -> Dict:
+    data: Dict = {
         'description': None,
         'enumValues': [],
         'fields': [],
@@ -153,7 +161,7 @@ def _type(name, kind, **kwargs):
     return data
 
 
-def extend_with_federation(graph: Graph, data: dict):
+def extend_with_federation(graph: Graph, data: dict) -> None:
     union_types = []
     for node in graph.nodes:
         if get_keys(graph, node.name):

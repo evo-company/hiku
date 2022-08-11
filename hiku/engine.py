@@ -7,6 +7,15 @@ from typing import (
     TypeVar,
     Callable,
     cast,
+    Iterator,
+    Tuple,
+    Union,
+    Dict,
+    List,
+    NoReturn,
+    Optional,
+    overload,
+    DefaultDict,
 )
 from functools import partial
 from itertools import chain, repeat
@@ -17,13 +26,38 @@ from typing_extensions import (
     Concatenate,
 )
 
-from . import query as hiku_query
-from .graph import Link, Maybe, One, Many, Nothing, Field
+from .query import (
+    Node as QueryNode,
+    Field as QueryField,
+    Link as QueryLink,
+    QueryTransformer,
+    QueryVisitor
+)
+from .executors.sync import SyncExecutor
+from .graph import (
+    Link,
+    Maybe,
+    One,
+    Many,
+    Nothing,
+    Field,
+    Graph,
+    Node,
+    NothingType,
+)
 from .result import Proxy, Index, ROOT, Reference
-from .executors.queue import Workflow, Queue
+from .executors.queue import (
+    Workflow,
+    Queue,
+    TaskSet,
+    SubmitRes,
+)
 
 
-def _yield_options(graph_obj, query_obj):
+def _yield_options(
+    graph_obj: Union[Link, Field],
+    query_obj: Union[QueryField, QueryLink]
+) -> Iterator[Tuple[str, Any]]:
     options = query_obj.options or {}
     for option in graph_obj.options:
         value = options.get(option.name, option.default)
@@ -34,24 +68,27 @@ def _yield_options(graph_obj, query_obj):
             yield option.name, value
 
 
-def _get_options(graph_obj, query_obj):
+def _get_options(
+    graph_obj: Union[Link, Field],
+    query_obj: Union[QueryField, QueryLink]
+) -> Dict:
     return dict(_yield_options(graph_obj, query_obj))
 
 
-class InitOptions(hiku_query.QueryTransformer):
+class InitOptions(QueryTransformer):
 
-    def __init__(self, graph):
+    def __init__(self, graph: Graph) -> None:
         self._graph = graph
         self._path = [graph.root]
 
-    def visit_field(self, obj):
+    def visit_field(self, obj: QueryField) -> QueryField:
         graph_obj = self._path[-1].fields_map[obj.name]
         if graph_obj.options:
             return obj.copy(options=_get_options(graph_obj, obj))
         else:
             return obj
 
-    def visit_link(self, obj):
+    def visit_link(self, obj: QueryLink) -> QueryLink:
         graph_obj = self._path[-1].fields_map[obj.name]
 
         if isinstance(graph_obj, Link):
@@ -68,31 +105,39 @@ class InitOptions(hiku_query.QueryTransformer):
         return obj.copy(node=node, options=options)
 
 
-class SplitQuery(hiku_query.QueryVisitor):
+# query.Link is considered a complex Field if present in tuple
+FieldGroup = Tuple[Field, Union[QueryField, QueryLink]]
+CallableFieldGroup = Tuple[Callable, Field, Union[QueryField, QueryLink]]
+LinkGroup = Tuple[Link, QueryLink]
 
-    def __init__(self, graph_node):
+
+class SplitQuery(QueryVisitor):
+
+    def __init__(self, graph_node: Node) -> None:
         self._node = graph_node
-        self._fields = []
-        self._links = []
+        self._fields: List[CallableFieldGroup] = []
+        self._links: List[LinkGroup] = []
 
-    def split(self, query_node):
+    def split(
+        self, query_node: QueryNode
+    ) -> Tuple[List[CallableFieldGroup], List[LinkGroup]]:
         for item in query_node.fields:
             self.visit(item)
         return self._fields, self._links
 
-    def visit_node(self, obj):
+    def visit_node(self, obj: QueryNode) -> NoReturn:
         raise ValueError('Unexpected value: {!r}'.format(obj))
 
-    def visit_field(self, obj):
+    def visit_field(self, obj: QueryField) -> None:
         graph_obj = self._node.fields_map[obj.name]
         func = getattr(graph_obj.func, '__subquery__', graph_obj.func)
         self._fields.append((func, graph_obj, obj))
 
-    def visit_link(self, obj):
+    def visit_link(self, obj: QueryLink) -> None:
         graph_obj = self._node.fields_map[obj.name]
         if isinstance(graph_obj, Link):
             if graph_obj.requires:
-                self.visit(hiku_query.Field(graph_obj.requires))
+                self.visit(QueryField(graph_obj.requires))
             self._links.append((graph_obj, obj))
         else:
             assert isinstance(graph_obj, Field), type(graph_obj)
@@ -101,42 +146,50 @@ class SplitQuery(hiku_query.QueryVisitor):
             self._fields.append((func, graph_obj, obj))
 
 
-class GroupQuery(hiku_query.QueryVisitor):
+class GroupQuery(QueryVisitor):
 
-    def __init__(self, node):
+    def __init__(self, node: Node) -> None:
         self._node = node
-        self._funcs = []
-        self._groups = []
+        self._funcs: List[Callable] = []
+        self._groups: List[Union[List[FieldGroup], LinkGroup]] = []
         self._current_func = None
 
-    def group(self, node):
+    def group(
+        self, node: QueryNode
+    ) -> List[Tuple[Callable, Union[List[FieldGroup], LinkGroup]]]:
         for item in node.fields:
             self.visit(item)
         return list(zip(self._funcs, self._groups))
 
-    def visit_node(self, obj):
+    def visit_node(self, obj: QueryNode) -> NoReturn:
         raise ValueError('Unexpected value: {!r}'.format(obj))
 
-    def visit_field(self, obj):
+    def visit_field(self, obj: QueryField) -> None:
         graph_obj = self._node.fields_map[obj.name]
         func = getattr(graph_obj.func, '__subquery__', graph_obj.func)
         if func == self._current_func:
+            assert isinstance(self._groups[-1], list)
             self._groups[-1].append((graph_obj, obj))
         else:
             self._groups.append([(graph_obj, obj)])
             self._funcs.append(func)
             self._current_func = func
 
-    def visit_link(self, obj):
+    def visit_link(self, obj: QueryLink) -> None:
         graph_obj = self._node.fields_map[obj.name]
         if graph_obj.requires:
-            self.visit(hiku_query.Field(graph_obj.requires))
+            self.visit(QueryField(graph_obj.requires))
         self._groups.append((graph_obj, obj))
         self._funcs.append(graph_obj.func)
         self._current_func = None
 
 
-def _check_store_fields(node, fields, ids, result):
+def _check_store_fields(
+    node: Node,
+    fields: List[Union[QueryField, QueryLink]],
+    ids: Optional[Any],
+    result: Any
+) -> None:
     if node.name is not None:
         assert ids is not None
         if (
@@ -172,7 +225,13 @@ def _is_hashable(obj: Any) -> bool:
     return True
 
 
-def store_fields(index, node, query_fields, ids, query_result):
+def store_fields(
+    index: Index,
+    node: Node,
+    query_fields: List[Union[QueryField, QueryLink]],
+    ids: Optional[Any],
+    query_result: Any
+) -> None:
     if inspect.isgenerator(query_result):
         warnings.warn('Data loading functions should not return generators',
                       DeprecationWarning)
@@ -190,8 +249,15 @@ def store_fields(index, node, query_fields, ids, query_result):
         assert ids is None
         index.root.update(zip(names, query_result))
 
+    return None
 
-def link_reqs(index, node, link, ids):
+
+def link_reqs(
+    index: Index,
+    node: Node,
+    link: Link,
+    ids: Any
+) -> Any:
     if node.name is not None:
         assert ids is not None
         node_idx = index[node.name]
@@ -200,23 +266,35 @@ def link_reqs(index, node, link, ids):
         return index.root[link.requires]
 
 
-def link_ref_maybe(graph_link, ident):
+@overload
+def link_ref_maybe(graph_link: Link, ident: NothingType) -> None: ...  # type: ignore[misc]  # noqa: E501
+
+
+@overload
+def link_ref_maybe(graph_link: Link, ident: Any) -> Reference: ...
+
+
+def link_ref_maybe(graph_link, ident):  # type: ignore[no-untyped-def]
     if ident is Nothing:
         return None
     else:
         return Reference(graph_link.node, ident)
 
 
-def link_ref_one(graph_link, ident):
+def link_ref_one(
+    graph_link: Link, ident: Any
+) -> Reference:
     assert ident is not Nothing
     return Reference(graph_link.node, ident)
 
 
-def link_ref_many(graph_link, idents):
+def link_ref_many(
+    graph_link: Link, idents: List
+) -> List[Reference]:
     return [Reference(graph_link.node, i) for i in idents]
 
 
-_LINK_REF_MAKER = {
+_LINK_REF_MAKER: Dict[Any, Callable] = {
     Maybe: link_ref_maybe,
     One: link_ref_one,
     Many: link_ref_many,
@@ -240,7 +318,12 @@ def _hashable_hint(obj: Any) -> str:
     return HASH_HINT
 
 
-def _check_store_links(node, link, ids, result):
+def _check_store_links(
+    node: Node,
+    link: Link,
+    ids: Any,
+    result: Any
+) -> None:
     hint = ''
     if node.name is not None and link.requires is not None:
         assert ids is not None
@@ -294,10 +377,17 @@ def _check_store_links(node, link, ids, result):
                             expected, result, hint))
 
 
-def store_links(index, node, graph_link, query_link, ids, query_result):
+def store_links(
+    index: Index,
+    node: Node,
+    graph_link: Link,
+    query_link: QueryLink,
+    ids: Any,
+    query_result: Any
+) -> None:
     _check_store_links(node, graph_link, ids, query_result)
 
-    field_val = partial(_LINK_REF_MAKER[graph_link.type_enum], graph_link)
+    field_val: Callable = _LINK_REF_MAKER[graph_link.type_enum]
     if node.name is not None:
         assert ids is not None
         if graph_link.requires is None:
@@ -305,12 +395,18 @@ def store_links(index, node, graph_link, query_link, ids, query_result):
 
         node_idx = index[node.name]
         for i, res in zip(ids, query_result):
-            node_idx[i][query_link.index_key] = field_val(res)
+            node_idx[i][query_link.index_key] = field_val(graph_link, res)
     else:
-        index.root[query_link.index_key] = field_val(query_result)
+        index.root[query_link.index_key] = field_val(graph_link, query_result)
+
+    return None
 
 
-def link_result_to_ids(from_list, link_type, result):
+def link_result_to_ids(
+    from_list: Any,
+    link_type: Any,  # Const
+    result: Any
+) -> List:
     if from_list:
         if link_type is Maybe:
             return [i for i in result if i is not Nothing]
@@ -335,7 +431,14 @@ def link_result_to_ids(from_list, link_type, result):
 
 class Query(Workflow):
 
-    def __init__(self, queue, task_set, graph, query, ctx: 'Context'):
+    def __init__(
+        self,
+        queue: Queue,
+        task_set: TaskSet,
+        graph: Graph,
+        query: QueryNode,
+        ctx: 'Context'
+    ) -> None:
         self._queue = queue
         self._task_set = task_set
         self._graph = graph
@@ -343,24 +446,34 @@ class Query(Workflow):
         self._ctx = ctx
         self._index = Index()
 
-    def _submit(self, func, *args, **kwargs):
+    def _submit(
+        self,
+        func: Callable,
+        *args: Any,
+        **kwargs: Any
+    ) -> SubmitRes:
         if _do_pass_context(func):
             return self._task_set.submit(func, self._ctx, *args, **kwargs)
         else:
             return self._task_set.submit(func, *args, **kwargs)
 
-    def start(self):
+    def start(self) -> None:
         self.process_node(self._graph.root, self._query, None)
 
-    def result(self):
+    def result(self) -> Proxy:
         self._index.finish()
         return Proxy(self._index, ROOT, self._query)
 
-    def _process_node_ordered(self, node, query, ids):
+    def _process_node_ordered(
+        self,
+        node: Node,
+        query: QueryNode,
+        ids: Any
+    ) -> None:
         proc_steps = GroupQuery(node).group(query)
 
         # recursively and sequentially schedule fields and links
-        def proc(steps):
+        def proc(steps: List) -> None:
             step_func, step_item = steps.pop(0)
             if isinstance(step_item, list):
                 dep = self._schedule_fields(node, step_func, step_item, ids)
@@ -374,21 +487,26 @@ class Query(Workflow):
         if proc_steps:
             proc(proc_steps)
 
-    def process_node(self, node, query, ids):
+    def process_node(
+        self,
+        node: Node,
+        query: QueryNode,
+        ids: Any
+    ) -> None:
         if query.ordered:
             self._process_node_ordered(node, query, ids)
             return
 
         fields, links = SplitQuery(node).split(query)
 
-        to_func = {}
-        from_func = defaultdict(list)
+        to_func: Dict[str, Callable] = {}
+        from_func: DefaultDict[Callable, List[FieldGroup]] = defaultdict(list)  # noqa: E501
         for func, graph_field, query_field in fields:
             to_func[graph_field.name] = func
             from_func[func].append((graph_field, query_field))
 
         # schedule fields resolve
-        to_dep = {}
+        to_dep: Dict[Callable, Union[SubmitRes, TaskSet]] = {}
         for func, func_fields in from_func.items():
             to_dep[func] = self._schedule_fields(node, func, func_fields, ids)
 
@@ -402,7 +520,14 @@ class Query(Workflow):
             else:
                 schedule()
 
-    def process_link(self, node, graph_link, query_link, ids, result):
+    def process_link(
+        self,
+        node: Node,
+        graph_link: Link,
+        query_link: QueryLink,
+        ids: Any,
+        result: Any
+    ) -> None:
         if inspect.isgenerator(result):
             warnings.warn('Data loading functions should not return generators',
                           DeprecationWarning)
@@ -414,8 +539,17 @@ class Query(Workflow):
             self.process_node(self._graph.nodes_map[graph_link.node],
                               query_link.node, to_ids)
 
-    def _schedule_fields(self, node, func, fields, ids):
+        return None
+
+    def _schedule_fields(
+        self,
+        node: Node,
+        func: Callable,
+        fields: List[FieldGroup],
+        ids: Optional[Any]
+    ) -> Union[SubmitRes, TaskSet]:
         query_fields = [qf for _, qf in fields]
+        dep: Union[TaskSet, SubmitRes]
         if hasattr(func, '__subquery__'):
             assert ids is not None
             dep = self._queue.fork(self._task_set)
@@ -432,7 +566,13 @@ class Query(Workflow):
         )
         return dep
 
-    def _schedule_link(self, node, graph_link, query_link, ids):
+    def _schedule_link(
+        self,
+        node: Node,
+        graph_link: Link,
+        query_link: QueryLink,
+        ids: Any
+    ) -> SubmitRes:
         args = []
         if graph_link.requires:
             args.append(link_reqs(self._index, node, graph_link, ids))
@@ -468,16 +608,16 @@ def _do_pass_context(func: Callable) -> bool:
 
 class Context(Mapping):
 
-    def __init__(self, mapping):
+    def __init__(self, mapping: Mapping) -> None:
         self.__mapping = mapping
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.__mapping)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator:
         return iter(self.__mapping)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: Any) -> Any:
         try:
             return self.__mapping[item]
         except KeyError:
@@ -487,10 +627,15 @@ class Context(Mapping):
 
 class Engine:
 
-    def __init__(self, executor):
+    def __init__(self, executor: SyncExecutor) -> None:
         self.executor = executor
 
-    def execute(self, graph, query, ctx=None):
+    def execute(
+        self,
+        graph: Graph,
+        query: QueryNode,
+        ctx: Optional[Dict] = None
+    ) -> Proxy:
         if ctx is None:
             ctx = {}
         query = InitOptions(graph).visit(query)

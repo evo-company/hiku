@@ -1,19 +1,57 @@
 from functools import partial
+from typing import (
+    NoReturn,
+    List,
+    Union,
+    Tuple,
+    Callable,
+    Iterator,
+)
+
+from typing_extensions import TypeAlias
 
 from .. import query
-from ..graph import Link, Nothing
+from ..executors.queue import (
+    Queue,
+    TaskSet,
+)
+from ..graph import (
+    Link,
+    Nothing,
+    Graph,
+    Field,
+)
 from ..types import TypeRef, Sequence
-from ..query import merge
+from ..query import (
+    merge,
+    Node,
+    Field as QueryField
+)
 from ..types import Any
-from ..engine import Query
+from ..engine import (
+    Query,
+    FieldGroup,
+    Context,
+)
 from ..expr.refs import RequirementsExtractor
-from ..expr.core import to_expr, S, THIS
+from ..expr.core import (
+    to_expr,
+    S,
+    THIS,
+    _DotHandler,
+    _Func,
+)
 from ..expr.checker import check, fn_types
 from ..expr.compiler import ExpressionCompiler
 
 
-def _create_result_proc(engine_query, procs, options):
-    def result_proc():
+Expr: TypeAlias = Union[_Func, _DotHandler]
+
+
+def _create_result_proc(
+    engine_query: Query, procs: List[Callable], options: List
+) -> Callable[[], List[List]]:
+    def result_proc() -> List[List]:
         sq_result = engine_query.result()
         return [[proc(this, sq_result, *opt_args)
                  for proc, opt_args in zip(procs, options)]
@@ -21,7 +59,9 @@ def _create_result_proc(engine_query, procs, options):
     return result_proc
 
 
-def _yield_options(query_field, graph_field):
+def _yield_options(
+    query_field: QueryField, graph_field: Field
+) -> Iterator[Any]:
     options = query_field.options or {}
     for option in graph_field.options:
         value = options.get(option.name, option.default)
@@ -34,16 +74,20 @@ def _yield_options(query_field, graph_field):
 
 class BoundExpr:
 
-    def __init__(self, sub_graph, expr):
+    def __init__(
+        self,
+        sub_graph: 'SubGraph',
+        expr: Expr
+    ) -> None:
         self.sub_graph = sub_graph
         self.expr = expr
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         expr, _ = to_expr(self.expr)
         return ('<{}: sub_graph={!r}, expr={!r}>'
                 .format(self.__class__.__name__, self.sub_graph, expr))
 
-    def __postprocess__(self, field):
+    def __postprocess__(self, field: Field) -> None:
         expr, funcs = to_expr(self.expr)
 
         env = fn_types(funcs)
@@ -62,55 +106,73 @@ class BoundExpr:
         code = ExpressionCompiler.compile_lambda_expr(expr, option_names)
         proc = partial(eval(compile(code, '<expr>', 'eval')),
                        {f.__def_name__: f.__def_body__ for f in funcs})
-        field.func = CheckedExpr(self.sub_graph, expr, reqs, proc)
+        field.func = CheckedExpr(self.sub_graph, expr, reqs, proc)  # type: ignore[assignment] # noqa: E501
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args: Any, **kwargs: Any) -> NoReturn:
         raise TypeError('Expression is not checked: {!r}'.format(self.expr))
 
 
 class CheckedExpr:
 
-    def __init__(self, sub_graph, expr, reqs, proc):
+    def __init__(
+        self,
+        sub_graph: 'SubGraph',
+        expr: Tuple,
+        reqs: Node,
+        proc: Callable
+    ) -> None:
         self.sub_graph = sub_graph
         self.expr = expr
         self.reqs = reqs
         self.proc = proc
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return ('<{}: sub_graph={!r}, expr={!r}, reqs={!r}>'
                 .format(self.__class__.__name__,
                         self.sub_graph, self.expr, self.reqs))
 
     @property
-    def __subquery__(self):
+    def __subquery__(self) -> 'SubGraph':
         return self.sub_graph
 
 
 class SubGraph:
 
-    def __init__(self, graph, node):
+    def __init__(self, graph: Graph, node: str) -> None:
         self.graph = graph
         self.node = node
         self.types = graph.__types__
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '<{}: node={!r}>'.format(self.__class__.__name__, self.node)
 
     @property
-    def __subquery__(self):
+    def __subquery__(self) -> 'SubGraph':
         return self
 
-    def __postprocess__(self, field):
+    def __postprocess__(self, field: Field) -> None:
         BoundExpr(self, getattr(S.this, field.name)).__postprocess__(field)
 
-    def __call__(self, fields, ids, queue, ctx, task_set):
-        this_graph_link = Link(THIS, Sequence[TypeRef[self.node]], None,
-                               requires=None)
+    def __call__(
+        self,
+        fields: List[FieldGroup],
+        ids: List,
+        queue: Queue,
+        ctx: Context,
+        task_set: TaskSet
+    ) -> Callable[[], List[List]]:
+        this_graph_link = Link(THIS, Sequence[TypeRef[self.node]], None, requires=None)  # type: ignore # noqa: E501
 
-        reqs = merge([gf.func.reqs for gf, _ in fields])
-        procs = [gf.func.proc for gf, _ in fields]
-        option_values = [[qf.options[opt.name] for opt in gf.options]
-                         for gf, qf in fields]
+        reqs = merge([gf.func.reqs for gf, _ in fields])  # type: ignore[union-attr]  # noqa: E501
+        procs = [gf.func.proc for gf, _ in fields]  # type: ignore[union-attr]
+        option_values = []
+        for gf, qf in fields:
+            if gf.options and qf.options:
+                option_values.append([
+                    qf.options[opt.name] for opt in gf.options
+                ])
+            else:
+                option_values.append([])
 
         this_query_link = reqs.fields_map[THIS]
         other_reqs = query.Node([r for r in reqs.fields
@@ -122,8 +184,8 @@ class SubGraph:
         q.process_node(self.graph.root, other_reqs, None)
         return _create_result_proc(q, procs, option_values)
 
-    def compile(self, expr):
+    def compile(self, expr: Expr) -> BoundExpr:
         return BoundExpr(self, expr)
 
-    def c(self, expr):
+    def c(self, expr: Expr) -> BoundExpr:
         return self.compile(expr)

@@ -1,5 +1,4 @@
 import logging
-from typing import Dict
 
 from aiohttp import web
 
@@ -9,7 +8,6 @@ from hiku.types import (
     Integer,
     TypeRef,
     Record,
-    RecordMeta,
 )
 from hiku.graph import Graph, Root, Field, Option
 from hiku.engine import Engine
@@ -32,7 +30,7 @@ async def action_func(fields):
     return results
 
 
-DATA_TYPES: Dict[str, RecordMeta] = {
+DATA_TYPES = {
     'Point': Record[{
         'x': Integer,
         'y': Integer,

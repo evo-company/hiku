@@ -1,4 +1,7 @@
-from abc import ABC
+from abc import (
+    ABC,
+    abstractmethod,
+)
 from asyncio import gather
 from contextlib import contextmanager
 from typing import (
@@ -6,12 +9,13 @@ from typing import (
     Dict,
     Any,
     Optional,
-    Tuple,
     overload,
     Iterator,
     Union,
+    Type,
 )
 
+from .engine import Engine
 from .utils import get_keys
 from .introspection import (
     FederatedGraphQLIntrospection,
@@ -24,15 +28,15 @@ from .validate import validate
 from hiku.denormalize.graphql import DenormalizeGraphQL
 from hiku.federation.denormalize import DenormalizeEntityGraphQL
 from hiku.endpoint.graphql import (
-    BaseSyncGraphQLEndpoint,
-    BaseAsyncGraphQLEndpoint,
     _type_names,
     _switch_graph,
     GraphQLError,
     _StripQuery,
-    BaseGraphQLEndpoint,
 )
-from hiku.graph import Graph
+from hiku.graph import (
+    Graph,
+    apply,
+)
 from hiku.query import Node
 from hiku.result import Proxy, Reference
 from hiku.readers.graphql import Operation
@@ -73,7 +77,30 @@ def denormalize_entities(
     return entities
 
 
-class BaseFederatedGraphEndpoint(BaseGraphQLEndpoint, ABC):
+class BaseFederatedGraphEndpoint(ABC):
+    query_graph: Graph
+    mutation_graph: Optional[Graph]
+
+    @property
+    @abstractmethod
+    def introspection_cls(self) -> Type[FederatedGraphQLIntrospection]:
+        pass
+
+    def __init__(
+        self,
+        engine: Engine,
+        query_graph: Graph,
+        mutation_graph: Optional[Graph] = None
+    ):
+        self.engine = engine
+
+        introspection = self.introspection_cls(query_graph, mutation_graph)
+        self.query_graph = apply(query_graph, [introspection])
+        if mutation_graph is not None:
+            self.mutation_graph = apply(mutation_graph, [introspection])
+        else:
+            self.mutation_graph = None
+
     @contextmanager
     def context(self, op: Operation) -> Iterator[Dict]:
         yield {}
@@ -97,9 +124,27 @@ class BaseFederatedGraphEndpoint(BaseGraphQLEndpoint, ABC):
         return data
 
 
-class FederatedGraphQLEndpoint(
-    BaseSyncGraphQLEndpoint, BaseFederatedGraphEndpoint
-):
+class BaseSyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
+    @abstractmethod
+    def execute(self, graph: Graph, op: Operation, ctx: Dict) -> Dict:
+        pass
+
+    @abstractmethod
+    def dispatch(self, data: Dict) -> Dict:
+        pass
+
+
+class BaseAsyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
+    @abstractmethod
+    async def execute(self, graph: Graph, op: Operation, ctx: Dict) -> Dict:
+        pass
+
+    @abstractmethod
+    async def dispatch(self, data: Dict) -> Dict:
+        pass
+
+
+class FederatedGraphQLEndpoint(BaseSyncFederatedGraphQLEndpoint):
     """Can execute either regular or federated queries.
     Handles following fields of federated query:
         - _service
@@ -126,9 +171,7 @@ class FederatedGraphQLEndpoint(
             return {'errors': [{'message': e} for e in e.errors]}
 
 
-class AsyncFederatedGraphQLEndpoint(
-    BaseAsyncGraphQLEndpoint, BaseFederatedGraphEndpoint
-):
+class AsyncFederatedGraphQLEndpoint(BaseAsyncFederatedGraphQLEndpoint):
     introspection_cls = AsyncFederatedGraphQLIntrospection
 
     async def execute(
@@ -153,7 +196,7 @@ class AsyncFederatedGraphQLEndpoint(
 
 class AsyncBatchFederatedGraphQLEndpoint(AsyncFederatedGraphQLEndpoint):
     @overload
-    async def dispatch(self, data: List[Dict]) -> Tuple[Dict, ...]:
+    async def dispatch(self, data: List[Dict]) -> List[Dict]:
         ...
 
     @overload
@@ -162,11 +205,11 @@ class AsyncBatchFederatedGraphQLEndpoint(AsyncFederatedGraphQLEndpoint):
 
     async def dispatch(
         self, data: Union[Dict, List[Dict]]
-    ) -> Union[Dict, Tuple[Dict, ...]]:
+    ) -> Union[Dict, List[Dict]]:
         if isinstance(data, list):
-            return await gather(*(
+            return list(await gather(*(
                 super().dispatch(item)
                 for item in data
-            ))
+            )))
 
         return await super().dispatch(data)

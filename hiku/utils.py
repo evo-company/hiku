@@ -2,18 +2,25 @@ import sys
 from typing import (
     NewType,
     cast,
+    Callable,
+    Any,
+    TypeVar,
+    List,
+    Iterator,
 )
+
+from typing_extensions import ParamSpec
 
 Const = NewType('Const', object)
 
 
 class cached_property:
 
-    def __init__(self, func):
+    def __init__(self, func: Callable) -> None:
         self.__doc__ = getattr(func, '__doc__')
         self.func = func
 
-    def __get__(self, obj, cls):
+    def __get__(self, obj: Any, cls: Any) -> Any:
         if obj is None:
             return self
         value = obj.__dict__[self.func.__name__] = self.func(obj)
@@ -26,7 +33,11 @@ def const(name: str) -> Const:
     return cast(Const, t)
 
 
-def listify(func):
-    def wrapper(*args, **kwargs):
+T = TypeVar('T')
+P = ParamSpec('P')
+
+
+def listify(func: Callable[P, Iterator[T]]) -> Callable[P, List[T]]:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> List[T]:
         return list(func(*args, **kwargs))
     return wrapper
