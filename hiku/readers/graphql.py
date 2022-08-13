@@ -12,6 +12,8 @@ from typing import (
 
 from graphql.language import ast
 from graphql.language.parser import parse
+from hiku_rs.hiku_rs import parse_apollo
+from hiku_rs.hiku_rs import parse_graphql_parser
 
 from ..query import Node, Field, Link, merge
 
@@ -379,6 +381,24 @@ def read(
                         .format(op.operation.value))
 
     return GraphQLTransformer.transform(doc, op, variables)
+
+
+def read_rust_apollo(
+    src: str,
+    variables: Optional[Dict] = None,
+    operation_name: Optional[str] = None
+) -> Node:
+    doc = parse_apollo(src)
+    return doc
+
+
+def read_rust_graphql_parser(
+    src: str,
+    variables: Optional[Dict] = None,
+    operation_name: Optional[str] = None
+) -> Node:
+    doc = parse_graphql_parser(src)
+    return doc
 
 
 class OperationType(enum.Enum):
