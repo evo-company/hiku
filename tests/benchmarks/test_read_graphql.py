@@ -1,42 +1,34 @@
 from hiku.query import (
     Node,
     Field,
-    Link,
 )
 from hiku.readers.graphql import (
     read,
-    read_rust_apollo,
-    read_rust_graphql_parser,
+    read_rust_real,
+    read_rust_and_ast_mock,
+    read_ast_mock,
 )
 
 
-def test_read_query_py(benchmark):
-    parsed_query = benchmark(read, 'query User { user(id: 1) { name } }', None)
-    # assert parsed_query == Node([
-    #     Link('user', Node([
-    #         Field('name')
-    #     ]), options={'id': 1})
-    # ])
+QUERY = '{ name }'
+EXPECT = Node([Field('name')])
 
 
-def test_read_query_rust_apollo(benchmark):
-    parsed_query = benchmark(read_rust_apollo, 'query User { user(id: 1) { name } }', None)
-    assert parsed_query.kind == "node"
-    # assert parsed_query == Node([
-    #     Link('user', Node([
-    #         Field('name')
-    #     ]), options={'id': 1})
-    # ])
+def test_py(benchmark):
+    parsed_query = benchmark(read, QUERY, None)
+    assert parsed_query == EXPECT
 
 
-def test_read_query_rust_graphql_parser(benchmark):
-    parsed_query = benchmark(read_rust_graphql_parser, 'query User { user(id: 1) { name } }', None)
-    assert parsed_query.kind == "node"
+def test_ast_mock(benchmark):
+    parsed_query = benchmark(read_ast_mock, QUERY, None)
+    assert parsed_query == EXPECT
 
-# def test_read_query_rust_debug():
-#     parsed_query = read_rust('query User { user(id: 1) { name } }', None)
-#     assert parsed_query == Node([
-#         Link('user', Node([
-#             Field('name')
-#         ]), options={'id': 1})
-#     ])
+
+def test_rust_real(benchmark):
+    parsed_query = benchmark(read_rust_real, QUERY, None)
+    assert parsed_query == EXPECT
+
+
+def test_rust_mock(benchmark):
+    parsed_query = benchmark(read_rust_and_ast_mock, QUERY, None)
+    assert parsed_query == EXPECT

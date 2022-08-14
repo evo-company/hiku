@@ -12,8 +12,9 @@ from typing import (
 
 from graphql.language import ast
 from graphql.language.parser import parse
-from hiku_rs.hiku_rs import parse_apollo
-from hiku_rs.hiku_rs import parse_graphql_parser
+
+from hiku_rs import parser as parser_rs
+from hiku_rs import ast as ast_rs
 
 from ..query import Node, Field, Link, merge
 
@@ -383,22 +384,100 @@ def read(
     return GraphQLTransformer.transform(doc, op, variables)
 
 
-def read_rust_apollo(
+MOCK_AST = ast.DocumentNode(
+    definitions=[
+        ast.OperationDefinitionNode(
+            operation=ast.OperationType.QUERY,
+            name=None,
+            selection_set=ast.SelectionSetNode(
+                selections=[
+                    ast.FieldNode(
+                        name=ast.NameNode(
+                            value='name'
+                        )
+                    )
+                ]
+            )
+        )
+    ]
+)
+
+
+class AstConverter:
+    def visit(self, obj: ast_rs.Document) -> ast.DocumentNode:
+        return self.visit_document(obj)
+
+    def visit_document(self, obj: ast_rs.Document) -> ast.DocumentNode:
+        definitions = []
+        for definition in obj.definitions:
+            definitions.append(self.visit_definition(definition))
+
+        return ast.DocumentNode(definitions=definitions)
+
+    def visit_definition(self, obj: ast_rs.SelectionSet) -> ast.OperationDefinitionNode:
+        selections = []
+        for sel in obj.items:
+            selections.append(self.visit_selection(sel))
+
+        return ast.OperationDefinitionNode(
+            operation=ast.OperationType.QUERY,
+            name=None,
+            selection_set=ast.SelectionSetNode(
+               selections=selections
+            )
+        )
+
+    def visit_selection(self, obj: ast_rs.Field) -> ast.SelectionNode:
+        return ast.FieldNode(
+            name=ast.NameNode(value=obj.name),
+        )
+
+
+def read_rust_real(
     src: str,
     variables: Optional[Dict] = None,
     operation_name: Optional[str] = None
 ) -> Node:
-    doc = parse_apollo(src)
-    return doc
+    doc_rs = parser_rs.parse(src)
+    doc = AstConverter().visit(doc_rs)
+    op = OperationGetter.get(doc, operation_name=operation_name)
+    if op.operation is not ast.OperationType.QUERY:
+        raise TypeError('Only "query" operations are supported, '
+                        '"{}" operation was provided'
+                        .format(op.operation.value))
+
+    return GraphQLTransformer.transform(doc, op, variables)
 
 
-def read_rust_graphql_parser(
+def read_rust_and_ast_mock(
     src: str,
     variables: Optional[Dict] = None,
     operation_name: Optional[str] = None
 ) -> Node:
-    doc = parse_graphql_parser(src)
-    return doc
+    parser_rs.parse(src)
+    doc = MOCK_AST
+    op = OperationGetter.get(doc, operation_name=operation_name)
+    if op.operation is not ast.OperationType.QUERY:
+        raise TypeError('Only "query" operations are supported, '
+                        '"{}" operation was provided'
+                        .format(op.operation.value))
+
+    return GraphQLTransformer.transform(doc, op, variables)
+
+
+def read_ast_mock(
+    src: str,
+    variables: Optional[Dict] = None,
+    operation_name: Optional[str] = None
+) -> Node:
+    doc = MOCK_AST
+    op = OperationGetter.get(doc, operation_name=operation_name)
+    if op.operation is not ast.OperationType.QUERY:
+        raise TypeError('Only "query" operations are supported, '
+                        '"{}" operation was provided'
+                        .format(op.operation.value))
+
+    return GraphQLTransformer.transform(doc, op, variables)
 
 
 class OperationType(enum.Enum):
