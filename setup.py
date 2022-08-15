@@ -24,6 +24,7 @@ setup(
     author_email='vladimir@magamedov.com',
     url='https://github.com/evo-company/hiku',
     packages=find_packages(exclude=['test*']),
+    package_data={'hiku': ['py.typed']},
     include_package_data=True,
     license='BSD-3-Clause',
     python_requires='>=3.7',

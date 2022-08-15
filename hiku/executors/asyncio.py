@@ -18,7 +18,7 @@ from typing import (
     cast,
 )
 
-from hiku.executors.base import BaseExecutor
+from hiku.executors.base import BaseAsyncExecutor
 from hiku.result import Proxy
 
 
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     )
 
 
-class AsyncIOExecutor(BaseExecutor):
+class AsyncIOExecutor(BaseAsyncExecutor):
 
     def __init__(self, loop: Optional[AbstractEventLoop] = None) -> None:
         self._loop = loop or get_event_loop()

@@ -1,9 +1,9 @@
-import inspect
 from collections import defaultdict
 from typing import (
     Optional,
     Dict,
-    Any,
+    Awaitable,
+    Union,
 )
 
 from .sdl import print_sdl
@@ -20,6 +20,7 @@ from hiku.result import (
     Index,
     ROOT,
 )
+from ..executors.base import SyncAsyncExecutor
 from ..query import (
     Node,
     Field,
@@ -27,8 +28,7 @@ from ..query import (
 
 
 class Engine:
-    # TODO: add type for executor
-    def __init__(self, executor: Any):
+    def __init__(self, executor: SyncAsyncExecutor):
         self.executor = executor
 
     def execute_service(self, graph: Graph) -> Proxy:
@@ -42,7 +42,7 @@ class Engine:
         graph: Graph,
         query: Node,
         ctx: Dict
-    ) -> Proxy:
+    ) -> Union[Proxy, Awaitable[Proxy]]:
         entities_link = query.fields_map['_entities']
         query = entities_link.node
         representations = entities_link.options['representations']
@@ -74,7 +74,7 @@ class Engine:
         graph: Graph,
         query: Node,
         ctx: Dict
-    ) -> Proxy:
+    ) -> Union[Proxy, Awaitable[Proxy]]:
         query = InitOptions(graph).visit(query)
         queue = Queue(self.executor)
         task_set = queue.fork(None)
@@ -88,7 +88,7 @@ class Engine:
         graph: Graph,
         query: Node,
         ctx: Optional[Dict] = None
-    ) -> Proxy:
+    ) -> Union[Proxy, Awaitable[Proxy]]:
         if ctx is None:
             ctx = {}
 
@@ -98,14 +98,3 @@ class Engine:
             return self.execute_entities(graph, query, ctx)
 
         return self.execute_query(graph, query, ctx)
-
-    async def execute_async(
-        self,
-        graph: Graph,
-        query: Node,
-        ctx: Optional[Dict] = None
-    ) -> Proxy:
-        result = self.execute(graph, query, ctx)
-        if inspect.iscoroutine(result):
-            return await result
-        return result

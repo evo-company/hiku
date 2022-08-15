@@ -6,7 +6,7 @@ from typing import (
 
 from typing_extensions import ParamSpec
 
-from hiku.executors.base import BaseExecutor
+from hiku.executors.base import BaseSyncExecutor
 from hiku.result import Proxy
 
 if TYPE_CHECKING:
@@ -29,7 +29,7 @@ class FutureLike:
         return self._result
 
 
-class SyncExecutor(BaseExecutor):
+class SyncExecutor(BaseSyncExecutor):
 
     def submit(
         self,
