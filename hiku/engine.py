@@ -16,6 +16,7 @@ from typing import (
     Optional,
     overload,
     DefaultDict,
+    Awaitable,
 )
 from functools import partial
 from itertools import chain, repeat
@@ -26,6 +27,7 @@ from typing_extensions import (
     Concatenate,
 )
 
+from .executors.base import SyncAsyncExecutor
 from .query import (
     Node as QueryNode,
     Field as QueryField,
@@ -33,7 +35,6 @@ from .query import (
     QueryTransformer,
     QueryVisitor
 )
-from .executors.sync import SyncExecutor
 from .graph import (
     Link,
     Maybe,
@@ -627,7 +628,7 @@ class Context(Mapping):
 
 class Engine:
 
-    def __init__(self, executor: SyncExecutor) -> None:
+    def __init__(self, executor: SyncAsyncExecutor) -> None:
         self.executor = executor
 
     def execute(
@@ -635,7 +636,7 @@ class Engine:
         graph: Graph,
         query: QueryNode,
         ctx: Optional[Dict] = None
-    ) -> Proxy:
+    ) -> Union[Proxy, Awaitable[Proxy]]:
         if ctx is None:
             ctx = {}
         query = InitOptions(graph).visit(query)

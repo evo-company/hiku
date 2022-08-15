@@ -2,6 +2,7 @@ import typing as t
 
 from abc import ABC, abstractmethod
 from asyncio import gather
+from inspect import isawaitable
 
 from ..engine import Engine
 from ..graph import (
@@ -12,6 +13,7 @@ from ..query import (
     QueryTransformer,
     Node,
 )
+from ..result import Proxy
 from ..validate.query import validate
 from ..readers.graphql import (
     read_operation,
@@ -130,6 +132,7 @@ class GraphQLEndpoint(BaseSyncGraphQLEndpoint):
     ) -> t.Dict:
         stripped_query = _process_query(graph, op.query)
         result = self.engine.execute(graph, stripped_query, ctx)
+        assert isinstance(result, Proxy)
         type_name = _type_names[op.type]
         return DenormalizeGraphQL(graph, result, type_name).process(op.query)
 
@@ -173,8 +176,9 @@ class AsyncGraphQLEndpoint(BaseAsyncGraphQLEndpoint):
         self, graph: Graph, op: Operation, ctx: t.Optional[t.Dict]
     ) -> t.Dict:
         stripped_query = _process_query(graph, op.query)
-        # TODO: create AsyncEngine class
-        result = await self.engine.execute(graph, stripped_query, ctx)  # type: ignore  # noqa: E501
+        coro = self.engine.execute(graph, stripped_query, ctx)
+        assert isawaitable(coro)
+        result = await coro
         type_name = _type_names[op.type]
         return DenormalizeGraphQL(graph, result, type_name).process(op.query)
 

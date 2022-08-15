@@ -10,7 +10,7 @@ from typing import (
     Any,
 )
 
-from hiku.executors.base import BaseExecutor
+from hiku.executors.base import BaseSyncExecutor
 from hiku.result import Proxy
 
 if TYPE_CHECKING:
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     )
 
 
-class ThreadsExecutor(BaseExecutor):
+class ThreadsExecutor(BaseSyncExecutor):
 
     def __init__(self, pool: Executor):
         self._pool = pool

@@ -36,6 +36,10 @@ from .utils import (
 )
 from .directives import DirectiveBase
 
+if t.TYPE_CHECKING:
+    from .sources.graph import SubGraph
+    from .sources.graph import BoundExpr
+
 
 Maybe = const('Maybe')
 
@@ -76,7 +80,7 @@ class Option(AbstractOption):
     def __init__(
         self,
         name: str,
-        type_: GenericMeta,
+        type_: t.Optional[GenericMeta],
         *,
         default: t.Any = Nothing,
         description: t.Optional[str] = None
@@ -130,6 +134,8 @@ FieldFunc = t.Union[
     RootFieldFunc,
     NotRootFieldFunc,
     NotRootFieldFuncCtx,
+    'SubGraph',
+    'BoundExpr'
 ]
 
 

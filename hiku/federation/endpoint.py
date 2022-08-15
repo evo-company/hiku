@@ -4,6 +4,7 @@ from abc import (
 )
 from asyncio import gather
 from contextlib import contextmanager
+from inspect import isawaitable
 from typing import (
     List,
     Dict,
@@ -157,6 +158,7 @@ class FederatedGraphQLEndpoint(BaseSyncFederatedGraphQLEndpoint):
     ) -> Dict:
         stripped_query = _process_query(graph, op.query)
         result = self.engine.execute(graph, stripped_query, ctx or {})
+        assert isinstance(result, Proxy)
         return self.postprocess_result(result, graph, op)
 
     def dispatch(self, data: Dict) -> Dict:
@@ -178,7 +180,9 @@ class AsyncFederatedGraphQLEndpoint(BaseAsyncFederatedGraphQLEndpoint):
         self, graph: Graph, op: Operation, ctx: Optional[Dict]
     ) -> Dict:
         stripped_query = _process_query(graph, op.query)
-        result = await self.engine.execute_async(graph, stripped_query, ctx)
+        coro = self.engine.execute(graph, stripped_query, ctx)
+        assert isawaitable(coro)
+        result = await coro
         return self.postprocess_result(result, graph, op)
 
     async def dispatch(self, data: Dict) -> Dict:
