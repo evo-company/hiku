@@ -101,6 +101,7 @@ class TypingMeta(GenericMeta):
 
 
 class OptionalMeta(TypingMeta):
+    __type__: GenericMeta
 
     def __cls_init__(cls, type_: GenericMeta) -> None:
         cls.__type__: GenericMeta = _maybe_typeref(type_)
@@ -117,6 +118,7 @@ class Optional(metaclass=OptionalMeta):
 
 
 class SequenceMeta(TypingMeta):
+    __item_type__: GenericMeta
 
     def __cls_init__(cls, item_type: GenericMeta) -> None:
         cls.__item_type__: GenericMeta = _maybe_typeref(item_type)
@@ -133,6 +135,8 @@ class Sequence(metaclass=SequenceMeta):
 
 
 class MappingMeta(TypingMeta):
+    __key_type__: GenericMeta
+    __value_type__: GenericMeta
 
     def __cls_init__(cls, params: t.Tuple[GenericMeta, GenericMeta]) -> None:
         key_type, value_type = params
@@ -200,6 +204,7 @@ class Callable(metaclass=CallableMeta):
 
 
 class TypeRefMeta(TypingMeta):
+    __type_name__: str
 
     def __cls_init__(cls, *args: str) -> None:
         assert len(args) == 1, f'{cls.__name__} takes exactly one argument'

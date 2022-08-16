@@ -122,7 +122,7 @@ class SelectionSetVisitMixin:
         raise NotImplementedError(type(self))
 
     @property
-    def query_variables(self) -> Dict:
+    def query_variables(self) -> Optional[Dict]:
         raise NotImplementedError(type(self))
 
     @property
@@ -131,6 +131,7 @@ class SelectionSetVisitMixin:
 
     def lookup_variable(self, name: str) -> Any:
         try:
+            assert self.query_variables is not None
             return self.query_variables[name]
         except KeyError:
             raise TypeError('Variable ${} is not defined in query {}'
@@ -290,7 +291,7 @@ class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
 
 class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
     query_name: Optional[str] = None
-    query_variables: Optional[Dict[str, Any]] = None  # type: ignore[assignment]
+    query_variables: Optional[Dict[str, Any]] = None
     fragments_transformer = None
 
     def __init__(

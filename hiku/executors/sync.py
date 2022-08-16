@@ -2,9 +2,8 @@ from typing import (
     TypeVar,
     Callable,
     TYPE_CHECKING,
+    Any,
 )
-
-from typing_extensions import ParamSpec
 
 from hiku.executors.base import BaseSyncExecutor
 from hiku.result import Proxy
@@ -17,7 +16,6 @@ if TYPE_CHECKING:
 
 
 T = TypeVar('T')
-P = ParamSpec('P')
 
 
 class FutureLike:
@@ -33,9 +31,9 @@ class SyncExecutor(BaseSyncExecutor):
 
     def submit(
         self,
-        fn: Callable[P, T],
-        *args: P.args,
-        **kwargs: P.kwargs
+        fn: Callable,
+        *args: Any,
+        **kwargs: Any
     ) -> FutureLike:
         return FutureLike(fn(*args, **kwargs))
 

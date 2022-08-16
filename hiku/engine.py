@@ -14,7 +14,6 @@ from typing import (
     List,
     NoReturn,
     Optional,
-    overload,
     DefaultDict,
     Awaitable,
 )
@@ -22,10 +21,7 @@ from functools import partial
 from itertools import chain, repeat
 from collections import defaultdict
 from collections.abc import Sequence, Mapping, Hashable
-from typing_extensions import (
-    ParamSpec,
-    Concatenate,
-)
+from typing_extensions import Concatenate, ParamSpec
 
 from .executors.base import SyncAsyncExecutor
 from .query import (
@@ -44,7 +40,6 @@ from .graph import (
     Field,
     Graph,
     Node,
-    NothingType,
 )
 from .result import Proxy, Index, ROOT, Reference
 from .executors.queue import (
@@ -267,15 +262,7 @@ def link_reqs(
         return index.root[link.requires]
 
 
-@overload
-def link_ref_maybe(graph_link: Link, ident: NothingType) -> None: ...  # type: ignore[misc]  # noqa: E501
-
-
-@overload
-def link_ref_maybe(graph_link: Link, ident: Any) -> Reference: ...
-
-
-def link_ref_maybe(graph_link, ident):  # type: ignore[no-untyped-def]
+def link_ref_maybe(graph_link: Link, ident: Any) -> Optional[Reference]:
     if ident is Nothing:
         return None
     else:

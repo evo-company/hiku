@@ -25,7 +25,7 @@ from ..introspection.graphql import AsyncGraphQLIntrospection, QUERY_ROOT_NAME
 from ..introspection.graphql import GraphQLIntrospection, MUTATION_ROOT_NAME
 
 
-_type_names = {
+_type_names: t.Dict[OperationType, str] = {
     OperationType.QUERY: QUERY_ROOT_NAME,
     OperationType.MUTATION: MUTATION_ROOT_NAME,
 }
