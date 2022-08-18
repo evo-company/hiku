@@ -5,6 +5,8 @@
     Support for queries encoded using EDN format
 
 """
+import typing as t
+
 from ..edn import loads, Dict, List, Keyword, Tuple
 from ..query import Node, Link, Field, merge
 
@@ -58,7 +60,7 @@ def _extract(values):
             raise TypeError('Invalid node member: {!r}'.format(value))
 
 
-def transform(value):
+def transform(value: t.List) -> Node:
     if isinstance(value, List):
         return merge([Node(list(_extract(value)))])
     else:

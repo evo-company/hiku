@@ -2,7 +2,8 @@ import sys
 import ast as _ast
 from typing import Any
 
-PY38 = sys.version_info >= (3, 8)
+PY38: bool = sys.version_info >= (3, 8)
+PY310: bool = sys.version_info >= (3, 10)
 
 
 class _AST:
