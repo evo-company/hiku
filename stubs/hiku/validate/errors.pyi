@@ -1,6 +1,0 @@
-from _typeshed import Incomplete
-
-class Errors:
-    list: Incomplete
-    def __init__(self) -> None: ...
-    def report(self, msg: str) -> None: ...

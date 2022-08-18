@@ -3,7 +3,6 @@ from typing import (
     NoReturn,
     List,
     Union,
-    Tuple,
     Callable,
     Iterator,
 )
@@ -15,6 +14,7 @@ from ..executors.queue import (
     Queue,
     TaskSet,
 )
+from ..expr.nodes import Node
 from ..graph import (
     Link,
     Nothing,
@@ -24,7 +24,7 @@ from ..graph import (
 from ..types import TypeRef, Sequence
 from ..query import (
     merge,
-    Node,
+    Node as QueryNode,
     Field as QueryField
 )
 from ..types import Any
@@ -38,14 +38,14 @@ from ..expr.core import (
     to_expr,
     S,
     THIS,
-    _DotHandler,
+    DotHandler,
     _Func,
 )
 from ..expr.checker import check, fn_types
 from ..expr.compiler import ExpressionCompiler
 
 
-Expr: TypeAlias = Union[_Func, _DotHandler]
+Expr: TypeAlias = Union[_Func, DotHandler]
 
 
 def _create_result_proc(
@@ -105,7 +105,7 @@ class BoundExpr:
         option_names = [opt.name for opt in field.options]
         code = ExpressionCompiler.compile_lambda_expr(expr, option_names)
         proc = partial(eval(compile(code, '<expr>', 'eval')),
-                       {f.__def_name__: f.__def_body__ for f in funcs})
+                       {f.__def_name__: f.__def_body__ for f in funcs})  # type: ignore[attr-defined] # noqa: E501
         field.func = CheckedExpr(self.sub_graph, expr, reqs, proc)  # type: ignore[assignment] # noqa: E501
 
     def __call__(self, *args: Any, **kwargs: Any) -> NoReturn:
@@ -117,8 +117,8 @@ class CheckedExpr:
     def __init__(
         self,
         sub_graph: 'SubGraph',
-        expr: Tuple,
-        reqs: Node,
+        expr: Node,
+        reqs: QueryNode,
         proc: Callable
     ) -> None:
         self.sub_graph = sub_graph

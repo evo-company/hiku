@@ -16,6 +16,9 @@ class GenericMeta(type):
     def __ne__(cls, other: t.Any) -> bool:
         return not cls.__eq__(other)
 
+    def __hash__(self) -> int:
+        return hash(self.__name__)
+
     def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
         raise NotImplementedError(type(cls))
 
@@ -73,7 +76,7 @@ class Float(metaclass=FloatMeta):
 TM = t.TypeVar('TM', bound='TypingMeta')
 
 
-class TypingMeta(GenericMeta):
+class TypingMeta(GenericMeta, type):
     __final__ = False
 
     def __cls_init__(cls: TM, parameters: t.Any) -> None:

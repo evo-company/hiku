@@ -5,16 +5,24 @@
     Expression building blocks
 
 """
+import typing as t
+
 from functools import wraps
 from itertools import chain
 from collections import namedtuple
+from typing_extensions import ParamSpec
 
 from ..edn import loads
-from ..query import Node, Link, Field
-from ..types import Record, Callable, Any
+from ..query import Node as QueryNode, Link, Field
+from ..types import (
+    Record,
+    Callable,
+    Any,
+    GenericMeta,
+)
 from ..readers.simple import transform
 
-from .nodes import Symbol, Tuple, List, Keyword, Dict
+from .nodes import Symbol, Tuple, List, Keyword, Dict, Node
 
 
 THIS = 'this'
@@ -22,22 +30,26 @@ THIS = 'this'
 _Func = namedtuple('_Func', 'expr, args')
 
 
-class _DotHandler:
+class DotHandler:
 
-    def __init__(self, obj):
+    def __init__(self, obj: t.Union[Symbol, Tuple]) -> None:
         self.obj = obj
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self.obj)
 
-    def __getattr__(self, name):
-        return _DotHandler(Tuple([Symbol('get'), self.obj, Symbol(name)]))
+    def __getattr__(self, name: str) -> 'DotHandler':
+        return DotHandler(Tuple([Symbol('get'), self.obj, Symbol(name)]))
+
+
+# for backward compatibility
+_DotHandler = DotHandler
 
 
 class _S:
 
-    def __getattr__(self, name):
-        return _DotHandler(Symbol(name))
+    def __getattr__(self, name: str) -> DotHandler:
+        return DotHandler(Symbol(name))
 
 
 #: Helper object to represent symbols in expressions. ``S.foo.bar`` in
@@ -45,31 +57,39 @@ class _S:
 S = _S()
 
 
-def _to_expr(obj, fn_reg):
-    if isinstance(obj, _DotHandler):
+def _to_expr(
+    obj: t.Union[DotHandler, _Func, t.List, t.Dict, Node],
+    fn_reg: t.Set[t.Callable]
+) -> Node:
+    if isinstance(obj, DotHandler):
         return obj.obj
     elif isinstance(obj, _Func):
         fn_reg.add(obj.expr)
-        return Tuple([Symbol(obj.expr.__def_name__)] +
-                     [_to_expr(arg, fn_reg) for arg in obj.args])
+        values: t.List[Node] = [Symbol(obj.expr.__def_name__)]
+        values.extend(_to_expr(arg, fn_reg) for arg in obj.args)
+        return Tuple(values)
     elif isinstance(obj, list):
-        return List(_to_expr(v, fn_reg) for v in obj)
+        return List([_to_expr(v, fn_reg) for v in obj])
     elif isinstance(obj, dict):
-        values = chain.from_iterable((Keyword(k), _to_expr(v, fn_reg))
-                                     for k, v in obj.items())
+        values = list(chain.from_iterable((Keyword(k), _to_expr(v, fn_reg))
+                                          for k, v in obj.items()))
         return Dict(values)
     else:
         return obj
 
 
-def to_expr(obj):
-    functions = set([])
+def to_expr(
+    obj: t.Union[DotHandler, _Func]
+) -> t.Tuple[Node, t.Tuple[t.Callable, ...]]:
+    functions: t.Set[t.Callable] = set([])
     node = _to_expr(obj, functions)
     return node, tuple(functions)
 
 
-def _query_to_types(obj):
-    if isinstance(obj, Node):
+def _query_to_types(
+    obj: t.Union[QueryNode, Field, Link],
+) -> t.Union[t.Type[Any], t.Type[Record]]:
+    if isinstance(obj, QueryNode):
         return Record[[(f.name, _query_to_types(f)) for f in obj.fields]]
     elif isinstance(obj, Link):
         return _query_to_types(obj.node)
@@ -79,7 +99,13 @@ def _query_to_types(obj):
         raise TypeError(type(obj))
 
 
-def define(*types, **kwargs):
+T = t.TypeVar('T')
+P = ParamSpec('P')
+
+
+def define(
+    *types: GenericMeta, **kwargs: str
+) -> t.Callable[[t.Callable[P, T]], t.Callable[P, _Func]]:
     """Annotates function arguments with types.
 
     These annotations are used to type-check expressions and to analyze,
@@ -102,33 +128,32 @@ def define(*types, **kwargs):
     This annotation also gives ability for Hiku to build a query for low-level
     graph.
     """
-    def decorator(fn):
+    def decorator(fn: t.Callable[P, T]) -> t.Callable[P, _Func]:
         _name = kwargs.pop('_name', None)
         assert not kwargs, repr(kwargs)
 
         name = _name or '{}/{}_{}'.format(fn.__module__, fn.__name__, id(fn))
 
         @wraps(fn)
-        def expr(*args):
+        def expr(*args: P.args, **kw: P.kwargs) -> _Func:
             return _Func(expr, args)
 
-        expr.__def_name__ = name
-        expr.__def_body__ = fn
+        expr.__def_name__ = name  # type: ignore[attr-defined]
+        expr.__def_body__ = fn  # type: ignore[attr-defined]
 
         if len(types) == 1 and isinstance(types[0], str):
             reqs_list = loads(str(types[0]))
-            expr.__def_type__ = Callable[[(_query_to_types(transform(r))
+            expr.__def_type__ = Callable[[(_query_to_types(transform(r))  # type: ignore[attr-defined]  # noqa: E501
                                            if r is not None else Any)
                                           for r in reqs_list]]
         else:
-            expr.__def_type__ = Callable[types]
-
+            expr.__def_type__ = Callable[types]  # type: ignore[attr-defined]
         return expr
     return decorator
 
 
 @define(Any, Any, Any, _name='each')
-def each(var, col, expr):
+def each(var: DotHandler, col: DotHandler, expr: DotHandler) -> None:
     """Returns a list of the results of the expression evaluation for every
     item of the sequence provided.
 
@@ -148,7 +173,7 @@ def each(var, col, expr):
 
 
 @define(Any, Any, Any, _name='if')
-def if_(test, then, else_):
+def if_(test: t.Any, then: t.Any, else_: t.Any) -> None:
     """Checks condition and continues to evaluate one of the two expressions
     provided.
 
@@ -171,7 +196,7 @@ def if_(test, then, else_):
 
 
 @define(Any, Any, Any, _name='if_some')
-def if_some(bind, then, else_):
+def if_some(bind: t.List, then: _Func, else_: t.Any) -> None:
     """Used to unpack values with ``Optional`` types and using them safely in
     expressions.
 
