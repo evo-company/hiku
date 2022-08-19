@@ -12,7 +12,6 @@ from typing import (
 )
 
 import sqlalchemy
-from sqlalchemy.engine import RowProxy
 from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import BinaryExpression
 
@@ -35,6 +34,13 @@ from ..engine import (
     pass_context,
     Context,
 )
+
+SQLALCHEMY_VERSION = tuple(map(int, sqlalchemy.__version__.split('.')))
+
+if SQLALCHEMY_VERSION >= (1, 4):
+    from sqlalchemy.engine.row import Row
+else:
+    from sqlalchemy.engine import RowProxy as Row
 
 
 def _translate_type(
@@ -104,7 +110,7 @@ class FieldsQuery:
             .where(self.in_impl(self.primary_key, ids))
         )
 
-        def result_proc(rows: List[RowProxy]) -> List:
+        def result_proc(rows: List[Row]) -> List:
             rows_map = {row[self.primary_key]: [row[c] for c in columns]
                         for row in rows}
 
