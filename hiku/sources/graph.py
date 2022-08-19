@@ -7,9 +7,8 @@ from typing import (
     Iterator,
 )
 
-from typing_extensions import TypeAlias
-
 from .. import query
+from ..compat import TypeAlias
 from ..executors.queue import (
     Queue,
     TaskSet,

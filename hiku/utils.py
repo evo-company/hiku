@@ -9,7 +9,7 @@ from typing import (
     Iterator,
 )
 
-from typing_extensions import ParamSpec
+from hiku.compat import ParamSpec
 
 Const = NewType('Const', object)
 

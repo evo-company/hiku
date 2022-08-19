@@ -11,8 +11,7 @@ from typing import (
     Union,
 )
 
-from typing_extensions import Protocol
-
+from hiku.compat import Protocol
 from hiku.executors.base import BaseExecutor
 from hiku.result import Proxy
 

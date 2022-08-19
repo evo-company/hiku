@@ -14,8 +14,6 @@ from functools import reduce
 from collections import OrderedDict
 from typing import List
 
-from typing_extensions import TypeAlias
-
 from .types import (
     Optional,
     OptionalMeta,
@@ -35,6 +33,9 @@ from .utils import (
     Const,
 )
 from .directives import DirectiveBase
+
+from .compat import TypeAlias
+
 
 if t.TYPE_CHECKING:
     from .sources.graph import SubGraph

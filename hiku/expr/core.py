@@ -10,8 +10,8 @@ import typing as t
 from functools import wraps
 from itertools import chain
 from collections import namedtuple
-from typing_extensions import ParamSpec
 
+from ..compat import ParamSpec
 from ..edn import loads
 from ..query import Node as QueryNode, Link, Field
 from ..types import (

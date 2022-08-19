@@ -21,8 +21,8 @@ from functools import partial
 from itertools import chain, repeat
 from collections import defaultdict
 from collections.abc import Sequence, Mapping, Hashable
-from typing_extensions import Concatenate, ParamSpec
 
+from .compat import Concatenate, ParamSpec
 from .executors.base import SyncAsyncExecutor
 from .query import (
     Node as QueryNode,
