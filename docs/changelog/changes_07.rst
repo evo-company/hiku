@@ -28,6 +28,7 @@ Changes in 0.7
           ])
   - Added mypy and typings to codebase
   - Added checks for unhashable link results and extend errors. This must improve developer experience.
+  - Added caching for parsing graphql query. It is optional and can be enabled by calling :py:func:`hiku.readers.graphql.setup_query_cache`.
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

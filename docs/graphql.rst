@@ -141,3 +141,43 @@ execution result into JSON, it should be denormalized, to replace references
       return jsonify(result)
 
 .. _graphql-core: https://github.com/graphql-python/graphql-core
+
+
+Query parsing cache
+~~~~~~~~~~~~~~~~~~~
+
+Hiku uses ``graphql-core`` library to parse queries. It is possible to enable
+cache for parsed queries. This is useful when you have a lot of queries, and you
+want to parse them only once.
+
+Current implementation uses ``functools.lru_cache``.
+
+Note than for cache to be effective, you need to separate query and variables, otherwise
+cache will be useless.
+
+Query with inlined variables is bad for caching.
+
+.. code-block:: python
+
+    query User {
+        user(id: 1) {
+            name
+            photo(size: 50)
+        }
+    }
+
+Query with separated variables is good for caching.
+
+.. code-block:: python
+
+    query User($id: ID!, $photoSize: Int) {
+        user(id: $id) {
+            name
+            photo(size: $photoSize)
+        }
+    }
+
+    {
+        "id": 1,
+        "photoSize": 50
+    }

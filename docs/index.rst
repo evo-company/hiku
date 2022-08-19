@@ -13,6 +13,7 @@ User's Guide
   graphql
   protobuf
   federation
+  telemetry
   reference/index
   changelog/index
   development

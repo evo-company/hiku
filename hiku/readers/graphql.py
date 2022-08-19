@@ -9,6 +9,7 @@ from typing import (
     cast,
     Any,
     Set,
+    Callable,
 )
 from functools import lru_cache
 
@@ -16,6 +17,10 @@ from graphql.language import ast
 from graphql.language.parser import parse
 
 from ..query import Node, Field, Link, merge
+from ..telemetry.prometheus import (
+    QUERY_CACHE_HITS,
+    QUERY_CACHE_MISSES,
+)
 
 
 def parse_query(src: str) -> ast.DocumentNode:
@@ -27,7 +32,17 @@ def parse_query(src: str) -> ast.DocumentNode:
     return parse(src)
 
 
-def setup_ast_cache(
+def wrap_metrics(cached_parser: Callable) -> Callable:
+    def wrapper(*args: Any, **kwargs: Any) -> ast.DocumentNode:
+        ast = cached_parser(*args, **kwargs)
+        info = cached_parser.cache_info()  # type: ignore
+        QUERY_CACHE_HITS.set(info.hits)
+        QUERY_CACHE_MISSES.set(info.misses)
+        return ast
+    return wrapper
+
+
+def setup_query_cache(
     size: int = 128,
 ) -> None:
     """Sets up lru cache for the ast parsing.
@@ -36,6 +51,7 @@ def setup_ast_cache(
     """
     global parse_query
     parse_query = lru_cache(maxsize=size)(parse_query)
+    parse_query = wrap_metrics(parse_query)
 
 
 class NodeVisitor:
