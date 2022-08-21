@@ -384,95 +384,15 @@ def read(
     return GraphQLTransformer.transform(doc, op, variables)
 
 
-MOCK_AST = ast.DocumentNode(
-    definitions=[
-        ast.OperationDefinitionNode(
-            operation=ast.OperationType.QUERY,
-            name=None,
-            selection_set=ast.SelectionSetNode(
-                selections=[
-                    ast.FieldNode(
-                        name=ast.NameNode(
-                            value='name'
-                        )
-                    )
-                ]
-            )
-        )
-    ]
-)
-
-
-class AstConverter:
-    def visit(self, obj: ast_rs.Document) -> ast.DocumentNode:
-        return self.visit_document(obj)
-
-    def visit_document(self, obj: ast_rs.Document) -> ast.DocumentNode:
-        definitions = []
-        for definition in obj.definitions:
-            definitions.append(self.visit_definition(definition))
-
-        return ast.DocumentNode(definitions=definitions)
-
-    def visit_definition(self, obj: ast_rs.SelectionSet) -> ast.OperationDefinitionNode:
-        selections = []
-        for sel in obj.items:
-            selections.append(self.visit_selection(sel))
-
-        return ast.OperationDefinitionNode(
-            operation=ast.OperationType.QUERY,
-            name=None,
-            selection_set=ast.SelectionSetNode(
-               selections=selections
-            )
-        )
-
-    def visit_selection(self, obj: ast_rs.Field) -> ast.SelectionNode:
-        return ast.FieldNode(
-            name=ast.NameNode(value=obj.name),
-        )
-
-
-def read_rust_real(
+def read_rust(
     src: str,
     variables: Optional[Dict] = None,
     operation_name: Optional[str] = None
 ) -> Node:
-    doc_rs = parser_rs.parse(src)
-    doc = AstConverter().visit(doc_rs)
+    doc = parser_rs.parse(src)
     op = OperationGetter.get(doc, operation_name=operation_name)
-    if op.operation is not ast.OperationType.QUERY:
-        raise TypeError('Only "query" operations are supported, '
-                        '"{}" operation was provided'
-                        .format(op.operation.value))
-
-    return GraphQLTransformer.transform(doc, op, variables)
-
-
-def read_rust_and_ast_mock(
-    src: str,
-    variables: Optional[Dict] = None,
-    operation_name: Optional[str] = None
-) -> Node:
-    parser_rs.parse(src)
-    doc = MOCK_AST
-    op = OperationGetter.get(doc, operation_name=operation_name)
-    if op.operation is not ast.OperationType.QUERY:
-        raise TypeError('Only "query" operations are supported, '
-                        '"{}" operation was provided'
-                        .format(op.operation.value))
-
-    return GraphQLTransformer.transform(doc, op, variables)
-
-
-def read_ast_mock(
-    src: str,
-    variables: Optional[Dict] = None,
-    operation_name: Optional[str] = None
-) -> Node:
-    doc = MOCK_AST
-    op = OperationGetter.get(doc, operation_name=operation_name)
-    if op.operation is not ast.OperationType.QUERY:
+    if op.operation is not ast.OperationType.QUERY \
+        and op.operation != 'query':
         raise TypeError('Only "query" operations are supported, '
                         '"{}" operation was provided'
                         .format(op.operation.value))

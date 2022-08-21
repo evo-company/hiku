@@ -1,12 +1,16 @@
 use std::marker::PhantomData;
+
 use pyo3::prelude::*;
+use pyo3::types::PyList;
 use graphql_parser::parse_query;
 use graphql_parser::query as ast;
 
 
 #[pyclass]
 #[derive(Debug, Clone)]
-struct Document {
+struct DocumentNode {
+    #[pyo3(get)]
+    kind: String,
     #[pyo3(get)]
     definitions: PyObject,
 }
@@ -14,23 +18,53 @@ struct Document {
 
 #[pyclass]
 #[derive(Debug, Clone)]
-struct SelectionSet {
+struct SelectionSetNode {
     #[pyo3(get)]
-    items: PyObject,
+    kind: String,
+    #[pyo3(get)]
+    selections: PyObject,
 }
 
 
 #[pyclass]
 #[derive(Debug, Clone)]
-struct Field {
+struct OperationDefinitionNode {
+    #[pyo3(get)]
+    kind: String,
+    #[pyo3(get)]
+    operation: String,
+    #[pyo3(get)]
+    name: Option<String>, // TODO must be a NameNode
+    #[pyo3(get)]
+    selection_set: PyObject,
+    #[pyo3(get)]
+    variable_definitions: PyObject,
+}
+
+#[pyclass]
+#[derive(Debug, Clone)]
+struct NameNode {
+    #[pyo3(get)]
+    kind: String,
+    #[pyo3(get)]
+    value: String,
+}
+
+#[pyclass]
+#[derive(Debug, Clone)]
+struct FieldNode {
+    #[pyo3(get)]
+    kind: String,
     #[pyo3(get)]
     alias: Option<String>,
     #[pyo3(get)]
-    name: String,
-    // pub arguments: Vec<(T::Value, Value)>,
-    // pub directives: Vec<Directive>,
-    // #[pyo3(get)]
-    // pub selection_set: SelectionSet,
+    name: PyObject,
+    #[pyo3(get)]
+    directives: PyObject,
+    #[pyo3(get)]
+    arguments: PyObject,
+    #[pyo3(get)]
+    selection_set: PyObject,
 }
 
 
@@ -45,8 +79,9 @@ impl<'a> Visitor<'a, &str> {
         }
     }
 
-    fn visit(&self, py: Python, obj: ast::Document<'a, &'a str>) -> Document {
-        Document {
+    fn visit(&self, py: Python, obj: ast::Document<'a, &'a str>) -> DocumentNode {
+        DocumentNode {
+            kind: "document".to_string(),
             definitions: obj.definitions
                 .iter()
                 .map(|definition| self.visit_definition(py, definition))
@@ -60,10 +95,21 @@ impl<'a> Visitor<'a, &str> {
             ast::Definition::Operation(op) => {
                 match op {
                     ast::OperationDefinition::SelectionSet(set) => {
-                        let items = set.items.iter().map(|selection| {
+                        let selections = set.items.iter().map(|selection| {
                             self.visit_selection(py, selection)
                         }).collect::<Vec<_>>().to_object(py);
-                        SelectionSet { items }.into_py(py)
+
+                        let selection_set = SelectionSetNode {
+                            kind: "selection_set".to_string(),
+                            selections
+                        }.into_py(py);
+                        OperationDefinitionNode {
+                            kind: "operation_definition".to_string(),
+                            operation: "query".to_string(),
+                            name: None,
+                            selection_set,
+                            variable_definitions: PyList::empty(py).to_object(py),
+                        }.into_py(py)
                     },
                     _ => unreachable!()
                 }
@@ -75,9 +121,16 @@ impl<'a> Visitor<'a, &str> {
     fn visit_selection(&self, py: Python, selection: &ast::Selection<'a, &'a str>) -> PyObject {
         match selection {
             ast::Selection::Field(field) => {
-                Field {
+                FieldNode {
+                    kind: "field".to_string(),
                     alias: field.alias.map(|alias| alias.to_string()),
-                    name: field.name.to_string(),
+                    name: NameNode {
+                        kind: "name".to_string(),
+                        value: field.name.to_string()
+                    }.into_py(py),
+                    directives: PyList::empty(py).to_object(py),
+                    arguments: PyList::empty(py).to_object(py),
+                    selection_set: py.None(),
                 }.into_py(py)
             },
             _ => unreachable!()
@@ -86,7 +139,7 @@ impl<'a> Visitor<'a, &str> {
 }
 
 #[pyfunction]
-fn parse(query: String) -> PyResult<Document> {
+fn parse(query: String) -> PyResult<DocumentNode> {
     Python::with_gil(|py| {
         let ast_ = parse_query::<&str>(&query).unwrap();
         let doc = Visitor::new().visit(py, ast_);
@@ -96,9 +149,11 @@ fn parse(query: String) -> PyResult<Document> {
 
 fn add_ast_module(_py: Python, parent: &PyModule) -> PyResult<()> {
     let m = PyModule::new(_py, "ast")?;
-    m.add_class::<Document>()?;
-    m.add_class::<SelectionSet>()?;
-    m.add_class::<Field>()?;
+    m.add_class::<DocumentNode>()?;
+    m.add_class::<OperationDefinitionNode>()?;
+    m.add_class::<SelectionSetNode>()?;
+    m.add_class::<NameNode>()?;
+    m.add_class::<FieldNode>()?;
     parent.add_submodule(m)
 }
 
