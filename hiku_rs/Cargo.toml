@@ -9,5 +9,11 @@ name = "hiku_rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.16.5", features = ["extension-module"] }
 graphql-parser = "0.4.0"
+
+[dependencies.pyo3]
+version = "*"
+
+[features]
+extension-module = ["pyo3/extension-module"]
+default = ["extension-module"]

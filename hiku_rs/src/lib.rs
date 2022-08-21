@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use pyo3::prelude::*;
 use graphql_parser::parse_query;
 use graphql_parser::query as ast;
@@ -33,12 +34,18 @@ struct Field {
 }
 
 
-struct Visitor {}
+struct Visitor<'a, T> {
+    phantom: PhantomData<&'a T>
+}
 
-impl Visitor {
-    fn new() -> Self { Self {} }
+impl<'a> Visitor<'a, &str> {
+    fn new() -> Self {
+        Self {
+            phantom: PhantomData
+        }
+    }
 
-    fn visit(&self, py: Python, obj: ast::Document<String>) -> Document {
+    fn visit(&self, py: Python, obj: ast::Document<'a, &'a str>) -> Document {
         Document {
             definitions: obj.definitions
                 .iter()
@@ -48,7 +55,7 @@ impl Visitor {
         }
     }
 
-    fn visit_definition(&self, py: Python, definition: &ast::Definition<String>) -> PyObject {
+    fn visit_definition(&self, py: Python, definition: &ast::Definition<'a, &'a str>) -> PyObject {
         match definition {
             ast::Definition::Operation(op) => {
                 match op {
@@ -65,11 +72,11 @@ impl Visitor {
         }
     }
 
-    fn visit_selection(&self, py: Python, selection: &ast::Selection<String>) -> PyObject {
+    fn visit_selection(&self, py: Python, selection: &ast::Selection<'a, &'a str>) -> PyObject {
         match selection {
             ast::Selection::Field(field) => {
                 Field {
-                    alias: field.alias.clone(),
+                    alias: field.alias.map(|alias| alias.to_string()),
                     name: field.name.to_string(),
                 }.into_py(py)
             },
@@ -80,8 +87,8 @@ impl Visitor {
 
 #[pyfunction]
 fn parse(query: String) -> PyResult<Document> {
-    let ast_ = parse_query::<String>(&query).unwrap();
     Python::with_gil(|py| {
+        let ast_ = parse_query::<&str>(&query).unwrap();
         let doc = Visitor::new().visit(py, ast_);
         Ok(doc)
     })
@@ -106,4 +113,18 @@ fn hiku_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     add_parser_module(_py, m)?;
     add_ast_module(_py, m)?;
     Ok(())
+}
+
+
+#[cfg(test)]
+mod tests {
+    use pyo3::AsPyPointer;
+    use crate::parse;
+
+    #[test]
+    fn test_simple_query() {
+        pyo3::prepare_freethreaded_python();
+        let ast = parse("{ name }".to_string()).unwrap();
+        assert!(!ast.definitions.as_ptr().is_null())
+    }
 }
