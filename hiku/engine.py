@@ -1,3 +1,4 @@
+import hashlib
 import inspect
 import warnings
 import dataclasses
@@ -178,6 +179,26 @@ class GroupQuery(QueryVisitor):
         self._groups.append((graph_obj, obj))
         self._funcs.append(graph_obj.func)
         self._current_func = None
+
+
+class HashVisitor(QueryVisitor):
+    def __init__(self) -> None:
+        self._hasher = hashlib.sha1()
+
+    def visit_field(self, obj: QueryField) -> None:
+        self._hasher.update(obj.index_key.encode())
+
+    def visit_node(self, obj: QueryNode) -> None:
+        for item in obj.fields:
+            self.visit(item)
+
+    def visit_link(self, obj: QueryLink) -> None:
+        self._hasher.update(obj.index_key.encode())
+        super().visit_link(obj)
+
+    @property
+    def digest(self) -> str:
+        return self._hasher.hexdigest()
 
 
 def _check_store_fields(
@@ -417,6 +438,32 @@ def link_result_to_ids(
     raise TypeError(repr([from_list, link_type]))
 
 
+class Cache:
+    def __init__(self) -> None:
+        self.store: Dict[Any, Any] = {}
+
+    def exists(self, key: Any) -> bool:
+        return key in self.store
+
+    def get(self, key: Any) -> Any:
+        return self.store.get(key)
+
+    def set(self, key: Any, value: Any) -> None:
+        self.store[key] = value
+
+    def clear(self) -> None:
+        self.store.clear()
+
+
+cache = Cache()
+
+
+def get_query_hash(obj: Union[QueryLink, QueryField]) -> int:
+    hash_visitor = HashVisitor()
+    hash_visitor.visit(obj)
+    return hash_visitor.digest
+
+
 class Query(Workflow):
 
     def __init__(
@@ -482,6 +529,7 @@ class Query(Workflow):
         ids: Any
     ) -> None:
         if query.ordered:
+            # TODO: Make sure than mutations are not cached
             self._process_node_ordered(node, query, ids)
             return
 
@@ -500,6 +548,18 @@ class Query(Workflow):
 
         # schedule link resolve
         for graph_link, query_link in links:
+            if query_link.cached is not None:
+                # TODO: process_link suits cached alue processiong because
+                # it can store value from cache into index
+                # TODO: hashing must consider all parent variables
+                #   TODO: what if parent variables are inlined ?
+                key = get_query_hash(query_link)
+                if cache.exists(key):
+                    value = cache.get(key)
+                    # TODO: async dep.result() ?
+                    self.process_link(node, graph_link, query_link, ids, value)
+                    continue
+
             schedule = partial(self._schedule_link, node,
                                graph_link, query_link, ids)
             if graph_link.requires:
@@ -521,6 +581,10 @@ class Query(Workflow):
                           DeprecationWarning)
             result = list(result)
         store_links(self._index, node, graph_link, query_link, ids, result)
+        if query_link.cached is not None:
+            key = get_query_hash(query_link)
+            if not cache.exists(key):
+                cache.set(key, result)
         from_list = ids is not None and graph_link.requires is not None
         to_ids = link_result_to_ids(from_list, graph_link.type_enum, result)
         if to_ids:

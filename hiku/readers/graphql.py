@@ -116,6 +116,12 @@ class FragmentsCollector(NodeVisitor):
         self.fragments_map[obj.name.value] = obj
 
 
+class Cached:
+    # TODO: is ttl required or optional
+    def __init__(self, ttl: int) -> None:
+        self._ttl = ttl
+
+
 class SelectionSetVisitMixin:
 
     def transform_fragment(self, name: str) -> List[Union[Field, Link]]:
@@ -178,11 +184,43 @@ class SelectionSetVisitMixin:
 
         return None
 
+    def _get_directive(
+        self,
+        name: str,
+        obj: ast.SelectionNode
+    ) -> Optional[ast.DirectiveNode]:
+        return next((d for d in obj.directives if d.name.value == name), None)
+
+    def _is_cached(self, obj: ast.SelectionNode) -> Optional[Cached]:
+        if not obj.directives:
+            return None
+
+        cached = self._get_directive('cached', obj)
+        if cached is None:
+            return None
+
+        if len(cached.arguments) != 1:
+            raise TypeError('@cached directive accepts exactly one '
+                            'argument, {} provided'
+                            .format(len(cached.arguments)))
+        cached_arg = cached.arguments[0]
+        if cached_arg.name.value != 'ttl':
+            raise TypeError('@cached directive does not accept "{}" '
+                            'argument'
+                            .format(cached_arg.name.value))
+        ttl = self.visit(cached_arg.value)  # type: ignore[attr-defined]
+        if not isinstance(ttl, int):
+            raise TypeError('@cached ttl argument must be an integer')
+
+        return Cached(ttl)
+
     def visit_field(
         self, obj: ast.FieldNode
     ) -> Iterator[Union[Field, Link]]:
         if self._should_skip(obj):
             return
+
+        cached = self._is_cached(obj)
 
         if obj.arguments:
             options = {arg.name.value: self.visit(arg.value)  # type: ignore[attr-defined] # noqa: E501
@@ -196,10 +234,10 @@ class SelectionSetVisitMixin:
             alias = None
 
         if obj.selection_set is None:
-            yield Field(obj.name.value, options=options, alias=alias)
+            yield Field(obj.name.value, options=options, alias=alias, cached=cached)
         else:
             node = Node(list(self.visit(obj.selection_set)))  # type: ignore[attr-defined] # noqa: E501
-            yield Link(obj.name.value, node, options=options, alias=alias)
+            yield Link(obj.name.value, node, options=options, alias=alias, cached=cached)
 
     def visit_variable(self, obj: ast.VariableNode) -> Any:
         return self.lookup_variable(obj.name.value)

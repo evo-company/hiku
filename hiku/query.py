@@ -122,17 +122,21 @@ class Field(FieldBase):
     :param optional options: field options -- mapping of names to values
     :param optional alias: field's name in result
     """
-    __attrs__ = ('name', 'options', 'alias')
+    # TODO: maybe add directives argument to field or link?
+    # Field(directives=[Cached(3600)])
+    __attrs__ = ('name', 'options', 'alias', 'cached')
 
     def __init__(
         self,
         name: str,
         options: t.Optional[t.Dict[str, t.Any]] = None,
-        alias: t.Optional[str] = None
+        alias: t.Optional[str] = None,
+        cached: t.Any = None,  # TODO: Cached
     ):
         self.name = name
         self.options = options
         self.alias = alias
+        self.cached = cached
 
     def accept(self, visitor: 'QueryVisitor') -> t.Any:
         return visitor.visit_field(self)
@@ -147,19 +151,21 @@ class Link(FieldBase):
     :param optional options: link options -- mapping of names to values
     :param optional alias: link's name in result
     """
-    __attrs__ = ('name', 'node', 'options', 'alias')
+    __attrs__ = ('name', 'node', 'options', 'alias', 'cached')
 
     def __init__(
         self,
         name: str,
         node: 'Node',
         options: t.Optional[t.Dict[str, t.Any]] = None,
-        alias: t.Optional[str] = None
+        alias: t.Optional[str] = None,
+        cached: t.Any = None,  # TODO: Cached
     ):
         self.name = name
         self.node = node
         self.options = options
         self.alias = alias
+        self.cached = cached
 
     def accept(self, visitor: 'QueryVisitor') -> t.Any:
         return visitor.visit_link(self)
