@@ -25,6 +25,7 @@ from collections.abc import Sequence, Mapping, Hashable
 
 from .compat import Concatenate, ParamSpec
 from .executors.base import SyncAsyncExecutor
+from .executors.sync import FutureLike
 from .query import (
     Node as QueryNode,
     Field as QueryField,
@@ -458,9 +459,13 @@ class Cache:
 cache = Cache()
 
 
-def get_query_hash(obj: Union[QueryLink, QueryField]) -> int:
+def get_query_hash(obj: Union[QueryLink, QueryField], graph_link: Link, required_id: Any) -> str:
     hash_visitor = HashVisitor()
     hash_visitor.visit(obj)
+    hash_visitor._hasher.update(graph_link.requires.encode('utf-8'))
+    hash_visitor._hasher.update(
+        str(abs(hash(required_id))).encode('utf-8')
+    )
     return hash_visitor.digest
 
 
@@ -548,18 +553,6 @@ class Query(Workflow):
 
         # schedule link resolve
         for graph_link, query_link in links:
-            if query_link.cached is not None:
-                # TODO: process_link suits cached alue processiong because
-                # it can store value from cache into index
-                # TODO: hashing must consider all parent variables
-                #   TODO: what if parent variables are inlined ?
-                key = get_query_hash(query_link)
-                if cache.exists(key):
-                    value = cache.get(key)
-                    # TODO: async dep.result() ?
-                    self.process_link(node, graph_link, query_link, ids, value)
-                    continue
-
             schedule = partial(self._schedule_link, node,
                                graph_link, query_link, ids)
             if graph_link.requires:
@@ -574,17 +567,18 @@ class Query(Workflow):
         graph_link: Link,
         query_link: QueryLink,
         ids: Any,
-        result: Any
+        result: List
     ) -> None:
-        if inspect.isgenerator(result):
-            warnings.warn('Data loading functions should not return generators',
-                          DeprecationWarning)
-            result = list(result)
         store_links(self._index, node, graph_link, query_link, ids, result)
+        # TODO: here query link can be cached
+        # result is a list of resolved query_links
+        # that means we can not cache 'result' directly
+        # We must cache each value from result using graph_link.requires + graphql_link requires value which can be taken from ids
         if query_link.cached is not None:
-            key = get_query_hash(query_link)
-            if not cache.exists(key):
-                cache.set(key, result)
+            for id_, value in zip(ids, result):
+                key = get_query_hash(query_link, graph_link, id_)
+                if not cache.exists(key):
+                    cache.set(key, value)
         from_list = ids is not None and graph_link.requires is not None
         to_ids = link_result_to_ids(from_list, graph_link.type_enum, result)
         if to_ids:
@@ -626,15 +620,55 @@ class Query(Workflow):
         ids: Any
     ) -> SubmitRes:
         args = []
+        cached_results: List = []
         if graph_link.requires:
-            args.append(link_reqs(self._index, node, graph_link, ids))
+            reqs = link_reqs(self._index, node, graph_link, ids)
+
+            if query_link.cached:
+                not_cached_reqs = []
+                cached_ids = []
+                cached_results = []
+                # not_cached_ids = []
+                # TODO: ids = None, reqs = User(), what to do
+                for id_, req in zip(ids, reqs):
+                    key = get_query_hash(query_link, graph_link, id_)
+                    if cache.exists(key):
+                        cached_ids.append(id_)
+                        # TODO: we need get_many here
+                        cached_results.append(cache.get(key))
+                    else:
+                        # not_cached_ids.append(id_)
+                        not_cached_reqs.append(req)
+                if cached_results:
+                    store_links(self._index, node, graph_link, query_link, cached_ids, cached_results)
+
+                # reqs = not_cached_reqs
+                args.append(not_cached_reqs)
+            else:
+                args.append(reqs)
+
         if graph_link.options:
             args.append(query_link.options)
+
+        # TODO: we do not want to call func if all results are cached
         dep = self._submit(graph_link.func, *args)
-        self._queue.add_callback(dep, (
-            lambda:
-            self.process_link(node, graph_link, query_link, ids, dep.result())
-        ))
+
+        def callback() -> None:
+            result = dep.result()
+
+            if inspect.isgenerator(result):
+                warnings.warn('Data loading functions should not return generators',
+                              DeprecationWarning)
+                result = list(result)
+
+            # TODO: probably ordering is broken, check it !!!
+            if isinstance(result, list):
+                result.extend(cached_results)
+            return self.process_link(
+                node, graph_link, query_link, ids, result
+            )
+
+        self._queue.add_callback(dep, callback)
         return dep
 
 

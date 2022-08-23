@@ -178,6 +178,7 @@ class SubGraph:
                                  if r.name != THIS])
 
         q = Query(queue, task_set, self.graph, reqs, ctx)
+        # TODO: check if ids here can be generator, because we took list(result) from process_link
         q.process_link(self.graph.root, this_graph_link, this_query_link,
                        None, ids)
         q.process_node(self.graph.root, other_reqs, None)
