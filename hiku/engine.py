@@ -183,8 +183,8 @@ class GroupQuery(QueryVisitor):
 
 
 class HashVisitor(QueryVisitor):
-    def __init__(self) -> None:
-        self._hasher = hashlib.sha1()
+    def __init__(self, hasher) -> None:  # type: ignore
+        self._hasher = hasher
 
     def visit_field(self, obj: QueryField) -> None:
         self._hasher.update(obj.index_key.encode())
@@ -196,10 +196,6 @@ class HashVisitor(QueryVisitor):
     def visit_link(self, obj: QueryLink) -> None:
         self._hasher.update(obj.index_key.encode())
         super().visit_link(obj)
-
-    @property
-    def digest(self) -> str:
-        return self._hasher.hexdigest()
 
 
 def _check_store_fields(
@@ -449,8 +445,18 @@ class Cache:
     def get(self, key: Any) -> Any:
         return self.store.get(key)
 
+    def get_many(self, keys: List[str]) -> Dict[str, Any]:
+        result = {}
+        for key in keys:
+            if self.exists(key):
+                result[key] = self.get(key)
+        return result
+
     def set(self, key: Any, value: Any) -> None:
         self.store[key] = value
+
+    def set_many(self, items: Dict) -> None:
+        self.store.update(items)
 
     def clear(self) -> None:
         self.store.clear()
@@ -459,14 +465,19 @@ class Cache:
 cache = Cache()
 
 
-def get_query_hash(obj: Union[QueryLink, QueryField], graph_link: Link, required_id: Any) -> str:
-    hash_visitor = HashVisitor()
-    hash_visitor.visit(obj)
-    hash_visitor._hasher.update(graph_link.requires.encode('utf-8'))
-    hash_visitor._hasher.update(
-        str(abs(hash(required_id))).encode('utf-8')
-    )
-    return hash_visitor.digest
+def get_query_hash(
+    query_link: Union[QueryLink, QueryField],
+    graph_link: Link,
+    required_id: Any
+) -> str:
+    hasher = hashlib.sha1()
+    hash_visitor = HashVisitor(hasher)
+    hash_visitor.visit(query_link)
+
+    hasher.update(graph_link.requires.encode('utf-8'))
+    # TODO: drop abs
+    hasher.update(str(abs(hash(required_id))).encode('utf-8'))
+    return hasher.hexdigest()
 
 
 class Query(Workflow):
@@ -570,15 +581,11 @@ class Query(Workflow):
         result: List
     ) -> None:
         store_links(self._index, node, graph_link, query_link, ids, result)
-        # TODO: here query link can be cached
-        # result is a list of resolved query_links
-        # that means we can not cache 'result' directly
-        # We must cache each value from result using graph_link.requires + graphql_link requires value which can be taken from ids
         if query_link.cached is not None:
-            for id_, value in zip(ids, result):
-                key = get_query_hash(query_link, graph_link, id_)
-                if not cache.exists(key):
-                    cache.set(key, value)
+            hasher = partial(get_query_hash, query_link, graph_link)
+            to_cache = dict(zip(map(hasher, ids), result))
+            cache.set_many(to_cache)
+
         from_list = ids is not None and graph_link.requires is not None
         to_ids = link_result_to_ids(from_list, graph_link.type_enum, result)
         if to_ids:
