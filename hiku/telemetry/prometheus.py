@@ -2,11 +2,15 @@ import time
 from abc import abstractmethod
 from functools import partial
 
-from prometheus_client import Summary
+from prometheus_client import Summary, Gauge
 
 from ..graph import GraphTransformer
 from ..engine import pass_context, _do_pass_context
 from ..sources.graph import CheckedExpr
+
+
+QUERY_CACHE_HITS = Gauge('hiku_query_cache_hits', 'Query cache hits')
+QUERY_CACHE_MISSES = Gauge('hiku_query_cache_misses', 'Query cache misses')
 
 
 _METRIC = None

@@ -1,4 +1,5 @@
 import enum
+
 from typing import (
     Optional,
     Dict,
@@ -8,12 +9,49 @@ from typing import (
     cast,
     Any,
     Set,
+    Callable,
 )
+from functools import lru_cache
 
 from graphql.language import ast
 from graphql.language.parser import parse
 
 from ..query import Node, Field, Link, merge
+from ..telemetry.prometheus import (
+    QUERY_CACHE_HITS,
+    QUERY_CACHE_MISSES,
+)
+
+
+def parse_query(src: str) -> ast.DocumentNode:
+    """Parses a query into GraphQL ast
+
+    :param str src: GraphQL query string
+    :return: :py:class:`ast.DocumentNode`
+    """
+    return parse(src)
+
+
+def wrap_metrics(cached_parser: Callable) -> Callable:
+    def wrapper(*args: Any, **kwargs: Any) -> ast.DocumentNode:
+        ast = cached_parser(*args, **kwargs)
+        info = cached_parser.cache_info()  # type: ignore
+        QUERY_CACHE_HITS.set(info.hits)
+        QUERY_CACHE_MISSES.set(info.misses)
+        return ast
+    return wrapper
+
+
+def setup_query_cache(
+    size: int = 128,
+) -> None:
+    """Sets up lru cache for the ast parsing.
+
+    :param int size: Maximum size of the cache
+    """
+    global parse_query
+    parse_query = lru_cache(maxsize=size)(parse_query)
+    parse_query = wrap_metrics(parse_query)
 
 
 class NodeVisitor:
@@ -356,7 +394,7 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
 def read(
     src: str,
     variables: Optional[Dict] = None,
-    operation_name: Optional[str] = None
+    operation_name: Optional[str] = None,
 ) -> Node:
     """Reads a query from the GraphQL document
 
@@ -372,7 +410,7 @@ def read(
     :param str operation_name: Name of the operation to execute
     :return: :py:class:`hiku.query.Node`, ready to execute query object
     """
-    doc = parse(src)
+    doc = parse_query(src)
     op = OperationGetter.get(doc, operation_name=operation_name)
     if op.operation is not ast.OperationType.QUERY:
         raise TypeError('Only "query" operations are supported, '
@@ -428,7 +466,7 @@ def read_operation(
     :param str operation_name: Name of the operation to execute
     :return: :py:class:`Operation`
     """
-    doc = parse(src)
+    doc = parse_query(src)
     op = OperationGetter.get(doc, operation_name=operation_name)
     query = GraphQLTransformer.transform(doc, op, variables)
     type_ = cast(Optional[OperationType], (
