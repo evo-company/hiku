@@ -13,6 +13,10 @@ from typing import (
 from graphql.language import ast
 from graphql.language.parser import parse
 
+from ..directives import (
+    QueryDirective,
+    Cached,
+)
 from ..query import Node, Field, Link, merge
 
 
@@ -116,12 +120,6 @@ class FragmentsCollector(NodeVisitor):
         self.fragments_map[obj.name.value] = obj
 
 
-class Cached:
-    # TODO: is ttl required or optional
-    def __init__(self, ttl: int) -> None:
-        self._ttl = ttl
-
-
 class SelectionSetVisitMixin:
 
     def transform_fragment(self, name: str) -> List[Union[Field, Link]]:
@@ -192,6 +190,7 @@ class SelectionSetVisitMixin:
         return next((d for d in obj.directives if d.name.value == name), None)
 
     def _is_cached(self, obj: ast.SelectionNode) -> Optional[Cached]:
+        # TODO: do not parse @cached for mutations
         if not obj.directives:
             return None
 
@@ -220,7 +219,11 @@ class SelectionSetVisitMixin:
         if self._should_skip(obj):
             return
 
+        # TODO: add some plugins functionality to parse custom directives
+        directives: List[QueryDirective] = []
         cached = self._is_cached(obj)
+        if cached is not None:
+            directives.append(cached)
 
         if obj.arguments:
             options = {arg.name.value: self.visit(arg.value)  # type: ignore[attr-defined] # noqa: E501
@@ -234,10 +237,16 @@ class SelectionSetVisitMixin:
             alias = None
 
         if obj.selection_set is None:
-            yield Field(obj.name.value, options=options, alias=alias, cached=cached)
+            yield Field(
+                obj.name.value, options=options,
+                alias=alias, directives=tuple(directives)
+            )
         else:
             node = Node(list(self.visit(obj.selection_set)))  # type: ignore[attr-defined] # noqa: E501
-            yield Link(obj.name.value, node, options=options, alias=alias, cached=cached)
+            yield Link(
+                obj.name.value, node, options=options,
+                alias=alias, directives=tuple(directives)
+            )
 
     def visit_variable(self, obj: ast.VariableNode) -> Any:
         return self.lookup_variable(obj.name.value)

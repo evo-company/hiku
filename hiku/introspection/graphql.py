@@ -121,6 +121,20 @@ _BUILTIN_DIRECTIVES = (
             ),
         ],
     ),
+    # TODO: maybe not built in ? add some extensibility to graph?
+    Directive(
+        name='cached',
+        locations=['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'],
+        description='Caches node and all its fields',
+        args=[
+            Directive.Argument(
+                name='ttl',
+                type_ident=NON_NULL(SCALAR('Int')),
+                description='How long field will live in cache.',
+                default_value=None,
+            ),
+        ],
+    ),
 )
 
 

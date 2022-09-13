@@ -3,6 +3,7 @@ import inspect
 import warnings
 import dataclasses
 
+from copy import deepcopy
 from typing import (
     Any,
     TypeVar,
@@ -20,12 +21,15 @@ from typing import (
 )
 from functools import partial
 from itertools import chain, repeat
-from collections import defaultdict
+from collections import (
+    defaultdict,
+    deque,
+)
 from collections.abc import Sequence, Mapping, Hashable
 
+from .cache import BaseCache
 from .compat import Concatenate, ParamSpec
 from .executors.base import SyncAsyncExecutor
-from .executors.sync import FutureLike
 from .query import (
     Node as QueryNode,
     Field as QueryField,
@@ -43,7 +47,12 @@ from .graph import (
     Graph,
     Node,
 )
-from .result import Proxy, Index, ROOT, Reference
+from .result import (
+    Proxy,
+    Index,
+    ROOT,
+    Reference,
+)
 from .executors.queue import (
     Workflow,
     Queue,
@@ -239,6 +248,42 @@ def _is_hashable(obj: Any) -> bool:
     return True
 
 
+def update_index(
+    index: Index,
+    graph: Graph,
+    node: Node,
+    ids: Any,
+    data: List[Dict],
+) -> None:
+    # TODO: maybe refactor with __refs__ map
+    if node.name is not None:
+        assert ids is not None
+        node_idx = index[node.name]
+        for i, row in zip(ids, data):
+            if '__ref__' in row:
+                ref = row.pop('__ref__')
+                field_name = row.pop('__field_name__')
+                node_idx[i][field_name] = ref
+                update_index(
+                    index, graph, graph.nodes_map[ref.node], [ref.ident], [row]
+                )
+            else:
+                node_idx[i] = row
+                for field, value in row.items():
+                    if isinstance(value, dict) and '__ref__' in value:
+                        ref = value.pop('__ref__')
+                        field_name = value.pop('__field_name__')
+                        node_idx[i][field_name] = ref
+                        update_index(
+                            index, graph, graph.nodes_map[ref.node],
+                            [ref.ident], [value]
+                        )
+    else:
+        raise NotImplementedError('cache not implemented for root nodes yet')
+
+    return None
+
+
 def store_fields(
     index: Index,
     node: Node,
@@ -272,6 +317,7 @@ def link_reqs(
     link: Link,
     ids: Any
 ) -> Any:
+    """For a given link, find link `requires` values by ids."""
     if node.name is not None:
         assert ids is not None
         node_idx = index[node.name]
@@ -409,7 +455,7 @@ def store_links(
 
 
 def link_result_to_ids(
-    from_list: Any,
+    from_list: bool,
     link_type: Any,  # Const
     result: Any
 ) -> List:
@@ -435,48 +481,109 @@ def link_result_to_ids(
     raise TypeError(repr([from_list, link_type]))
 
 
-class Cache:
-    def __init__(self) -> None:
-        self.store: Dict[Any, Any] = {}
+def get_cached_link_ids(
+    cache: BaseCache,
+    query_link: QueryLink,
+    reqs: List,
+) -> tuple:
+    keys = set()
+    key_to_req = {}
+    req_to_key = {}
+    for req in reqs:
+        key = get_query_hash(query_link, req)
+        keys.add(key)
+        key_to_req[key] = req
+        req_to_key[req] = key
 
-    def exists(self, key: Any) -> bool:
-        return key in self.store
+    cached_data = cache.get_many(list(keys))
 
-    def get(self, key: Any) -> Any:
-        return self.store.get(key)
+    cached_reqs = []
+    cached_results = []
+    not_cached_reqs = []
 
-    def get_many(self, keys: List[str]) -> Dict[str, Any]:
-        result = {}
-        for key in keys:
-            if self.exists(key):
-                result[key] = self.get(key)
-        return result
+    for req in reqs:
+        key = req_to_key[req]
+        if key in cached_data:
+            cached_reqs.append(req)
+            # TODO: suboptimal, try not to copy
+            data = deepcopy(cached_data[key])
+            cached_results.append(data)
+        else:
+            not_cached_reqs.append(req)
 
-    def set(self, key: Any, value: Any) -> None:
-        self.store[key] = value
-
-    def set_many(self, items: Dict) -> None:
-        self.store.update(items)
-
-    def clear(self) -> None:
-        self.store.clear()
+    return cached_reqs, cached_results, not_cached_reqs
 
 
-cache = Cache()
+class CacheVisitor(QueryVisitor):
+    """Visit cached query link to extract all data from index
+    that needs to be cached
+    """
+    def __init__(self, index: Index, node: Node) -> None:  # type: ignore
+        self._index = index
+        self._node = node
+        self._req = deque()
+        self._proxy = deque()
+        self._data = deque()
+
+    def visit_field(self, field: QueryField) -> None:
+        value = self._proxy[-1][field.name]
+        self._data[-1][field.index_key] = value
+        super().visit_field(field)
+
+    def visit_node(self, node: QueryNode) -> None:
+        for item in node.fields:
+            self.visit(item)
+
+    def visit_link(self, link: QueryLink) -> None:
+        self._proxy.append(self._proxy[-1][link.name])
+        self._data.append({})
+        if isinstance(self._proxy[-1], dict):
+            self._data[-1].update(self._proxy[-1])
+        else:
+            self._data[-1]['__ref__'] = self._proxy[-1].__ref__
+            self._data[-1]['__field_name__'] = link.name
+        super().visit_link(link)
+        self._proxy.pop()
+
+        if len(self._data) > 1:
+            self._data[-1][link.name] = self._data.pop()
+
+    def process(self, link: QueryLink, reqs: List) -> Dict:
+        to_cache = {}
+        # TODO: consider storing part of index as it,
+        #  it will be easier to restore it
+        graph_obj = self._node.fields_map[link.name]
+        for req in reqs:
+            self._req.append(req)
+            ref = Reference(graph_obj.node, req)
+            proxy = Proxy(self._index, ref, link.node)
+            self._proxy.append(proxy)
+            self._data.append({
+                '__ref__': ref,
+                # TODO: support reusing cached link for different nodes
+                '__field_name__': link.name,
+            })
+            self.visit(link.node)
+            key = get_query_hash(link, req)
+            to_cache[key] = self._data.pop()
+
+        return to_cache
+
+
+NodePath = Tuple[str, ...]
+CACHE_VERSION = '1'
 
 
 def get_query_hash(
     query_link: Union[QueryLink, QueryField],
-    graph_link: Link,
     required_id: Any
 ) -> str:
     hasher = hashlib.sha1()
     hash_visitor = HashVisitor(hasher)
     hash_visitor.visit(query_link)
 
-    hasher.update(graph_link.requires.encode('utf-8'))
-    # TODO: drop abs
-    hasher.update(str(abs(hash(required_id))).encode('utf-8'))
+    hasher.update(str(hash(required_id)).encode('utf-8'))
+    hasher.update(CACHE_VERSION.encode('utf-8'))
     return hasher.hexdigest()
 
 
@@ -488,7 +595,8 @@ class Query(Workflow):
         task_set: TaskSet,
         graph: Graph,
         query: QueryNode,
-        ctx: 'Context'
+        ctx: 'Context',
+        cache: BaseCache = None
     ) -> None:
         self._queue = queue
         self._task_set = task_set
@@ -496,6 +604,27 @@ class Query(Workflow):
         self._query = query
         self._ctx = ctx
         self._index = Index()
+        self._cache = cache
+        self._parent = deque([{}])
+        self._in_progress = defaultdict(int)
+        self._done_callbacks = defaultdict(list)
+        self._path_callback = {}
+
+    def _track(self, path: NodePath):
+        self._in_progress[path] += 1
+
+    def _add_done_callback(self, path, callback):
+        self._done_callbacks[path].append(callback)
+
+    def _untrack(self, path: NodePath):
+        assert self._in_progress[path] > 0, f"Path {path} is already done"
+        self._in_progress[path] -= 1
+        if self._is_done(path):
+            for callback in self._done_callbacks[path]:
+                callback()
+
+    def _is_done(self, path: NodePath) -> bool:
+        return self._in_progress[path] == 0
 
     def _submit(
         self,
@@ -509,7 +638,7 @@ class Query(Workflow):
             return self._task_set.submit(func, *args, **kwargs)
 
     def start(self) -> None:
-        self.process_node(self._graph.root, self._query, None)
+        self.process_node(tuple(), self._graph.root, self._query, None)
 
     def result(self) -> Proxy:
         self._index.finish()
@@ -517,6 +646,7 @@ class Query(Workflow):
 
     def _process_node_ordered(
         self,
+        path: NodePath,
         node: Node,
         query: QueryNode,
         ids: Any
@@ -527,10 +657,16 @@ class Query(Workflow):
         def proc(steps: List) -> None:
             step_func, step_item = steps.pop(0)
             if isinstance(step_item, list):
-                dep = self._schedule_fields(node, step_func, step_item, ids)
+                self._track(path)
+                dep = self._schedule_fields(
+                    path, node, step_func, step_item, ids
+                )
             else:
                 graph_link, query_link = step_item
-                dep = self._schedule_link(node, graph_link, query_link, ids)
+                self._track(path)
+                dep = self._schedule_link(
+                    path, node, graph_link, query_link, ids
+                )
 
             if steps:
                 self._queue.add_callback(dep, lambda: proc(steps))
@@ -540,19 +676,22 @@ class Query(Workflow):
 
     def process_node(
         self,
+        path: NodePath,
         node: Node,
         query: QueryNode,
-        ids: Any
+        ids: Any,
     ) -> None:
+        path = path + (node.name,)
+        self._path_callback[path] = lambda: self._untrack(path)
+
         if query.ordered:
-            # TODO: Make sure than mutations are not cached
-            self._process_node_ordered(node, query, ids)
+            self._process_node_ordered(path, node, query, ids)
             return
 
         fields, links = SplitQuery(node).split(query)
 
         to_func: Dict[str, Callable] = {}
-        from_func: DefaultDict[Callable, List[FieldGroup]] = defaultdict(list)  # noqa: E501
+        from_func: DefaultDict[Callable, List[FieldGroup]] = defaultdict(list)
         for func, graph_field, query_field in fields:
             to_func[graph_field.name] = func
             from_func[func].append((graph_field, query_field))
@@ -560,11 +699,15 @@ class Query(Workflow):
         # schedule fields resolve
         to_dep: Dict[Callable, Union[SubmitRes, TaskSet]] = {}
         for func, func_fields in from_func.items():
-            to_dep[func] = self._schedule_fields(node, func, func_fields, ids)
+            self._track(path)
+            to_dep[func] = self._schedule_fields(
+                path, node, func, func_fields, ids
+            )
 
         # schedule link resolve
         for graph_link, query_link in links:
-            schedule = partial(self._schedule_link, node,
+            self._track(path)
+            schedule = partial(self._schedule_link, path, node,
                                graph_link, query_link, ids)
             if graph_link.requires:
                 dep = to_dep[to_func[graph_link.requires]]
@@ -574,34 +717,34 @@ class Query(Workflow):
 
     def process_link(
         self,
+        path: NodePath,
         node: Node,
         graph_link: Link,
         query_link: QueryLink,
         ids: Any,
         result: List
     ) -> None:
+        """Store Link.func result in index and Call `process_node` to schedule
+        Link's fields and links"""
         store_links(self._index, node, graph_link, query_link, ids, result)
-        if query_link.cached is not None:
-            hasher = partial(get_query_hash, query_link, graph_link)
-            to_cache = dict(zip(map(hasher, ids), result))
-            cache.set_many(to_cache)
-
         from_list = ids is not None and graph_link.requires is not None
         to_ids = link_result_to_ids(from_list, graph_link.type_enum, result)
         if to_ids:
-            self.process_node(self._graph.nodes_map[graph_link.node],
+            self.process_node(path, self._graph.nodes_map[graph_link.node],
                               query_link.node, to_ids)
 
         return None
 
     def _schedule_fields(
         self,
+        path: NodePath,
         node: Node,
         func: Callable,
         fields: List[FieldGroup],
-        ids: Optional[Any]
+        ids: Optional[Any],
     ) -> Union[SubmitRes, TaskSet]:
         query_fields = [qf for _, qf in fields]
+
         dep: Union[TaskSet, SubmitRes]
         if hasattr(func, '__subquery__'):
             assert ids is not None
@@ -613,43 +756,53 @@ class Query(Workflow):
             else:
                 dep = self._submit(func, query_fields, ids)
             proc = dep.result
-        self._queue.add_callback(
-            dep,
-            lambda: store_fields(self._index, node, query_fields, ids, proc())
-        )
+
+        def callback() -> None:
+            store_fields(self._index, node, query_fields, ids, proc())
+            self._untrack(path)
+            if self._is_done(path):
+                if path[:-1] in self._path_callback:
+                    self._path_callback[path[:-1]]()
+
+        self._queue.add_callback(dep, callback)
         return dep
 
     def _schedule_link(
         self,
+        path: NodePath,
         node: Node,
         graph_link: Link,
         query_link: QueryLink,
         ids: Any
     ) -> SubmitRes:
+        """Schedules link (submits Link.func to executor).
+
+        If link has `requires` specified, take required values list from index
+        and pass it as first argument to link.func.
+
+        If link has `options`, pass as a first argument if `requires` not
+        provided or as second if `requires` provided.
+
+        When Link.func is executed by executor, a `process_link`
+        method called with result.
+        """
         args = []
-        cached_results: List = []
+        cached_ids = []
         if graph_link.requires:
             reqs = link_reqs(self._index, node, graph_link, ids)
 
-            if query_link.cached:
-                not_cached_reqs = []
-                cached_ids = []
-                cached_results = []
-                # not_cached_ids = []
-                # TODO: ids = None, reqs = User(), what to do
-                for id_, req in zip(ids, reqs):
-                    key = get_query_hash(query_link, graph_link, id_)
-                    if cache.exists(key):
-                        cached_ids.append(id_)
-                        # TODO: we need get_many here
-                        cached_results.append(cache.get(key))
-                    else:
-                        # not_cached_ids.append(id_)
-                        not_cached_reqs.append(req)
-                if cached_results:
-                    store_links(self._index, node, graph_link, query_link, cached_ids, cached_results)
-
-                # reqs = not_cached_reqs
+            # TODO: use self._submit to fetch cached data.
+            if 'cached' in query_link.directives_map and self._cache:
+                cached_reqs, cached_data, not_cached_reqs = get_cached_link_ids(
+                    self._cache, query_link, reqs
+                )
+                for i, req in zip(ids, reqs):
+                    if req in cached_reqs:
+                        cached_ids.append(i)
+                if cached_data:
+                    update_index(
+                        self._index, self._graph, node, cached_ids, cached_data
+                    )
                 args.append(not_cached_reqs)
             else:
                 args.append(reqs)
@@ -657,25 +810,39 @@ class Query(Workflow):
         if graph_link.options:
             args.append(query_link.options)
 
-        # TODO: we do not want to call func if all results are cached
         dep = self._submit(graph_link.func, *args)
 
         def callback() -> None:
             result = dep.result()
 
             if inspect.isgenerator(result):
-                warnings.warn('Data loading functions should not return generators',
-                              DeprecationWarning)
+                warnings.warn(
+                    'Data loading functions should not return generators',
+                    DeprecationWarning
+                )
                 result = list(result)
 
-            # TODO: probably ordering is broken, check it !!!
-            if isinstance(result, list):
-                result.extend(cached_results)
+            if cached_ids:
+                nonlocal ids
+                ids = [i for i in ids if i not in cached_ids]
+
             return self.process_link(
-                node, graph_link, query_link, ids, result
+                path, node, graph_link, query_link, ids, result
             )
 
         self._queue.add_callback(dep, callback)
+
+        def store_link_cache() -> None:
+            cached = query_link.directives_map['cached']
+            reqs = link_reqs(self._index, node, graph_link, ids)
+            cacher = CacheVisitor(self._index, node)
+            to_cache = cacher.process(query_link, reqs)
+
+            self._submit(self._cache.set_many, to_cache, cached.ttl)
+
+        if 'cached' in query_link.directives_map and self._cache:
+            self._add_done_callback(path + (graph_link.node,), store_link_cache)
+
         return dep
 
 
@@ -720,8 +887,13 @@ class Context(Mapping):
 
 class Engine:
 
-    def __init__(self, executor: SyncAsyncExecutor) -> None:
+    def __init__(
+        self,
+        executor: SyncAsyncExecutor,
+        cache: BaseCache = None,
+    ) -> None:
         self.executor = executor
+        self.cache = cache
 
     def execute(
         self,
@@ -734,6 +906,8 @@ class Engine:
         query = InitOptions(graph).visit(query)
         queue = Queue(self.executor)
         task_set = queue.fork(None)
-        query_workflow = Query(queue, task_set, graph, query, Context(ctx))
+        query_workflow = Query(
+            queue, task_set, graph, query, Context(ctx), self.cache
+        )
         query_workflow.start()
         return self.executor.process(queue, query_workflow)

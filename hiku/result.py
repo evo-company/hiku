@@ -51,6 +51,9 @@ class Reference:
     def __repr__(self) -> str:
         return '<{}[{!r}]>'.format(self.node, self.ident)
 
+    def __hash__(self):
+        return hash((self.node, self.ident))
+
 
 ROOT = Reference('__root__', '__root__')
 
@@ -71,6 +74,7 @@ class Index(defaultdict):
 
 
 class Proxy:
+    """Proxy is a dict-like interface to index."""
     __slots__ = ('__idx__', '__ref__', '__node__')
 
     def __init__(self, index: Index, reference: Reference, node: Node) -> None:
