@@ -421,16 +421,22 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
     )
     key = get_query_hash(link, 10)
     expected_cached = {key: {
-        '__ref__': Reference('Company', 10),
-        '__field_name__': 'company',
-        'id': 10,
-        'name': 'apple',
-        'address': {'city': 'Kyiv'},
-        'owner': {
-            '__ref__': Reference('User', 100),
-            '__field_name__': 'owner',
-            'username': 'steve',
-            photo_field.index_key: 'https://example.com/photo.jpg?size=50'
+        'Product': {
+            'company': Reference('Company', 10),
+        },
+        'Company': {
+            10: {
+                'id': 10,
+                'name': 'apple',
+                'address': {'city': 'Kyiv'},
+                'owner': Reference('User', 100),
+            }
+        },
+        'User': {
+            100: {
+                'username': 'steve',
+                photo_field.index_key: 'https://example.com/photo.jpg?size=50'
+            }
         }
     }}
     expected_result = {
@@ -490,32 +496,45 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
 
     key10 = get_query_hash(link, 10)
     key20 = get_query_hash(link, 20)
+
     expected_cached = {
         key10: {
-            '__ref__': Reference('Company', 10),
-            '__field_name__': 'company',
-            'id': 10,
-            'name': 'apple',
-            'address': {'city': 'Kyiv'},
-            'owner': {
-                '__ref__': Reference('User', 100),
-                '__field_name__': 'owner',
-                'username': 'steve',
-                photo_field.index_key: 'https://example.com/photo.jpg?size=50'
-            }
+            'Product': {
+                'company': Reference('Company', 10),
+            },
+            'Company': {
+                10: {
+                    'id': 10,
+                    'name': 'apple',
+                    'address': {'city': 'Kyiv'},
+                    'owner': Reference('User', 100),
+                }
+            },
+            'User': {
+                100: {
+                    'username': 'steve',
+                    photo_field.index_key: 'https://example.com/photo.jpg?size=50'  # noqa: E501
+                }
+            },
         },
         key20: {
-            '__ref__': Reference('Company', 20),
-            '__field_name__': 'company',
-            'id': 20,
-            'name': 'microsoft',
-            'address': {'city': 'Kyiv'},
-            'owner': {
-                '__ref__': Reference('User', 200),
-                '__field_name__': 'owner',
-                'username': 'bill',
-                photo_field.index_key: 'https://example.com/photo.jpg?size=50'
-            }
+            'Product': {
+                'company': Reference('Company', 20),
+            },
+            'Company': {
+                20: {
+                    'id': 20,
+                    'name': 'microsoft',
+                    'address': {'city': 'Kyiv'},
+                    'owner': Reference('User', 200),
+                }
+            },
+            'User': {
+                200: {
+                    'username': 'bill',
+                    photo_field.index_key: 'https://example.com/photo.jpg?size=50'  # noqa: E501
+                }
+            },
         }
     }
     expected_result = {

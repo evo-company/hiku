@@ -3,7 +3,6 @@ import inspect
 import warnings
 import dataclasses
 
-from copy import deepcopy
 from typing import (
     Any,
     TypeVar,
@@ -59,6 +58,10 @@ from .executors.queue import (
     TaskSet,
     SubmitRes,
 )
+
+
+NodePath = Tuple[str, ...]
+CACHE_VERSION = '1'
 
 
 def _yield_options(
@@ -250,38 +253,20 @@ def _is_hashable(obj: Any) -> bool:
 
 def update_index(
     index: Index,
-    graph: Graph,
     node: Node,
-    ids: Any,
-    data: List[Dict],
+    ids: List,
+    reqs: List,
+    entries: Dict[str, Dict],
 ) -> None:
-    # TODO: maybe refactor with __refs__ map
-    if node.name is not None:
-        assert ids is not None
-        node_idx = index[node.name]
-        for i, row in zip(ids, data):
-            if '__ref__' in row:
-                ref = row.pop('__ref__')
-                field_name = row.pop('__field_name__')
-                node_idx[i][field_name] = ref
-                update_index(
-                    index, graph, graph.nodes_map[ref.node], [ref.ident], [row]
-                )
+    """Update index with data from cache"""
+    for idx, req in zip(ids, reqs):
+        entry = entries[req]
+        for node_name, data in entry.items():
+            if node_name == node.name:
+                index[node.name][idx].update(data)
             else:
-                node_idx[i] = row
-                for field, value in row.items():
-                    if isinstance(value, dict) and '__ref__' in value:
-                        ref = value.pop('__ref__')
-                        field_name = value.pop('__field_name__')
-                        node_idx[i][field_name] = ref
-                        update_index(
-                            index, graph, graph.nodes_map[ref.node],
-                            [ref.ident], [value]
-                        )
-    else:
-        raise NotImplementedError('cache not implemented for root nodes yet')
-
-    return None
+                for i, row in data.items():
+                    index[node_name][i].update(row)
 
 
 def store_fields(
@@ -486,92 +471,83 @@ def get_cached_link_ids(
     query_link: QueryLink,
     reqs: List,
 ) -> tuple:
-    keys = set()
-    key_to_req = {}
-    req_to_key = {}
+    req_key = []
     for req in reqs:
-        key = get_query_hash(query_link, req)
-        keys.add(key)
-        key_to_req[key] = req
-        req_to_key[req] = key
+        req_key.append((req, get_query_hash(query_link, req)))
 
-    cached_data = cache.get_many(list(keys))
-
+    keys = set(k for r, k in req_key)
+    cached_data_raw = cache.get_many(list(keys))
+    cached_data = {}
     cached_reqs = []
-    cached_results = []
     not_cached_reqs = []
-
-    for req in reqs:
-        key = req_to_key[req]
-        if key in cached_data:
+    for req, key in req_key:
+        if key in cached_data_raw:
             cached_reqs.append(req)
-            # TODO: suboptimal, try not to copy
-            data = deepcopy(cached_data[key])
-            cached_results.append(data)
+            cached_data[req] = cached_data_raw[key]
         else:
             not_cached_reqs.append(req)
 
-    return cached_reqs, cached_results, not_cached_reqs
+    return cached_reqs, not_cached_reqs, cached_data
 
 
 class CacheVisitor(QueryVisitor):
     """Visit cached query link to extract all data from index
     that needs to be cached
     """
-    def __init__(self, index: Index, node: Node) -> None:  # type: ignore
+    def __init__(self, index: Index, graph, node: Node) -> None:  # type: ignore
         self._index = index
-        self._node = node
+        self._graph = graph
+        self._node = deque([node])
         self._req = deque()
-        self._proxy = deque()
         self._data = deque()
+        self._to_cache = deque()
+        self._node_idx = deque()
 
     def visit_field(self, field: QueryField) -> None:
-        value = self._proxy[-1][field.name]
-        self._data[-1][field.index_key] = value
+        self._data[-1][field.index_key] = self._node_idx[-1][field.index_key]
         super().visit_field(field)
 
-    def visit_node(self, node: QueryNode) -> None:
-        for item in node.fields:
-            self.visit(item)
-
     def visit_link(self, link: QueryLink) -> None:
-        self._proxy.append(self._proxy[-1][link.name])
+        self._data[-1][link.index_key] = self._node_idx[-1][link.index_key]
+
+        graph_obj = self._node[-1].fields_map[link.name]
+        if isinstance(graph_obj, Field):
+            # Link as complex field
+            return
+
+        node = self._graph.nodes_map[graph_obj.node]
+        self._node.append(node)
+
+        if graph_obj.requires in self._node_idx[-1]:
+            self._req.append(self._node_idx[-1][graph_obj.requires])
+
+        req = self._req[-1]
+
+        self._node_idx.append(self._index[node.name][req])
         self._data.append({})
-        if isinstance(self._proxy[-1], dict):
-            self._data[-1].update(self._proxy[-1])
-        else:
-            self._data[-1]['__ref__'] = self._proxy[-1].__ref__
-            self._data[-1]['__field_name__'] = link.name
+
         super().visit_link(link)
-        self._proxy.pop()
 
-        if len(self._data) > 1:
-            self._data[-1][link.name] = self._data.pop()
+        data = self._data.pop()
+        self._to_cache[-1][node.name][req] = data
+        self._node_idx.pop()
+        self._node.pop()
 
-    def process(self, link: QueryLink, reqs: List) -> Dict:
+    def process(self, link: QueryLink, ids: List, reqs: List) -> Dict:
         to_cache = {}
-        # TODO: consider storing part of index as it,
-        #  it will be easier to restore it
-        graph_obj = self._node.fields_map[link.name]
-        for req in reqs:
-            self._req.append(req)
-            ref = Reference(graph_obj.node, req)
-            proxy = Proxy(self._index, ref, link.node)
-            self._proxy.append(proxy)
-            self._data.append({
-                '__ref__': ref,
-                # TODO: support reusing cached link for different nodes
-                '__field_name__': link.name,
-            })
-            self.visit(link.node)
-            key = get_query_hash(link, req)
-            to_cache[key] = self._data.pop()
+        for i, req in zip(ids, reqs):
+            node = self._node[-1]
+            self._node_idx.append(self._index[node.name][i])
+            self._data.append({})
+            self._to_cache.append(defaultdict(dict))
+
+            self.visit(link)
+
+            self._to_cache[-1][node.name] = self._data.pop()
+            to_cache[get_query_hash(link, req)] = dict(self._to_cache.pop())
+            self._node_idx.pop()
 
         return to_cache
-
-
-NodePath = Tuple[str, ...]
-CACHE_VERSION = '1'
 
 
 def get_query_hash(
@@ -793,7 +769,7 @@ class Query(Workflow):
 
             # TODO: use self._submit to fetch cached data.
             if 'cached' in query_link.directives_map and self._cache:
-                cached_reqs, cached_data, not_cached_reqs = get_cached_link_ids(
+                cached_reqs, not_cached_reqs, cached_data = get_cached_link_ids(
                     self._cache, query_link, reqs
                 )
                 for i, req in zip(ids, reqs):
@@ -801,7 +777,7 @@ class Query(Workflow):
                         cached_ids.append(i)
                 if cached_data:
                     update_index(
-                        self._index, self._graph, node, cached_ids, cached_data
+                        self._index, node, cached_ids, cached_reqs, cached_data
                     )
                 args.append(not_cached_reqs)
             else:
@@ -835,8 +811,8 @@ class Query(Workflow):
         def store_link_cache() -> None:
             cached = query_link.directives_map['cached']
             reqs = link_reqs(self._index, node, graph_link, ids)
-            cacher = CacheVisitor(self._index, node)
-            to_cache = cacher.process(query_link, reqs)
+            cacher = CacheVisitor(self._index, self._graph, node)
+            to_cache = cacher.process(query_link, ids, reqs)
 
             self._submit(self._cache.set_many, to_cache, cached.ttl)
 

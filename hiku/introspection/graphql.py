@@ -121,7 +121,7 @@ _BUILTIN_DIRECTIVES = (
             ),
         ],
     ),
-    # TODO: maybe not built in ? add some extensibility to graph?
+    # TODO: make cached directive pluggable ?
     Directive(
         name='cached',
         locations=['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'],

@@ -190,7 +190,6 @@ class SelectionSetVisitMixin:
         return next((d for d in obj.directives if d.name.value == name), None)
 
     def _is_cached(self, obj: ast.SelectionNode) -> Optional[Cached]:
-        # TODO: do not parse @cached for mutations
         if not obj.directives:
             return None
 
@@ -219,7 +218,7 @@ class SelectionSetVisitMixin:
         if self._should_skip(obj):
             return
 
-        # TODO: add some plugins functionality to parse custom directives
+        # TODO: add plugins functionality to parse custom directives
         directives: List[QueryDirective] = []
         cached = self._is_cached(obj)
         if cached is not None:
