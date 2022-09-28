@@ -1,3 +1,4 @@
+import contextlib
 import hashlib
 import inspect
 import warnings
@@ -255,12 +256,10 @@ def update_index(
     index: Index,
     node: Node,
     ids: List,
-    reqs: List,
-    entries: Dict[str, Dict],
+    entries: List[Dict],
 ) -> None:
     """Update index with data from cache"""
-    for idx, req in zip(ids, reqs):
-        entry = entries[req]
+    for idx, entry in zip(ids, entries):
         for node_name, data in entry.items():
             if node_name == node.name:
                 index[node.name][idx].update(data)
@@ -469,25 +468,26 @@ def link_result_to_ids(
 def get_cached_link_ids(
     cache: BaseCache,
     query_link: QueryLink,
+    ids: List,
     reqs: List,
-) -> tuple:
+) -> Tuple[List, List, List]:
     req_key = []
-    for req in reqs:
-        req_key.append((req, get_query_hash(query_link, req)))
+    for i, req in zip(ids, reqs):
+        req_key.append((get_query_hash(query_link, req), i, req))
 
-    keys = set(k for r, k in req_key)
+    keys = set(info[0] for info in req_key)
     cached_data_raw = cache.get_many(list(keys))
-    cached_data = {}
-    cached_reqs = []
+    cached_data = []
+    cached_ids = []
     not_cached_reqs = []
-    for req, key in req_key:
+    for key, i, req in req_key:
         if key in cached_data_raw:
-            cached_reqs.append(req)
-            cached_data[req] = cached_data_raw[key]
+            cached_ids.append(i)
+            cached_data.append(cached_data_raw[key])
         else:
             not_cached_reqs.append(req)
 
-    return cached_reqs, not_cached_reqs, cached_data
+    return cached_ids, not_cached_reqs, cached_data
 
 
 class CacheVisitor(QueryVisitor):
@@ -508,7 +508,9 @@ class CacheVisitor(QueryVisitor):
         super().visit_field(field)
 
     def visit_link(self, link: QueryLink) -> None:
-        self._data[-1][link.index_key] = self._node_idx[-1][link.index_key]
+        refs = self._node_idx[-1][link.index_key]
+
+        self._data[-1][link.index_key] = refs
 
         graph_obj = self._node[-1].fields_map[link.name]
         if isinstance(graph_obj, Field):
@@ -518,19 +520,29 @@ class CacheVisitor(QueryVisitor):
         node = self._graph.nodes_map[graph_obj.node]
         self._node.append(node)
 
-        if graph_obj.requires in self._node_idx[-1]:
-            self._req.append(self._node_idx[-1][graph_obj.requires])
+        @contextlib.contextmanager
+        def _visit_ctx(req):
+            self._node_idx.append(self._index[node.name][req])
+            self._data.append({})
 
-        req = self._req[-1]
+            yield
 
-        self._node_idx.append(self._index[node.name][req])
-        self._data.append({})
+            data = self._data.pop()
+            self._to_cache[-1][node.name][req] = data
+            self._node_idx.pop()
 
-        super().visit_link(link)
+        if graph_obj.type_enum is Many:
+            for r in refs:
+                with _visit_ctx(r.ident):
+                    super().visit_link(link)
+        else:
+            if refs is None:
+                self._node.pop()
+                return
 
-        data = self._data.pop()
-        self._to_cache[-1][node.name][req] = data
-        self._node_idx.pop()
+            with _visit_ctx(refs.ident):
+                super().visit_link(link)
+
         self._node.pop()
 
     def process(self, link: QueryLink, ids: List, reqs: List) -> Dict:
@@ -552,13 +564,17 @@ class CacheVisitor(QueryVisitor):
 
 def get_query_hash(
     query_link: Union[QueryLink, QueryField],
-    required_id: Any
+    req: Any
 ) -> str:
     hasher = hashlib.sha1()
     hash_visitor = HashVisitor(hasher)
     hash_visitor.visit(query_link)
 
-    hasher.update(str(hash(required_id)).encode('utf-8'))
+    if isinstance(req, list):
+        for r in req:
+            hasher.update(str(hash(r)).encode('utf-8'))
+    else:
+        hasher.update(str(hash(req)).encode('utf-8'))
     hasher.update(CACHE_VERSION.encode('utf-8'))
     return hasher.hexdigest()
 
@@ -581,7 +597,6 @@ class Query(Workflow):
         self._ctx = ctx
         self._index = Index()
         self._cache = cache
-        self._parent = deque([{}])
         self._in_progress = defaultdict(int)
         self._done_callbacks = defaultdict(list)
         self._path_callback = {}
@@ -598,6 +613,10 @@ class Query(Workflow):
         if self._is_done(path):
             for callback in self._done_callbacks[path]:
                 callback()
+
+            parent_path = path[:-1]
+            if parent_path in self._path_callback:
+                self._path_callback[parent_path]()
 
     def _is_done(self, path: NodePath) -> bool:
         return self._in_progress[path] == 0
@@ -736,9 +755,6 @@ class Query(Workflow):
         def callback() -> None:
             store_fields(self._index, node, query_fields, ids, proc())
             self._untrack(path)
-            if self._is_done(path):
-                if path[:-1] in self._path_callback:
-                    self._path_callback[path[:-1]]()
 
         self._queue.add_callback(dep, callback)
         return dep
@@ -769,15 +785,13 @@ class Query(Workflow):
 
             # TODO: use self._submit to fetch cached data.
             if 'cached' in query_link.directives_map and self._cache:
-                cached_reqs, not_cached_reqs, cached_data = get_cached_link_ids(
-                    self._cache, query_link, reqs
+                cached_ids, not_cached_reqs, cached_data = get_cached_link_ids(
+                    self._cache, query_link, ids, reqs
                 )
-                for i, req in zip(ids, reqs):
-                    if req in cached_reqs:
-                        cached_ids.append(i)
                 if cached_data:
                     update_index(
-                        self._index, node, cached_ids, cached_reqs, cached_data
+                        self._index, node, cached_ids,
+                        cached_data
                     )
                 args.append(not_cached_reqs)
             else:
