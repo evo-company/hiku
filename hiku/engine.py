@@ -659,6 +659,8 @@ class Query(Workflow):
                     update_index(self._index, node, cached_ids, cached_data)
                     ids = [i for i in ids if i not in cached_ids]
                     reqs = link_reqs(self._index, node, graph_link, ids)
+                    if not reqs:
+                        return self._submit(lambda: None)
 
             args.append(reqs)
 
