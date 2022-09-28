@@ -3,7 +3,6 @@ import typing as t
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import (
     Mock,
-    ANY,
     call,
 )
 
@@ -41,12 +40,9 @@ from hiku.types import (
     Record,
     Any,
 )
-from hiku.engine import (
-    Engine,
-    get_query_hash,
-)
+from hiku.engine import Engine
 from hiku.readers.graphql import read
-from hiku.cache import BaseCache
+from hiku.cache import BaseCache, get_query_hash
 
 
 class InMemoryCache(BaseCache):
@@ -65,7 +61,6 @@ class InMemoryCache(BaseCache):
 
 
 SA_ENGINE_KEY = 'sa-engine'
-
 metadata = MetaData()
 
 thread_pool = ThreadPoolExecutor(2)
