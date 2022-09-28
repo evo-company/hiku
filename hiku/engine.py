@@ -465,17 +465,17 @@ class Query(Workflow):
         self._ctx = ctx
         self._index = Index()
         self._cache = cache
-        self._in_progress = defaultdict(int)
-        self._done_callbacks = defaultdict(list)
-        self._path_callback = {}
+        self._in_progress: DefaultDict = defaultdict(int)
+        self._done_callbacks: DefaultDict = defaultdict(list)
+        self._path_callback: Dict[Tuple, Callable] = {}
 
-    def _track(self, path: NodePath):
+    def _track(self, path: NodePath) -> None:
         self._in_progress[path] += 1
 
-    def _add_done_callback(self, path, callback):
+    def _add_done_callback(self, path: NodePath, callback: Callable) -> None:
         self._done_callbacks[path].append(callback)
 
-    def _untrack(self, path: NodePath):
+    def _untrack(self, path: NodePath) -> None:
         assert self._in_progress[path] > 0, f"Path {path} is already done"
         self._in_progress[path] -= 1
         if self._is_done(path):
@@ -544,7 +544,7 @@ class Query(Workflow):
         query: QueryNode,
         ids: Any,
     ) -> None:
-        path = path + (node.name,)
+        path = path + (node.name,)  # type: ignore
         self._path_callback[path] = lambda: self._untrack(path)
 
         if query.ordered:
@@ -647,21 +647,18 @@ class Query(Workflow):
         method called with result.
         """
         args = []
-        cached_ids = []
         if graph_link.requires:
             reqs = link_reqs(self._index, node, graph_link, ids)
 
             # TODO: use self._submit to fetch cached data.
             if 'cached' in query_link.directives_map and self._cache:
-                cached_ids, not_cached_reqs, cached_data = get_cached_data(
+                cached_ids, cached_data = get_cached_data(
                     self._cache, query_link, ids, reqs
                 )
                 if cached_data:
                     update_index(self._index, node, cached_ids, cached_data)
-                    reqs = link_reqs(
-                        self._index, node, graph_link,
-                        [i for i in ids if i not in cached_ids]
-                    )
+                    ids = [i for i in ids if i not in cached_ids]
+                    reqs = link_reqs(self._index, node, graph_link, ids)
 
             args.append(reqs)
 
@@ -680,10 +677,6 @@ class Query(Workflow):
                 )
                 result = list(result)
 
-            if cached_ids:
-                nonlocal ids
-                ids = [i for i in ids if i not in cached_ids]
-
             return self.process_link(
                 path, node, graph_link, query_link, ids, result
             )
@@ -691,10 +684,12 @@ class Query(Workflow):
         self._queue.add_callback(dep, callback)
 
         def store_link_cache() -> None:
+            assert self._cache is not None
             cached = query_link.directives_map['cached']
             reqs = link_reqs(self._index, node, graph_link, ids)
-            cacher = CacheVisitor(self._index, self._graph, node)
-            to_cache = cacher.process(query_link, ids, reqs)
+            to_cache = CacheVisitor(self._index, self._graph, node).process(
+                query_link, ids, reqs
+            )
 
             self._submit(self._cache.set_many, to_cache, cached.ttl)
 

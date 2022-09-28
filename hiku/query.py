@@ -215,7 +215,7 @@ class Node(Base):
 def _merge(nodes: t.Iterable[Node]) -> t.Iterator[t.Union[Field, Link]]:
     fields = set()
     links = {}
-    link_directives = defaultdict(list)
+    link_directives: t.DefaultDict[t.Tuple, t.List] = defaultdict(list)
     to_merge = OrderedDict()
     for field in chain.from_iterable(e.fields for e in nodes):
         key = (field.name, field.options_hash, field.alias)

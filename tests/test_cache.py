@@ -200,7 +200,8 @@ def link_product_attributes(ids):
     attributes = DB['attributes']
     reqs = []
     for id_ in ids:
-        reqs.append([at.id for at in attributes.values() if at.product_id == id_])
+        reqs.append([at.id for at in attributes.values()
+                     if at.product_id == id_])
 
     return reqs
 
@@ -209,7 +210,8 @@ def link_attribute_values(ids):
     attribute_values = DB['attribute_values']
     reqs = []
     for id_ in ids:
-        reqs.append([at.id for at in attribute_values.values() if at.attr_id == id_])
+        reqs.append([at.id for at in attribute_values.values()
+                     if at.attr_id == id_])
 
     return reqs
 
@@ -336,7 +338,6 @@ def sync_high_level_graph_fixture(sync_low_level_graph_sqlalchemy):
     """
     low_level_graph = sync_low_level_graph_sqlalchemy
 
-    product_sg = SubGraph(low_level_graph, 'Product')
     company_sg = SubGraph(low_level_graph, 'Company')
     attribute_sg = SubGraph(low_level_graph, 'Attribute')
     attribute_value_sg = SubGraph(low_level_graph, 'AttributeValue')
@@ -545,7 +546,9 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
             ]},
             12: {'id': 12, 'name': 'year', 'values': []},
         },
-        'Product': {'attributes': [Reference('Attribute', 11), Reference('Attribute', 12)]}
+        'Product': {'attributes': [
+            Reference('Attribute', 11), Reference('Attribute', 12)
+        ]}
     }
 
     expected_result = {
@@ -581,11 +584,7 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
     assert execute(query) == expected_result
 
     assert cache.get_many.call_count == 2
-    # cache.set_many.assert_has_calls([
-    #     call(ANY, 15),
-    #     call(ANY, 10),
-    # ])
-    
+
     calls = {
         **cache.set_many.mock_calls[0][1][0],
         **cache.set_many.mock_calls[1][1][0]
@@ -594,8 +593,6 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
         attributes_key: attributes_cache,
         company_key: company_cache
     })
-    # assert_cache_set_with(cache.set_many.mock_calls[0][1][0], {attributes_key: attributes_cache})
-    # assert_cache_set_with(cache.set_many.mock_calls[1][1][0], {company_key: company_cache})
 
     cache.reset_mock()
 
@@ -638,11 +635,8 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
 
     company10_key = get_query_hash(company_link, 10)
     company20_key = get_query_hash(company_link, 20)
-    attributes1_key = get_query_hash(attributes_link, 1)
     attributes11_12_key = get_query_hash(attributes_link, [11, 12])
     attributes_none_key = get_query_hash(attributes_link, [])
-    attributes2_key = get_query_hash(attributes_link, 2)
-    attributes3_key = get_query_hash(attributes_link, 3)
 
     company10_cache = {
         'User': {
@@ -679,7 +673,7 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
         'Product': {'company': Reference('Company', 20)}
     }
 
-    attributes1_cache = {
+    attributes11_12_cache = {
         'AttributeValue': {
             111: {'id': 111, 'name': 'red'},
             112: {'id': 112, 'name': 'blue'}
@@ -691,12 +685,11 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
             ]},
             12: {'id': 12, 'name': 'year', 'values': []},
         },
-        'Product': {'attributes': [Reference('Attribute', 11), Reference('Attribute', 12)]}
+        'Product': {'attributes': [
+            Reference('Attribute', 11), Reference('Attribute', 12)
+        ]}
     }
-    attributes2_cache = {
-        'Product': {'attributes': []}
-    }
-    attributes3_cache = {
+    attributes_none_cache = {
         'Product': {'attributes': []}
     }
 
@@ -765,9 +758,8 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
         **cache.set_many.mock_calls[1][1][0]
     }
     assert_dict_equal(calls, {
-        attributes11_12_key: attributes1_cache,
-        attributes_none_key: attributes2_cache,
-        # attributes3_key: attributes3_cache,
+        attributes11_12_key: attributes11_12_cache,
+        attributes_none_key: attributes_none_cache,
         company10_key: company10_cache,
         company20_key: company20_cache,
     })
@@ -775,7 +767,11 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
     cache.reset_mock()
 
     assert execute(query) == expected_result
-    assert set(*cache.get_many.mock_calls[0][1]) == {attributes11_12_key, attributes_none_key}
-    assert set(*cache.get_many.mock_calls[1][1]) == {company10_key, company20_key}
+    assert set(*cache.get_many.mock_calls[0][1]) == {
+        attributes11_12_key, attributes_none_key
+    }
+    assert set(*cache.get_many.mock_calls[1][1]) == {
+        company10_key, company20_key
+    }
 
     cache.set_many.assert_not_called()

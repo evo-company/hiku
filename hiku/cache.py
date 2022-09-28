@@ -12,6 +12,8 @@ from typing import (
     List,
     Union,
     Tuple,
+    Deque,
+    Iterator,
 )
 
 from hiku.result import Index
@@ -23,7 +25,6 @@ from hiku.graph import (
 )
 from hiku.query import (
     QueryVisitor,
-    Node as QueryNode,
     Field as QueryField,
     Link as QueryLink,
 )
@@ -50,10 +51,6 @@ class HashVisitor(QueryVisitor):
     def visit_field(self, obj: QueryField) -> None:
         self._hasher.update(obj.index_key.encode())
 
-    def visit_node(self, obj: QueryNode) -> None:
-        for item in obj.fields:
-            self.visit(item)
-
     def visit_link(self, obj: QueryLink) -> None:
         self._hasher.update(obj.index_key.encode())
         super().visit_link(obj)
@@ -67,10 +64,10 @@ class CacheVisitor(QueryVisitor):
         self._index = index
         self._graph = graph
         self._node = deque([node])
-        self._req = deque()
-        self._data = deque()
-        self._to_cache = deque()
-        self._node_idx = deque()
+        self._req: Deque[Any] = deque()
+        self._data: Deque[Dict] = deque()
+        self._to_cache: Deque[Dict] = deque()
+        self._node_idx: Deque[Dict] = deque()
 
     def visit_field(self, field: QueryField) -> None:
         self._data[-1][field.index_key] = self._node_idx[-1][field.index_key]
@@ -90,7 +87,7 @@ class CacheVisitor(QueryVisitor):
         self._node.append(node)
 
         @contextlib.contextmanager
-        def _visit_ctx(req):
+        def _visit_ctx(req: Any) -> Iterator:
             self._node_idx.append(self._index[node.name][req])
             self._data.append({})
 
@@ -153,7 +150,7 @@ def get_cached_data(
     query_link: QueryLink,
     ids: List,
     reqs: List,
-) -> Tuple[List, List, List]:
+) -> Tuple[List, List]:
     req_key = []
     for i, req in zip(ids, reqs):
         req_key.append((get_query_hash(query_link, req), i, req))
@@ -162,12 +159,9 @@ def get_cached_data(
     cached_data_raw = cache.get_many(list(keys))
     cached_data = []
     cached_ids = []
-    not_cached_reqs = []
     for key, i, req in req_key:
         if key in cached_data_raw:
             cached_ids.append(i)
             cached_data.append(cached_data_raw[key])
-        else:
-            not_cached_reqs.append(req)
 
-    return cached_ids, not_cached_reqs, cached_data
+    return cached_ids, cached_data

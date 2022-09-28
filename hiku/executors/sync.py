@@ -23,7 +23,7 @@ class FutureLike:
     def __init__(self, result: T) -> None:
         self._result = result
 
-    def result(self) -> T:
+    def result(self) -> T:  # type: ignore[type-var]
         return self._result
 
 
