@@ -47,9 +47,13 @@
 import typing as t
 
 from itertools import chain
-from collections import OrderedDict
+from collections import (
+    OrderedDict,
+    defaultdict,
+)
 from collections.abc import Sequence
 
+from .directives import QueryDirective
 from .utils import cached_property
 
 T = t.TypeVar('T', bound='Base')
@@ -122,17 +126,23 @@ class Field(FieldBase):
     :param optional options: field options -- mapping of names to values
     :param optional alias: field's name in result
     """
-    __attrs__ = ('name', 'options', 'alias')
+    __attrs__ = ('name', 'options', 'alias', 'directives')
 
     def __init__(
         self,
         name: str,
         options: t.Optional[t.Dict[str, t.Any]] = None,
-        alias: t.Optional[str] = None
+        alias: t.Optional[str] = None,
+        directives: t.Optional[t.Tuple[QueryDirective, ...]] = None,
     ):
         self.name = name
         self.options = options
         self.alias = alias
+        self.directives = directives or ()
+
+    @cached_property
+    def directives_map(self) -> OrderedDict:
+        return OrderedDict((d.name, d) for d in self.directives)
 
     def accept(self, visitor: 'QueryVisitor') -> t.Any:
         return visitor.visit_field(self)
@@ -147,19 +157,26 @@ class Link(FieldBase):
     :param optional options: link options -- mapping of names to values
     :param optional alias: link's name in result
     """
-    __attrs__ = ('name', 'node', 'options', 'alias')
+    __attrs__ = ('name', 'node', 'options', 'alias', 'directives')
 
     def __init__(
         self,
         name: str,
         node: 'Node',
         options: t.Optional[t.Dict[str, t.Any]] = None,
-        alias: t.Optional[str] = None
+        alias: t.Optional[str] = None,
+        directives: t.Optional[t.Tuple[QueryDirective, ...]] = None,
     ):
         self.name = name
         self.node = node
         self.options = options
         self.alias = alias
+        # TODO does one link can have multiple directives with same name ?
+        self.directives = directives or ()
+
+    @cached_property
+    def directives_map(self) -> OrderedDict:
+        return OrderedDict((d.name, d) for d in self.directives)
 
     def accept(self, visitor: 'QueryVisitor') -> t.Any:
         return visitor.visit_link(self)
@@ -198,6 +215,7 @@ class Node(Base):
 def _merge(nodes: t.Iterable[Node]) -> t.Iterator[t.Union[Field, Link]]:
     fields = set()
     links = {}
+    link_directives: t.DefaultDict[t.Tuple, t.List] = defaultdict(list)
     to_merge = OrderedDict()
     for field in chain.from_iterable(e.fields for e in nodes):
         key = (field.name, field.options_hash, field.alias)
@@ -208,13 +226,15 @@ def _merge(nodes: t.Iterable[Node]) -> t.Iterator[t.Union[Field, Link]]:
                 links[key] = field
             else:
                 to_merge[key].append(field.node)
+            link_directives[key].extend(field.directives)
         else:
             if key not in fields:
                 fields.add(key)
                 yield field
     for key, values in to_merge.items():
         link = links[key]
-        yield link.copy(node=merge(values))
+        directives = link_directives[key]
+        yield link.copy(node=merge(values), directives=tuple(directives))
 
 
 def merge(nodes: t.Iterable[Node]) -> Node:

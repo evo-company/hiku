@@ -13,6 +13,7 @@ from hiku.types import (
     String,
     Sequence,
 )
+from hiku.utils import listify
 
 
 def direct_link(ids):
@@ -171,8 +172,10 @@ def test_root_link_requires_field_with_unhashable_data():
     def user_data(fields):
         return [User(1)]
 
+    @listify
     def user_fields(fields, ids):
-        ...
+        for id_ in ids:
+            yield [getattr(id_, f.name) for f in fields]
 
     GRAPH = Graph([
         Node('user', [

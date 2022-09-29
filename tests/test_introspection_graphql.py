@@ -73,14 +73,12 @@ def _type(name, kind, **kwargs):
     return data
 
 
-def _directive(name):
+def _directive(name, args):
     return {
         'name': name,
         'description': ANY,
         "locations": ["FIELD", "FRAGMENT_SPREAD", "INLINE_FRAGMENT"],
-        "args": [
-            _ival('if', _non_null(_BOOL), description=ANY),
-        ],
+        "args": args,
     }
 
 
@@ -99,11 +97,18 @@ def _schema(types, with_mutation=False):
     return {
         '__schema': {
             'directives': [
-                _directive('skip'),
-                _directive('include'),
+                _directive('skip', [
+                    _ival('if', _non_null(_BOOL), description=ANY),
+                ]),
+                _directive('include', [
+                    _ival('if', _non_null(_BOOL), description=ANY),
+                ]),
                 _field_enum_directive('deprecated', [
                     _ival('reason', _STR, description=ANY)
-                ])
+                ]),
+                _directive('cached', [
+                    _ival('ttl', _non_null(_INT), description=ANY),
+                ]),
             ],
             'mutationType': {'name': 'Mutation'} if with_mutation else None,
             'queryType': {'name': 'Query'},

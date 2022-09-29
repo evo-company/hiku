@@ -1,4 +1,5 @@
 import sys
+from functools import wraps
 from typing import (
     NewType,
     cast,
@@ -38,6 +39,7 @@ P = ParamSpec('P')
 
 
 def listify(func: Callable[P, Iterator[T]]) -> Callable[P, List[T]]:
+    @wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> List[T]:
         return list(func(*args, **kwargs))
     return wrapper

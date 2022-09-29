@@ -1,7 +1,9 @@
 import pytest
 
 from hiku.graph import Graph, Root, Field
-from hiku.types import String
+from hiku.types import (
+    String,
+)
 from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
 from hiku.readers.graphql import read

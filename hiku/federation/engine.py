@@ -43,6 +43,7 @@ class Engine:
         query: Node,
         ctx: Dict
     ) -> Union[Proxy, Awaitable[Proxy]]:
+        path = ('_entities',)
         entities_link = query.fields_map['_entities']
         query = entities_link.node
         representations = entities_link.options['representations']
@@ -65,7 +66,7 @@ class Engine:
         for typename in type_ids_map:
             ids = type_ids_map[typename]
             node = graph.nodes_map[typename]
-            query_workflow.process_node(node, query, ids)
+            query_workflow.process_node(path, node, query, ids)
 
         return self.executor.process(queue, query_workflow)
 

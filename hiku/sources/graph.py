@@ -160,6 +160,7 @@ class SubGraph:
         ctx: Context,
         task_set: TaskSet
     ) -> Callable[[], List[List]]:
+        path = tuple(['this'])
         this_graph_link = Link(THIS, Sequence[TypeRef[self.node]], None, requires=None)  # type: ignore # noqa: E501
 
         reqs = merge([gf.func.reqs for gf, _ in fields])  # type: ignore[union-attr]  # noqa: E501
@@ -178,9 +179,9 @@ class SubGraph:
                                  if r.name != THIS])
 
         q = Query(queue, task_set, self.graph, reqs, ctx)
-        q.process_link(self.graph.root, this_graph_link, this_query_link,
+        q.process_link(path, self.graph.root, this_graph_link, this_query_link,
                        None, ids)
-        q.process_node(self.graph.root, other_reqs, None)
+        q.process_node(path, self.graph.root, other_reqs, None)
         return _create_result_proc(q, procs, option_values)
 
     def compile(self, expr: Expr) -> BoundExpr:

@@ -143,6 +143,9 @@ def _schema(types, with_mutation=False) -> dict:
                 _field_enum_directive('deprecated', [
                     _ival('reason', _STR, description=ANY)
                 ]),
+                _field_directive('cached', [
+                    _ival('ttl', _non_null(_INT), description=ANY)
+                ]),
                 _object_directive('key', [
                     _ival('fields', _non_null(_FIELDSET), description=ANY),
                 ]),

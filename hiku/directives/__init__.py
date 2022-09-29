@@ -30,3 +30,14 @@ def get_deprecated(field: Union['Field', 'Link']) -> Optional[Deprecated]:
         (d for d in field.directives if isinstance(d, Deprecated)),
         None
     )
+
+
+class QueryDirective:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
+class Cached(QueryDirective):
+    def __init__(self, ttl: int):
+        super().__init__('cached')
+        self.ttl = ttl

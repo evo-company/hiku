@@ -22,6 +22,11 @@ from itertools import chain, repeat
 from collections import defaultdict
 from collections.abc import Sequence, Mapping, Hashable
 
+from .cache import (
+    BaseCache,
+    get_cached_data,
+    CacheVisitor,
+)
 from .compat import Concatenate, ParamSpec
 from .executors.base import SyncAsyncExecutor
 from .query import (
@@ -41,13 +46,21 @@ from .graph import (
     Graph,
     Node,
 )
-from .result import Proxy, Index, ROOT, Reference
+from .result import (
+    Proxy,
+    Index,
+    ROOT,
+    Reference,
+)
 from .executors.queue import (
     Workflow,
     Queue,
     TaskSet,
     SubmitRes,
 )
+
+
+NodePath = Tuple[str, ...]
 
 
 def _yield_options(
@@ -221,6 +234,22 @@ def _is_hashable(obj: Any) -> bool:
     return True
 
 
+def update_index(
+    index: Index,
+    node: Node,
+    ids: List,
+    entries: List[Dict],
+) -> None:
+    """Update index with data from cache"""
+    for idx, entry in zip(ids, entries):
+        for node_name, data in entry.items():
+            if node_name == node.name:
+                index[node.name][idx].update(data)
+            else:
+                for i, row in data.items():
+                    index[node_name][i].update(row)
+
+
 def store_fields(
     index: Index,
     node: Node,
@@ -254,6 +283,7 @@ def link_reqs(
     link: Link,
     ids: Any
 ) -> Any:
+    """For a given link, find link `requires` values by ids."""
     if node.name is not None:
         assert ids is not None
         node_idx = index[node.name]
@@ -391,7 +421,7 @@ def store_links(
 
 
 def link_result_to_ids(
-    from_list: Any,
+    from_list: bool,
     link_type: Any,  # Const
     result: Any
 ) -> List:
@@ -425,7 +455,8 @@ class Query(Workflow):
         task_set: TaskSet,
         graph: Graph,
         query: QueryNode,
-        ctx: 'Context'
+        ctx: 'Context',
+        cache: BaseCache = None
     ) -> None:
         self._queue = queue
         self._task_set = task_set
@@ -433,6 +464,30 @@ class Query(Workflow):
         self._query = query
         self._ctx = ctx
         self._index = Index()
+        self._cache = cache
+        self._in_progress: DefaultDict = defaultdict(int)
+        self._done_callbacks: DefaultDict = defaultdict(list)
+        self._path_callback: Dict[Tuple, Callable] = {}
+
+    def _track(self, path: NodePath) -> None:
+        self._in_progress[path] += 1
+
+    def _add_done_callback(self, path: NodePath, callback: Callable) -> None:
+        self._done_callbacks[path].append(callback)
+
+    def _untrack(self, path: NodePath) -> None:
+        assert self._in_progress[path] > 0, f"Path {path} is already done"
+        self._in_progress[path] -= 1
+        if self._is_done(path):
+            for callback in self._done_callbacks[path]:
+                callback()
+
+            parent_path = path[:-1]
+            if parent_path in self._path_callback:
+                self._path_callback[parent_path]()
+
+    def _is_done(self, path: NodePath) -> bool:
+        return self._in_progress[path] == 0
 
     def _submit(
         self,
@@ -446,7 +501,7 @@ class Query(Workflow):
             return self._task_set.submit(func, *args, **kwargs)
 
     def start(self) -> None:
-        self.process_node(self._graph.root, self._query, None)
+        self.process_node(tuple(), self._graph.root, self._query, None)
 
     def result(self) -> Proxy:
         self._index.finish()
@@ -454,6 +509,7 @@ class Query(Workflow):
 
     def _process_node_ordered(
         self,
+        path: NodePath,
         node: Node,
         query: QueryNode,
         ids: Any
@@ -464,10 +520,16 @@ class Query(Workflow):
         def proc(steps: List) -> None:
             step_func, step_item = steps.pop(0)
             if isinstance(step_item, list):
-                dep = self._schedule_fields(node, step_func, step_item, ids)
+                self._track(path)
+                dep = self._schedule_fields(
+                    path, node, step_func, step_item, ids
+                )
             else:
                 graph_link, query_link = step_item
-                dep = self._schedule_link(node, graph_link, query_link, ids)
+                self._track(path)
+                dep = self._schedule_link(
+                    path, node, graph_link, query_link, ids
+                )
 
             if steps:
                 self._queue.add_callback(dep, lambda: proc(steps))
@@ -477,18 +539,22 @@ class Query(Workflow):
 
     def process_node(
         self,
+        path: NodePath,
         node: Node,
         query: QueryNode,
-        ids: Any
+        ids: Any,
     ) -> None:
+        path = path + (node.name,)  # type: ignore
+        self._path_callback[path] = lambda: self._untrack(path)
+
         if query.ordered:
-            self._process_node_ordered(node, query, ids)
+            self._process_node_ordered(path, node, query, ids)
             return
 
         fields, links = SplitQuery(node).split(query)
 
         to_func: Dict[str, Callable] = {}
-        from_func: DefaultDict[Callable, List[FieldGroup]] = defaultdict(list)  # noqa: E501
+        from_func: DefaultDict[Callable, List[FieldGroup]] = defaultdict(list)
         for func, graph_field, query_field in fields:
             to_func[graph_field.name] = func
             from_func[func].append((graph_field, query_field))
@@ -496,11 +562,15 @@ class Query(Workflow):
         # schedule fields resolve
         to_dep: Dict[Callable, Union[SubmitRes, TaskSet]] = {}
         for func, func_fields in from_func.items():
-            to_dep[func] = self._schedule_fields(node, func, func_fields, ids)
+            self._track(path)
+            to_dep[func] = self._schedule_fields(
+                path, node, func, func_fields, ids
+            )
 
         # schedule link resolve
         for graph_link, query_link in links:
-            schedule = partial(self._schedule_link, node,
+            self._track(path)
+            schedule = partial(self._schedule_link, path, node,
                                graph_link, query_link, ids)
             if graph_link.requires:
                 dep = to_dep[to_func[graph_link.requires]]
@@ -510,33 +580,34 @@ class Query(Workflow):
 
     def process_link(
         self,
+        path: NodePath,
         node: Node,
         graph_link: Link,
         query_link: QueryLink,
         ids: Any,
-        result: Any
+        result: List
     ) -> None:
-        if inspect.isgenerator(result):
-            warnings.warn('Data loading functions should not return generators',
-                          DeprecationWarning)
-            result = list(result)
+        """Store Link.func result in index and Call `process_node` to schedule
+        Link's fields and links"""
         store_links(self._index, node, graph_link, query_link, ids, result)
         from_list = ids is not None and graph_link.requires is not None
         to_ids = link_result_to_ids(from_list, graph_link.type_enum, result)
         if to_ids:
-            self.process_node(self._graph.nodes_map[graph_link.node],
+            self.process_node(path, self._graph.nodes_map[graph_link.node],
                               query_link.node, to_ids)
 
         return None
 
     def _schedule_fields(
         self,
+        path: NodePath,
         node: Node,
         func: Callable,
         fields: List[FieldGroup],
-        ids: Optional[Any]
+        ids: Optional[Any],
     ) -> Union[SubmitRes, TaskSet]:
         query_fields = [qf for _, qf in fields]
+
         dep: Union[TaskSet, SubmitRes]
         if hasattr(func, '__subquery__'):
             assert ids is not None
@@ -548,29 +619,85 @@ class Query(Workflow):
             else:
                 dep = self._submit(func, query_fields, ids)
             proc = dep.result
-        self._queue.add_callback(
-            dep,
-            lambda: store_fields(self._index, node, query_fields, ids, proc())
-        )
+
+        def callback() -> None:
+            store_fields(self._index, node, query_fields, ids, proc())
+            self._untrack(path)
+
+        self._queue.add_callback(dep, callback)
         return dep
 
     def _schedule_link(
         self,
+        path: NodePath,
         node: Node,
         graph_link: Link,
         query_link: QueryLink,
         ids: Any
     ) -> SubmitRes:
+        """Schedules link (submits Link.func to executor).
+
+        If link has `requires` specified, take required values list from index
+        and pass it as first argument to link.func.
+
+        If link has `options`, pass as a first argument if `requires` not
+        provided or as second if `requires` provided.
+
+        When Link.func is executed by executor, a `process_link`
+        method called with result.
+        """
         args = []
         if graph_link.requires:
-            args.append(link_reqs(self._index, node, graph_link, ids))
+            reqs = link_reqs(self._index, node, graph_link, ids)
+
+            # TODO: use self._submit to fetch cached data.
+            if 'cached' in query_link.directives_map and self._cache:
+                cached_ids, cached_data = get_cached_data(
+                    self._cache, query_link, ids, reqs
+                )
+                if cached_data:
+                    update_index(self._index, node, cached_ids, cached_data)
+                    ids = [i for i in ids if i not in cached_ids]
+                    reqs = link_reqs(self._index, node, graph_link, ids)
+                    if not reqs:
+                        return self._submit(lambda: None)
+
+            args.append(reqs)
+
         if graph_link.options:
             args.append(query_link.options)
+
         dep = self._submit(graph_link.func, *args)
-        self._queue.add_callback(dep, (
-            lambda:
-            self.process_link(node, graph_link, query_link, ids, dep.result())
-        ))
+
+        def callback() -> None:
+            result = dep.result()
+
+            if inspect.isgenerator(result):
+                warnings.warn(
+                    'Data loading functions should not return generators',
+                    DeprecationWarning
+                )
+                result = list(result)
+
+            return self.process_link(
+                path, node, graph_link, query_link, ids, result
+            )
+
+        self._queue.add_callback(dep, callback)
+
+        def store_link_cache() -> None:
+            assert self._cache is not None
+            cached = query_link.directives_map['cached']
+            reqs = link_reqs(self._index, node, graph_link, ids)
+            to_cache = CacheVisitor(self._index, self._graph, node).process(
+                query_link, ids, reqs
+            )
+
+            self._submit(self._cache.set_many, to_cache, cached.ttl)
+
+        if 'cached' in query_link.directives_map and self._cache:
+            self._add_done_callback(path + (graph_link.node,), store_link_cache)
+
         return dep
 
 
@@ -615,8 +742,13 @@ class Context(Mapping):
 
 class Engine:
 
-    def __init__(self, executor: SyncAsyncExecutor) -> None:
+    def __init__(
+        self,
+        executor: SyncAsyncExecutor,
+        cache: BaseCache = None,
+    ) -> None:
         self.executor = executor
+        self.cache = cache
 
     def execute(
         self,
@@ -629,6 +761,8 @@ class Engine:
         query = InitOptions(graph).visit(query)
         queue = Queue(self.executor)
         task_set = queue.fork(None)
-        query_workflow = Query(queue, task_set, graph, query, Context(ctx))
+        query_workflow = Query(
+            queue, task_set, graph, query, Context(ctx), self.cache
+        )
         query_workflow.start()
         return self.executor.process(queue, query_workflow)
