@@ -10,6 +10,7 @@ from typing import (
     Any,
     Set,
     Callable,
+    Tuple,
 )
 from functools import lru_cache
 
@@ -18,8 +19,11 @@ from graphql.language.parser import parse
 
 from ..directives import (
     QueryDirective,
-    Cached,
+    IncludeDirectiveExt,
+    SkipDirectiveExt,
+    CachedDirectiveExt,
 )
+from ..extentions import Extension
 from ..query import Node, Field, Link, merge
 from ..telemetry.prometheus import (
     QUERY_CACHE_HITS,
@@ -56,6 +60,13 @@ def setup_query_cache(
     global parse_query
     parse_query = lru_cache(maxsize=size)(parse_query)
     parse_query = wrap_metrics(parse_query)
+
+
+DEFAULT_EXTENSIONS = [
+    SkipDirectiveExt(),
+    IncludeDirectiveExt(),
+    CachedDirectiveExt(),
+]
 
 
 class NodeVisitor:
@@ -159,6 +170,7 @@ class FragmentsCollector(NodeVisitor):
 
 
 class SelectionSetVisitMixin:
+    extensions: List[Extension]
 
     def transform_fragment(self, name: str) -> List[Union[Field, Link]]:
         raise NotImplementedError(type(self))
@@ -186,81 +198,39 @@ class SelectionSetVisitMixin:
             for j in self.visit(i):  # type: ignore[attr-defined]
                 yield j
 
-    def _should_skip(self, obj: ast.SelectionNode) -> Optional[bool]:
-        if not obj.directives:
-            return None
+    def _should_skip(self, directives: List[QueryDirective]) -> bool:
+        for d in directives:
+            if d.name == 'skip':
+                return d.condition  # type: ignore[attr-defined]
+            if d.name == 'include':
+                return not d.condition  # type: ignore[attr-defined]
 
-        skip = next((d for d in obj.directives if d.name.value == 'skip'),
-                    None)
-        if skip is not None:
-            if len(skip.arguments) != 1:
-                raise TypeError('@skip directive accepts exactly one '
-                                'argument, {} provided'
-                                .format(len(skip.arguments)))
-            skip_arg = skip.arguments[0]
-            if skip_arg.name.value != 'if':
-                raise TypeError('@skip directive does not accept "{}" '
-                                'argument'
-                                .format(skip_arg.name.value))
-            return self.visit(skip_arg.value)  # type: ignore[attr-defined]
+        return False
 
-        include = next((d for d in obj.directives if d.name.value == 'include'),
-                       None)
-        if include is not None:
-            if len(include.arguments) != 1:
-                raise TypeError('@include directive accepts exactly one '
-                                'argument, {} provided'
-                                .format(len(include.arguments)))
-            include_arg = include.arguments[0]
-            if include_arg.name.value != 'if':
-                raise TypeError('@include directive does not accept "{}" '
-                                'argument'
-                                .format(include_arg.name.value))
-            return not self.visit(include_arg.value)  # type: ignore[attr-defined] # noqa: E501
+    def _parse_directives(
+        self, obj: ast.SelectionNode
+    ) -> Tuple[List[QueryDirective], List[QueryDirective]]:
+        directives: List[QueryDirective] = []
+        builtin_directives: List[QueryDirective] = []
+        for ext in self.extensions:
+            for directive_obj in obj.directives:
+                directive = ext.on_directive_parsing(
+                    directive_obj, self
+                )
+                if directive is not None:
+                    if directive.name in ('skip', 'include'):
+                        builtin_directives.append(directive)
+                    else:
+                        directives.append(directive)
 
-        return None
-
-    def _get_directive(
-        self,
-        name: str,
-        obj: ast.SelectionNode
-    ) -> Optional[ast.DirectiveNode]:
-        return next((d for d in obj.directives if d.name.value == name), None)
-
-    def _is_cached(self, obj: ast.SelectionNode) -> Optional[Cached]:
-        if not obj.directives:
-            return None
-
-        cached = self._get_directive('cached', obj)
-        if cached is None:
-            return None
-
-        if len(cached.arguments) != 1:
-            raise TypeError('@cached directive accepts exactly one '
-                            'argument, {} provided'
-                            .format(len(cached.arguments)))
-        cached_arg = cached.arguments[0]
-        if cached_arg.name.value != 'ttl':
-            raise TypeError('@cached directive does not accept "{}" '
-                            'argument'
-                            .format(cached_arg.name.value))
-        ttl = self.visit(cached_arg.value)  # type: ignore[attr-defined]
-        if not isinstance(ttl, int):
-            raise TypeError('@cached ttl argument must be an integer')
-
-        return Cached(ttl)
+        return builtin_directives, directives
 
     def visit_field(
         self, obj: ast.FieldNode
     ) -> Iterator[Union[Field, Link]]:
-        if self._should_skip(obj):
+        builtin_directives, directives = self._parse_directives(obj)
+        if self._should_skip(builtin_directives):
             return
-
-        # TODO: add plugins functionality to parse custom directives
-        directives: List[QueryDirective] = []
-        cached = self._is_cached(obj)
-        if cached is not None:
-            directives.append(cached)
 
         if obj.arguments:
             options = {arg.name.value: self.visit(arg.value)  # type: ignore[attr-defined] # noqa: E501
@@ -315,7 +285,8 @@ class SelectionSetVisitMixin:
     def visit_fragment_spread(
         self, obj: ast.FragmentSpreadNode
     ) -> Iterator[Union[Field, Link]]:
-        if self._should_skip(obj):
+        directives, custom = self._parse_directives(obj)
+        if self._should_skip(directives):
             return
         for i in self.transform_fragment(obj.name.value):
             yield i
@@ -323,8 +294,10 @@ class SelectionSetVisitMixin:
     def visit_inline_fragment(
         self, obj: ast.InlineFragmentNode
     ) -> Iterator[Union[Field, Link]]:
-        if self._should_skip(obj):
+        directives, custom = self._parse_directives(obj)
+        if self._should_skip(directives):
             return
+
         for i in self.visit(obj.selection_set):  # type: ignore[attr-defined]
             yield i
 
@@ -337,7 +310,8 @@ class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
         self,
         document: ast.DocumentNode,
         query_name: str,
-        query_variables: Dict
+        query_variables: Dict,
+        extensions: List[Extension],
     ):
         collector = FragmentsCollector()
         collector.visit(document)
@@ -346,6 +320,7 @@ class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
         self.fragments_map = collector.fragments_map
         self.cache: Dict[str, List[Union[Field, Link]]] = {}
         self.pending_fragments: Set[str] = set()
+        self.extensions = extensions
 
     def transform_fragment(self, name: str) -> List[Union[Field, Link]]:
         return self.visit(self.fragments_map[name])
@@ -381,19 +356,22 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
     def __init__(
         self,
         document: ast.DocumentNode,
-        variables: Optional[Dict] = None
+        variables: Optional[Dict] = None,
+        extensions: Optional[List[Extension]] = None
     ):
         self.document = document
         self.variables = variables
+        self.extensions = DEFAULT_EXTENSIONS + (extensions or [])
 
     @classmethod
     def transform(
         cls,
         document: ast.DocumentNode,
         op: ast.OperationDefinitionNode,
-        variables: Optional[Dict] = None
+        variables: Optional[Dict] = None,
+        extensions: Optional[List[Extension]] = None
     ) -> Node:
-        visitor = cls(document, variables)
+        visitor = cls(document, variables, extensions)
         return visitor.visit(op)
 
     def transform_fragment(self, name: str) -> List[Union[Field, Link]]:
@@ -425,7 +403,8 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
         self.query_variables = query_variables
         self.fragments_transformer = FragmentsTransformer(self.document,
                                                           self.query_name,
-                                                          self.query_variables)
+                                                          self.query_variables,
+                                                          self.extensions)
         ordered = obj.operation is ast.OperationType.MUTATION
         try:
             node = Node(list(self.visit(obj.selection_set)),
@@ -441,6 +420,7 @@ def read(
     src: str,
     variables: Optional[Dict] = None,
     operation_name: Optional[str] = None,
+    extensions: Optional[List[Extension]] = None
 ) -> Node:
     """Reads a query from the GraphQL document
 
@@ -463,7 +443,7 @@ def read(
                         '"{}" operation was provided'
                         .format(op.operation.value))
 
-    return GraphQLTransformer.transform(doc, op, variables)
+    return GraphQLTransformer.transform(doc, op, variables, extensions)
 
 
 class OperationType(enum.Enum):
@@ -495,7 +475,8 @@ class Operation:
 def read_operation(
     src: str,
     variables: Optional[Dict] = None,
-    operation_name: Optional[str] = None
+    operation_name: Optional[str] = None,
+    extensions: Optional[List[Extension]] = None
 ) -> Operation:
     """Reads an operation from the GraphQL document
 
@@ -514,7 +495,7 @@ def read_operation(
     """
     doc = parse_query(src)
     op = OperationGetter.get(doc, operation_name=operation_name)
-    query = GraphQLTransformer.transform(doc, op, variables)
+    query = GraphQLTransformer.transform(doc, op, variables, extensions)
     type_ = cast(Optional[OperationType], (
         OperationType._value2member_map_.get(op.operation)
     ))

@@ -32,7 +32,9 @@ from .utils import (
     const,
     Const,
 )
-from .directives import DirectiveBase
+from .directives import (
+    SchemaDirective,
+)
 
 from .compat import TypeAlias
 
@@ -192,7 +194,7 @@ class Field(AbstractField):
         *,
         options: t.Optional[t.Sequence[Option]] = None,
         description: t.Optional[str] = None,
-        directives: t.Optional[t.Sequence[DirectiveBase]] = None
+        directives: t.Optional[t.Sequence[SchemaDirective]] = None
     ):
         """
         :param str name: name of the field
@@ -380,7 +382,7 @@ class Link(AbstractLink):
         requires: t.Optional[str],
         options: t.Optional[t.Sequence[Option]] = None,
         description: t.Optional[str] = None,
-        directives: t.Optional[t.Sequence[DirectiveBase]] = None
+        directives: t.Optional[t.Sequence[SchemaDirective]] = None
     ):
         ...
 
@@ -394,7 +396,7 @@ class Link(AbstractLink):
         requires: t.Optional[str],
         options: t.Optional[t.Sequence[Option]] = None,
         description: t.Optional[str] = None,
-        directives: t.Optional[t.Sequence[DirectiveBase]] = None
+        directives: t.Optional[t.Sequence[SchemaDirective]] = None
     ):
         ...
 
@@ -408,7 +410,7 @@ class Link(AbstractLink):
         requires: t.Optional[str],
         options: t.Optional[t.Sequence[Option]] = None,
         description: t.Optional[str] = None,
-        directives: t.Optional[t.Sequence[DirectiveBase]] = None
+        directives: t.Optional[t.Sequence[SchemaDirective]] = None
     ):
         ...
 
@@ -484,7 +486,7 @@ class Node(AbstractNode):
         fields: t.List[t.Union[Field, Link]],
         *,
         description: t.Optional[str] = None,
-        directives: t.Optional[t.Sequence[DirectiveBase]] = None
+        directives: t.Optional[t.Sequence[SchemaDirective]] = None
     ):
         """
         :param name: name of the node

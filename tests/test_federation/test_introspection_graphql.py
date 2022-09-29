@@ -156,6 +156,7 @@ def _schema(types, with_mutation=False) -> dict:
                     _ival('fields', _non_null(_FIELDSET), description=ANY),
                 ]),
                 _field_def_directive('external', []),
+                _object_directive('extends', []),
             ],
             'mutationType': {'name': 'Mutation'} if with_mutation else None,
             'queryType': {'name': 'Query'},

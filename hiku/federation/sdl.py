@@ -11,7 +11,10 @@ from graphql.language.printer import print_ast
 from graphql.language import ast
 from graphql.pyutils import inspect
 
-from hiku.directives import Deprecated
+from hiku.directives import (
+    Deprecated,
+    SchemaDirective,
+)
 from hiku.federation.directive import (
     Extends,
     External,
@@ -171,7 +174,7 @@ class Exporter(GraphVisitor):
             name=_name(obj.name),
             type=_encode_type(obj.type),
             arguments=[self.visit(o) for o in obj.options],
-            directives=[self.visit(d) for d in obj.directives]
+            directives=[self.visit_directive(d) for d in obj.directives]
         )
 
     def visit_node(self, obj: Node) -> ast.ObjectTypeDefinitionNode:
@@ -180,7 +183,7 @@ class Exporter(GraphVisitor):
         return ast.ObjectTypeDefinitionNode(
             name=_name(obj.name),
             fields=fields,
-            directives=[self.visit(d) for d in obj.directives]
+            directives=[self.visit_directive(d) for d in obj.directives]
         )
 
     def visit_link(self, obj: Link) -> ast.FieldDefinitionNode:
@@ -188,7 +191,7 @@ class Exporter(GraphVisitor):
             name=_name(obj.name),
             arguments=[self.visit(o) for o in obj.options],
             type=_encode_type(obj.type),
-            directives=[self.visit(d) for d in obj.directives]
+            directives=[self.visit_directive(d) for d in obj.directives]
         )
 
     def visit_option(self, obj: Option) -> ast.InputValueDefinitionNode:
@@ -199,55 +202,53 @@ class Exporter(GraphVisitor):
             default_value=_encode_default_value(obj.default),
         )
 
-    def visit_key_directive(self, obj: Key) -> ast.DirectiveNode:
-        return ast.DirectiveNode(
-            name=_name('key'),
-            arguments=[
-                ast.ArgumentNode(
-                    name=_name('fields'),
-                    value=ast.StringValueNode(value=obj.fields),
-                ),
-            ],
-        )
-
-    def visit_provides_directive(self, obj: Provides) -> ast.DirectiveNode:
-        return ast.DirectiveNode(
-            name=_name('provides'),
-            arguments=[
-                ast.ArgumentNode(
-                    name=_name('fields'),
-                    value=ast.StringValueNode(value=obj.fields),
-                ),
-            ],
-        )
-
-    def visit_requires_directive(self, obj: Requires) -> ast.DirectiveNode:
-        return ast.DirectiveNode(
-            name=_name('requires'),
-            arguments=[
-                ast.ArgumentNode(
-                    name=_name('fields'),
-                    value=ast.StringValueNode(value=obj.fields),
-                ),
-            ],
-        )
-
-    def visit_external_directive(self, obj: External) -> ast.DirectiveNode:
-        return ast.DirectiveNode(name=_name('external'))
-
-    def visit_extends_directive(self, obj: Extends) -> ast.DirectiveNode:
-        return ast.DirectiveNode(name=_name('extends'))
-
-    def visit_deprecated_directive(self, obj: Deprecated) -> ast.DirectiveNode:
-        return ast.DirectiveNode(
-            name=_name('deprecated'),
-            arguments=[
-                ast.ArgumentNode(
-                    name=_name('reason'),
-                    value=ast.StringValueNode(value=obj.reason),
-                ),
-            ],
-        )
+    def visit_directive(self, obj: SchemaDirective) -> ast.DirectiveNode:
+        if isinstance(obj, Key):
+            return ast.DirectiveNode(
+                name=_name('key'),
+                arguments=[
+                    ast.ArgumentNode(
+                        name=_name('fields'),
+                        value=ast.StringValueNode(value=obj.fields),
+                    ),
+                ],
+            )
+        elif isinstance(obj, Provides):
+            return ast.DirectiveNode(
+                name=_name('provides'),
+                arguments=[
+                    ast.ArgumentNode(
+                        name=_name('fields'),
+                        value=ast.StringValueNode(value=obj.fields),
+                    ),
+                ],
+            )
+        elif isinstance(obj, Requires):
+            return ast.DirectiveNode(
+                name=_name('requires'),
+                arguments=[
+                    ast.ArgumentNode(
+                        name=_name('fields'),
+                        value=ast.StringValueNode(value=obj.fields),
+                    ),
+                ],
+            )
+        elif isinstance(obj, External):
+            return ast.DirectiveNode(name=_name('external'))
+        elif isinstance(obj, Extends):
+            return ast.DirectiveNode(name=_name('extends'))
+        elif isinstance(obj, Deprecated):
+            return ast.DirectiveNode(
+                name=_name('deprecated'),
+                arguments=[
+                    ast.ArgumentNode(
+                        name=_name('reason'),
+                        value=ast.StringValueNode(value=obj.reason),
+                    ),
+                ],
+            )
+        else:
+            raise TypeError(f"Unknown directive: {obj!r}")
 
 
 def get_ast(graph: Graph) -> ast.DocumentNode:

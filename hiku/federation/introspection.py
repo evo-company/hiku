@@ -5,89 +5,28 @@ from typing import (
     Optional,
 )
 
+from .directive import (
+    Key,
+    Provides,
+    Requires,
+    External,
+    Extends,
+)
 from ..graph import Graph
 from ..query import Node as QueryNode
 
-from ..introspection.types import NON_NULL, SCALAR
-from ..introspection.graphql import Directive, GraphQLIntrospection
+from ..introspection.graphql import GraphQLIntrospection
 from ..introspection.graphql import AsyncGraphQLIntrospection
 
 from .utils import get_keys
 
 
 _DIRECTIVES = (
-    # https://www.apollographql.com/docs/federation/federation-spec/#key
-    Directive(
-        name='key',
-        locations=['OBJECT', 'INTERFACE'],
-        description=(
-            'The @key directive is used to indicate a combination '
-            'of fields that can be used to uniquely identify and '
-            'fetch an object or interface.'
-        ),
-        args=[
-            Directive.Argument(
-                name='fields',
-                type_ident=NON_NULL(SCALAR('_FieldSet')),
-                description=(
-                    'A combination of fields that can be used to uniquely '
-                    'identify and fetch an object or interface'
-                ),
-                default_value=None,
-            ),
-        ],
-    ),
-    # https://www.apollographql.com/docs/federation/federation-spec/#provides
-    Directive(
-        name='provides',
-        locations=['FIELD_DEFINITION'],
-        description=(
-            'The @provides directive is used to annotate the expected returned '
-            'fieldset from a field on a base type that is guaranteed to be '
-            'selectable by the gateway'
-        ),
-        args=[
-            Directive.Argument(
-                name='fields',
-                type_ident=NON_NULL(SCALAR('_FieldSet')),
-                description=(
-                    'Expected returned fieldset from a field on a base type '
-                    'that is guaranteed to be selectable by the gateway'
-                ),
-                default_value=None,
-            ),
-        ],
-    ),
-    # https://www.apollographql.com/docs/federation/federation-spec/#requires
-    Directive(
-        name='requires',
-        locations=['FIELD_DEFINITION'],
-        description=(
-            'The @requires directive is used to annotate the required input '
-            'fieldset from a base type for a resolver.'
-        ),
-        args=[
-            Directive.Argument(
-                name='fields',
-                type_ident=NON_NULL(SCALAR('_FieldSet')),
-                description=(
-                    'The required input fieldset from a base type for a '
-                    'resolver'
-                ),
-                default_value=None,
-            ),
-        ],
-    ),
-    # https://www.apollographql.com/docs/federation/federation-spec/#external
-    Directive(
-        name='external',
-        locations=['FIELD_DEFINITION'],
-        description=(
-            'The @external directive is used to mark a field '
-            'as owned by another service.'
-        ),
-        args=[],
-    ),
+    Key.meta,
+    Provides.meta,
+    Requires.meta,
+    External.meta,
+    Extends.meta
 )
 
 

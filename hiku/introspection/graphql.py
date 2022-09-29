@@ -2,11 +2,17 @@ import re
 import json
 import typing as t
 
-from dataclasses import dataclass
 from functools import partial
 from collections import OrderedDict
 
-from ..directives import get_deprecated
+from ..directives import (
+    Deprecated,
+    Cached,
+    Skip,
+    Include,
+    DirectiveMeta,
+    SchemaDirective,
+)
 from ..graph import (
     Graph,
     Root,
@@ -56,85 +62,11 @@ from .types import (
 )
 
 
-@dataclass(frozen=True)
-class Directive:
-    @dataclass(frozen=True)
-    class Argument:
-        name: str
-        type_ident: t.Any
-        description: str
-        default_value: t.Any
-
-    name: str
-    locations: t.List[str]
-    description: str
-    args: t.List[Argument]
-
-    @property
-    def args_map(self) -> OrderedDict:
-        return OrderedDict((arg.name, arg) for arg in self.args)
-
-
 _BUILTIN_DIRECTIVES = (
-    Directive(
-        name='skip',
-        locations=['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'],
-        description=(
-            'Directs the executor to skip this field or fragment '
-            'when the `if` argument is true.'
-        ),
-        args=[
-            Directive.Argument(
-                name='if',
-                type_ident=NON_NULL(SCALAR('Boolean')),
-                description='Skipped when true.',
-                default_value=None,
-            ),
-        ],
-    ),
-    Directive(
-        name='include',
-        locations=['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'],
-        description=(
-            'Directs the executor to include this field or fragment '
-            'only when the `if` argument is true.'
-        ),
-        args=[
-            Directive.Argument(
-                name='if',
-                type_ident=NON_NULL(SCALAR('Boolean')),
-                description='Included when true.',
-                default_value=None,
-            ),
-        ],
-    ),
-    Directive(
-        name='deprecated',
-        locations=['FIELD_DEFINITION', 'ENUM_VALUE'],
-        description='Marks the field or enum value as deprecated',
-        args=[
-            Directive.Argument(
-                name='reason',
-                type_ident=SCALAR('String'),
-                description='Deprecation reason.',
-                default_value=None,
-            ),
-        ],
-    ),
-    # TODO: make cached directive pluggable ?
-    Directive(
-        name='cached',
-        locations=['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'],
-        description='Caches node and all its fields',
-        args=[
-            Directive.Argument(
-                name='ttl',
-                type_ident=NON_NULL(SCALAR('Int')),
-                description='How long field will live in cache.',
-                default_value=None,
-            ),
-        ],
-    ),
+    Skip.meta,
+    Include.meta,
+    Deprecated.meta,
+    Cached.meta
 )
 
 
@@ -154,7 +86,7 @@ class SchemaInfo:
         self,
         query_graph: Graph,
         mutation_graph: t.Optional[Graph] = None,
-        directives: t.Optional[t.Sequence[Directive]] = None,
+        directives: t.Optional[t.Sequence[SchemaDirective]] = None,
     ):
         self.query_graph = query_graph
         self.data_types = query_graph.data_types
@@ -393,6 +325,14 @@ def type_of_type_link(
             yield ident.of_type
         else:
             yield Nothing
+
+
+def get_deprecated(field: t.Union['Field', 'Link']) -> Optional[Deprecated]:
+    """Get deprecated directive"""
+    return next(
+        (d for d in field.directives if isinstance(d, Deprecated)),
+        None
+    )
 
 
 @listify
@@ -793,7 +733,7 @@ class GraphQLIntrospection(GraphTransformer):
         graph = apply(graph, [GraphQLIntrospection(graph)])
 
     """
-    __directives__: t.Tuple[Directive, ...] = _BUILTIN_DIRECTIVES
+    __directives__: t.Tuple[DirectiveMeta, ...] = _BUILTIN_DIRECTIVES
 
     def __init__(
         self,
