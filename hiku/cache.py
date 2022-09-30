@@ -11,7 +11,6 @@ from typing import (
     Dict,
     List,
     Union,
-    Tuple,
     Deque,
     Iterator,
 )
@@ -143,25 +142,3 @@ def get_query_hash(
         hasher.update(str(hash(req)).encode('utf-8'))
     hasher.update(CACHE_VERSION.encode('utf-8'))
     return hasher.hexdigest()
-
-
-def get_cached_data(
-    cache: BaseCache,
-    query_link: QueryLink,
-    ids: List,
-    reqs: List,
-) -> Tuple[List, List]:
-    req_key = []
-    for i, req in zip(ids, reqs):
-        req_key.append((get_query_hash(query_link, req), i, req))
-
-    keys = set(info[0] for info in req_key)
-    cached_data_raw = cache.get_many(list(keys))
-    cached_data = []
-    cached_ids = []
-    for key, i, req in req_key:
-        if key in cached_data_raw:
-            cached_ids.append(i)
-            cached_data.append(cached_data_raw[key])
-
-    return cached_ids, cached_data
