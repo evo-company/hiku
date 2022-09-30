@@ -24,8 +24,8 @@ from collections.abc import Sequence, Mapping, Hashable
 
 from .cache import (
     BaseCache,
-    get_cached_data,
     CacheVisitor,
+    get_query_hash,
 )
 from .compat import Concatenate, ParamSpec
 from .executors.base import SyncAsyncExecutor
@@ -589,6 +589,10 @@ class Query(Workflow):
     ) -> None:
         """Store Link.func result in index and Call `process_node` to schedule
         Link's fields and links"""
+        if inspect.isgenerator(result):
+            warnings.warn('Data loading functions should not return generators',
+                          DeprecationWarning)
+            result = list(result)
         store_links(self._index, node, graph_link, query_link, ids, result)
         from_list = ids is not None and graph_link.requires is not None
         to_ids = link_result_to_ids(from_list, graph_link.type_enum, result)
@@ -627,13 +631,53 @@ class Query(Workflow):
         self._queue.add_callback(dep, callback)
         return dep
 
+    def _update_index_from_cache(
+        self,
+        path: NodePath,
+        node: Node,
+        graph_link: Link,
+        query_link: QueryLink,
+        ids: List[Any],
+        reqs: List[Any]
+    ) -> SubmitRes:
+        assert self._cache is not None
+        key_info = []
+        for i, req in zip(ids, reqs):
+            key_info.append((get_query_hash(query_link, req), i, req))
+
+        keys = set(info[0] for info in key_info)
+        dep = self._submit(self._cache.get_many, list(keys))
+
+        def callback() -> None:
+            result = dep.result()
+            cached_data = []
+            cached_ids = []
+            for key, i, req in key_info:
+                if key in result:
+                    cached_ids.append(i)
+                    cached_data.append(result[key])
+
+            nonlocal ids
+            if cached_data:
+                update_index(self._index, node, cached_ids, cached_data)
+                ids = [i for i in ids if i not in cached_ids]
+
+            if ids:
+                self._schedule_link(
+                    path, node, graph_link, query_link, ids, skip_cache=True
+                )
+
+        self._queue.add_callback(dep, callback)
+        return dep
+
     def _schedule_link(
         self,
         path: NodePath,
         node: Node,
         graph_link: Link,
         query_link: QueryLink,
-        ids: Any
+        ids: Any,
+        skip_cache: bool = False
     ) -> SubmitRes:
         """Schedules link (submits Link.func to executor).
 
@@ -650,17 +694,10 @@ class Query(Workflow):
         if graph_link.requires:
             reqs = link_reqs(self._index, node, graph_link, ids)
 
-            # TODO: use self._submit to fetch cached data.
-            if 'cached' in query_link.directives_map and self._cache:
-                cached_ids, cached_data = get_cached_data(
-                    self._cache, query_link, ids, reqs
+            if 'cached' in query_link.directives_map and self._cache and not skip_cache:  # noqa: E501
+                return self._update_index_from_cache(
+                    path, node, graph_link, query_link, ids, reqs
                 )
-                if cached_data:
-                    update_index(self._index, node, cached_ids, cached_data)
-                    ids = [i for i in ids if i not in cached_ids]
-                    reqs = link_reqs(self._index, node, graph_link, ids)
-                    if not reqs:
-                        return self._submit(lambda: None)
 
             args.append(reqs)
 
@@ -670,17 +707,8 @@ class Query(Workflow):
         dep = self._submit(graph_link.func, *args)
 
         def callback() -> None:
-            result = dep.result()
-
-            if inspect.isgenerator(result):
-                warnings.warn(
-                    'Data loading functions should not return generators',
-                    DeprecationWarning
-                )
-                result = list(result)
-
             return self.process_link(
-                path, node, graph_link, query_link, ids, result
+                path, node, graph_link, query_link, ids, dep.result()
             )
 
         self._queue.add_callback(dep, callback)
