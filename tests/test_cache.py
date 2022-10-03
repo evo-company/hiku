@@ -42,7 +42,10 @@ from hiku.types import (
 )
 from hiku.engine import Engine
 from hiku.readers.graphql import read
-from hiku.cache import BaseCache, get_query_hash
+from hiku.cache import (
+    BaseCache,
+    CacheSettings,
+)
 
 
 class InMemoryCache(BaseCache):
@@ -439,7 +442,7 @@ def get_product_query(product_id: int) -> str:
                     name
                 }
             }
-            company  @cached(ttl: 10) {
+            company @cached(ttl: 10) {
                 id
                 name
                 address { city }
@@ -496,10 +499,14 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
 
     cache = InMemoryCache()
     cache = Mock(wraps=cache)
-    engine = Engine(ThreadsExecutor(thread_pool), cache)
+    engine = Engine(ThreadsExecutor(thread_pool), CacheSettings(cache))
+    ctx = {
+        SA_ENGINE_KEY: sa_engine,
+        'locale': 'en'
+    }
 
     def execute(q):
-        proxy = engine.execute(graph, q, {SA_ENGINE_KEY: sa_engine})
+        proxy = engine.execute(graph, q, ctx)
         return DenormalizeGraphQL(graph, proxy, 'query').process(q)
 
     query = read(get_product_query(1))
@@ -513,8 +520,8 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
         .node.fields_map['photo']
     )
 
-    company_key = get_query_hash(company_link, 10)
-    attributes_key = get_query_hash(attributes_link, [11, 12])
+    company_key = engine.cache.query_hash(ctx, company_link, 10)
+    attributes_key = engine.cache.query_hash(ctx, attributes_link, [11, 12])
 
     company_cache = {
         'User': {
@@ -615,10 +622,19 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
 
     cache = InMemoryCache()
     cache = Mock(wraps=cache)
-    engine = Engine(ThreadsExecutor(thread_pool), cache)
+
+    def cache_key(ctx, hasher):
+        hasher.update(ctx['locale'].encode('utf-8'))
+
+    cache_settings = CacheSettings(cache, cache_key)
+    engine = Engine(ThreadsExecutor(thread_pool), cache_settings)
+    ctx = {
+        SA_ENGINE_KEY: sa_engine,
+        'locale': 'en'
+    }
 
     def execute(q):
-        proxy = engine.execute(graph, q, {SA_ENGINE_KEY: sa_engine})
+        proxy = engine.execute(graph, q, ctx)
         return DenormalizeGraphQL(graph, proxy, 'query').process(q)
 
     query = read(get_products_query())
@@ -633,10 +649,11 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
         .node.fields_map['photo']
     )
 
-    company10_key = get_query_hash(company_link, 10)
-    company20_key = get_query_hash(company_link, 20)
-    attributes11_12_key = get_query_hash(attributes_link, [11, 12])
-    attributes_none_key = get_query_hash(attributes_link, [])
+    company10_key = engine.cache.query_hash(ctx, company_link, 10)
+    company20_key = engine.cache.query_hash(ctx, company_link, 20)
+    attributes11_12_key = engine.cache.query_hash(
+        ctx, attributes_link, [11, 12])
+    attributes_none_key = engine.cache.query_hash(ctx, attributes_link, [])
 
     company10_cache = {
         'User': {

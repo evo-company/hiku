@@ -7,14 +7,17 @@ from collections import (
     deque,
 )
 from typing import (
+    TYPE_CHECKING,
     Any,
     Dict,
     List,
     Union,
     Deque,
     Iterator,
+    Optional,
+    Callable,
 )
-
+from hiku.compat import Protocol
 from hiku.result import Index
 from hiku.graph import (
     Many,
@@ -28,8 +31,18 @@ from hiku.query import (
     Link as QueryLink,
 )
 
+if TYPE_CHECKING:
+    from hiku.engine import Context
 
 CACHE_VERSION = '1'
+
+
+class Hasher(Protocol):
+    def update(self, data: bytes) -> None:
+        ...
+
+
+CacheKeyFn = Callable[['Context', Hasher], None]
 
 
 class BaseCache(abc.ABC):
@@ -41,6 +54,40 @@ class BaseCache(abc.ABC):
     @abc.abstractmethod
     def set_many(self, items: Dict[str, Any], ttl: int) -> None:
         raise NotImplementedError()
+
+
+class CacheSettings:
+    def __init__(
+        self,
+        cache: BaseCache,
+        cache_key: Optional[CacheKeyFn] = None
+    ):
+        self.cache = cache
+        self.cache_key = cache_key
+
+
+class CacheInfo:
+    def __init__(
+        self,
+        cache_settings: CacheSettings
+    ):
+        self.cache = cache_settings.cache
+        self.cache_key = cache_settings.cache_key
+
+    def query_hash(
+        self, ctx: 'Context', query_link: QueryLink, req: Any
+    ) -> str:
+        hasher = hashlib.sha1()
+        get_query_hash(hasher, query_link, req)
+        if self.cache_key:
+            self.cache_key(ctx, hasher)
+        return hasher.hexdigest()
+
+    def get_many(self, keys: List[str]) -> Dict[str, Any]:
+        return self.cache.get_many(keys)
+
+    def set_many(self, items: Dict[str, Any], ttl: int) -> None:
+        self.cache.set_many(items, ttl)
 
 
 class HashVisitor(QueryVisitor):
@@ -59,7 +106,10 @@ class CacheVisitor(QueryVisitor):
     """Visit cached query link to extract all data from index
     that needs to be cached
     """
-    def __init__(self, index: Index, graph: Graph, node: Node) -> None:
+    def __init__(
+        self, cache: CacheInfo, index: Index, graph: Graph, node: Node
+    ) -> None:
+        self._cache = cache
         self._index = index
         self._graph = graph
         self._node = deque([node])
@@ -110,7 +160,9 @@ class CacheVisitor(QueryVisitor):
 
         self._node.pop()
 
-    def process(self, link: QueryLink, ids: List, reqs: List) -> Dict:
+    def process(
+        self, link: QueryLink, ids: List, reqs: List, ctx: 'Context'
+    ) -> Dict:
         to_cache = {}
         for i, req in zip(ids, reqs):
             node = self._node[-1]
@@ -121,17 +173,18 @@ class CacheVisitor(QueryVisitor):
             self.visit(link)
 
             self._to_cache[-1][node.name] = self._data.pop()
-            to_cache[get_query_hash(link, req)] = dict(self._to_cache.pop())
+            key = self._cache.query_hash(ctx, link, req)
+            to_cache[key] = dict(self._to_cache.pop())
             self._node_idx.pop()
 
         return to_cache
 
 
 def get_query_hash(
+    hasher: Hasher,
     query_link: Union[QueryLink, QueryField],
     req: Any
-) -> str:
-    hasher = hashlib.sha1()
+) -> None:
     hash_visitor = HashVisitor(hasher)
     hash_visitor.visit(query_link)
 
@@ -141,4 +194,3 @@ def get_query_hash(
     else:
         hasher.update(str(hash(req)).encode('utf-8'))
     hasher.update(CACHE_VERSION.encode('utf-8'))
-    return hasher.hexdigest()

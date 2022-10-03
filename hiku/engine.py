@@ -23,9 +23,9 @@ from collections import defaultdict
 from collections.abc import Sequence, Mapping, Hashable
 
 from .cache import (
-    BaseCache,
     CacheVisitor,
-    get_query_hash,
+    CacheInfo,
+    CacheSettings,
 )
 from .compat import Concatenate, ParamSpec
 from .executors.base import SyncAsyncExecutor
@@ -456,7 +456,7 @@ class Query(Workflow):
         graph: Graph,
         query: QueryNode,
         ctx: 'Context',
-        cache: BaseCache = None
+        cache: CacheInfo = None
     ) -> None:
         self._queue = queue
         self._task_set = task_set
@@ -643,7 +643,9 @@ class Query(Workflow):
         assert self._cache is not None
         key_info = []
         for i, req in zip(ids, reqs):
-            key_info.append((get_query_hash(query_link, req), i, req))
+            key_info.append(
+                (self._cache.query_hash(self._ctx, query_link, req), i, req)
+            )
 
         keys = set(info[0] for info in key_info)
         dep = self._submit(self._cache.get_many, list(keys))
@@ -717,9 +719,9 @@ class Query(Workflow):
             assert self._cache is not None
             cached = query_link.directives_map['cached']
             reqs = link_reqs(self._index, node, graph_link, ids)
-            to_cache = CacheVisitor(self._index, self._graph, node).process(
-                query_link, ids, reqs
-            )
+            to_cache = CacheVisitor(
+                self._cache, self._index, self._graph, node
+            ).process(query_link, ids, reqs, self._ctx)
 
             self._submit(self._cache.set_many, to_cache, cached.ttl)
 
@@ -773,10 +775,10 @@ class Engine:
     def __init__(
         self,
         executor: SyncAsyncExecutor,
-        cache: BaseCache = None,
+        cache: CacheSettings = None,
     ) -> None:
         self.executor = executor
-        self.cache = cache
+        self.cache = CacheInfo(cache) if cache else None
 
     def execute(
         self,
