@@ -14,6 +14,7 @@ User's Guide
   protobuf
   federation
   telemetry
+  caching
   reference/index
   changelog/index
   development

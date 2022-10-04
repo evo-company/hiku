@@ -15,6 +15,7 @@ COPY requirements-docs.txt .
 RUN python3 -m pip install \
     --no-deps --no-cache-dir --disable-pip-version-check \
     -r requirements-docs.txt
+RUN python3 -m pip install importlib-metadata
 
 FROM base as tests
 
