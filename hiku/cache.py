@@ -6,6 +6,7 @@ from collections import (
     defaultdict,
     deque,
 )
+from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -56,17 +57,15 @@ class BaseCache(abc.ABC):
         raise NotImplementedError()
 
 
+@dataclass
 class CacheSettings:
-    def __init__(
-        self,
-        cache: BaseCache,
-        cache_key: Optional[CacheKeyFn] = None
-    ):
-        self.cache = cache
-        self.cache_key = cache_key
+    cache: BaseCache
+    cache_key: Optional[CacheKeyFn] = None
 
 
 class CacheInfo:
+    __slots__ = ('cache', 'cache_key')
+
     def __init__(
         self,
         cache_settings: CacheSettings

@@ -775,10 +775,10 @@ class Engine:
     def __init__(
         self,
         executor: SyncAsyncExecutor,
-        cache: CacheSettings = None,
+        cache: Optional[CacheSettings] = None,
     ) -> None:
         self.executor = executor
-        self.cache = CacheInfo(cache) if cache else None
+        self.cache_settings = cache
 
     def execute(
         self,
@@ -791,8 +791,9 @@ class Engine:
         query = InitOptions(graph).visit(query)
         queue = Queue(self.executor)
         task_set = queue.fork(None)
+        cache = CacheInfo(self.cache_settings) if self.cache_settings else None
         query_workflow = Query(
-            queue, task_set, graph, query, Context(ctx), self.cache
+            queue, task_set, graph, query, Context(ctx), cache
         )
         query_workflow.start()
         return self.executor.process(queue, query_workflow)

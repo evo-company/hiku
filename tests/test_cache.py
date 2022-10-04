@@ -45,6 +45,7 @@ from hiku.readers.graphql import read
 from hiku.cache import (
     BaseCache,
     CacheSettings,
+    CacheInfo,
 )
 
 
@@ -499,7 +500,9 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
 
     cache = InMemoryCache()
     cache = Mock(wraps=cache)
-    engine = Engine(ThreadsExecutor(thread_pool), CacheSettings(cache))
+    cache_settings = CacheSettings(cache)
+    cache_info = CacheInfo(cache_settings)
+    engine = Engine(ThreadsExecutor(thread_pool), cache_settings)
     ctx = {
         SA_ENGINE_KEY: sa_engine,
         'locale': 'en'
@@ -520,8 +523,8 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
         .node.fields_map['photo']
     )
 
-    company_key = engine.cache.query_hash(ctx, company_link, 10)
-    attributes_key = engine.cache.query_hash(ctx, attributes_link, [11, 12])
+    company_key = cache_info.query_hash(ctx, company_link, 10)
+    attributes_key = cache_info.query_hash(ctx, attributes_link, [11, 12])
 
     company_cache = {
         'User': {
@@ -627,6 +630,7 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
         hasher.update(ctx['locale'].encode('utf-8'))
 
     cache_settings = CacheSettings(cache, cache_key)
+    cache_info = CacheInfo(cache_settings)
     engine = Engine(ThreadsExecutor(thread_pool), cache_settings)
     ctx = {
         SA_ENGINE_KEY: sa_engine,
@@ -649,11 +653,10 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
         .node.fields_map['photo']
     )
 
-    company10_key = engine.cache.query_hash(ctx, company_link, 10)
-    company20_key = engine.cache.query_hash(ctx, company_link, 20)
-    attributes11_12_key = engine.cache.query_hash(
-        ctx, attributes_link, [11, 12])
-    attributes_none_key = engine.cache.query_hash(ctx, attributes_link, [])
+    company10_key = cache_info.query_hash(ctx, company_link, 10)
+    company20_key = cache_info.query_hash(ctx, company_link, 20)
+    attributes11_12_key = cache_info.query_hash(ctx, attributes_link, [11, 12])
+    attributes_none_key = cache_info.query_hash(ctx, attributes_link, [])
 
     company10_cache = {
         'User': {
