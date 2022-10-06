@@ -18,6 +18,9 @@ from typing import (
     Optional,
     Callable,
 )
+
+from prometheus_client import Counter
+
 from hiku.compat import Protocol
 from hiku.result import Index
 from hiku.graph import (
@@ -34,6 +37,18 @@ from hiku.query import (
 
 if TYPE_CHECKING:
     from hiku.engine import Context
+
+
+RESULT_CACHE_HITS = Counter(
+    name='hiku_result_cache_hits',
+    documentation='Resolver result cache hits',
+    labelnames=['graph', 'query_name', 'node', 'field']
+)
+RESULT_CACHE_MISSES = Counter(
+    name='hiku_result_cache_misses',
+    documentation='Resolver result cache misses',
+    labelnames=['graph', 'query_name', 'node', 'field']
+)
 
 CACHE_VERSION = '1'
 
@@ -58,20 +73,40 @@ class BaseCache(abc.ABC):
 
 
 @dataclass
+class CacheMetrics:
+    name: str
+    hits_counter: Counter = RESULT_CACHE_HITS
+    misses_counter: Counter = RESULT_CACHE_MISSES
+
+
+@dataclass
 class CacheSettings:
     cache: BaseCache
     cache_key: Optional[CacheKeyFn] = None
+    metrics: Optional[CacheMetrics] = None
 
 
 class CacheInfo:
-    __slots__ = ('cache', 'cache_key')
+    __slots__ = ('cache', 'cache_key', 'metrics', 'query_name')
 
     def __init__(
         self,
-        cache_settings: CacheSettings
+        cache_settings: CacheSettings,
+        query_name: Optional[str] = None
     ):
         self.cache = cache_settings.cache
         self.cache_key = cache_settings.cache_key
+        self.metrics = cache_settings.metrics
+        self.query_name = query_name or 'unknown'
+
+    def _track(self, node: str, field: str, hits: int, misses: int) -> None:
+        if not self.metrics:
+            return
+
+        self.metrics.hits_counter.labels(
+            self.metrics.name, self.query_name, node, field).inc(hits)
+        self.metrics.misses_counter.labels(
+            self.metrics.name, self.query_name, node, field).inc(misses)
 
     def query_hash(
         self, ctx: 'Context', query_link: QueryLink, req: Any
@@ -82,8 +117,14 @@ class CacheInfo:
             self.cache_key(ctx, hasher)
         return hasher.hexdigest()
 
-    def get_many(self, keys: List[str]) -> Dict[str, Any]:
-        return self.cache.get_many(keys)
+    def get_many(
+        self, keys: List[str], node: str, field: str
+    ) -> Dict[str, Any]:
+        data = self.cache.get_many(keys)
+        hits = sum(1 for key in keys if key in data)
+        misses = len(keys) - hits
+        self._track(node, field, hits, misses)
+        return data
 
     def set_many(self, items: Dict[str, Any], ttl: int) -> None:
         self.cache.set_many(items, ttl)

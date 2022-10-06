@@ -20,6 +20,7 @@ from hiku.types import (
     Sequence,
     Optional,
 )
+from hiku.utils import listify
 
 
 def get_by_id(id_, collection):
@@ -28,6 +29,7 @@ def get_by_id(id_, collection):
             return item
 
 
+@listify
 def find_all_by_id(id_, collection, key='id'):
     for item in collection:
         if item[key] == id_:
@@ -47,6 +49,7 @@ data = {
 }
 
 
+@listify
 def cart_resolver(fields, ids):
     for cart_id in ids:
         cart = get_by_id(cart_id, data['carts'])
@@ -57,6 +60,7 @@ async def async_cart_resolver(fields, ids):
     return cart_resolver(fields, ids)
 
 
+@listify
 def cart_item_resolver(fields, ids):
     for item_id in ids:
         item = get_by_id(item_id, data['cart_items'])
@@ -67,6 +71,7 @@ async def async_cart_item_resolver(fields, ids):
     return cart_item_resolver(fields, ids)
 
 
+@listify
 def link_cart_items(cart_ids):
     for cart_id in cart_ids:
         yield [item['id'] for item

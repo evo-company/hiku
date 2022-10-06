@@ -2,7 +2,10 @@ import time
 from abc import abstractmethod
 from functools import partial
 
-from prometheus_client import Summary, Gauge
+from prometheus_client import (
+    Summary,
+    Gauge,
+)
 
 from ..graph import GraphTransformer
 from ..engine import pass_context, _do_pass_context
