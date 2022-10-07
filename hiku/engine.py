@@ -16,6 +16,7 @@ from typing import (
     Optional,
     DefaultDict,
     Awaitable,
+    TYPE_CHECKING,
 )
 from functools import partial
 from itertools import chain, repeat
@@ -58,6 +59,9 @@ from .executors.queue import (
     TaskSet,
     SubmitRes,
 )
+
+if TYPE_CHECKING:
+    from .readers.graphql import Operation
 
 
 NodePath = Tuple[str, ...]
@@ -648,7 +652,9 @@ class Query(Workflow):
             )
 
         keys = set(info[0] for info in key_info)
-        dep = self._submit(self._cache.get_many, list(keys))
+        dep = self._submit(
+            self._cache.get_many, list(keys), node.name, graph_link.name
+        )
 
         def callback() -> None:
             result = dep.result()
@@ -784,14 +790,18 @@ class Engine:
         self,
         graph: Graph,
         query: QueryNode,
-        ctx: Optional[Dict] = None
+        ctx: Optional[Dict] = None,
+        op: Optional['Operation'] = None,
     ) -> Union[Proxy, Awaitable[Proxy]]:
         if ctx is None:
             ctx = {}
         query = InitOptions(graph).visit(query)
         queue = Queue(self.executor)
         task_set = queue.fork(None)
-        cache = CacheInfo(self.cache_settings) if self.cache_settings else None
+        cache = CacheInfo(
+            self.cache_settings,
+            op.name if op else None,
+        ) if self.cache_settings else None
         query_workflow = Query(
             queue, task_set, graph, query, Context(ctx), cache
         )
