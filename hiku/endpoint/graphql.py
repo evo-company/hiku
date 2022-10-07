@@ -176,7 +176,7 @@ class AsyncGraphQLEndpoint(BaseAsyncGraphQLEndpoint):
         self, graph: Graph, op: Operation, ctx: t.Optional[t.Dict]
     ) -> t.Dict:
         stripped_query = _process_query(graph, op.query)
-        coro = self.engine.execute(graph, stripped_query, ctx)
+        coro = self.engine.execute(graph, stripped_query, ctx, op)
         assert isawaitable(coro)
         result = await coro
         type_name = _type_names[op.type]
