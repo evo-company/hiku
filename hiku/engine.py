@@ -150,7 +150,11 @@ class SplitQuery(QueryVisitor):
         graph_obj = self._node.fields_map[obj.name]
         if isinstance(graph_obj, Link):
             if graph_obj.requires:
-                self.visit(QueryField(graph_obj.requires))
+                if isinstance(graph_obj.requires, list):
+                    for r in graph_obj.requires:
+                        self.visit(QueryField(r))
+                else:
+                    self.visit(QueryField(graph_obj.requires))
             self._links.append((graph_obj, obj))
         else:
             assert isinstance(graph_obj, Field), type(graph_obj)
@@ -191,7 +195,11 @@ class GroupQuery(QueryVisitor):
     def visit_link(self, obj: QueryLink) -> None:
         graph_obj = self._node.fields_map[obj.name]
         if graph_obj.requires:
-            self.visit(QueryField(graph_obj.requires))
+            if isinstance(graph_obj.requires, list):
+                for r in graph_obj.requires:
+                    self.visit(QueryField(r))
+            else:
+                self.visit(QueryField(graph_obj.requires))
         self._groups.append((graph_obj, obj))
         self._funcs.append(graph_obj.func)
         self._current_func = None
@@ -286,13 +294,22 @@ def link_reqs(
     node: Node,
     link: Link,
     ids: Any
-) -> Any:
+) -> Union[List[Tuple[Any, ...]], List[Any], Any]:
     """For a given link, find link `requires` values by ids."""
     if node.name is not None:
         assert ids is not None
         node_idx = index[node.name]
+
+        if isinstance(link.requires, list):
+            reqs: List[Tuple[Any, ...]] = []
+            for i in ids:
+                # TODO: dict instead tuple
+                reqs.append(tuple(node_idx[i][r] for r in link.requires))
+            return reqs
+
         return [node_idx[i][link.requires] for i in ids]
     else:
+        # TODO: add support for requires as list in root node
         return index.root[link.requires]
 
 
@@ -451,6 +468,9 @@ def link_result_to_ids(
     raise TypeError(repr([from_list, link_type]))
 
 
+Dep = Union[SubmitRes, TaskSet]
+
+
 class Query(Workflow):
 
     def __init__(
@@ -564,7 +584,7 @@ class Query(Workflow):
             from_func[func].append((graph_field, query_field))
 
         # schedule fields resolve
-        to_dep: Dict[Callable, Union[SubmitRes, TaskSet]] = {}
+        to_dep: Dict[Callable, Dep] = {}
         for func, func_fields in from_func.items():
             self._track(path)
             to_dep[func] = self._schedule_fields(
@@ -577,8 +597,22 @@ class Query(Workflow):
             schedule = partial(self._schedule_link, path, node,
                                graph_link, query_link, ids)
             if graph_link.requires:
-                dep = to_dep[to_func[graph_link.requires]]
-                self._queue.add_callback(dep, schedule)
+                if isinstance(graph_link.requires, list):
+                    done_deps = set()
+
+                    def add_done_dep_callback(dep: Dep, req: Any) -> None:
+                        def done_cb() -> None:
+                            done_deps.add(req)
+                            if done_deps == set(graph_link.requires):
+                                schedule()
+
+                        self._queue.add_callback(dep, done_cb)
+
+                    for req in graph_link.requires:
+                        add_done_dep_callback(to_dep[to_func[req]], req)
+                else:
+                    dep = to_dep[to_func[graph_link.requires]]
+                    self._queue.add_callback(dep, schedule)
             else:
                 schedule()
 

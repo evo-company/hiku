@@ -133,11 +133,17 @@ class GraphValidator(GraphVisitor):
             )
 
         if obj.requires is not None:
-            if obj.requires not in self.ctx.fields_map:
-                self.errors.report(
-                    'Link "{}" requires missing field "{}" in the "{}" node'
-                    .format(obj.name, obj.requires, self._format_path())
-                )
+            requires = (
+                obj.requires if isinstance(obj.requires, list)
+                else [obj.requires]
+            )
+
+            for r in requires:
+                if r not in self.ctx.fields_map:
+                    self.errors.report(
+                        'Link "{}" requires missing field "{}" in the "{}" node'
+                        .format(obj.name, r, self._format_path())
+                    )
 
         self._validate_deprecated_duplicates(obj)
 

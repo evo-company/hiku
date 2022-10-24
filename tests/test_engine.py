@@ -1,9 +1,29 @@
 import re
 
+from concurrent.futures import ThreadPoolExecutor
+from typing import (
+    List,
+    Tuple,
+)
+
 import pytest
 
+from sqlalchemy import (
+    MetaData,
+    Table,
+    Column,
+    Integer as SaInteger,
+    Unicode,
+    ForeignKey,
+    create_engine,
+)
+from sqlalchemy.pool import StaticPool
+
 from hiku import query as q
+from hiku.denormalize.graphql import DenormalizeGraphQL
+from hiku.executors.threads import ThreadsExecutor
 from hiku.graph import Graph, Node, Field, Link, Option, Root
+from hiku.sources.sqlalchemy import FieldsQuery
 from hiku.types import Record, Sequence, Integer, Optional, TypeRef
 from hiku.utils import listify
 from hiku.engine import Engine, pass_context, Context
@@ -150,6 +170,196 @@ def test_links():
     fc.assert_called_once_with(3)
     fd.assert_called_once_with([q.Field('d')], [1])
     fe.assert_called_once_with([q.Field('e')], [2])
+
+
+def test_links_requires_list():
+    db = {
+        'song': {
+           100: {'name': 'fuel',
+                 'artist_id': 1,
+                 'album_id': 10}
+        },
+        'artist': {
+            1: {'name': 'Metallica'},
+        },
+        'album': {
+            10: {'name': 'Reload'}
+        }
+    }
+
+    link_song = Mock(return_value=100)
+
+    def link_song_info(reqs: List[Tuple]):
+        return reqs
+
+    def song_fields(fields, song_ids):
+        def get_fields(song_id):
+            for f in fields:
+                yield db['song'][song_id][f.name]
+
+        return [list(get_fields(song_id)) for song_id in song_ids]
+
+    def song_info_fields(fields, ids):
+        def get_fields(id_):
+            [album_id, artist_id] = id_
+            for f in fields:
+                if f.name == 'album_name':
+                    yield db['album'][album_id]['name']
+                elif f.name == 'artist_name':
+                    yield db['artist'][artist_id]['name']
+
+        return [list(get_fields(id_)) for id_ in ids]
+
+    graph = Graph([
+        Node('SongInfo', [
+            Field('album_name', None, song_info_fields),
+            Field('artist_name', None, song_info_fields),
+        ]),
+        Node('Song', [
+            Field('id', None, song_fields),
+            Field('name', None, song_fields),
+            Field('album_id', None, song_fields),
+            Field('artist_id', None, song_fields),
+            Link('info', TypeRef['SongInfo'], link_song_info,
+                 requires=['album_id', 'artist_id'])
+        ]),
+        Root([
+            Link('song', TypeRef['Song'], link_song, requires=None),
+        ]),
+    ])
+
+    query = build([
+        Q.song[
+            Q.info[
+                Q.album_name,
+                Q.artist_name,
+            ]
+        ]
+    ])
+    result = execute(graph, query)
+    check_result(
+        result,
+        {'song': {'info': {'album_name': 'Reload', 'artist_name': 'Metallica'}}}
+    )
+
+
+def test_links_requires_list_sa():
+    SA_ENGINE_KEY = 'sa-engine'
+    metadata = MetaData()
+
+    thread_pool = ThreadPoolExecutor(2)
+
+    song_table = Table(
+        'song',
+        metadata,
+        Column('id', SaInteger, primary_key=True, autoincrement=True),
+        Column('name', Unicode),
+        Column('album_id', ForeignKey('album.id')),
+        Column('artist_id', ForeignKey('artist.id')),
+    )
+
+    album_table = Table(
+        'album',
+        metadata,
+        Column('id', SaInteger, primary_key=True, autoincrement=True),
+        Column('name', Unicode),
+    )
+
+    artist_table = Table(
+        'artist',
+        metadata,
+        Column('id', SaInteger, primary_key=True, autoincrement=True),
+        Column('name', Unicode),
+    )
+
+    data = {
+        'song': [{'id': 100, 'name': 'fuel', 'artist_id': 1, 'album_id': 10}],
+        'artist': [{'id': 1, 'name': 'Metallica'}],
+        'album': [{'id': 10, 'name': 'Reload'}]
+    }
+
+    def setup_db(db_engine):
+        metadata.create_all(db_engine)
+        for row in data['artist']:
+            db_engine.execute(artist_table.insert(), row)
+        for row in data['album']:
+            db_engine.execute(album_table.insert(), row)
+        for row in data['song']:
+            db_engine.execute(song_table.insert(), row)
+
+    sa_engine = create_engine(
+        'sqlite://',
+        connect_args={'check_same_thread': False},
+        poolclass=StaticPool,
+    )
+    setup_db(sa_engine)
+
+    engine = Engine(ThreadsExecutor(thread_pool))
+    ctx = {SA_ENGINE_KEY: sa_engine}
+
+    def execute(query_node):
+        proxy = engine.execute(graph, query_node, ctx)
+        return DenormalizeGraphQL(graph, proxy, 'query').process(query_node)
+
+    link_song = Mock(return_value=100)
+
+    def link_song_info(reqs: List[Tuple]):
+        return reqs
+
+    @pass_context
+    def song_info_fields(ctx, fields, ids):
+        db = ctx[SA_ENGINE_KEY]
+
+        def get_fields(id_):
+            [album_id, artist_id] = id_
+            album = db.execute(
+                album_table.select().where(album_table.c.id == album_id)
+            ).first()
+            artist = db.execute(
+                artist_table.select().where(artist_table.c.id == artist_id)
+            ).first()
+
+            for f in fields:
+                if f.name == 'album_name':
+                    yield album.name
+                elif f.name == 'artist_name':
+                    yield artist.name
+
+        return [list(get_fields(id_)) for id_ in ids]
+
+    song_query = FieldsQuery(SA_ENGINE_KEY, song_table)
+
+    graph = Graph([
+        Node('SongInfo', [
+            Field('album_name', None, song_info_fields),
+            Field('artist_name', None, song_info_fields),
+        ]),
+        Node('Song', [
+            Field('id', None, song_query),
+            Field('name', None, song_query),
+            Field('album_id', None, song_query),
+            Field('artist_id', None, song_query),
+            Link('info', TypeRef['SongInfo'], link_song_info,
+                 requires=['album_id', 'artist_id'])
+        ]),
+        Root([
+            Link('song', TypeRef['Song'], link_song, requires=None),
+        ]),
+    ])
+
+    query = build([
+        Q.song[
+            Q.info[
+                Q.album_name,
+                Q.artist_name,
+            ]
+        ]
+    ])
+    result = execute(query)
+    check_result(
+        result,
+        {'song': {'info': {'album_name': 'Reload', 'artist_name': 'Metallica'}}}
+    )
 
 
 @pytest.mark.parametrize('option, args, result', OPTION_BEHAVIOUR)
