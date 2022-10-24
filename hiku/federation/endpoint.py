@@ -41,6 +41,10 @@ from hiku.graph import (
 from hiku.query import Node
 from hiku.result import Proxy, Reference
 from hiku.readers.graphql import Operation
+from ..extentions import (
+    ExtensionsRunner,
+    ExecutionContext,
+)
 
 
 def _process_query(graph: Graph, query: Node) -> Node:
@@ -81,6 +85,7 @@ def denormalize_entities(
 class BaseFederatedGraphEndpoint(ABC):
     query_graph: Graph
     mutation_graph: Optional[Graph]
+    extensions: List
 
     @property
     @abstractmethod
@@ -91,9 +96,11 @@ class BaseFederatedGraphEndpoint(ABC):
         self,
         engine: Engine,
         query_graph: Graph,
-        mutation_graph: Optional[Graph] = None
+        mutation_graph: Optional[Graph] = None,
+        extensions: Optional[List] = None
     ):
         self.engine = engine
+        self.extensions = extensions or []
 
         introspection = self.introspection_cls(query_graph, mutation_graph)
         self.query_graph = apply(query_graph, [introspection])
@@ -162,9 +169,21 @@ class FederatedGraphQLEndpoint(BaseSyncFederatedGraphQLEndpoint):
         return self.postprocess_result(result, graph, op)
 
     def dispatch(self, data: Dict) -> Dict:
+        execution_context = ExecutionContext(
+            query=data['query'],
+            variables=data.get('variables'),
+            operation_name=data.get('operationName'),
+            query_graph=self.query_graph,
+            mutation_graph=self.mutation_graph,
+        )
+        extensions_runner = ExtensionsRunner(
+            execution_context,
+            self.extensions
+        )
         try:
             graph, op = _switch_graph(
-                data, self.query_graph, self.mutation_graph,
+                execution_context,
+                extensions_runner
             )
             with self.context(op) as ctx:
                 result = self.execute(graph, op, ctx)

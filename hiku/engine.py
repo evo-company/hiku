@@ -254,6 +254,16 @@ def update_index(
                     index[node_name][i].update(row)
 
 
+def apply_directives(
+    fields: List[Union[QueryField, QueryLink]], data: Dict
+) -> None:
+    """Apply directives to fields"""
+    for field in fields:
+        for directive in field.directives:
+            if 'FIELD' in directive.meta.locations:
+                data[field.index_key] = directive.execute(data[field.index_key])
+
+
 def store_fields(
     index: Index,
     node: Node,
@@ -273,10 +283,14 @@ def store_fields(
         assert ids is not None
         node_idx = index[node.name]
         for i, row in zip(ids, query_result):
-            node_idx[i].update(zip(names, row))
+            data = dict(zip(names, row))
+            apply_directives(query_fields, data)
+            node_idx[i].update(data)
     else:
         assert ids is None
-        index.root.update(zip(names, query_result))
+        data = dict(zip(names, query_result))
+        apply_directives(query_fields, data)
+        index.root.update(data)
 
     return None
 

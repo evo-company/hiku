@@ -5,6 +5,8 @@ from asyncio import gather
 from inspect import isawaitable
 
 from ..engine import Engine
+from ..extentions.runner import ExtensionsRunner
+from ..extentions.context import ExecutionContext
 from ..graph import (
     apply,
     Graph,
@@ -47,22 +49,20 @@ class _StripQuery(QueryTransformer):
 
 
 def _switch_graph(
-    data: t.Dict,
-    query_graph: Graph,
-    mutation_graph: t.Optional[Graph] = None
+    execution_context: ExecutionContext,
+    extensions_runner: ExtensionsRunner,
 ) -> t.Tuple[Graph, Operation]:
     try:
-        op = read_operation(data['query'],
-                            variables=data.get('variables'),
-                            operation_name=data.get('operationName'))
+        op = read_operation(execution_context,
+                            extensions_runner)
     except TypeError as e:
         raise GraphQLError(errors=[
             'Failed to read query: {}'.format(e),
         ])
     if op.type is OperationType.QUERY:
-        graph = query_graph
-    elif op.type is OperationType.MUTATION and mutation_graph is not None:
-        graph = mutation_graph
+        graph = execution_context.query_graph
+    elif op.type is OperationType.MUTATION and execution_context.mutation_graph is not None:
+        graph = execution_context.mutation_graph
     else:
         raise GraphQLError(errors=[
             'Unsupported operation type: {!r}'.format(op.type),
@@ -92,9 +92,11 @@ class BaseGraphQLEndpoint(ABC):
         self,
         engine: Engine,
         query_graph: Graph,
-        mutation_graph: t.Optional[Graph] = None
+        mutation_graph: t.Optional[Graph] = None,
+        extensions: t.Optional[t.List] = None,
     ):
         self.engine = engine
+        self.extensions = extensions or []
 
         introspection = self.introspection_cls(query_graph, mutation_graph)
         self.query_graph = apply(query_graph, [introspection])
@@ -137,9 +139,21 @@ class GraphQLEndpoint(BaseSyncGraphQLEndpoint):
         return DenormalizeGraphQL(graph, result, type_name).process(op.query)
 
     def dispatch(self, data: t.Dict) -> t.Dict:
+        execution_context = ExecutionContext(
+            query=data['query'],
+            variables=data.get('variables'),
+            operation_name=data.get('operationName'),
+            query_graph=self.query_graph,
+            mutation_graph=self.mutation_graph,
+        )
+        extensions_runner = ExtensionsRunner(
+            execution_context,
+            self.extensions
+        )
         try:
             graph, op = _switch_graph(
-                data, self.query_graph, self.mutation_graph,
+                execution_context,
+                extensions_runner
             )
             result = self.execute(graph, op, {})
             return {'data': result}

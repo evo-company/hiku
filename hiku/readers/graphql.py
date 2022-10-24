@@ -9,14 +9,17 @@ from typing import (
     cast,
     Any,
     Set,
+<<<<<<< Updated upstream
     Callable,
+=======
+>>>>>>> Stashed changes
 )
-from functools import lru_cache
 
 from graphql.language import ast
 from graphql.language.parser import parse
 
 from ..directives import (
+<<<<<<< Updated upstream
     QueryDirective,
     Cached,
 )
@@ -24,7 +27,16 @@ from ..query import Node, Field, Link, merge
 from ..telemetry.prometheus import (
     QUERY_CACHE_HITS,
     QUERY_CACHE_MISSES,
+=======
+    get_directive,
 )
+from ..extentions import (
+    Extension,
+>>>>>>> Stashed changes
+)
+from ..extentions.runner import ExtensionsRunner
+from ..extentions.context import ExecutionContext
+from ..query import Node, Field, Link, merge
 
 
 def parse_query(src: str) -> ast.DocumentNode:
@@ -36,6 +48,7 @@ def parse_query(src: str) -> ast.DocumentNode:
     return parse(src)
 
 
+<<<<<<< Updated upstream
 def wrap_metrics(cached_parser: Callable) -> Callable:
     def wrapper(*args: Any, **kwargs: Any) -> ast.DocumentNode:
         ast = cached_parser(*args, **kwargs)
@@ -58,6 +71,8 @@ def setup_query_cache(
     parse_query = wrap_metrics(parse_query)
 
 
+=======
+>>>>>>> Stashed changes
 class NodeVisitor:
 
     def visit(self, obj: ast.Node) -> Any:
@@ -190,8 +205,12 @@ class SelectionSetVisitMixin:
         if not obj.directives:
             return None
 
+<<<<<<< Updated upstream
         skip = next((d for d in obj.directives if d.name.value == 'skip'),
                     None)
+=======
+        skip = get_directive('skip', obj.directives)
+>>>>>>> Stashed changes
         if skip is not None:
             if len(skip.arguments) != 1:
                 raise TypeError('@skip directive accepts exactly one '
@@ -204,8 +223,12 @@ class SelectionSetVisitMixin:
                                 .format(skip_arg.name.value))
             return self.visit(skip_arg.value)  # type: ignore[attr-defined]
 
+<<<<<<< Updated upstream
         include = next((d for d in obj.directives if d.name.value == 'include'),
                        None)
+=======
+        include = get_directive('include', obj.directives)
+>>>>>>> Stashed changes
         if include is not None:
             if len(include.arguments) != 1:
                 raise TypeError('@include directive accepts exactly one '
@@ -217,6 +240,7 @@ class SelectionSetVisitMixin:
                                 'argument'
                                 .format(include_arg.name.value))
             return not self.visit(include_arg.value)  # type: ignore[attr-defined] # noqa: E501
+<<<<<<< Updated upstream
 
         return None
 
@@ -249,6 +273,8 @@ class SelectionSetVisitMixin:
             raise TypeError('@cached ttl argument must be an integer')
 
         return Cached(ttl)
+=======
+>>>>>>> Stashed changes
 
     def visit_field(
         self, obj: ast.FieldNode
@@ -256,11 +282,16 @@ class SelectionSetVisitMixin:
         if self._should_skip(obj):
             return
 
+<<<<<<< Updated upstream
         # TODO: add plugins functionality to parse custom directives
         directives: List[QueryDirective] = []
         cached = self._is_cached(obj)
         if cached is not None:
             directives.append(cached)
+=======
+        with self.extensions_runner.directives(obj, self) as field:
+            directives = field.directives
+>>>>>>> Stashed changes
 
         if obj.arguments:
             options = {arg.name.value: self.visit(arg.value)  # type: ignore[attr-defined] # noqa: E501
@@ -317,6 +348,7 @@ class SelectionSetVisitMixin:
     ) -> Iterator[Union[Field, Link]]:
         if self._should_skip(obj):
             return
+
         for i in self.transform_fragment(obj.name.value):
             yield i
 
@@ -337,7 +369,11 @@ class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
         self,
         document: ast.DocumentNode,
         query_name: str,
+<<<<<<< Updated upstream
         query_variables: Dict
+=======
+        query_variables: Dict,
+>>>>>>> Stashed changes
     ):
         collector = FragmentsCollector()
         collector.visit(document)
@@ -380,20 +416,36 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
 
     def __init__(
         self,
+        extensions_runner: ExtensionsRunner,
         document: ast.DocumentNode,
+<<<<<<< Updated upstream
         variables: Optional[Dict] = None
     ):
         self.document = document
         self.variables = variables
+=======
+        variables: Optional[Dict] = None,
+    ):
+        self.document = document
+        self.variables = variables
+        self.extensions_runner = extensions_runner
+>>>>>>> Stashed changes
 
     @classmethod
     def transform(
         cls,
+        extensions_runner: ExtensionsRunner,
         document: ast.DocumentNode,
         op: ast.OperationDefinitionNode,
+<<<<<<< Updated upstream
         variables: Optional[Dict] = None
     ) -> Node:
         visitor = cls(document, variables)
+=======
+        variables: Optional[Dict] = None,
+    ) -> Node:
+        visitor = cls(extensions_runner, document, variables)
+>>>>>>> Stashed changes
         return visitor.visit(op)
 
     def transform_fragment(self, name: str) -> List[Union[Field, Link]]:
@@ -456,6 +508,7 @@ def read(
     :param str operation_name: Name of the operation to execute
     :return: :py:class:`hiku.query.Node`, ready to execute query object
     """
+    # TODO: finish this refactoring
     doc = parse_query(src)
     op = OperationGetter.get(doc, operation_name=operation_name)
     if op.operation is not ast.OperationType.QUERY:
@@ -463,7 +516,11 @@ def read(
                         '"{}" operation was provided'
                         .format(op.operation.value))
 
+<<<<<<< Updated upstream
     return GraphQLTransformer.transform(doc, op, variables)
+=======
+    return GraphQLTransformer.transform(doc, op, variables, )
+>>>>>>> Stashed changes
 
 
 class OperationType(enum.Enum):
@@ -493,9 +550,14 @@ class Operation:
 
 
 def read_operation(
+<<<<<<< Updated upstream
     src: str,
     variables: Optional[Dict] = None,
     operation_name: Optional[str] = None
+=======
+    execution_context: ExecutionContext,
+    extensions_runner: ExtensionsRunner,
+>>>>>>> Stashed changes
 ) -> Operation:
     """Reads an operation from the GraphQL document
 
@@ -512,9 +574,30 @@ def read_operation(
     :param str operation_name: Name of the operation to execute
     :return: :py:class:`Operation`
     """
+<<<<<<< Updated upstream
     doc = parse_query(src)
     op = OperationGetter.get(doc, operation_name=operation_name)
     query = GraphQLTransformer.transform(doc, op, variables)
+=======
+
+    with extensions_runner.parsing():
+        if not execution_context.graphql_document:
+            execution_context.graphql_document = parse_query(
+                execution_context.query
+            )
+
+    op = OperationGetter.get(
+        execution_context.graphql_document,
+        operation_name=execution_context.operation_name
+    )
+    query = GraphQLTransformer.transform(
+        extensions_runner,
+        execution_context.graphql_document,
+        op,
+        execution_context.variables
+    )
+
+>>>>>>> Stashed changes
     type_ = cast(Optional[OperationType], (
         OperationType._value2member_map_.get(op.operation)
     ))

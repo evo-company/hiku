@@ -17,7 +17,6 @@ from hiku.graph import (
     Link,
     Graph,
 )
-from hiku.readers.graphql import setup_query_cache
 from hiku.types import (
     Integer,
     TypeRef,
@@ -26,6 +25,7 @@ from hiku.types import (
     Sequence,
 )
 from hiku.executors.sync import SyncExecutor
+from hiku.extentions.parse_query_cache import ParseQueryCache
 from hiku.utils import listify
 
 log = logging.getLogger(__name__)
@@ -129,6 +129,7 @@ app = Flask(__name__)
 graphql_endpoint = FederatedGraphQLEndpoint(
     Engine(SyncExecutor()),
     QUERY_GRAPH,
+    extensions=[ParseQueryCache(max_size=128)],
 )
 
 
@@ -142,7 +143,6 @@ def handle_graphql():
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
-    setup_query_cache(size=128)
     app.run(host='0.0.0.0', port=5000, debug=True)
 
 
