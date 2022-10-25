@@ -29,6 +29,8 @@ Changes in 0.7
   - Added mypy and typings to codebase
   - Added checks for unhashable link results and extend errors. This must improve developer experience.
   - Added caching for parsing graphql query. It is optional and can be enabled by calling :py:func:`hiku.readers.graphql.setup_query_cache`.
+  - Added result cache - it is possible now to specify ``@cached`` directive to cache parts of the query. :ref:`Check cache documentation <caching-doc>`
+  - ``Link(requires=['a', 'b'])`` can be specified as a list of strings. It is useful when you want to require multiple fields at once. It will pass a list of dicts to the resolver.
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
