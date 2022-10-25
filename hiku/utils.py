@@ -8,6 +8,9 @@ from typing import (
     TypeVar,
     List,
     Iterator,
+    Dict,
+    Generic,
+    NoReturn,
 )
 
 from hiku.compat import ParamSpec
@@ -43,3 +46,23 @@ def listify(func: Callable[P, Iterator[T]]) -> Callable[P, List[T]]:
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> List[T]:
         return list(func(*args, **kwargs))
     return wrapper
+
+
+K = TypeVar('K')
+V = TypeVar('V')
+
+
+class ImmutableDict(Dict, Generic[K, V]):
+    _hash = None
+
+    def __hash__(self) -> int:  # type: ignore
+        if self._hash is None:
+            self._hash = hash(frozenset(self.items()))
+        return self._hash
+
+    def _immutable(self) -> NoReturn:
+        raise TypeError("{} object is immutable"
+                        .format(self.__class__.__name__))
+
+    __delitem__ = __setitem__ = _immutable  # type: ignore
+    clear = pop = popitem = setdefault = update = _immutable  # type: ignore

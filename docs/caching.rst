@@ -1,6 +1,8 @@
 Caching
 =======
 
+.. _caching-doc:
+
 Caching is experimental feature.
 
 For now only non-root link will be cached.

@@ -377,7 +377,7 @@ class Link(AbstractLink):
         type_: t.Type[TypeRef],
         func: LinkOneFunc,
         *,
-        requires: t.Optional[str],
+        requires: t.Optional[t.Union[str, t.List[str]]],
         options: t.Optional[t.Sequence[Option]] = None,
         description: t.Optional[str] = None,
         directives: t.Optional[t.Sequence[DirectiveBase]] = None
@@ -391,7 +391,7 @@ class Link(AbstractLink):
         type_: t.Type[Optional],
         func: LinkMaybeFunc,
         *,
-        requires: t.Optional[str],
+        requires: t.Optional[t.Union[str, t.List[str]]],
         options: t.Optional[t.Sequence[Option]] = None,
         description: t.Optional[str] = None,
         directives: t.Optional[t.Sequence[DirectiveBase]] = None
@@ -405,7 +405,7 @@ class Link(AbstractLink):
         type_: t.Type[Sequence],
         func: LinkManyFunc,
         *,
-        requires: t.Optional[str],
+        requires: t.Optional[t.Union[str, t.List[str]]],
         options: t.Optional[t.Sequence[Option]] = None,
         description: t.Optional[str] = None,
         directives: t.Optional[t.Sequence[DirectiveBase]] = None

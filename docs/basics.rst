@@ -80,13 +80,13 @@ Then lets define our graph with one :py:class:`~hiku.graph.Node` and one
 
 ``character_data`` function :sup:`[8]` is used to resolve values for two fields
 in the ``Character`` node. As you can see, it returns basically a list of lists
-with values in the same order as it was requested in arguments (order of ids and
-fields should be preserved).
+with values in the same order as it was requested in arguments (**order of ids and
+fields should be preserved**).
 
 This function used twice in the graph :sup:`[20-21]` -- for two fields, this is
 how `Hiku` understands that both these fields can be loaded using this one
-function and one function call. `Hiku` groups fields by function, to load them
-together.
+function and one function call. `Hiku` **groups fields by function, to load them
+together.**
 
 This gives us ability to resolve many fields for many objects (ids) using just
 one simple function (when possible) to efficiently load data without introducing
@@ -131,10 +131,13 @@ Here is our extended graph definition:
     :emphasize-lines: 20,26,36,37,40-41,43,46-47
 
 Here ``actors`` :py:class:`~hiku.graph.Link` :sup:`[40-41]`, defined in the
-``Character`` node :sup:`[36]`, requires ``id`` field :sup:`[37]` to map
+``Character`` node :sup:`[36]`, ``requires='id'`` field :sup:`[37]` to map
 characters to actors. That's why ``id`` field :sup:`[37]` was added to the
 ``Character`` node :sup:`[36]`. The same work should be done in the ``Actor``
 node :sup:`[43]` to implement backward ``character`` link :sup:`[46-47]`.
+
+``requires`` argument can be specified as a list of fields, in this case
+``Hiku`` will resolve all of them and pass a ``list`` of ``dict`` to resolver.
 
 ``character_to_actors_link`` function :sup:`[20]` accepts ids of the characters
 and should return list of lists -- ids of the actors, in the same order, so

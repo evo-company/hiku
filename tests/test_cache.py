@@ -47,6 +47,7 @@ from hiku.cache import (
     CacheSettings,
     CacheInfo,
 )
+from tests.base import check_result
 
 
 class InMemoryCache(BaseCache):
@@ -591,7 +592,8 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
             }
         }
     }
-    assert execute(query) == expected_result
+
+    check_result(execute(query), expected_result)
 
     assert cache.get_many.call_count == 2
 
@@ -606,7 +608,8 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
 
     cache.reset_mock()
 
-    assert execute(query) == expected_result
+    check_result(execute(query), expected_result)
+
     cache.get_many.assert_has_calls([
         call([attributes_key]),
         call([company_key]),
@@ -770,7 +773,7 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
         }]
     }
 
-    assert execute(query) == expected_result
+    check_result(execute(query), expected_result)
 
     assert cache.get_many.call_count == 2
     calls = {
@@ -786,7 +789,7 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
 
     cache.reset_mock()
 
-    assert execute(query) == expected_result
+    check_result(execute(query), expected_result)
     assert set(*cache.get_many.mock_calls[0][1]) == {
         attributes11_12_key, attributes_none_key
     }
