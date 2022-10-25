@@ -59,6 +59,7 @@ from .executors.queue import (
     TaskSet,
     SubmitRes,
 )
+from .utils import ImmutableDict
 
 if TYPE_CHECKING:
     from .readers.graphql import Operation
@@ -289,22 +290,27 @@ def store_fields(
     return None
 
 
+Req = TypeVar('Req')
+
+
 def link_reqs(
     index: Index,
     node: Node,
     link: Link,
     ids: Any
-) -> Union[List[Tuple[Any, ...]], List[Any], Any]:
+) -> Union[List[ImmutableDict[str, Req]], List[Req], Req]:
     """For a given link, find link `requires` values by ids."""
     if node.name is not None:
         assert ids is not None
         node_idx = index[node.name]
 
         if isinstance(link.requires, list):
-            reqs: List[Tuple[Any, ...]] = []
+            reqs: List[ImmutableDict[str, Req]] = []
             for i in ids:
-                # TODO: dict instead tuple
-                reqs.append(tuple(node_idx[i][r] for r in link.requires))
+                req: ImmutableDict = ImmutableDict(
+                    (r, node_idx[i][r]) for r in link.requires
+                )
+                reqs.append(req)
             return reqs
 
         return [node_idx[i][link.requires] for i in ids]
@@ -734,7 +740,7 @@ class Query(Workflow):
         """
         args = []
         if graph_link.requires:
-            reqs = link_reqs(self._index, node, graph_link, ids)
+            reqs: Any = link_reqs(self._index, node, graph_link, ids)
 
             if 'cached' in query_link.directives_map and self._cache and not skip_cache:  # noqa: E501
                 return self._update_index_from_cache(
@@ -758,7 +764,7 @@ class Query(Workflow):
         def store_link_cache() -> None:
             assert self._cache is not None
             cached = query_link.directives_map['cached']
-            reqs = link_reqs(self._index, node, graph_link, ids)
+            reqs: Any = link_reqs(self._index, node, graph_link, ids)
             to_cache = CacheVisitor(
                 self._cache, self._index, self._graph, node
             ).process(query_link, ids, reqs, self._ctx)

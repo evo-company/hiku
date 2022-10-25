@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import (
     List,
     Tuple,
+    Any,
 )
 
 import pytest
@@ -25,7 +26,10 @@ from hiku.executors.threads import ThreadsExecutor
 from hiku.graph import Graph, Node, Field, Link, Option, Root
 from hiku.sources.sqlalchemy import FieldsQuery
 from hiku.types import Record, Sequence, Integer, Optional, TypeRef
-from hiku.utils import listify
+from hiku.utils import (
+    listify,
+    ImmutableDict,
+)
 from hiku.engine import Engine, pass_context, Context
 from hiku.result import denormalize
 from hiku.builder import build, Q
@@ -189,7 +193,9 @@ def test_links_requires_list():
 
     link_song = Mock(return_value=100)
 
-    def link_song_info(reqs: List[Tuple]):
+    def link_song_info(
+        reqs: List[ImmutableDict[str, Any]]
+    ) -> List[ImmutableDict[str, Any]]:
         return reqs
 
     def song_fields(fields, song_ids):
@@ -201,7 +207,8 @@ def test_links_requires_list():
 
     def song_info_fields(fields, ids):
         def get_fields(id_):
-            [album_id, artist_id] = id_
+            album_id = id_['album_id']
+            artist_id = id_['artist_id']
             for f in fields:
                 if f.name == 'album_name':
                     yield db['album'][album_id]['name']
@@ -311,7 +318,8 @@ def test_links_requires_list_sa():
         db = ctx[SA_ENGINE_KEY]
 
         def get_fields(id_):
-            [album_id, artist_id] = id_
+            album_id = id_['album_id']
+            artist_id = id_['artist_id']
             album = db.execute(
                 album_table.select().where(album_table.c.id == album_id)
             ).first()

@@ -7,21 +7,7 @@ from datetime import datetime
 from itertools import chain
 from json.encoder import encode_basestring, encode_basestring_ascii  # type: ignore # noqa: E501
 
-
-class ImmutableDict(dict):
-    _hash = None
-
-    def __hash__(self):
-        if self._hash is None:
-            self._hash = hash(frozenset(self.items()))
-        return self._hash
-
-    def _immutable(self):
-        raise TypeError("{} object is immutable"
-                        .format(self.__class__.__name__))
-
-    __delitem__ = __setitem__ = _immutable  # type: ignore
-    clear = pop = popitem = setdefault = update = _immutable  # type: ignore
+from hiku.utils import ImmutableDict
 
 
 class Symbol(str):
