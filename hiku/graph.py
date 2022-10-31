@@ -427,8 +427,8 @@ class Link(AbstractLink):
         :param name: name of the link
         :param type_: type of the link
         :param func: function to load identifiers of the linked node
-        :param requires: field name from the current node, required to compute
-                         identifiers of the linked node
+        :param requires: field name(s) from the current node,
+            required to compute identifiers of the linked node
         :param options: list of acceptable options
         :param description: description of the link
         :param directives: list of directives for the link
