@@ -313,6 +313,9 @@ def test_links_requires_list_sa():
     def link_song_info(reqs: List[Tuple]):
         return reqs
 
+    def link_artist(ids):
+        return ids
+
     @pass_context
     def song_info_fields(ctx, fields, ids):
         db = ctx[SA_ENGINE_KEY]
@@ -336,11 +339,15 @@ def test_links_requires_list_sa():
         return [list(get_fields(id_)) for id_ in ids]
 
     song_query = FieldsQuery(SA_ENGINE_KEY, song_table)
+    artist_query = FieldsQuery(SA_ENGINE_KEY, artist_table)
 
     graph = Graph([
         Node('SongInfo', [
             Field('album_name', None, song_info_fields),
             Field('artist_name', None, song_info_fields),
+        ]),
+        Node('Artist', [
+            Field('id', None, artist_query),
         ]),
         Node('Song', [
             Field('id', None, song_query),
@@ -348,7 +355,8 @@ def test_links_requires_list_sa():
             Field('album_id', None, song_query),
             Field('artist_id', None, song_query),
             Link('info', TypeRef['SongInfo'], link_song_info,
-                 requires=['album_id', 'artist_id'])
+                 requires=['album_id', 'artist_id']),
+            Link('artist', TypeRef['Artist'], link_artist, requires='artist_id')
         ]),
         Root([
             Link('song', TypeRef['Song'], link_song, requires=None),
@@ -360,13 +368,19 @@ def test_links_requires_list_sa():
             Q.info[
                 Q.album_name,
                 Q.artist_name,
+            ],
+            # we are querying 'artist' here to test that its requires does not
+            # affect the requires of the 'info' link
+            Q.artist[
+                Q.id,
             ]
         ]
     ])
     result = execute(query)
     check_result(
         result,
-        {'song': {'info': {'album_name': 'Reload', 'artist_name': 'Metallica'}}}
+        {'song': {'info': {'album_name': 'Reload', 'artist_name': 'Metallica'},
+                  'artist': {'id': 1}}}
     )
 
 
