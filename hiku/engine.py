@@ -606,7 +606,9 @@ class Query(Workflow):
                 if isinstance(graph_link.requires, list):
                     done_deps = set()
 
-                    def add_done_dep_callback(dep: Dep, req: Any) -> None:
+                    def add_done_dep_callback(
+                        dep: Dep, req: Any, graph_link: Link, schedule: Callable
+                    ) -> None:
                         def done_cb() -> None:
                             done_deps.add(req)
                             if done_deps == set(graph_link.requires):
@@ -615,7 +617,8 @@ class Query(Workflow):
                         self._queue.add_callback(dep, done_cb)
 
                     for req in graph_link.requires:
-                        add_done_dep_callback(to_dep[to_func[req]], req)
+                        add_done_dep_callback(
+                            to_dep[to_func[req]], req, graph_link, schedule)
                 else:
                     dep = to_dep[to_func[graph_link.requires]]
                     self._queue.add_callback(dep, schedule)
