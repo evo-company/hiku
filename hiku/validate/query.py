@@ -226,7 +226,8 @@ class _OptionTypeValidator:
         return None
 
     def visit_typeref(self, type_: TypeRefMeta) -> None:
-        assert type_.__type_name__ in self._data_types, type_.__type_name__
+        assert type_.__type_name__ in self._data_types, \
+            f'"{type_.__type_name__}" type is not present in graph data_types'
         self.visit(self._data_types[type_.__type_name__])
 
 

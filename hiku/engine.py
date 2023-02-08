@@ -346,21 +346,31 @@ _LINK_REF_MAKER: Dict[Any, Callable] = {
 }
 
 
-HASH_HINT = "\nHint: Consider adding __hash__ method or use hashable type."
-DATACLASS_HINT = "\nHint: Use @dataclass(frozen=True) to make object hashable."
+HASH_HINT = "\nHint: Consider adding __hash__ method or use hashable type for '{!r}'.".format  # noqa: E501
+SEQ_HINT = "\nHint: Consider using tuple instead of '{}'.".format
+DATACLASS_FROZEN_HINT = "\nHint: Use @dataclass(frozen=True) on '{}'.".format
+DATACLASS_FIELD_HINT = "\nHint: Field '{}.{}' of type '{}' is not hashable.".format  # noqa: E501
 
 
 def _hashable_hint(obj: Any) -> str:
-    if isinstance(obj, Sequence):
+    if isinstance(obj, (list, set)):
+        return SEQ_HINT(type(obj).__name__)
+
+    if isinstance(obj, Sequence) and not isinstance(obj, str):
         return _hashable_hint(obj[0])
 
-    if (
-        dataclasses.is_dataclass(obj)
-        and not getattr(obj, dataclasses._PARAMS).frozen  # type: ignore[attr-defined]  # noqa: E501
-    ):
-        return DATACLASS_HINT
+    if dataclasses.is_dataclass(obj):
+        if not getattr(obj, dataclasses._PARAMS).frozen:  # type: ignore[attr-defined]  # noqa: E501
+            return DATACLASS_FROZEN_HINT(obj.__class__.__name__)
 
-    return HASH_HINT
+        for f in dataclasses.fields(obj):
+            val = getattr(obj, f.name)
+            if not _is_hashable(val):
+                return DATACLASS_FIELD_HINT(
+                    obj.__class__.__name__, f.name, type(val).__name__
+                )
+
+    return HASH_HINT(obj)
 
 
 def _check_store_links(
@@ -486,7 +496,7 @@ class Query(Workflow):
         graph: Graph,
         query: QueryNode,
         ctx: 'Context',
-        cache: CacheInfo = None
+        cache: Optional[CacheInfo] = None
     ) -> None:
         self._queue = queue
         self._task_set = task_set
