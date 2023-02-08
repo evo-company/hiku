@@ -1,5 +1,6 @@
 import pytest
 
+from typing import List
 from dataclasses import dataclass
 
 from hiku.builder import build, Q
@@ -62,7 +63,7 @@ def test_link_requires_field_with_unhashable_data():
             Link('info', TypeRef['userInfo'], direct_link, requires='_data'),
         ]),
         Root([
-            Link('user', TypeRef['user'],  link_user,  requires=None),
+            Link('user', TypeRef['user'], link_user, requires=None),
         ]),
     ])
 
@@ -112,7 +113,7 @@ def test_link_to_sequence():
             Link('tags', Sequence[TypeRef['tags']], link_tags, requires='id'),
         ]),
         Root([
-            Link('user', TypeRef['user'],  link_user,  requires=None),
+            Link('user', TypeRef['user'], link_user, requires=None),
         ]),
     ])
 
@@ -151,7 +152,7 @@ def test_root_link_resolver_returns_unhashable_data():
             Field('id', Integer, user_fields),
         ]),
         Root([
-            Link('user', TypeRef['user'],  link_user,  requires=None),
+            Link('user', TypeRef['user'], link_user, requires=None),
         ]),
     ])
 
@@ -182,8 +183,8 @@ def test_root_link_requires_field_with_unhashable_data():
             Field('id', Integer, user_fields),
         ]),
         Root([
-            Field('_user', Any,  user_data),
-            Link('user', TypeRef['user'],  direct_link,  requires='_user'),
+            Field('_user', Any, user_data),
+            Link('user', TypeRef['user'], direct_link, requires='_user'),
         ]),
     ])
 
@@ -229,3 +230,100 @@ def test_root_link_options_unhashable_data():
         r"Can't store link values, node: '__root__', link: 'user', "
         r"expected: hashable object, returned:(.*User)"
     )
+
+
+@pytest.mark.parametrize('typ, expected', [
+    (list, 'list'),
+    (set, 'set'),
+])
+def test_hint_unhashble_type(typ, expected):
+    GRAPH = Graph([
+        Node('user', [
+            Field('tags', Sequence[String], lambda fields, ids: None),
+        ]),
+        Root([
+            Link(
+                'user',
+                TypeRef['user'],
+                lambda: typ(['tag1']),
+                requires=None,
+            ),
+        ]),
+    ])
+
+    with pytest.raises(TypeError) as err:
+        execute(GRAPH, build([Q.user[Q.tags]]))
+
+    err.match(f"Hint: Consider using tuple instead of '{expected}'.")
+
+
+def test_hint_unhashble_type_in_tuple():
+    GRAPH = Graph([
+        Node('user', [
+            Field('tags', Sequence[String], lambda fields, ids: [[]]),
+        ]),
+        Root([
+            Link(
+                'user',
+                TypeRef['user'],
+                lambda: tuple([{}, {}]),
+                requires=None,
+            ),
+        ]),
+    ])
+
+    with pytest.raises(TypeError) as err:
+        execute(GRAPH, build([Q.user[Q.tags]]))
+
+    err.match(
+        "Hint: Consider adding __hash__ method or use hashable type for '{}'.")
+
+
+def test_hint_frozen_dataclass():
+    @dataclass
+    class User:
+        tags: List[str]
+
+    GRAPH = Graph([
+        Node('user', [
+            Field('tags', Sequence[String], lambda fields, ids: None),
+        ]),
+        Root([
+            Link(
+                'user',
+                TypeRef['user'],
+                lambda: User(['tag1']),
+                requires=None,
+            ),
+        ]),
+    ])
+
+    with pytest.raises(TypeError) as err:
+        execute(GRAPH, build([Q.user[Q.tags]]))
+
+    err.match("Hint: Use @dataclass\\(frozen=True\\) on 'User'.")
+
+
+def test_hint_dataclass_unhashable_field():
+    @dataclass(frozen=True)
+    class User:
+        tags: List[str]
+
+    GRAPH = Graph([
+        Node('user', [
+            Field('tags', Sequence[String], lambda fields, ids: None),
+        ]),
+        Root([
+            Link(
+                'user',
+                TypeRef['user'],
+                lambda: User(['tag1']),
+                requires=None,
+            ),
+        ]),
+    ])
+
+    with pytest.raises(TypeError) as err:
+        execute(GRAPH, build([Q.user[Q.tags]]))
+
+    err.match("Hint: Field 'User.tags' of type 'list' is not hashable.")

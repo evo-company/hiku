@@ -77,6 +77,10 @@ class Option(AbstractOption):
 
         Option('size', Integer, default=100)
 
+    Example with TypeRef type(ref can point either to Node or data type)::
+
+        Option('filter', TypeRef['FilterInput'])
+
     """
     def __init__(
         self,
@@ -268,11 +272,11 @@ LinkT = t.Union[
 
 RootLinkOne = RootLinkT[LR]
 RootLinkMaybe = RootLinkT[MaybeLink[LR]]
-RootLinkMany = RootLinkT[List[LR]]
+RootLinkMany = RootLinkT[List[LR]]  # type: ignore[type-var]
 
-LinkOne = LinkT[LT, List[LR]]
-LinkMaybe = LinkT[LT, List[MaybeLink[LR]]]
-LinkMany = LinkT[LT, List[List[LR]]]
+LinkOne = LinkT[LT, List[LR]]  # type: ignore[type-var]
+LinkMaybe = LinkT[LT, List[MaybeLink[LR]]]  # type: ignore[type-var]
+LinkMany = LinkT[LT, List[List[LR]]]  # type: ignore[type-var]
 
 LinkFunc = t.Union[
     RootLinkOne,

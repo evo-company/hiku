@@ -11,6 +11,8 @@ services:
     environment:
       PYTHONPATH: .
       PYTHONBUFFERED: 1
+      PYTHONWARNINGS: |
+        ignore::DeprecationWarning
 
   docs:
     <<: *base
@@ -43,7 +45,7 @@ services:
     <<: *test-base
     depends_on:
       - pg
-    entrypoint: py.test
+    entrypoint: py.test -v
 
   pg:
     image: postgres:13-alpine
