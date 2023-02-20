@@ -38,12 +38,6 @@ def _func_field_names(func):
     return wrapper
 
 
-def _subquery_field_names(func):
-    def wrapper(fields, *args):
-        return func([f.name for _, f in fields], fields, *args)
-    return wrapper
-
-
 class GraphMetricsBase(GraphTransformer):
     root_name = 'Root'
 
@@ -102,7 +96,6 @@ class GraphMetricsBase(GraphTransformer):
     def _wrap_subquery(self, node_name, subquery):
         observe = self._observe_fields(node_name)
         wrapper = self.subquery_wrapper(observe, subquery)
-        wrapper = _subquery_field_names(wrapper)
         wrapper.__subquery__ = lambda: wrapper
         return wrapper
 
@@ -153,15 +146,23 @@ class GraphMetricsBase(GraphTransformer):
 class _SubqueryMixin:
 
     def subquery_wrapper(self, observe, subquery):
-        def wrapper(field_names, *args):
-            start_time = time.perf_counter()
-            result_proc = subquery(*args)
-
-            def proc_wrapper():
-                result = result_proc()
-                observe(start_time, field_names)
+        def wrap_proc(start_time, field_name, proc):
+            def _proc_wrapper(*args):
+                result = proc(*args)
+                observe(start_time, [field_name])
                 return result
-            return proc_wrapper
+
+            return _proc_wrapper
+
+        def wrapper(fields, *args):
+            start_time = time.perf_counter()
+            wrapped_fields = []
+            for gf, qf in fields:
+                gf.func.proc = wrap_proc(start_time, gf.name, gf.func.proc)
+                wrapped_fields.append((gf, qf))
+
+            return subquery(wrapped_fields, *args)
+
         return wrapper
 
 
