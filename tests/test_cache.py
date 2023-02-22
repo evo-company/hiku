@@ -31,7 +31,7 @@ from hiku.sources.sqlalchemy import (
     FieldsQuery,
     LinkQuery,
 )
-from hiku.graph import Graph, Link, Node, Option, Root, Field
+from hiku.graph import Graph, Link, Node, Option, Root, Field, Nothing
 from hiku.types import (
     Integer,
     String,
@@ -39,6 +39,7 @@ from hiku.types import (
     Sequence,
     Record,
     Any,
+    Optional,
 )
 from hiku.engine import Engine
 from hiku.readers.graphql import read
@@ -187,6 +188,10 @@ def direct_link(ids):
 
 def link_user(opts):
     return opts['id']
+
+
+def link_empty_user(ids):
+    return [Nothing] * len(ids)
 
 
 def link_company(opts):
@@ -393,7 +398,13 @@ def sync_high_level_graph_fixture(sync_low_level_graph_sqlalchemy):
             Field('owner_id', Integer, company_sg),
             Field('address', TypeRef['Address'],
                   company_sg.c(get_address(S.this))),
-            Link('owner', TypeRef['User'], direct_link, requires='owner_id')
+            Link('owner', TypeRef['User'], direct_link, requires='owner_id'),
+            Link(
+                'emptyOwner',
+                Optional[TypeRef['User']],
+                link_empty_user,
+                requires='id',
+            )
         ]),
         Node('AttributeValue', [
            Field('id', Integer, attribute_value_sg),
@@ -451,6 +462,9 @@ def get_product_query(product_id: int) -> str:
                 owner {
                     username
                     photo(size: 50)
+                }
+                emptyOwner {
+                    username
                 }
             }
         }
@@ -539,7 +553,8 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
                 'id': 10,
                 'name': 'apple',
                 'address': {'city': 'Kyiv'},
-                'owner': Reference('User', 100)
+                'owner': Reference('User', 100),
+                'emptyOwner': None,
             },
         },
         'Product': {'company': Reference('Company', 10)}
@@ -588,7 +603,8 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
                 'owner': {
                     'username': 'steve',
                     'photo': 'https://example.com/photo.jpg?size=50'
-                }
+                },
+                'emptyOwner': None,
             }
         }
     }
