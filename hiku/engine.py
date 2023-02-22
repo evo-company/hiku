@@ -656,6 +656,8 @@ class Query(Workflow):
         if to_ids:
             self.process_node(path, self._graph.nodes_map[graph_link.node],
                               query_link.node, to_ids)
+        else:
+            self._untrack(path)
 
         return None
 
