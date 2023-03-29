@@ -96,6 +96,7 @@ class GraphMetricsBase(GraphTransformer):
     def _wrap_subquery(self, node_name, subquery):
         observe = self._observe_fields(node_name)
         wrapper = self.subquery_wrapper(observe, subquery)
+        wrapper = _subquery_field_names(wrapper)
         wrapper.__subquery__ = lambda: wrapper
         return wrapper
 
@@ -143,13 +144,37 @@ class GraphMetricsBase(GraphTransformer):
         return obj
 
 
+def _subquery_field_names(func):
+    def wrapper(fields, *args):
+        return func([f.name for _, f in fields], fields, *args)
+    return wrapper
+
+
 class _SubqueryMixin:
 
     def subquery_wrapper(self, observe, subquery):
-        def wrap_proc(start_time, field_name, proc):
+        def wrapper(field_names, *args):
+            start_time = time.perf_counter()
+            result_proc = subquery(*args)
+
+            def proc_wrapper():
+                result = result_proc()
+                observe(start_time, field_names)
+                return result
+
+            return proc_wrapper
+
+        return wrapper
+
+
+class _SubqueryMixinNew:
+
+    def subquery_wrapper(self, observe, subquery):
+        def wrap_proc(field_name, proc):
             def _proc_wrapper(*args):
+                proc_start_time = time.perf_counter()
                 result = proc(*args)
-                observe(start_time, [field_name])
+                observe(proc_start_time, [f'{field_name}__define'])
                 return result
 
             return _proc_wrapper
@@ -157,16 +182,49 @@ class _SubqueryMixin:
         def wrapper(fields, *args):
             start_time = time.perf_counter()
             wrapped_fields = []
+            field_names = []
             for gf, qf in fields:
-                gf.func.proc = wrap_proc(start_time, gf.name, gf.func.proc)
+                gf.func.proc = wrap_proc(gf.name, gf.func.proc)
                 wrapped_fields.append((gf, qf))
+                field_names.append(gf.name)
 
-            return subquery(wrapped_fields, *args)
+            result_proc = subquery(wrapped_fields, *args)
+
+            def result_proc_wrapper():
+                result = result_proc()
+                return result
+
+            observe(start_time, field_names)
+            return result_proc_wrapper
 
         return wrapper
 
 
 class GraphMetrics(_SubqueryMixin, GraphMetricsBase):
+
+    def field_wrapper(self, observe, func):
+        def wrapper(field_names, *args):
+            start_time = time.perf_counter()
+            result = func(*args)
+            observe(start_time, field_names)
+            return result
+        return wrapper
+
+    def link_wrapper(self, observe, func):
+        def wrapper(link_name, *args):
+            start_time = time.perf_counter()
+            result = func(*args)
+            observe(start_time, [link_name])
+            return result
+        return wrapper
+
+
+class GraphMetricsNew(_SubqueryMixinNew, GraphMetricsBase):
+    def _wrap_subquery(self, node_name, subquery):
+        observe = self._observe_fields(node_name)
+        wrapper = self.subquery_wrapper(observe, subquery)
+        wrapper.__subquery__ = lambda: wrapper
+        return wrapper
 
     def field_wrapper(self, observe, func):
         def wrapper(field_names, *args):
