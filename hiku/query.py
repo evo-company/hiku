@@ -45,6 +45,7 @@
     .. _om.next: https://github.com/omcljs/om/wiki/Documentation-(om.next)
 """
 import typing as t
+import hashlib
 
 from itertools import chain
 from collections import (
@@ -63,10 +64,13 @@ def _compute_hash(obj: t.Any) -> int:
     if isinstance(obj, dict):
         return hash(tuple((_compute_hash(k), _compute_hash(v))
                           for k, v in sorted(obj.items())))
-    elif isinstance(obj, list):
+    if isinstance(obj, list):
         return hash(tuple(_compute_hash(i) for i in obj))
-    else:
-        return hash(obj)
+    if isinstance(obj, bytes):
+        return int(hashlib.sha1(obj).hexdigest(), 16)
+    if isinstance(obj, str):
+        return int(hashlib.sha1(obj.encode('utf-8')).hexdigest(), 16)
+    return hash(obj)
 
 
 class Base:
