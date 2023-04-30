@@ -785,7 +785,7 @@ class Query(Workflow):
                 self._cache, self._index, self._graph, node
             ).process(query_link, ids, reqs, self._ctx)
 
-            self._submit(self._cache.set_many, to_cache, cached.ttl)
+            self._submit(self._cache.set_many, to_cache, cached.input_args['ttl'])
 
         if "cached" in query_link.directives_map and self._cache:
             self._add_done_callback(path + (graph_link.node,), store_link_cache)

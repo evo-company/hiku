@@ -88,6 +88,11 @@ commands:
     description: Run federation app from examples
     depends: [_build-examples]
     cmd: docker-compose up examples-federation
+    
+  examples-federation-v2:
+    description: Run federation 2 app from examples
+    depends: [_build-examples]
+    cmd: docker-compose up examples-federation-v2
 
   examples-flask:
     description: Run flask app from examples

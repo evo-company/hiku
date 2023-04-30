@@ -54,7 +54,7 @@ from collections import (
 )
 from collections.abc import Sequence
 
-from .directives import QueryDirective
+from .directives import SchemaDirective
 from .utils import cached_property
 
 T = t.TypeVar("T", bound="Base")
@@ -147,7 +147,7 @@ class Field(FieldBase):
         name: str,
         options: t.Optional[t.Dict[str, t.Any]] = None,
         alias: t.Optional[str] = None,
-        directives: t.Optional[t.Tuple[QueryDirective, ...]] = None,
+        directives: t.Optional[t.Tuple[SchemaDirective, ...]] = None,
     ):
         self.name = name
         self.options = options
@@ -180,7 +180,7 @@ class Link(FieldBase):
         node: "Node",
         options: t.Optional[t.Dict[str, t.Any]] = None,
         alias: t.Optional[str] = None,
-        directives: t.Optional[t.Tuple[QueryDirective, ...]] = None,
+        directives: t.Optional[t.Tuple[SchemaDirective, ...]] = None,
     ):
         self.name = name
         self.node = node

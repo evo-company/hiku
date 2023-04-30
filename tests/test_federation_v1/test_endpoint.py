@@ -1,14 +1,14 @@
 import pytest
 
 from hiku.executors.asyncio import AsyncIOExecutor
-from hiku.federation.endpoint import (
+from hiku.federation.v1.endpoint import (
     FederatedGraphQLEndpoint,
     AsyncFederatedGraphQLEndpoint,
 )
-from hiku.federation.engine import Engine
+from hiku.federation.v1.engine import Engine
 from hiku.executors.sync import SyncExecutor
 
-from tests.test_federation.utils import (
+from tests.test_federation_v1.utils import (
     GRAPH,
     ASYNC_GRAPH,
 )

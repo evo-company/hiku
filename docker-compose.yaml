@@ -38,8 +38,12 @@ services:
 
   examples-federation:
     <<: *examples-base
+    command: python3 examples/graphql_federation.py
+    
+  examples-federation-v2:
+    <<: *examples-base
     command: python3 examples/graphql_federation_v2.py
-          
+  
   examples-flask:
     <<: *examples-base
     command: python3 examples/graphql_flask.py  

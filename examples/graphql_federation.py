@@ -2,13 +2,13 @@ import logging
 
 from flask import Flask, request, jsonify
 
-from hiku.federation.directive import (
+from hiku.federation.v1.directive import (
     Key,
     External,
     Extends,
 )
-from hiku.federation.endpoint import FederatedGraphQLEndpoint
-from hiku.federation.engine import Engine
+from hiku.federation.v1.endpoint import FederatedGraphQLEndpoint
+from hiku.federation.v1.engine import Engine
 from hiku.graph import (
     Root,
     Field,

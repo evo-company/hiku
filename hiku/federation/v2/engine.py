@@ -6,8 +6,8 @@ from typing import (
     Union,
 )
 
-from .sdl import print_sdl
-from .utils import get_keys
+from hiku.federation.v2.sdl import print_sdl
+from hiku.federation.v2.utils import get_keys
 from hiku.engine import (
     InitOptions,
     Query,
@@ -20,8 +20,8 @@ from hiku.result import (
     Index,
     ROOT,
 )
-from ..executors.base import SyncAsyncExecutor
-from ..query import (
+from hiku.executors.base import SyncAsyncExecutor
+from hiku.query import (
     Node,
     Field,
 )
@@ -34,16 +34,19 @@ class Engine:
     def execute_service(self, graph: Graph) -> Proxy:
         idx = Index()
         idx[ROOT.node] = Index()
-        idx[ROOT.node][ROOT.ident] = {"sdl": print_sdl(graph)}
-        return Proxy(idx, ROOT, Node(fields=[Field("sdl")]))
+        idx[ROOT.node][ROOT.ident] = {'sdl': print_sdl(graph)}
+        return Proxy(idx, ROOT, Node(fields=[Field('sdl')]))
 
     def execute_entities(
-        self, graph: Graph, query: Node, ctx: Dict
+        self,
+        graph: Graph,
+        query: Node,
+        ctx: Dict
     ) -> Union[Proxy, Awaitable[Proxy]]:
-        path = ("_entities",)
-        entities_link = query.fields_map["_entities"]
+        path = ('_entities',)
+        entities_link = query.fields_map['_entities']
         query = entities_link.node
-        representations = entities_link.options["representations"]
+        representations = entities_link.options['representations']
 
         queue = Queue(self.executor)
         task_set = queue.fork(None)
@@ -52,7 +55,7 @@ class Engine:
         type_ids_map = defaultdict(list)
 
         for rep in representations:
-            typename = rep["__typename"]
+            typename = rep['__typename']
             for key in get_keys(graph, typename):
                 if key not in rep:
                     continue
@@ -68,7 +71,10 @@ class Engine:
         return self.executor.process(queue, query_workflow)
 
     def execute_query(
-        self, graph: Graph, query: Node, ctx: Dict
+        self,
+        graph: Graph,
+        query: Node,
+        ctx: Dict
     ) -> Union[Proxy, Awaitable[Proxy]]:
         query = InitOptions(graph).visit(query)
         queue = Queue(self.executor)
@@ -79,14 +85,17 @@ class Engine:
         return self.executor.process(queue, query_workflow)
 
     def execute(
-        self, graph: Graph, query: Node, ctx: Optional[Dict] = None
+        self,
+        graph: Graph,
+        query: Node,
+        ctx: Optional[Dict] = None
     ) -> Union[Proxy, Awaitable[Proxy]]:
         if ctx is None:
             ctx = {}
 
-        if "_service" in query.fields_map:
+        if '_service' in query.fields_map:
             return self.execute_service(graph)
-        elif "_entities" in query.fields_map:
+        elif '_entities' in query.fields_map:
             return self.execute_entities(graph, query, ctx)
 
         return self.execute_query(graph, query, ctx)
