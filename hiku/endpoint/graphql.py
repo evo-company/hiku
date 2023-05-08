@@ -131,9 +131,7 @@ class BaseAsyncGraphQLEndpoint(BaseGraphQLEndpoint):
 class GraphQLEndpoint(BaseSyncGraphQLEndpoint):
     introspection_cls = GraphQLIntrospection
 
-    def execute(
-        self, graph: Graph, op: Operation, ctx: t.Optional[t.Dict]
-    ) -> t.Dict:
+    def execute(self, graph: Graph, op: Operation, ctx: t.Optional[t.Dict]) -> t.Dict:
         stripped_query = _process_query(graph, op.query)
         result = self.engine.execute(graph, stripped_query, ctx, op)
         assert isinstance(result, Proxy)
@@ -166,10 +164,7 @@ class BatchGraphQLEndpoint(GraphQLEndpoint):
         self, data: t.Union[t.Dict, t.List[t.Dict]]
     ) -> t.Union[t.Dict, t.List[t.Dict]]:
         if isinstance(data, list):
-            return [
-                super(BatchGraphQLEndpoint, self).dispatch(item)
-                for item in data
-            ]
+            return [super(BatchGraphQLEndpoint, self).dispatch(item) for item in data]
         else:
             return super(BatchGraphQLEndpoint, self).dispatch(data)
 

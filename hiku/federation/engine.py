@@ -3,13 +3,16 @@ from typing import (
     Optional,
     Dict,
     Awaitable,
-    Union,
+    TYPE_CHECKING, Union,
 )
 
-from hiku.federation.v1.sdl import print_sdl
-from hiku.federation.v1.utils import get_keys
+from hiku.cache import CacheInfo, CacheSettings
+from hiku.executors.asyncio import AsyncIOExecutor
+from hiku.executors.base import SyncAsyncExecutor
+from hiku.federation.sdl import print_sdl
+from hiku.federation.utils import get_representation_ident
 from hiku.engine import (
-    InitOptions,
+    BaseEngine, InitOptions,
     Query,
     Context,
 )
@@ -20,22 +23,38 @@ from hiku.result import (
     Index,
     ROOT,
 )
-from hiku.executors.base import SyncAsyncExecutor
 from hiku.query import (
     Node,
     Field,
 )
 
 
-class Engine:
-    def __init__(self, executor: SyncAsyncExecutor):
-        self.executor = executor
+if TYPE_CHECKING:
+    from hiku.readers.graphql import Operation
 
-    def execute_service(self, graph: Graph) -> Proxy:
+
+async def async_result(val):
+    return val
+
+
+class Engine(BaseEngine):
+    def __init__(
+        self,
+        executor: SyncAsyncExecutor,
+        cache: Optional[CacheSettings] = None,
+        enable_v2: bool = False,
+    ) -> None:
+        super().__init__(executor, cache)
+        self.enable_v2 = enable_v2
+
+    def execute_service(self, graph: Graph) -> Union[Proxy, Awaitable[Proxy]]:
         idx = Index()
         idx[ROOT.node] = Index()
-        idx[ROOT.node][ROOT.ident] = {"sdl": print_sdl(graph)}
-        return Proxy(idx, ROOT, Node(fields=[Field("sdl")]))
+        idx[ROOT.node][ROOT.ident] = {"sdl": print_sdl(graph, self.enable_v2)}
+        result = Proxy(idx, ROOT, Node(fields=[Field("sdl")]))
+        if isinstance(self.executor, AsyncIOExecutor):
+            return async_result(result)
+        return result
 
     def execute_entities(
         self, graph: Graph, query: Node, ctx: Dict
@@ -53,16 +72,14 @@ class Engine:
 
         for rep in representations:
             typename = rep["__typename"]
-            for key in get_keys(graph, typename):
-                if key not in rep:
-                    continue
-                ident = rep[key]
-
-                type_ids_map[typename].append(ident)
+            ident = get_representation_ident(rep, graph)
+            type_ids_map[typename].append(ident)
 
         for typename in type_ids_map:
             ids = type_ids_map[typename]
             node = graph.nodes_map[typename]
+            # TODO(mkind): here we must execute resolve_reference function and only then
+            #  run process_node !
             query_workflow.process_node(path, node, query, ids)
 
         return self.executor.process(queue, query_workflow)
@@ -73,13 +90,27 @@ class Engine:
         query = InitOptions(graph).visit(query)
         queue = Queue(self.executor)
         task_set = queue.fork(None)
-        query_workflow = Query(queue, task_set, graph, query, Context(ctx))
+
+        cache = (
+            CacheInfo(
+                self.cache_settings,
+                op.name if op else None,
+            )
+            if self.cache_settings
+            else None
+        )
+
+        query_workflow = Query(queue, task_set, graph, query, Context(ctx), cache)
 
         query_workflow.start()
         return self.executor.process(queue, query_workflow)
 
     def execute(
-        self, graph: Graph, query: Node, ctx: Optional[Dict] = None
+        self,
+        graph: Graph,
+        query: Node,
+        ctx: Optional[Dict] = None,
+        op: Optional["Operation"] = None,
     ) -> Union[Proxy, Awaitable[Proxy]]:
         if ctx is None:
             ctx = {}

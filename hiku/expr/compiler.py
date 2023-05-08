@@ -53,9 +53,7 @@ class ExpressionCompiler:
             py.arg(cls.ctx_var, None),
         ]
         py_args.extend(py.arg(name, None) for name in args)
-        expr = py.Lambda(
-            py.arguments([], py_args, None, [], [], None, []), body
-        )
+        expr = py.Lambda(py.arguments([], py_args, None, [], [], None, []), body)
         py.fix_missing_locations(expr)
         return py.Expression(expr)
 
@@ -130,11 +128,7 @@ class ExpressionCompiler:
             body_expr = self.visit(body)
         return py.ListComp(
             body_expr,
-            [
-                py.comprehension(
-                    py.Name(var_name, py.Store()), col_expr, [], False
-                )
-            ],
+            [py.comprehension(py.Name(var_name, py.Store()), col_expr, [], False)],
         )
 
     def visit_tuple(self, node):
@@ -169,6 +163,5 @@ class ExpressionCompiler:
         values = node.values[1::2]
         assert all(isinstance(k, Keyword) for k in keys), "Wrong arguments"
         return py.Dict(
-            [py.Str(key.name) for key in keys],
-            [self.visit(value) for value in values],
+            [py.Str(key.name) for key in keys], [self.visit(value) for value in values]
         )

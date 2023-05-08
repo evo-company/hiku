@@ -122,9 +122,7 @@ class Checker(NodeTransformer):
         with self.env.push({bind_sym.name: bind_sym.__ref__}):
             then = self.visit(then)
         else_ = self.visit(else_)
-        return Tuple(
-            [Symbol("if_some"), List([bind_sym, bind_expr]), then, else_]
-        )
+        return Tuple([Symbol("if_some"), List([bind_sym, bind_expr]), then, else_])
 
     def visit_tuple_generic(self, node):
         sym = self.visit(node.values[0])

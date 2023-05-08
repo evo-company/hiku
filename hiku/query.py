@@ -63,10 +63,7 @@ T = t.TypeVar("T", bound="Base")
 def _compute_hash(obj: t.Any) -> int:
     if isinstance(obj, dict):
         return hash(
-            tuple(
-                (_compute_hash(k), _compute_hash(v))
-                for k, v in sorted(obj.items())
-            )
+            tuple((_compute_hash(k), _compute_hash(v)) for k, v in sorted(obj.items()))
         )
     if isinstance(obj, list):
         return hash(tuple(_compute_hash(i) for i in obj))
@@ -82,15 +79,13 @@ class Base:
 
     def __repr__(self) -> str:
         kwargs = ", ".join(
-            "{}={!r}".format(attr, self.__dict__[attr])
-            for attr in self.__attrs__
+            "{}={!r}".format(attr, self.__dict__[attr]) for attr in self.__attrs__
         )
         return "{}({})".format(self.__class__.__name__, kwargs)
 
     def __eq__(self, other: t.Any) -> bool:
         return self.__class__ is other.__class__ and all(
-            self.__dict__[attr] == other.__dict__[attr]
-            for attr in self.__attrs__
+            self.__dict__[attr] == other.__dict__[attr] for attr in self.__attrs__
         )
 
     def __ne__(self, other: t.Any) -> bool:
@@ -99,8 +94,7 @@ class Base:
     def copy(self: T, **kwargs: t.Any) -> T:
         obj = self.__class__.__new__(self.__class__)
         obj.__dict__.update(
-            (attr, kwargs.get(attr, self.__dict__[attr]))
-            for attr in self.__attrs__
+            (attr, kwargs.get(attr, self.__dict__[attr])) for attr in self.__attrs__
         )
         return obj
 
@@ -156,7 +150,7 @@ class Field(FieldBase):
 
     @cached_property
     def directives_map(self) -> OrderedDict:
-        return OrderedDict((d.name, d) for d in self.directives)
+        return OrderedDict((d.__directive_info__.name, d) for d in self.directives)
 
     def accept(self, visitor: "QueryVisitor") -> t.Any:
         return visitor.visit_field(self)
@@ -191,7 +185,7 @@ class Link(FieldBase):
 
     @cached_property
     def directives_map(self) -> OrderedDict:
-        return OrderedDict((d.name, d) for d in self.directives)
+        return OrderedDict((d.__directive_info__.name, d) for d in self.directives)
 
     def accept(self, visitor: "QueryVisitor") -> t.Any:
         return visitor.visit_link(self)

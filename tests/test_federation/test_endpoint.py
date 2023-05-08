@@ -1,20 +1,20 @@
 import pytest
 
 from hiku.executors.asyncio import AsyncIOExecutor
-from hiku.federation.v2.endpoint import (
+from hiku.federation.endpoint import (
     FederatedGraphQLEndpoint,
     AsyncFederatedGraphQLEndpoint,
 )
-from hiku.federation.v2.engine import Engine
+from hiku.federation.engine import Engine
 from hiku.executors.sync import SyncExecutor
 
-from tests.test_federation_v2.utils import (
+from tests.test_federation.utils import (
     GRAPH,
     ASYNC_GRAPH,
 )
 
 
-def execute(graph, query_dict):
+def execute_v1(graph, query_dict):
     graphql_endpoint = FederatedGraphQLEndpoint(
         Engine(SyncExecutor()),
         graph,
@@ -23,9 +23,27 @@ def execute(graph, query_dict):
     return graphql_endpoint.dispatch(query_dict)
 
 
-async def execute_async(graph, query_dict):
+async def execute_async_v1(graph, query_dict):
     graphql_endpoint = AsyncFederatedGraphQLEndpoint(
         Engine(AsyncIOExecutor()),
+        graph,
+    )
+
+    return await graphql_endpoint.dispatch(query_dict)
+
+
+def execute_v2(graph, query_dict):
+    graphql_endpoint = FederatedGraphQLEndpoint(
+        Engine(SyncExecutor(), enable_v2=True),
+        graph,
+    )
+
+    return graphql_endpoint.dispatch(query_dict)
+
+
+async def execute_async_v2(graph, query_dict):
+    graphql_endpoint = AsyncFederatedGraphQLEndpoint(
+        Engine(AsyncIOExecutor(), enable_v2=True),
         graph,
     )
 
@@ -56,13 +74,21 @@ ENTITIES_QUERY = {
 SDL_QUERY = {'query': '{_service {sdl}}'}
 
 
-def test_execute_sdl():
-    result = execute(GRAPH, SDL_QUERY)
+@pytest.mark.parametrize('executor', [
+    execute_v1,
+    execute_v2,
+])
+def test_fetch_sdl(executor):
+    result = executor(GRAPH, SDL_QUERY)
     assert result['data']['_service']['sdl'] is not None
 
 
-def test_execute_sync_executor():
-    result = execute(GRAPH, ENTITIES_QUERY)
+@pytest.mark.parametrize('executor', [
+    execute_v1,
+    execute_v2,
+])
+def test_execute_sync_executor(executor):
+    result = executor(GRAPH, ENTITIES_QUERY)
 
     expect = [
         {'cart': {'id': 1, 'status': 'NEW'}},
@@ -72,8 +98,12 @@ def test_execute_sync_executor():
 
 
 @pytest.mark.asyncio
-async def test_execute_async_executor():
-    result = await execute_async(ASYNC_GRAPH, ENTITIES_QUERY)
+@pytest.mark.parametrize('executor', [
+    execute_async_v1,
+    execute_async_v2,
+])
+async def test_execute_async_executor(executor):
+    result = await executor(ASYNC_GRAPH, ENTITIES_QUERY)
 
     expect = [
         {'cart': {'id': 1, 'status': 'NEW'}},

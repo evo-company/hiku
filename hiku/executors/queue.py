@@ -40,9 +40,7 @@ class Queue:
         self._executor = executor
         self._futures: Dict = {}
         self._forks: Dict = {}
-        self._callbacks: DefaultDict[
-            Union[SubmitRes, TaskSet], List
-        ] = defaultdict(
+        self._callbacks: DefaultDict[Union[SubmitRes, TaskSet], List] = defaultdict(
             list
         )  # noqa: E501
 

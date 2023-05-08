@@ -1,8 +1,3 @@
-from hiku.directives import Deprecated
-from hiku.federation.v1.directive import (
-    Extends, External,
-    Key,
-)
 from hiku.graph import (
     Graph,
     Node,
@@ -16,10 +11,14 @@ from hiku.types import (
     Integer,
     String,
     TypeRef,
-    Sequence,
     Optional,
 )
 from hiku.utils import listify
+from hiku.federation.directive import (
+    External,
+    Key,
+    Extends,
+)
 
 
 def get_by_id(id_, collection):
@@ -59,28 +58,6 @@ async def async_cart_resolver(fields, ids):
     return cart_resolver(fields, ids)
 
 
-@listify
-def cart_item_resolver(fields, ids):
-    for item_id in ids:
-        item = get_by_id(item_id, data['cart_items'])
-        yield [item[f.name] for f in fields]
-
-
-async def async_cart_item_resolver(fields, ids):
-    return cart_item_resolver(fields, ids)
-
-
-@listify
-def link_cart_items(cart_ids):
-    for cart_id in cart_ids:
-        yield [item['id'] for item
-               in find_all_by_id(cart_id, data['cart_items'], key='cart_id')]
-
-
-async def async_link_cart_items(ids):
-    return link_cart_items(ids)
-
-
 def direct_link_id(opts):
     return opts['id']
 
@@ -100,6 +77,7 @@ def direct_link(ids):
 async def async_direct_link(ids):
     return ids
 
+
 data_types = {
     'Status': Record[{
         'id': Integer,
@@ -107,39 +85,22 @@ data_types = {
     }],
 }
 
-
 GRAPH = Graph([
     Node('Order', [
-        Field('cartId', Integer, ids_resolver,
-              directives=[External()]),
-        Link('oldCart', TypeRef['Cart'], direct_link, requires='cartId',
-             directives=[Deprecated('use cart instead')]),
+        Field('cartId', Integer, ids_resolver, directives=[External()]),
         Link('cart', TypeRef['Cart'], direct_link, requires='cartId'),
-    ], directives=[Key('cartId'), Extends()]),
+    ], directives=[
+        Key("cartId"),
+        Extends()
+    ]),
     Node('Cart', [
         Field('id', Integer, cart_resolver),
         Field('status', TypeRef['Status'], cart_resolver),
-        Link('items', Sequence[TypeRef['CartItem']], link_cart_items,
-             requires='id')
     ], directives=[Key('id')]),
-    Node('CartItem', [
-        Field('id', Integer, cart_item_resolver),
-        Field('cart_id', Integer, cart_item_resolver),
-        Field(
-            'name',
-            String,
-            cart_item_resolver,
-            directives=[Deprecated('do not use')]
-        ),
-        Field('photo', Optional[String], lambda: None, options=[
-            Option('width', Integer),
-            Option('height', Integer),
-        ]),
-    ]),
     Root([
         Link(
-            'cart',
-            Optional[TypeRef['Cart']],
+            'order',
+            Optional[TypeRef['Order']],
             ids_resolver,
             requires=None,
             options=[
@@ -159,22 +120,11 @@ ASYNC_GRAPH = Graph([
     Node('Cart', [
         Field('id', Integer, async_cart_resolver),
         Field('status', TypeRef['Status'], async_cart_resolver),
-        Link('items', Sequence[TypeRef['CartItem']], async_link_cart_items,
-             requires='id')
     ], directives=[Key('id')]),
-    Node('CartItem', [
-        Field('id', Integer, async_cart_item_resolver),
-        Field('cart_id', Integer, async_cart_item_resolver),
-        Field('name', String, async_cart_item_resolver),
-        Field('photo', Optional[String], lambda: None, options=[
-            Option('width', Integer),
-            Option('height', Integer),
-        ]),
-    ]),
     Root([
         Link(
-            'cart',
-            Optional[TypeRef['Cart']],
+            'order',
+            Optional[TypeRef['Order']],
             async_ids_resolver,
             requires=None,
             options=[

@@ -1,6 +1,6 @@
 import textwrap
 
-from hiku.federation.v1.directive import Extends, External, Key
+from hiku.directives import Location
 from hiku.graph import (
     Graph,
     Node,
@@ -16,19 +16,36 @@ from hiku.types import (
     TypeRef,
     Optional,
 )
-
-from hiku.federation.v1.endpoint import FederatedGraphQLEndpoint
-from hiku.federation.v1.engine import Engine
-from hiku.federation.v1.introspection import FederatedGraphQLIntrospection
-from hiku.federation.v1.sdl import print_sdl
-from hiku.executors.sync import SyncExecutor
 from hiku.graph import apply
-from tests.test_federation_v1.utils import field_resolver, link_resolver
+
+from hiku.federation.directive import (
+    schema_directive,
+    FederationSchemaDirective,
+    External,
+    Key,
+    Extends,
+)
+from hiku.federation.endpoint import FederatedGraphQLEndpoint
+from hiku.federation.engine import Engine
+from hiku.federation.introspection import FederatedGraphQLIntrospection
+from hiku.federation.sdl import print_sdl
+from hiku.executors.sync import SyncExecutor
+from tests.test_federation.utils import field_resolver, link_resolver
+
+
+@schema_directive(
+    name='custom',
+    locations=[Location.OBJECT],
+    compose=True,
+    import_url="https://myspecs.dev/myCustomDirective/v1.0"
+)
+class Custom(FederationSchemaDirective):
+    ...
 
 
 def execute(graph, query_string):
     graphql_endpoint = FederatedGraphQLEndpoint(
-        Engine(SyncExecutor()),
+        Engine(SyncExecutor(), enable_v2=True),
         graph,
     )
 
@@ -51,7 +68,7 @@ GRAPH = Graph([
             link_resolver,
             requires=None,
             options=[
-                Option('id', Integer)
+                Option('id', Integer),
             ],
         ),
     ]),
@@ -60,21 +77,30 @@ GRAPH = Graph([
         'id': Integer,
         'title': String,
     }],
-})
+}, directives=[Custom])
 
 
 expected = """
+    extend schema @link(url: "https://specs.apollo.dev/federation/v2.3", import: ["@key", "@external", "@extends", "@composeDirective"]) @link(url: "https://myspecs.dev/myCustomDirective/v1.0", import: ["@custom"]) @composeDirective(name: "@custom")
+
+    directive @custom on OBJECT
+
     type Status {
       id: Int!
       title: String!
     }
+    
+    input IOStatus {
+      id: Int!
+      title: String!
+    }
 
-    extend type Order @key(fields: "cartId") {
+    extend type Order @key(fields: "cartId", resolvable: true) {
       cartId: Int! @external
       cart: Cart!
     }
 
-    type Cart @key(fields: "id") {
+    type Cart @key(fields: "id", resolvable: true) {
       id: Int!
       status: Status!
     }
@@ -82,15 +108,19 @@ expected = """
     extend type Query {
       order(id: Int!): Order
     }
-
+    
     scalar Any
+    
+    union _Entity = Cart | Order
 
-    union _Entity = Order | Cart
+    type _Service {
+      sdl: String!
+    }
 """
 
 
 def test_print_graph_sdl():
-    sdl = print_sdl(GRAPH)
+    sdl = print_sdl(GRAPH, enable_v2=True)
     assert sdl.strip() == textwrap.dedent(expected).strip()
 
 
@@ -99,6 +129,6 @@ def test_print_introspected_graph_sdl():
         FederatedGraphQLIntrospection(GRAPH),
     ])
 
-    sdl = print_sdl(INTROSPECTED_GRAPH)
+    sdl = print_sdl(INTROSPECTED_GRAPH, enable_v2=True)
 
     assert sdl.strip() == textwrap.dedent(expected).strip()

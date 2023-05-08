@@ -15,9 +15,7 @@ class Symbol(str):
         return self
 
     def __eq__(self, other):
-        return isinstance(other, type(self)) and super(Symbol, self).__eq__(
-            other
-        )
+        return isinstance(other, type(self)) and super(Symbol, self).__eq__(other)
 
     def __hash__(self):
         return super(Symbol, self).__hash__()
@@ -28,9 +26,7 @@ class Keyword(str):
         return ":{}".format(self)
 
     def __eq__(self, other):
-        return isinstance(other, type(self)) and super(Keyword, self).__eq__(
-            other
-        )
+        return isinstance(other, type(self)) and super(Keyword, self).__eq__(other)
 
     def __hash__(self):
         return super(Keyword, self).__hash__()
@@ -48,9 +44,7 @@ class Tuple(tuple):
 
 class Dict(ImmutableDict):
     def __repr__(self):
-        return "{{{}}}".format(
-            " ".join("{!r} {!r}".format(*i) for i in self.items())
-        )
+        return "{{{}}}".format(" ".join("{!r} {!r}".format(*i) for i in self.items()))
 
 
 class Set(frozenset):
@@ -290,9 +284,7 @@ def loads(s, tag_handlers=None):
         target.send(c)
     target.send(" ")
     if len(lst) != 1:
-        raise ValueError(
-            "Expected exactly one top-level element " "in edn string", s
-        )
+        raise ValueError("Expected exactly one top-level element " "in edn string", s)
     return lst[0]
 
 

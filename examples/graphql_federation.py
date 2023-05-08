@@ -89,6 +89,13 @@ def direct_link(ids):
     return ids
 
 
+"""Example of `cart` subgraph.
+
+`cart` subgraph has `Cart` and `CartItem` types
+`order` subgraph has `Order` type
+
+This `cart` subgraph extends `order`'s subgraph type `Order` with `cart` field
+"""
 QUERY_GRAPH = Graph([
     Node('Order', [
         Field('cartId', Integer, ids_resolver,
@@ -105,10 +112,6 @@ QUERY_GRAPH = Graph([
         Field('id', Integer, cart_item_resolver),
         Field('cart_id', Integer, cart_item_resolver),
         Field('name', String, cart_item_resolver),
-        Field('photo', Optional[String], cart_item_resolver, options=[
-            Option('width', Integer),
-            Option('height', Integer),
-        ]),
     ]),
     Root([
         Link(

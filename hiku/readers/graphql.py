@@ -17,7 +17,8 @@ from graphql.language import ast
 from graphql.language.parser import parse
 
 from ..directives import (
-    Cached, SchemaDirective,
+    Cached,
+    SchemaDirective,
 )
 from ..query import Node, Field, Link, merge
 from ..telemetry.prometheus import (
@@ -62,18 +63,14 @@ class NodeVisitor:
     def visit(self, obj: ast.Node) -> Any:
         visit_method = getattr(self, "visit_{}".format(obj.kind))
         if visit_method is None:
-            raise NotImplementedError(
-                "Not implemented node type: {!r}".format(obj)
-            )
+            raise NotImplementedError("Not implemented node type: {!r}".format(obj))
         return visit_method(obj)
 
     def visit_document(self, obj: ast.DocumentNode) -> None:
         for definition in obj.definitions:
             self.visit(definition)
 
-    def visit_operation_definition(
-        self, obj: ast.OperationDefinitionNode
-    ) -> Any:
+    def visit_operation_definition(self, obj: ast.OperationDefinitionNode) -> Any:
         self.visit(obj.selection_set)
 
     def visit_fragment_definition(self, obj: ast.FragmentDefinitionNode) -> Any:
@@ -119,19 +116,13 @@ class OperationGetter(NodeVisitor):
                 return self._operations[self._operation_name]
             except KeyError:
                 raise ValueError(
-                    "Undefined operation name: {!r}".format(
-                        self._operation_name
-                    )
+                    "Undefined operation name: {!r}".format(self._operation_name)
                 )
 
-    def visit_fragment_definition(
-        self, obj: ast.FragmentDefinitionNode
-    ) -> None:
+    def visit_fragment_definition(self, obj: ast.FragmentDefinitionNode) -> None:
         pass  # skip visit here
 
-    def visit_operation_definition(
-        self, obj: ast.OperationDefinitionNode
-    ) -> None:
+    def visit_operation_definition(self, obj: ast.OperationDefinitionNode) -> None:
         name = obj.name.value if obj.name is not None else None
         if name in self._operations:
             raise TypeError("Duplicate operation definition: {!r}".format(name))
@@ -142,18 +133,12 @@ class FragmentsCollector(NodeVisitor):
     def __init__(self) -> None:
         self.fragments_map: Dict[str, ast.FragmentDefinitionNode] = {}
 
-    def visit_operation_definition(
-        self, obj: ast.OperationDefinitionNode
-    ) -> None:
+    def visit_operation_definition(self, obj: ast.OperationDefinitionNode) -> None:
         pass  # not interested in operations here
 
-    def visit_fragment_definition(
-        self, obj: ast.FragmentDefinitionNode
-    ) -> None:
+    def visit_fragment_definition(self, obj: ast.FragmentDefinitionNode) -> None:
         if obj.name.value in self.fragments_map:
-            raise TypeError(
-                'Duplicated fragment name: "{}"'.format(obj.name.value)
-            )
+            raise TypeError('Duplicated fragment name: "{}"'.format(obj.name.value))
         self.fragments_map[obj.name.value] = obj
 
 
@@ -206,9 +191,7 @@ class SelectionSetVisitMixin:
                 )
             return self.visit(skip_arg.value)  # type: ignore[attr-defined]
 
-        include = next(
-            (d for d in obj.directives if d.name.value == "include"), None
-        )
+        include = next((d for d in obj.directives if d.name.value == "include"), None)
         if include is not None:
             if len(include.arguments) != 1:
                 raise TypeError(
@@ -259,7 +242,6 @@ class SelectionSetVisitMixin:
         if self._should_skip(obj):
             return
 
-        # TODO: add plugins functionality to parse custom directives
         directives: List[SchemaDirective] = []
         cached = self._is_cached(obj)
         if cached is not None:
@@ -357,9 +339,7 @@ class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
     def transform_fragment(self, name: str) -> List[Union[Field, Link]]:
         return self.visit(self.fragments_map[name])
 
-    def visit_operation_definition(
-        self, obj: ast.OperationDefinitionNode
-    ) -> None:
+    def visit_operation_definition(self, obj: ast.OperationDefinitionNode) -> None:
         pass  # not interested in operations here
 
     def visit_fragment_definition(
@@ -369,9 +349,7 @@ class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
             return self.cache[obj.name.value]
         else:
             if obj.name.value in self.pending_fragments:
-                raise TypeError(
-                    'Cyclic fragment usage: "{}"'.format(obj.name.value)
-                )
+                raise TypeError('Cyclic fragment usage: "{}"'.format(obj.name.value))
             self.pending_fragments.add(obj.name.value)
             try:
                 selection_set = list(self.visit(obj.selection_set))
@@ -386,9 +364,7 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
     query_variables: Optional[Dict[str, Any]] = None
     fragments_transformer = None
 
-    def __init__(
-        self, document: ast.DocumentNode, variables: Optional[Dict] = None
-    ):
+    def __init__(self, document: ast.DocumentNode, variables: Optional[Dict] = None):
         self.document = document
         self.variables = variables
 
@@ -406,9 +382,7 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
         assert self.fragments_transformer
         return self.fragments_transformer.transform_fragment(name)
 
-    def visit_operation_definition(
-        self, obj: ast.OperationDefinitionNode
-    ) -> Node:
+    def visit_operation_definition(self, obj: ast.OperationDefinitionNode) -> Node:
         variables = self.variables or {}
         query_name = obj.name.value if obj.name else "<unnamed>"
         query_variables = {}
@@ -489,9 +463,7 @@ class OperationType(enum.Enum):
 class Operation:
     """Represents requested GraphQL operation"""
 
-    def __init__(
-        self, type_: OperationType, query: Node, name: Optional[str] = None
-    ):
+    def __init__(self, type_: OperationType, query: Node, name: Optional[str] = None):
         #: type of the operation
         self.type = type_
         #: operation's query
@@ -501,9 +473,7 @@ class Operation:
 
 
 def read_operation(
-    src: str,
-    variables: Optional[Dict] = None,
-    operation_name: Optional[str] = None,
+    src: str, variables: Optional[Dict] = None, operation_name: Optional[str] = None
 ) -> Operation:
     """Reads an operation from the GraphQL document
 
@@ -524,8 +494,7 @@ def read_operation(
     op = OperationGetter.get(doc, operation_name=operation_name)
     query = GraphQLTransformer.transform(doc, op, variables)
     type_ = cast(
-        Optional[OperationType],
-        (OperationType._value2member_map_.get(op.operation)),
+        Optional[OperationType], (OperationType._value2member_map_.get(op.operation))
     )
     name = op.name.value if op.name else None
     if type_ is None:

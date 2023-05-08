@@ -86,9 +86,7 @@ class Proxy:
         try:
             field: t.Union[Field, Link] = self.__node__.result_map[item]
         except KeyError:
-            raise KeyError(
-                "Field {!r} wasn't requested in the query".format(item)
-            )
+            raise KeyError("Field {!r} wasn't requested in the query".format(item))
 
         try:
             obj: t.Dict = self.__idx__[self.__ref__.node][self.__ref__.ident]
@@ -111,14 +109,8 @@ class Proxy:
             return value
         elif isinstance(value, Reference):
             return self.__class__(self.__idx__, value, field.node)
-        elif (
-            isinstance(value, list)
-            and value
-            and isinstance(value[0], Reference)
-        ):
-            return [
-                self.__class__(self.__idx__, ref, field.node) for ref in value
-            ]
+        elif isinstance(value, list) and value and isinstance(value[0], Reference):
+            return [self.__class__(self.__idx__, ref, field.node) for ref in value]
         else:
             return value
 
@@ -150,9 +142,7 @@ def _denormalize_type(
             assert isinstance(type_, RecordMeta), type(type_)
             field_types = type_.__field_types__
             return {
-                f.name: _denormalize_type(
-                    field_types[f.name], result[f.name], f
-                )
+                f.name: _denormalize_type(field_types[f.name], result[f.name], f)
                 for f in query_obj.node.fields
             }
     assert False, (type_, query_obj)
@@ -186,8 +176,7 @@ def _denormalize(
             graph_node = graph.nodes_map[graph_obj.node]
             if graph_obj.type_enum is Many:
                 return [
-                    _denormalize(graph, graph_node, v, query_obj.node)
-                    for v in result
+                    _denormalize(graph, graph_node, v, query_obj.node) for v in result
                 ]
             elif graph_obj.type_enum is Maybe and result is None:
                 return None

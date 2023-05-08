@@ -16,18 +16,19 @@ from typing import (
     Type,
 )
 
-from hiku.federation.v2.engine import Engine
-from hiku.federation.v2.utils import get_keys
-from hiku.federation.v2.introspection import (
+from hiku.federation.engine import Engine
+from hiku.federation.utils import get_representation_ident
+from hiku.federation.introspection import (
+    BaseFederatedGraphQLIntrospection,
     FederatedGraphQLIntrospection,
     AsyncFederatedGraphQLIntrospection,
     is_introspection_query,
     extend_with_federation,
 )
-from hiku.federation.v2.validate import validate
+from hiku.federation.validate import validate
 
 from hiku.denormalize.graphql import DenormalizeGraphQL
-from hiku.federation.v2.denormalize import DenormalizeEntityGraphQL
+from hiku.federation.denormalize import DenormalizeEntityGraphQL
 from hiku.endpoint.graphql import (
     _type_names,
     _switch_graph,
@@ -57,23 +58,18 @@ def denormalize_entities(
     query: Node,
     result: Proxy,
 ) -> List[Dict[str, Any]]:
-
-    entities_link = query.fields_map['_entities']
+    entities_link = query.fields_map["_entities"]
     node = entities_link.node
-    representations = entities_link.options['representations']
+    representations = entities_link.options["representations"]
 
     entities = []
     for r in representations:
-        typename = r['__typename']
-        for key in get_keys(graph, typename):
-            if key not in r:
-                continue
-            ident = r[key]
-            result.__ref__ = Reference(typename, ident)
-            data = DenormalizeEntityGraphQL(
-                graph, result, typename
-            ).process(node)
-            entities.append(data)
+        typename = r["__typename"]
+        ident = get_representation_ident(r, graph)
+
+        result.__ref__ = Reference(typename, ident)
+        data = DenormalizeEntityGraphQL(graph, result, typename).process(node)
+        entities.append(data)
 
     return entities
 
@@ -84,14 +80,11 @@ class BaseFederatedGraphEndpoint(ABC):
 
     @property
     @abstractmethod
-    def introspection_cls(self) -> Type[FederatedGraphQLIntrospection]:
+    def introspection_cls(self) -> Type[BaseFederatedGraphQLIntrospection]:
         pass
 
     def __init__(
-        self,
-        engine: Engine,
-        query_graph: Graph,
-        mutation_graph: Optional[Graph] = None
+        self, engine: Engine, query_graph: Graph, mutation_graph: Optional[Graph] = None,
     ):
         self.engine = engine
 
@@ -106,16 +99,11 @@ class BaseFederatedGraphEndpoint(ABC):
     def context(self, op: Operation) -> Iterator[Dict]:
         yield {}
 
-    @staticmethod
-    def postprocess_result(result: Proxy, graph: Graph, op: Operation) -> Dict:
-        if '_service' in op.query.fields_map:
-            return {'_service': {'sdl': result['sdl']}}
-        elif '_entities' in op.query.fields_map:
-            return {
-                '_entities': denormalize_entities(
-                    graph, op.query, result
-                )
-            }
+    def postprocess_result(self, result: Proxy, graph: Graph, op: Operation) -> Dict:
+        if "_service" in op.query.fields_map:
+            return {"_service": {"sdl": result["sdl"]}}
+        elif "_entities" in op.query.fields_map:
+            return {"_entities": denormalize_entities(graph, op.query, result)}
 
         type_name = _type_names[op.type]
 
@@ -151,34 +139,37 @@ class FederatedGraphQLEndpoint(BaseSyncFederatedGraphQLEndpoint):
         - _service
         - _entities
     """
-    introspection_cls = FederatedGraphQLIntrospection
 
-    def execute(
-        self, graph: Graph, op: Operation, ctx: Optional[Dict]
-    ) -> Dict:
+    @property
+    def introspection_cls(self) -> Type[BaseFederatedGraphQLIntrospection]:
+        return FederatedGraphQLIntrospection
+
+    def execute(self, graph: Graph, op: Operation, ctx: Optional[Dict]) -> Dict:
         stripped_query = _process_query(graph, op.query)
-        result = self.engine.execute(graph, stripped_query, ctx or {})
+        result = self.engine.execute(graph, stripped_query, ctx or {}, op)
         assert isinstance(result, Proxy)
         return self.postprocess_result(result, graph, op)
 
     def dispatch(self, data: Dict) -> Dict:
         try:
             graph, op = _switch_graph(
-                data, self.query_graph, self.mutation_graph,
+                data,
+                self.query_graph,
+                self.mutation_graph,
             )
             with self.context(op) as ctx:
                 result = self.execute(graph, op, ctx)
-            return {'data': result}
+            return {"data": result}
         except GraphQLError as e:
-            return {'errors': [{'message': e} for e in e.errors]}
+            return {"errors": [{"message": e} for e in e.errors]}
 
 
 class AsyncFederatedGraphQLEndpoint(BaseAsyncFederatedGraphQLEndpoint):
-    introspection_cls = AsyncFederatedGraphQLIntrospection
+    @property
+    def introspection_cls(self) -> Type[BaseFederatedGraphQLIntrospection]:
+        return AsyncFederatedGraphQLIntrospection
 
-    async def execute(
-        self, graph: Graph, op: Operation, ctx: Optional[Dict]
-    ) -> Dict:
+    async def execute(self, graph: Graph, op: Operation, ctx: Optional[Dict]) -> Dict:
         stripped_query = _process_query(graph, op.query)
         coro = self.engine.execute(graph, stripped_query, ctx)
         assert isawaitable(coro)
@@ -188,14 +179,16 @@ class AsyncFederatedGraphQLEndpoint(BaseAsyncFederatedGraphQLEndpoint):
     async def dispatch(self, data: Dict) -> Dict:
         try:
             graph, op = _switch_graph(
-                data, self.query_graph, self.mutation_graph,
+                data,
+                self.query_graph,
+                self.mutation_graph,
             )
 
             with self.context(op) as ctx:
                 result = await self.execute(graph, op, ctx)
-            return {'data': result}
+            return {"data": result}
         except GraphQLError as e:
-            return {'errors': [{'message': e} for e in e.errors]}
+            return {"errors": [{"message": e} for e in e.errors]}
 
 
 class AsyncBatchFederatedGraphQLEndpoint(AsyncFederatedGraphQLEndpoint):
@@ -207,13 +200,8 @@ class AsyncBatchFederatedGraphQLEndpoint(AsyncFederatedGraphQLEndpoint):
     async def dispatch(self, data: Dict) -> Dict:
         ...
 
-    async def dispatch(
-        self, data: Union[Dict, List[Dict]]
-    ) -> Union[Dict, List[Dict]]:
+    async def dispatch(self, data: Union[Dict, List[Dict]]) -> Union[Dict, List[Dict]]:
         if isinstance(data, list):
-            return list(await gather(*(
-                super().dispatch(item)
-                for item in data
-            )))
+            return list(await gather(*(super().dispatch(item) for item in data)))
 
         return await super().dispatch(data)

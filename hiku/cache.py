@@ -89,9 +89,7 @@ class CacheSettings:
 class CacheInfo:
     __slots__ = ("cache", "cache_key", "metrics", "query_name")
 
-    def __init__(
-        self, cache_settings: CacheSettings, query_name: Optional[str] = None
-    ):
+    def __init__(self, cache_settings: CacheSettings, query_name: Optional[str] = None):
         self.cache = cache_settings.cache
         self.cache_key = cache_settings.cache_key
         self.metrics = cache_settings.metrics
@@ -108,18 +106,14 @@ class CacheInfo:
             self.metrics.name, self.query_name, node, field
         ).inc(misses)
 
-    def query_hash(
-        self, ctx: "Context", query_link: QueryLink, req: Any
-    ) -> str:
+    def query_hash(self, ctx: "Context", query_link: QueryLink, req: Any) -> str:
         hasher = hashlib.sha1()
         get_query_hash(hasher, query_link, req)
         if self.cache_key:
             self.cache_key(ctx, hasher)
         return hasher.hexdigest()
 
-    def get_many(
-        self, keys: List[str], node: str, field: str
-    ) -> Dict[str, Any]:
+    def get_many(self, keys: List[str], node: str, field: str) -> Dict[str, Any]:
         data = self.cache.get_many(keys)
         hits = sum(1 for key in keys if key in data)
         misses = len(keys) - hits
@@ -201,9 +195,7 @@ class CacheVisitor(QueryVisitor):
 
         self._node.pop()
 
-    def process(
-        self, link: QueryLink, ids: List, reqs: List, ctx: "Context"
-    ) -> Dict:
+    def process(self, link: QueryLink, ids: List, reqs: List, ctx: "Context") -> Dict:
         to_cache = {}
         for i, req in zip(ids, reqs):
             node = self._node[-1]

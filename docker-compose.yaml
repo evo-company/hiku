@@ -50,7 +50,11 @@ services:
               
   examples-aiohttp:
     <<: *examples-base
-    command: python3 examples/graphql_aiohttp.py  
+    command: python3 examples/graphql_aiohttp.py
+    
+  federation-compatibility-server:
+    <<: *examples-base
+    entrypoint: python3 examples/federation-compatibility/server.py
     
   test-base: &test-base
     <<: *base
