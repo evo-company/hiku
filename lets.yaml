@@ -80,11 +80,7 @@ commands:
     cmd: docker-compose run --rm dev pdm run black
 
   mypy:
-    description: |
-      Run mypy
-      Examples:
-        lets mypy hiku
-        lets mypy hiku/graph.py
+    description: Run mypy
     depends: [_build-dev]
     cmd: docker-compose run --rm dev pdm run mypy $LETS_COMMAND_ARGS
 

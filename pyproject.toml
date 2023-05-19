@@ -86,9 +86,10 @@ test = "python -m pytest"
 test_pg = "python -m pytest tests_pg"
 test-all = {composite = ["test", "test_pg"]}
 fmt = "python -m black hiku"
-mypy = "python -m mypy --show-error-codes"
+mypy = "python -m mypy --show-error-codes hiku"
 flake = "python -m flake8"
 docs = "sphinx-build -b html docs docs/build"
+check = {composite = ["fmt", "test", "mypy", "flake"]}
 
 [tool.pytest.ini_options]
 addopts = "--tb=native --benchmark-disable"

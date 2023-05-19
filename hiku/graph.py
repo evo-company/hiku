@@ -133,7 +133,11 @@ NotRootFieldFuncCtx = t.Callable[
 
 FieldType = t.Optional[GenericMeta]
 FieldFunc = t.Union[
-    RootFieldFunc, NotRootFieldFunc, NotRootFieldFuncCtx, SubGraph, BoundExpr
+    RootFieldFunc,
+    NotRootFieldFunc,
+    NotRootFieldFuncCtx,
+    "SubGraph",
+    "BoundExpr",
 ]
 
 

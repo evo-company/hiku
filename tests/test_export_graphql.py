@@ -9,18 +9,18 @@ def check_export(query_obj, data):
 
 
 def test_field():
-    check_export(Node([Field("foo")]), "{\n  foo\n}\n")
+    check_export(Node([Field("foo")]), "{\n  foo\n}")
 
 
 def test_link():
     check_export(
         Node([Link("foo", Node([Field("bar")]))]),
-        "{\n  foo {\n    bar\n  }\n}\n",
+        "{\n  foo {\n    bar\n  }\n}",
     )
 
 
 def test_options():
     check_export(
         Node([Field("foo", options={"bar": [1, {"baz": 2}, 3]})]),
-        "{\n  foo(bar: [1, {baz: 2}, 3])\n}\n",
+        "{\n  foo(bar: [1, {baz: 2}, 3])\n}",
     )

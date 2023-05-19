@@ -106,8 +106,8 @@ class BoundExpr:
         code = ExpressionCompiler.compile_lambda_expr(expr, option_names)
         proc = partial(
             eval(compile(code, "<expr>", "eval")),
-            {f.__def_name__: f.__def_body__ for f in funcs},
-        )  # type: ignore[attr-defined] # noqa: E501
+            {f.__def_name__: f.__def_body__ for f in funcs},  # type: ignore[attr-defined] # noqa: E501
+        )
         field.func = CheckedExpr(self.sub_graph, expr, reqs, proc)  # type: ignore[assignment] # noqa: E501
 
     def __call__(self, *args: Any, **kwargs: Any) -> NoReturn:

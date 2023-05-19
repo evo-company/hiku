@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
     - name: Set up PDM
@@ -31,7 +31,7 @@ jobs:
       run: pdm run flake
     - name: Run mypy
       if: startsWith(matrix.python-version, '3.7')
-      run: pdm run mypy hiku
+      run: pdm run mypy
     - name: Run black
       if: startsWith(matrix.python-version, '3.7')
       run: pdm run fmt --check

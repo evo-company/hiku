@@ -145,13 +145,9 @@ def define(
 
         if len(types) == 1 and isinstance(types[0], str):
             reqs_list = loads(str(types[0]))
-            expr.__def_type__ = Callable[
+            expr.__def_type__ = Callable[  # type: ignore[attr-defined]
                 [
-                    (
-                        _query_to_types(transform(r))  # type: ignore[attr-defined]  # noqa: E501
-                        if r is not None
-                        else Any
-                    )
+                    (_query_to_types(transform(r)) if r is not None else Any)
                     for r in reqs_list
                 ]
             ]
