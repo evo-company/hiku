@@ -17,7 +17,6 @@ _CONTAINER_TYPES = (
 
 
 class TypeDoc:
-
     def __init__(self, type_, description):
         self.__type__ = type_
         self.__type_description__ = description
@@ -27,7 +26,6 @@ class TypeDoc:
 
 
 class GraphTypesEx(GraphTypes):
-
     def visit(self, obj):
         t = super(GraphTypesEx, self).visit(obj)
         if isinstance(t, GenericMeta) and obj.description is not None:
@@ -36,46 +34,52 @@ class GraphTypesEx(GraphTypes):
 
     def visit_graph(self, obj):
         types_map = super(GraphTypesEx, self).visit_graph(obj)
-        root_types_map = types_map['__root__'].__field_types__
-        type_defs = [TypeDef[n, t] for n, t in types_map.items()
-                     if t is not Any if n != '__root__']
-        type_defs.extend(TypeDef[n, t] for n, t in root_types_map.items()
-                         if t is not Any)
+        root_types_map = types_map["__root__"].__field_types__
+        type_defs = [
+            TypeDef[n, t]
+            for n, t in types_map.items()
+            if t is not Any
+            if n != "__root__"
+        ]
+        type_defs.extend(
+            TypeDef[n, t] for n, t in root_types_map.items() if t is not Any
+        )
         return type_defs
 
     def visit_node(self, obj):
         record = super(GraphTypesEx, self).visit_node(obj)
-        return Record[[(n, t) for n, t in record.__field_types__.items()
-                       if t is not Any]]
+        return Record[
+            [(n, t) for n, t in record.__field_types__.items() if t is not Any]
+        ]
 
     def visit_root(self, obj):
         record = super(GraphTypesEx, self).visit_root(obj)
-        return Record[[(n, t) for n, t in record.__field_types__.items()
-                       if t is not Any]]
+        return Record[
+            [(n, t) for n, t in record.__field_types__.items() if t is not Any]
+        ]
 
 
 class _LinePrinter:
-
     def visit(self, type_):
         return type_.accept(self)
 
     def visit_boolean(self, type_):
-        return 'Boolean'
+        return "Boolean"
 
     def visit_string(self, type_):
-        return 'String'
+        return "String"
 
     def visit_integer(self, type_):
-        return 'Integer'
+        return "Integer"
 
     def visit_float(self, type_):
-        return 'Unknown'
+        return "Unknown"
 
     def visit_typeref(self, type_):
         return type_.__type_name__
 
     def visit_any(self, type_):
-        return 'Unknown'
+        return "Unknown"
 
 
 class _IndentedPrinter:
@@ -93,26 +97,27 @@ class _IndentedPrinter:
         self._indent -= 1
 
     def _newline(self):
-        self._buffer.append('')
+        self._buffer.append("")
 
     def _print_call(self, line):
-        self._buffer.append((' ' * self._indent_size * self._indent) + line)
+        self._buffer.append((" " * self._indent_size * self._indent) + line)
 
     def _print_arg(self, type_):
         if isinstance(type_, TypeDoc):
-            self._descriptions[len(self._buffer) - 1] = \
-                type_.__type_description__
+            self._descriptions[
+                len(self._buffer) - 1
+            ] = type_.__type_description__
             type_ = type_.__type__
         if isinstance(type_, _CONTAINER_TYPES):
             with self._add_indent():
                 self.visit(type_)
         else:
-            self._buffer[-1] += ' ' + _LinePrinter().visit(type_)
+            self._buffer[-1] += " " + _LinePrinter().visit(type_)
 
     def _iter_lines(self):
         for i, line in enumerate(self._buffer):
             if i in self._descriptions:
-                yield line + '  ; {}'.format(self._descriptions[i])
+                yield line + "  ; {}".format(self._descriptions[i])
             else:
                 yield line
 
@@ -123,33 +128,33 @@ class _IndentedPrinter:
             if i > 0:
                 printer._newline()
             printer.visit(type_)
-        return '\n'.join(printer._iter_lines()) + '\n'
+        return "\n".join(printer._iter_lines()) + "\n"
 
     def visit(self, type_):
         type_.accept(self)
 
     def visit_typedef(self, type_):
-        self._print_call('type {}'.format(type_.__type_name__))
+        self._print_call("type {}".format(type_.__type_name__))
         self._print_arg(type_.__type__)
 
     def visit_record(self, type_):
-        self._print_call('Record')
+        self._print_call("Record")
         with self._add_indent():
             for name, field_type in type_.__field_types__.items():
-                self._print_call(':{}'.format(name))
+                self._print_call(":{}".format(name))
                 self._print_arg(field_type)
 
     def visit_sequence(self, type_):
-        self._print_call('List')
+        self._print_call("List")
         self._print_arg(type_.__item_type__)
 
     def visit_mapping(self, type_):
-        self._print_call('Dict')
+        self._print_call("Dict")
         self._print_arg(type_.__key_type__)
         self._print_arg(type_.__value_type__)
 
     def visit_optional(self, type_):
-        self._print_call('Option')
+        self._print_call("Option")
         self._print_arg(type_.__type__)
 
 

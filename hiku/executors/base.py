@@ -23,13 +23,13 @@ class BaseExecutor(abc.ABC):
 
 class BaseSyncExecutor(BaseExecutor):
     @abc.abstractmethod
-    def process(self, queue: 'Queue', workflow: 'Workflow') -> 'Proxy':
+    def process(self, queue: "Queue", workflow: "Workflow") -> "Proxy":
         raise NotImplementedError
 
 
 class BaseAsyncExecutor(BaseExecutor):
     @abc.abstractmethod
-    async def process(self, queue: 'Queue', workflow: 'Workflow') -> 'Proxy':
+    async def process(self, queue: "Queue", workflow: "Workflow") -> "Proxy":
         raise NotImplementedError
 
 

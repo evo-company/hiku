@@ -35,7 +35,7 @@ from .query import (
     Field as QueryField,
     Link as QueryLink,
     QueryTransformer,
-    QueryVisitor
+    QueryVisitor,
 )
 from .graph import (
     Link,
@@ -69,28 +69,28 @@ NodePath = Tuple[str, ...]
 
 
 def _yield_options(
-    graph_obj: Union[Link, Field],
-    query_obj: Union[QueryField, QueryLink]
+    graph_obj: Union[Link, Field], query_obj: Union[QueryField, QueryLink]
 ) -> Iterator[Tuple[str, Any]]:
     options = query_obj.options or {}
     for option in graph_obj.options:
         value = options.get(option.name, option.default)
         if value is Nothing:
-            raise TypeError('Required option "{}" for {!r} was not provided'
-                            .format(option.name, graph_obj))
+            raise TypeError(
+                'Required option "{}" for {!r} was not provided'.format(
+                    option.name, graph_obj
+                )
+            )
         else:
             yield option.name, value
 
 
 def _get_options(
-    graph_obj: Union[Link, Field],
-    query_obj: Union[QueryField, QueryLink]
+    graph_obj: Union[Link, Field], query_obj: Union[QueryField, QueryLink]
 ) -> Dict:
     return dict(_yield_options(graph_obj, query_obj))
 
 
 class InitOptions(QueryTransformer):
-
     def __init__(self, graph: Graph) -> None:
         self._graph = graph
         self._path = [graph.root]
@@ -126,7 +126,6 @@ LinkGroup = Tuple[Link, QueryLink]
 
 
 class SplitQuery(QueryVisitor):
-
     def __init__(self, graph_node: Node) -> None:
         self._node = graph_node
         self._fields: List[CallableFieldGroup] = []
@@ -140,11 +139,11 @@ class SplitQuery(QueryVisitor):
         return self._fields, self._links
 
     def visit_node(self, obj: QueryNode) -> NoReturn:
-        raise ValueError('Unexpected value: {!r}'.format(obj))
+        raise ValueError("Unexpected value: {!r}".format(obj))
 
     def visit_field(self, obj: QueryField) -> None:
         graph_obj = self._node.fields_map[obj.name]
-        func = getattr(graph_obj.func, '__subquery__', graph_obj.func)
+        func = getattr(graph_obj.func, "__subquery__", graph_obj.func)
         self._fields.append((func, graph_obj, obj))
 
     def visit_link(self, obj: QueryLink) -> None:
@@ -160,12 +159,11 @@ class SplitQuery(QueryVisitor):
         else:
             assert isinstance(graph_obj, Field), type(graph_obj)
             # `obj` here is a link, but this link is treated as a complex field
-            func = getattr(graph_obj.func, '__subquery__', graph_obj.func)
+            func = getattr(graph_obj.func, "__subquery__", graph_obj.func)
             self._fields.append((func, graph_obj, obj))
 
 
 class GroupQuery(QueryVisitor):
-
     def __init__(self, node: Node) -> None:
         self._node = node
         self._funcs: List[Callable] = []
@@ -180,11 +178,11 @@ class GroupQuery(QueryVisitor):
         return list(zip(self._funcs, self._groups))
 
     def visit_node(self, obj: QueryNode) -> NoReturn:
-        raise ValueError('Unexpected value: {!r}'.format(obj))
+        raise ValueError("Unexpected value: {!r}".format(obj))
 
     def visit_field(self, obj: QueryField) -> None:
         graph_obj = self._node.fields_map[obj.name]
-        func = getattr(graph_obj.func, '__subquery__', graph_obj.func)
+        func = getattr(graph_obj.func, "__subquery__", graph_obj.func)
         if func == self._current_func:
             assert isinstance(self._groups[-1], list)
             self._groups[-1].append((graph_obj, obj))
@@ -210,29 +208,34 @@ def _check_store_fields(
     node: Node,
     fields: List[Union[QueryField, QueryLink]],
     ids: Optional[Any],
-    result: Any
+    result: Any,
 ) -> None:
     if node.name is not None:
         assert ids is not None
         if (
             isinstance(result, Sequence)
             and len(result) == len(ids)
-            and all(isinstance(r, Sequence) and len(r) == len(fields)
-                    for r in result)
+            and all(
+                isinstance(r, Sequence) and len(r) == len(fields)
+                for r in result
+            )
         ):
             return
         else:
-            expected = ('list (len: {}) of lists (len: {})'
-                        .format(len(ids), len(fields)))
+            expected = "list (len: {}) of lists (len: {})".format(
+                len(ids), len(fields)
+            )
     else:
         if isinstance(result, Sequence) and len(result) == len(fields):
             return
         else:
-            expected = 'list (len: {})'.format(len(fields))
-    raise TypeError('Can\'t store field values, node: {!r}, fields: {!r}, '
-                    'expected: {}, returned: {!r}'
-                    .format(node.name or '__root__', [f.name for f in fields],
-                            expected, result))
+            expected = "list (len: {})".format(len(fields))
+    raise TypeError(
+        "Can't store field values, node: {!r}, fields: {!r}, "
+        "expected: {}, returned: {!r}".format(
+            node.name or "__root__", [f.name for f in fields], expected, result
+        )
+    )
 
 
 def _is_hashable(obj: Any) -> bool:
@@ -268,11 +271,13 @@ def store_fields(
     node: Node,
     query_fields: List[Union[QueryField, QueryLink]],
     ids: Optional[Any],
-    query_result: Any
+    query_result: Any,
 ) -> None:
     if inspect.isgenerator(query_result):
-        warnings.warn('Data loading functions should not return generators',
-                      DeprecationWarning)
+        warnings.warn(
+            "Data loading functions should not return generators",
+            DeprecationWarning,
+        )
         query_result = list(query_result)
 
     _check_store_fields(node, query_fields, ids, query_result)
@@ -290,14 +295,11 @@ def store_fields(
     return None
 
 
-Req = TypeVar('Req')
+Req = TypeVar("Req")
 
 
 def link_reqs(
-    index: Index,
-    node: Node,
-    link: Link,
-    ids: Any
+    index: Index, node: Node, link: Link, ids: Any
 ) -> Union[List[ImmutableDict[str, Req]], List[Req], Req]:
     """For a given link, find link `requires` values by ids."""
     if node.name is not None:
@@ -326,16 +328,12 @@ def link_ref_maybe(graph_link: Link, ident: Any) -> Optional[Reference]:
         return Reference(graph_link.node, ident)
 
 
-def link_ref_one(
-    graph_link: Link, ident: Any
-) -> Reference:
+def link_ref_one(graph_link: Link, ident: Any) -> Reference:
     assert ident is not Nothing
     return Reference(graph_link.node, ident)
 
 
-def link_ref_many(
-    graph_link: Link, idents: List
-) -> List[Reference]:
+def link_ref_many(graph_link: Link, idents: List) -> List[Reference]:
     return [Reference(graph_link.node, i) for i in idents]
 
 
@@ -349,7 +347,9 @@ _LINK_REF_MAKER: Dict[Any, Callable] = {
 HASH_HINT = "\nHint: Consider adding __hash__ method or use hashable type for '{!r}'.".format  # noqa: E501
 SEQ_HINT = "\nHint: Consider using tuple instead of '{}'.".format
 DATACLASS_FROZEN_HINT = "\nHint: Use @dataclass(frozen=True) on '{}'.".format
-DATACLASS_FIELD_HINT = "\nHint: Field '{}.{}' of type '{}' is not hashable.".format  # noqa: E501
+DATACLASS_FIELD_HINT = (
+    "\nHint: Field '{}.{}' of type '{}' is not hashable.".format
+)  # noqa: E501
 
 
 def _hashable_hint(obj: Any) -> str:
@@ -373,23 +373,18 @@ def _hashable_hint(obj: Any) -> str:
     return HASH_HINT(obj)
 
 
-def _check_store_links(
-    node: Node,
-    link: Link,
-    ids: Any,
-    result: Any
-) -> None:
-    hint = ''
+def _check_store_links(node: Node, link: Link, ids: Any, result: Any) -> None:
+    hint = ""
     if node.name is not None and link.requires is not None:
         assert ids is not None
         if link.type_enum is Maybe or link.type_enum is One:
             if isinstance(result, Sequence) and len(result) == len(ids):
                 if all(map(_is_hashable, result)):
                     return
-                expected = 'list of hashable objects'
+                expected = "list of hashable objects"
                 hint = _hashable_hint(result)
             else:
-                expected = 'list (len: {})'.format(len(ids))
+                expected = "list (len: {})".format(len(ids))
         elif link.type_enum is Many:
             if (
                 isinstance(result, Sequence)
@@ -404,32 +399,36 @@ def _check_store_links(
 
                 if not unhashable:
                     return
-                expected = 'list (len: {}) of lists of hashable objects'.format(len(ids))  # noqa: E501
+                expected = "list (len: {}) of lists of hashable objects".format(
+                    len(ids)
+                )  # noqa: E501
                 hint = _hashable_hint(result)
             else:
-                expected = 'list (len: {}) of lists'.format(len(ids))
+                expected = "list (len: {}) of lists".format(len(ids))
         else:
             raise TypeError(link.type_enum)
     else:
         if link.type_enum is Maybe or link.type_enum is One:
             if _is_hashable(result):
                 return
-            expected = 'hashable object'
+            expected = "hashable object"
             hint = _hashable_hint(result)
         elif link.type_enum is Many:
             if isinstance(result, Sequence):
                 if all(map(_is_hashable, result)):
                     return
-                expected = 'list of hashable objects'
+                expected = "list of hashable objects"
                 hint = _hashable_hint(result)
             else:
-                expected = 'list'
+                expected = "list"
         else:
             raise TypeError(link.type_enum)
-    raise TypeError('Can\'t store link values, node: {!r}, link: {!r}, '
-                    'expected: {}, returned: {!r}{}'
-                    .format(node.name or '__root__', link.name,
-                            expected, result, hint))
+    raise TypeError(
+        "Can't store link values, node: {!r}, link: {!r}, "
+        "expected: {}, returned: {!r}{}".format(
+            node.name or "__root__", link.name, expected, result, hint
+        )
+    )
 
 
 def store_links(
@@ -438,7 +437,7 @@ def store_links(
     graph_link: Link,
     query_link: QueryLink,
     ids: Any,
-    query_result: Any
+    query_result: Any,
 ) -> None:
     _check_store_links(node, graph_link, ids, query_result)
 
@@ -458,17 +457,17 @@ def store_links(
 
 
 def link_result_to_ids(
-    from_list: bool,
-    link_type: Any,  # Const
-    result: Any
+    from_list: bool, link_type: Any, result: Any  # Const
 ) -> List:
     if from_list:
         if link_type is Maybe:
             return [i for i in result if i is not Nothing]
         elif link_type is One:
             if any(i is Nothing for i in result):
-                raise TypeError('Non-optional link should not return Nothing: '
-                                '{!r}'.format(result))
+                raise TypeError(
+                    "Non-optional link should not return Nothing: "
+                    "{!r}".format(result)
+                )
             return result
         elif link_type is Many:
             return list(chain.from_iterable(result))
@@ -477,7 +476,7 @@ def link_result_to_ids(
             return [] if result is Nothing else [result]
         elif link_type is One:
             if result is Nothing:
-                raise TypeError('Non-optional link should not return Nothing')
+                raise TypeError("Non-optional link should not return Nothing")
             return [result]
         elif link_type is Many:
             return result
@@ -488,15 +487,14 @@ Dep = Union[SubmitRes, TaskSet]
 
 
 class Query(Workflow):
-
     def __init__(
         self,
         queue: Queue,
         task_set: TaskSet,
         graph: Graph,
         query: QueryNode,
-        ctx: 'Context',
-        cache: Optional[CacheInfo] = None
+        ctx: "Context",
+        cache: Optional[CacheInfo] = None,
     ) -> None:
         self._queue = queue
         self._task_set = task_set
@@ -529,12 +527,7 @@ class Query(Workflow):
     def _is_done(self, path: NodePath) -> bool:
         return self._in_progress[path] == 0
 
-    def _submit(
-        self,
-        func: Callable,
-        *args: Any,
-        **kwargs: Any
-    ) -> SubmitRes:
+    def _submit(self, func: Callable, *args: Any, **kwargs: Any) -> SubmitRes:
         if _do_pass_context(func):
             return self._task_set.submit(func, self._ctx, *args, **kwargs)
         else:
@@ -548,11 +541,7 @@ class Query(Workflow):
         return Proxy(self._index, ROOT, self._query)
 
     def _process_node_ordered(
-        self,
-        path: NodePath,
-        node: Node,
-        query: QueryNode,
-        ids: Any
+        self, path: NodePath, node: Node, query: QueryNode, ids: Any
     ) -> None:
         proc_steps = GroupQuery(node).group(query)
 
@@ -610,8 +599,9 @@ class Query(Workflow):
         # schedule link resolve
         for graph_link, query_link in links:
             self._track(path)
-            schedule = partial(self._schedule_link, path, node,
-                               graph_link, query_link, ids)
+            schedule = partial(
+                self._schedule_link, path, node, graph_link, query_link, ids
+            )
             if graph_link.requires:
                 if isinstance(graph_link.requires, list):
                     done_deps = set()
@@ -628,7 +618,8 @@ class Query(Workflow):
 
                     for req in graph_link.requires:
                         add_done_dep_callback(
-                            to_dep[to_func[req]], req, graph_link, schedule)
+                            to_dep[to_func[req]], req, graph_link, schedule
+                        )
                 else:
                     dep = to_dep[to_func[graph_link.requires]]
                     self._queue.add_callback(dep, schedule)
@@ -642,20 +633,26 @@ class Query(Workflow):
         graph_link: Link,
         query_link: QueryLink,
         ids: Any,
-        result: List
+        result: List,
     ) -> None:
         """Store Link.func result in index and Call `process_node` to schedule
         Link's fields and links"""
         if inspect.isgenerator(result):
-            warnings.warn('Data loading functions should not return generators',
-                          DeprecationWarning)
+            warnings.warn(
+                "Data loading functions should not return generators",
+                DeprecationWarning,
+            )
             result = list(result)
         store_links(self._index, node, graph_link, query_link, ids, result)
         from_list = ids is not None and graph_link.requires is not None
         to_ids = link_result_to_ids(from_list, graph_link.type_enum, result)
         if to_ids:
-            self.process_node(path, self._graph.nodes_map[graph_link.node],
-                              query_link.node, to_ids)
+            self.process_node(
+                path,
+                self._graph.nodes_map[graph_link.node],
+                query_link.node,
+                to_ids,
+            )
         else:
             self._untrack(path)
 
@@ -672,7 +669,7 @@ class Query(Workflow):
         query_fields = [qf for _, qf in fields]
 
         dep: Union[TaskSet, SubmitRes]
-        if hasattr(func, '__subquery__'):
+        if hasattr(func, "__subquery__"):
             assert ids is not None
             dep = self._queue.fork(self._task_set)
             proc = func(fields, ids, self._queue, self._ctx, dep)
@@ -697,7 +694,7 @@ class Query(Workflow):
         graph_link: Link,
         query_link: QueryLink,
         ids: List[Any],
-        reqs: List[Any]
+        reqs: List[Any],
     ) -> SubmitRes:
         assert self._cache is not None
         key_info = []
@@ -740,7 +737,7 @@ class Query(Workflow):
         graph_link: Link,
         query_link: QueryLink,
         ids: Any,
-        skip_cache: bool = False
+        skip_cache: bool = False,
     ) -> SubmitRes:
         """Schedules link (submits Link.func to executor).
 
@@ -757,7 +754,11 @@ class Query(Workflow):
         if graph_link.requires:
             reqs: Any = link_reqs(self._index, node, graph_link, ids)
 
-            if 'cached' in query_link.directives_map and self._cache and not skip_cache:  # noqa: E501
+            if (
+                "cached" in query_link.directives_map
+                and self._cache
+                and not skip_cache
+            ):  # noqa: E501
                 return self._update_index_from_cache(
                     path, node, graph_link, query_link, ids, reqs
                 )
@@ -778,7 +779,7 @@ class Query(Workflow):
 
         def store_link_cache() -> None:
             assert self._cache is not None
-            cached = query_link.directives_map['cached']
+            cached = query_link.directives_map["cached"]
             reqs: Any = link_reqs(self._index, node, graph_link, ids)
             to_cache = CacheVisitor(
                 self._cache, self._index, self._graph, node
@@ -786,34 +787,33 @@ class Query(Workflow):
 
             self._submit(self._cache.set_many, to_cache, cached.ttl)
 
-        if 'cached' in query_link.directives_map and self._cache:
+        if "cached" in query_link.directives_map and self._cache:
             self._add_done_callback(path + (graph_link.node,), store_link_cache)
 
         return dep
 
 
-R = TypeVar('R')
-P = ParamSpec('P')
+R = TypeVar("R")
+P = ParamSpec("P")
 
 
 def pass_context(
     func: Callable[P, R]
-) -> Callable[Concatenate['Context', P], R]:
+) -> Callable[Concatenate["Context", P], R]:
     """Decorator to pass context to a function as a first argument.
 
     Can be used on functions for ``Field`` and ``Link``.
     Can not be used on functions with ``@define`` decorator
     """
     func.__pass_context__ = True  # type: ignore[attr-defined]
-    return cast(Callable[Concatenate['Context', P], R], func)
+    return cast(Callable[Concatenate["Context", P], R], func)
 
 
 def _do_pass_context(func: Callable) -> bool:
-    return getattr(func, '__pass_context__', False)
+    return getattr(func, "__pass_context__", False)
 
 
 class Context(Mapping):
-
     def __init__(self, mapping: Mapping) -> None:
         self.__mapping = mapping
 
@@ -827,12 +827,12 @@ class Context(Mapping):
         try:
             return self.__mapping[item]
         except KeyError:
-            raise KeyError('Key {!r} is not specified '
-                           'in the query context'.format(item))
+            raise KeyError(
+                "Key {!r} is not specified " "in the query context".format(item)
+            )
 
 
 class Engine:
-
     def __init__(
         self,
         executor: SyncAsyncExecutor,
@@ -846,17 +846,21 @@ class Engine:
         graph: Graph,
         query: QueryNode,
         ctx: Optional[Dict] = None,
-        op: Optional['Operation'] = None,
+        op: Optional["Operation"] = None,
     ) -> Union[Proxy, Awaitable[Proxy]]:
         if ctx is None:
             ctx = {}
         query = InitOptions(graph).visit(query)
         queue = Queue(self.executor)
         task_set = queue.fork(None)
-        cache = CacheInfo(
-            self.cache_settings,
-            op.name if op else None,
-        ) if self.cache_settings else None
+        cache = (
+            CacheInfo(
+                self.cache_settings,
+                op.name if op else None,
+            )
+            if self.cache_settings
+            else None
+        )
         query_workflow = Query(
             queue, task_set, graph, query, Context(ctx), cache
         )

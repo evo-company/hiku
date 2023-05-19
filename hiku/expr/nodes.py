@@ -1,19 +1,15 @@
 import typing as t
 
 
-VisitorT = t.Union['NodeTransformer', 'NodeVisitor']
+VisitorT = t.Union["NodeTransformer", "NodeVisitor"]
 
 
 class Node:
-
-    def accept(
-        self, visitor: VisitorT
-    ) -> t.Any:
+    def accept(self, visitor: VisitorT) -> t.Any:
         raise NotImplementedError(type(self))
 
 
 class Symbol(Node):
-
     def __init__(self, name: str) -> None:
         self.name = name
 
@@ -25,57 +21,52 @@ class Symbol(Node):
 
 
 class Keyword(Node):
-
     def __init__(self, name: str) -> None:
         self.name = name
 
     def __repr__(self) -> str:
-        return ':{}'.format(self.name)
+        return ":{}".format(self.name)
 
     def accept(self, visitor: VisitorT) -> t.Any:
         return visitor.visit_keyword(self)
 
 
 class Tuple(Node):
-
     def __init__(self, values: t.List[Node]) -> None:
         self.values = tuple(values)
 
     def __repr__(self) -> str:
-        return '({})'.format(' '.join(map(repr, self.values)))
+        return "({})".format(" ".join(map(repr, self.values)))
 
     def accept(self, visitor: VisitorT) -> t.Any:
         return visitor.visit_tuple(self)
 
 
 class List(Node):
-
     def __init__(self, values: t.List[Node]) -> None:
         self.values = tuple(values)
 
     def __repr__(self) -> str:
-        return '[{}]'.format(' '.join(map(repr, self.values)))
+        return "[{}]".format(" ".join(map(repr, self.values)))
 
     def accept(self, visitor: VisitorT) -> t.Any:
         return visitor.visit_list(self)
 
 
 class Dict(Node):
-
     def __init__(self, values: t.List[Node]):
         self.values = tuple(values)
 
     def __repr__(self) -> str:
-        return '{{{}}}'.format(' '.join(map(repr, self.values)))
+        return "{{{}}}".format(" ".join(map(repr, self.values)))
 
     def accept(self, visitor: VisitorT) -> t.Any:
         return visitor.visit_dict(self)
 
 
 class NodeVisitor:
-
     def visit(self, node: Node) -> t.Any:
-        if hasattr(node, 'accept'):
+        if hasattr(node, "accept"):
             node.accept(self)
         else:
             self.generic_visit(node)
@@ -103,9 +94,8 @@ class NodeVisitor:
 
 
 class NodeTransformer:
-
     def visit(self, node: Node) -> t.Any:
-        if hasattr(node, 'accept'):
+        if hasattr(node, "accept"):
             return node.accept(self)
 
         return self.generic_visit(node)
@@ -120,13 +110,10 @@ class NodeTransformer:
         return Keyword(node.name)
 
     def visit_tuple(self, node: Tuple) -> Tuple:
-        return Tuple([self.visit(value)
-                     for value in node.values])
+        return Tuple([self.visit(value) for value in node.values])
 
     def visit_list(self, node: List) -> List:
-        return List([self.visit(value)
-                    for value in node.values])
+        return List([self.visit(value) for value in node.values])
 
     def visit_dict(self, node: Dict) -> Dict:
-        return Dict([self.visit(value)
-                    for value in node.values])
+        return Dict([self.visit(value) for value in node.values])

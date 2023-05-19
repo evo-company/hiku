@@ -43,6 +43,7 @@ def wrap_metrics(cached_parser: Callable) -> Callable:
         QUERY_CACHE_HITS.set(info.hits)
         QUERY_CACHE_MISSES.set(info.misses)
         return ast
+
     return wrapper
 
 
@@ -59,12 +60,12 @@ def setup_query_cache(
 
 
 class NodeVisitor:
-
     def visit(self, obj: ast.Node) -> Any:
-        visit_method = getattr(self, 'visit_{}'.format(obj.kind))
+        visit_method = getattr(self, "visit_{}".format(obj.kind))
         if visit_method is None:
-            raise NotImplementedError('Not implemented node type: {!r}'
-                                      .format(obj))
+            raise NotImplementedError(
+                "Not implemented node type: {!r}".format(obj)
+            )
         return visit_method(obj)
 
     def visit_document(self, obj: ast.DocumentNode) -> None:
@@ -76,9 +77,7 @@ class NodeVisitor:
     ) -> Any:
         self.visit(obj.selection_set)
 
-    def visit_fragment_definition(
-        self, obj: ast.FragmentDefinitionNode
-    ) -> Any:
+    def visit_fragment_definition(self, obj: ast.FragmentDefinitionNode) -> Any:
         self.visit(obj.selection_set)
 
     def visit_selection_set(self, obj: ast.SelectionSetNode) -> Any:
@@ -96,33 +95,35 @@ class NodeVisitor:
 
 
 class OperationGetter(NodeVisitor):
-
     def __init__(self, operation_name: Optional[str] = None):
         self._operations: Dict[Optional[str], ast.OperationDefinitionNode] = {}
         self._operation_name = operation_name
 
     @classmethod
     def get(
-        cls,
-        doc: ast.DocumentNode,
-        operation_name: Optional[str] = None
+        cls, doc: ast.DocumentNode, operation_name: Optional[str] = None
     ) -> ast.OperationDefinitionNode:
         self = cls(operation_name=operation_name)
         self.visit(doc)
         if not self._operations:
-            raise TypeError('No operations in the document')
+            raise TypeError("No operations in the document")
 
         if self._operation_name is None:
             if len(self._operations) > 1:
-                raise TypeError('Document should contain exactly one operation '
-                                'when no operation name was provided')
+                raise TypeError(
+                    "Document should contain exactly one operation "
+                    "when no operation name was provided"
+                )
             return next(iter(self._operations.values()))
         else:
             try:
                 return self._operations[self._operation_name]
             except KeyError:
-                raise ValueError('Undefined operation name: {!r}'
-                                 .format(self._operation_name))
+                raise ValueError(
+                    "Undefined operation name: {!r}".format(
+                        self._operation_name
+                    )
+                )
 
     def visit_fragment_definition(
         self, obj: ast.FragmentDefinitionNode
@@ -134,13 +135,11 @@ class OperationGetter(NodeVisitor):
     ) -> None:
         name = obj.name.value if obj.name is not None else None
         if name in self._operations:
-            raise TypeError('Duplicate operation definition: {!r}'
-                            .format(name))
+            raise TypeError("Duplicate operation definition: {!r}".format(name))
         self._operations[name] = obj
 
 
 class FragmentsCollector(NodeVisitor):
-
     def __init__(self) -> None:
         self.fragments_map: Dict[str, ast.FragmentDefinitionNode] = {}
 
@@ -153,13 +152,13 @@ class FragmentsCollector(NodeVisitor):
         self, obj: ast.FragmentDefinitionNode
     ) -> None:
         if obj.name.value in self.fragments_map:
-            raise TypeError('Duplicated fragment name: "{}"'
-                            .format(obj.name.value))
+            raise TypeError(
+                'Duplicated fragment name: "{}"'.format(obj.name.value)
+            )
         self.fragments_map[obj.name.value] = obj
 
 
 class SelectionSetVisitMixin:
-
     def transform_fragment(self, name: str) -> List[Union[Field, Link]]:
         raise NotImplementedError(type(self))
 
@@ -176,8 +175,11 @@ class SelectionSetVisitMixin:
             assert self.query_variables is not None
             return self.query_variables[name]
         except KeyError:
-            raise TypeError('Variable ${} is not defined in query {}'
-                            .format(name, self.query_name or '<unnamed>'))
+            raise TypeError(
+                "Variable ${} is not defined in query {}".format(
+                    name, self.query_name or "<unnamed>"
+                )
+            )
 
     def visit_selection_set(
         self, obj: ast.SelectionSetNode
@@ -190,40 +192,42 @@ class SelectionSetVisitMixin:
         if not obj.directives:
             return None
 
-        skip = next((d for d in obj.directives if d.name.value == 'skip'),
-                    None)
+        skip = next((d for d in obj.directives if d.name.value == "skip"), None)
         if skip is not None:
             if len(skip.arguments) != 1:
-                raise TypeError('@skip directive accepts exactly one '
-                                'argument, {} provided'
-                                .format(len(skip.arguments)))
+                raise TypeError(
+                    "@skip directive accepts exactly one "
+                    "argument, {} provided".format(len(skip.arguments))
+                )
             skip_arg = skip.arguments[0]
-            if skip_arg.name.value != 'if':
-                raise TypeError('@skip directive does not accept "{}" '
-                                'argument'
-                                .format(skip_arg.name.value))
+            if skip_arg.name.value != "if":
+                raise TypeError(
+                    '@skip directive does not accept "{}" '
+                    "argument".format(skip_arg.name.value)
+                )
             return self.visit(skip_arg.value)  # type: ignore[attr-defined]
 
-        include = next((d for d in obj.directives if d.name.value == 'include'),
-                       None)
+        include = next(
+            (d for d in obj.directives if d.name.value == "include"), None
+        )
         if include is not None:
             if len(include.arguments) != 1:
-                raise TypeError('@include directive accepts exactly one '
-                                'argument, {} provided'
-                                .format(len(include.arguments)))
+                raise TypeError(
+                    "@include directive accepts exactly one "
+                    "argument, {} provided".format(len(include.arguments))
+                )
             include_arg = include.arguments[0]
-            if include_arg.name.value != 'if':
-                raise TypeError('@include directive does not accept "{}" '
-                                'argument'
-                                .format(include_arg.name.value))
+            if include_arg.name.value != "if":
+                raise TypeError(
+                    '@include directive does not accept "{}" '
+                    "argument".format(include_arg.name.value)
+                )
             return not self.visit(include_arg.value)  # type: ignore[attr-defined] # noqa: E501
 
         return None
 
     def _get_directive(
-        self,
-        name: str,
-        obj: ast.SelectionNode
+        self, name: str, obj: ast.SelectionNode
     ) -> Optional[ast.DirectiveNode]:
         return next((d for d in obj.directives if d.name.value == name), None)
 
@@ -231,28 +235,28 @@ class SelectionSetVisitMixin:
         if not obj.directives:
             return None
 
-        cached = self._get_directive('cached', obj)
+        cached = self._get_directive("cached", obj)
         if cached is None:
             return None
 
         if len(cached.arguments) != 1:
-            raise TypeError('@cached directive accepts exactly one '
-                            'argument, {} provided'
-                            .format(len(cached.arguments)))
+            raise TypeError(
+                "@cached directive accepts exactly one "
+                "argument, {} provided".format(len(cached.arguments))
+            )
         cached_arg = cached.arguments[0]
-        if cached_arg.name.value != 'ttl':
-            raise TypeError('@cached directive does not accept "{}" '
-                            'argument'
-                            .format(cached_arg.name.value))
+        if cached_arg.name.value != "ttl":
+            raise TypeError(
+                '@cached directive does not accept "{}" '
+                "argument".format(cached_arg.name.value)
+            )
         ttl = self.visit(cached_arg.value)  # type: ignore[attr-defined]
         if not isinstance(ttl, int):
-            raise TypeError('@cached ttl argument must be an integer')
+            raise TypeError("@cached ttl argument must be an integer")
 
         return Cached(ttl)
 
-    def visit_field(
-        self, obj: ast.FieldNode
-    ) -> Iterator[Union[Field, Link]]:
+    def visit_field(self, obj: ast.FieldNode) -> Iterator[Union[Field, Link]]:
         if self._should_skip(obj):
             return
 
@@ -263,8 +267,10 @@ class SelectionSetVisitMixin:
             directives.append(cached)
 
         if obj.arguments:
-            options = {arg.name.value: self.visit(arg.value)  # type: ignore[attr-defined] # noqa: E501
-                       for arg in obj.arguments}
+            options = {
+                arg.name.value: self.visit(arg.value)  # type: ignore[attr-defined] # noqa: E501
+                for arg in obj.arguments
+            }
         else:
             options = None
 
@@ -275,14 +281,19 @@ class SelectionSetVisitMixin:
 
         if obj.selection_set is None:
             yield Field(
-                obj.name.value, options=options,
-                alias=alias, directives=tuple(directives)
+                obj.name.value,
+                options=options,
+                alias=alias,
+                directives=tuple(directives),
             )
         else:
             node = Node(list(self.visit(obj.selection_set)))  # type: ignore[attr-defined] # noqa: E501
             yield Link(
-                obj.name.value, node, options=options,
-                alias=alias, directives=tuple(directives)
+                obj.name.value,
+                node,
+                options=options,
+                alias=alias,
+                directives=tuple(directives),
             )
 
     def visit_variable(self, obj: ast.VariableNode) -> Any:
@@ -330,14 +341,11 @@ class SelectionSetVisitMixin:
 
 
 class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
-    query_name: str = ''
+    query_name: str = ""
     query_variables: Dict = {}
 
     def __init__(
-        self,
-        document: ast.DocumentNode,
-        query_name: str,
-        query_variables: Dict
+        self, document: ast.DocumentNode, query_name: str, query_variables: Dict
     ):
         collector = FragmentsCollector()
         collector.visit(document)
@@ -362,8 +370,9 @@ class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
             return self.cache[obj.name.value]
         else:
             if obj.name.value in self.pending_fragments:
-                raise TypeError('Cyclic fragment usage: "{}"'
-                                .format(obj.name.value))
+                raise TypeError(
+                    'Cyclic fragment usage: "{}"'.format(obj.name.value)
+                )
             self.pending_fragments.add(obj.name.value)
             try:
                 selection_set = list(self.visit(obj.selection_set))
@@ -379,9 +388,7 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
     fragments_transformer = None
 
     def __init__(
-        self,
-        document: ast.DocumentNode,
-        variables: Optional[Dict] = None
+        self, document: ast.DocumentNode, variables: Optional[Dict] = None
     ):
         self.document = document
         self.variables = variables
@@ -391,7 +398,7 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
         cls,
         document: ast.DocumentNode,
         op: ast.OperationDefinitionNode,
-        variables: Optional[Dict] = None
+        variables: Optional[Dict] = None,
     ) -> Node:
         visitor = cls(document, variables)
         return visitor.visit(op)
@@ -404,7 +411,7 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
         self, obj: ast.OperationDefinitionNode
     ) -> Node:
         variables = self.variables or {}
-        query_name = obj.name.value if obj.name else '<unnamed>'
+        query_name = obj.name.value if obj.name else "<unnamed>"
         query_variables = {}
         for var_defn in obj.variable_definitions or ():
             name = var_defn.variable.name.value
@@ -414,8 +421,11 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
                 if var_defn.default_value is not None:
                     value = self.visit(var_defn.default_value)
                 elif isinstance(var_defn.type, ast.NonNullTypeNode):
-                    raise TypeError('Variable "{}" is not provided for query {}'
-                                    .format(name, query_name))
+                    raise TypeError(
+                        'Variable "{}" is not provided for query {}'.format(
+                            name, query_name
+                        )
+                    )
                 else:
                     value = None
             query_variables[name] = value
@@ -423,13 +433,12 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
         self.query_name = query_name
         assert self.query_name is not None
         self.query_variables = query_variables
-        self.fragments_transformer = FragmentsTransformer(self.document,
-                                                          self.query_name,
-                                                          self.query_variables)
+        self.fragments_transformer = FragmentsTransformer(
+            self.document, self.query_name, self.query_variables
+        )
         ordered = obj.operation is ast.OperationType.MUTATION
         try:
-            node = Node(list(self.visit(obj.selection_set)),
-                        ordered=ordered)
+            node = Node(list(self.visit(obj.selection_set)), ordered=ordered)
         finally:
             self.query_name = None
             self.query_variables = None
@@ -459,15 +468,17 @@ def read(
     doc = parse_query(src)
     op = OperationGetter.get(doc, operation_name=operation_name)
     if op.operation is not ast.OperationType.QUERY:
-        raise TypeError('Only "query" operations are supported, '
-                        '"{}" operation was provided'
-                        .format(op.operation.value))
+        raise TypeError(
+            'Only "query" operations are supported, '
+            '"{}" operation was provided'.format(op.operation.value)
+        )
 
     return GraphQLTransformer.transform(doc, op, variables)
 
 
 class OperationType(enum.Enum):
     """Enumerates GraphQL operation types"""
+
     #: query operation
     QUERY = ast.OperationType.QUERY
     #: mutation operation
@@ -478,11 +489,9 @@ class OperationType(enum.Enum):
 
 class Operation:
     """Represents requested GraphQL operation"""
+
     def __init__(
-        self,
-        type_: OperationType,
-        query: Node,
-        name: Optional[str] = None
+        self, type_: OperationType, query: Node, name: Optional[str] = None
     ):
         #: type of the operation
         self.type = type_
@@ -495,7 +504,7 @@ class Operation:
 def read_operation(
     src: str,
     variables: Optional[Dict] = None,
-    operation_name: Optional[str] = None
+    operation_name: Optional[str] = None,
 ) -> Operation:
     """Reads an operation from the GraphQL document
 
@@ -515,11 +524,12 @@ def read_operation(
     doc = parse_query(src)
     op = OperationGetter.get(doc, operation_name=operation_name)
     query = GraphQLTransformer.transform(doc, op, variables)
-    type_ = cast(Optional[OperationType], (
-        OperationType._value2member_map_.get(op.operation)
-    ))
+    type_ = cast(
+        Optional[OperationType],
+        (OperationType._value2member_map_.get(op.operation)),
+    )
     name = op.name.value if op.name else None
     if type_ is None:
-        raise TypeError('Unsupported operation type: {}'.format(op.operation))
+        raise TypeError("Unsupported operation type: {}".format(op.operation))
 
     return Operation(type_, query, name)

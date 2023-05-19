@@ -6,22 +6,33 @@ from hiku.denormalize.graphql import DenormalizeGraphQL
 
 
 def _(*args):
-    raise NotImplementedError('Data loading not implemented')
+    raise NotImplementedError("Data loading not implemented")
 
 
 def test_typename():
-    graph = Graph([
-        Node('Bar', [
-            Field('baz', Integer, _),
-        ]),
-        Node('Foo', [
-            Link('bar', Sequence[TypeRef['Bar']], _, requires=None),
-        ]),
-        Root([
-            Link('foo', TypeRef['Foo'], _, requires=None),
-        ]),
-    ])
-    query = read("""
+    graph = Graph(
+        [
+            Node(
+                "Bar",
+                [
+                    Field("baz", Integer, _),
+                ],
+            ),
+            Node(
+                "Foo",
+                [
+                    Link("bar", Sequence[TypeRef["Bar"]], _, requires=None),
+                ],
+            ),
+            Root(
+                [
+                    Link("foo", TypeRef["Foo"], _, requires=None),
+                ]
+            ),
+        ]
+    )
+    query = read(
+        """
     query {
         __typename
         foo {
@@ -32,33 +43,34 @@ def test_typename():
             }
         }
     }
-    """)
+    """
+    )
     index = Index()
-    index[ROOT.node][ROOT.ident].update({
-        'foo': Reference('Foo', 1),
-    })
-    index['Foo'][1].update({
-        'bar': [Reference('Bar', 2), Reference('Bar', 3)],
-    })
-    index['Bar'][2].update({
-        'baz': 42
-    })
-    index['Bar'][3].update({
-        'baz': 43
-    })
+    index[ROOT.node][ROOT.ident].update(
+        {
+            "foo": Reference("Foo", 1),
+        }
+    )
+    index["Foo"][1].update(
+        {
+            "bar": [Reference("Bar", 2), Reference("Bar", 3)],
+        }
+    )
+    index["Bar"][2].update({"baz": 42})
+    index["Bar"][3].update({"baz": 43})
     result = Proxy(index, ROOT, query)
-    assert DenormalizeGraphQL(graph, result, 'Query').process(query) == {
-        '__typename': 'Query',
-        'foo': {
-            '__typename': 'Foo',
-            'bar': [
+    assert DenormalizeGraphQL(graph, result, "Query").process(query) == {
+        "__typename": "Query",
+        "foo": {
+            "__typename": "Foo",
+            "bar": [
                 {
-                    '__typename': 'Bar',
-                    'baz': 42,
+                    "__typename": "Bar",
+                    "baz": 42,
                 },
                 {
-                    '__typename': 'Bar',
-                    'baz': 43,
+                    "__typename": "Bar",
+                    "baz": 43,
                 },
             ],
         },

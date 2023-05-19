@@ -15,13 +15,12 @@ from typing import (
 
 from hiku.compat import ParamSpec
 
-Const = NewType('Const', object)
+Const = NewType("Const", object)
 
 
 class cached_property:
-
     def __init__(self, func: Callable) -> None:
-        self.__doc__ = getattr(func, '__doc__')
+        self.__doc__ = getattr(func, "__doc__")
         self.func = func
 
     def __get__(self, obj: Any, cls: Any) -> Any:
@@ -33,23 +32,24 @@ class cached_property:
 
 def const(name: str) -> Const:
     t = type(name, (object,), {})
-    t.__module__ = sys._getframe(1).f_globals.get('__name__', '__main__')
+    t.__module__ = sys._getframe(1).f_globals.get("__name__", "__main__")
     return cast(Const, t)
 
 
-T = TypeVar('T')
-P = ParamSpec('P')
+T = TypeVar("T")
+P = ParamSpec("P")
 
 
 def listify(func: Callable[P, Iterator[T]]) -> Callable[P, List[T]]:
     @wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> List[T]:
         return list(func(*args, **kwargs))
+
     return wrapper
 
 
-K = TypeVar('K')
-V = TypeVar('V')
+K = TypeVar("K")
+V = TypeVar("V")
 
 
 class ImmutableDict(Dict, Generic[K, V]):
@@ -61,8 +61,9 @@ class ImmutableDict(Dict, Generic[K, V]):
         return self._hash
 
     def _immutable(self) -> NoReturn:
-        raise TypeError("{} object is immutable"
-                        .format(self.__class__.__name__))
+        raise TypeError(
+            "{} object is immutable".format(self.__class__.__name__)
+        )
 
     __delitem__ = __setitem__ = _immutable  # type: ignore
     clear = pop = popitem = setdefault = update = _immutable  # type: ignore

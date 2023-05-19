@@ -17,6 +17,7 @@ class Deprecated(DirectiveBase):
     """
     https://spec.graphql.org/June2018/#sec--deprecated
     """
+
     def __init__(self, reason: Optional[str] = None):
         self.reason = reason
 
@@ -24,11 +25,10 @@ class Deprecated(DirectiveBase):
         return visitor.visit_deprecated_directive(self)
 
 
-def get_deprecated(field: Union['Field', 'Link']) -> Optional[Deprecated]:
+def get_deprecated(field: Union["Field", "Link"]) -> Optional[Deprecated]:
     """Get deprecated directive"""
     return next(
-        (d for d in field.directives if isinstance(d, Deprecated)),
-        None
+        (d for d in field.directives if isinstance(d, Deprecated)), None
     )
 
 
@@ -39,5 +39,5 @@ class QueryDirective:
 
 class Cached(QueryDirective):
     def __init__(self, ttl: int):
-        super().__init__('cached')
+        super().__init__("cached")
         self.ttl = ttl

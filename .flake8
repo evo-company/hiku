@@ -1,0 +1,6 @@
+[flake8]
+max-line-length = 80
+exclude = *_pb2.py,.tox,.git,env,docs,.venv,__pypackages__,tests
+ignore =
+    F811,
+    W503,

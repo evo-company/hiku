@@ -6,7 +6,14 @@ services:
     working_dir: /work
     user: ${CURRENT_UID}
     volumes:
-      - ./:/work
+      - ./hiku:/work/hiku
+      - ./tests:/work/tests
+      - ./examples:/work/examples
+      - ./docs:/work/docs
+      - ./Readme.md:/work/Readme.md
+      - ./scripts:/work/scripts
+      - ./.flake8:/work/.flake8
+      - ./pyproject.toml:/work/pyproject.toml
     init: true
     environment:
       PYTHONPATH: .
@@ -14,10 +21,14 @@ services:
       PYTHONWARNINGS: |
         ignore::DeprecationWarning
 
+  dev:
+    <<: *base
+    image: hiku-dev
+    
   docs:
     <<: *base
     image: hiku-docs
-    command: sphinx-build -b html docs build
+    command: pdm run docs
 
   examples-base: &examples-base
     <<: *base
@@ -27,7 +38,7 @@ services:
 
   examples-federation:
     <<: *examples-base
-    command: python3 examples/graphql_federation.py  
+    command: python3 examples/graphql_federation_v2.py
           
   examples-flask:
     <<: *examples-base
@@ -41,11 +52,11 @@ services:
     <<: *base
     image: hiku-tests
 
-  pytest:
+  test:
     <<: *test-base
     depends_on:
       - pg
-    entrypoint: py.test -v
+    command: pdm run test-all
 
   pg:
     image: postgres:13-alpine

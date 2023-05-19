@@ -5,7 +5,6 @@ from ..protobuf import query_pb2
 
 
 class Exporter(QueryVisitor):
-
     def __init__(self, node):
         self.stack = [node]
 

@@ -35,7 +35,7 @@ from ..engine import (
     Context,
 )
 
-SQLALCHEMY_VERSION = tuple(map(int, sqlalchemy.__version__.split('.')))
+SQLALCHEMY_VERSION = tuple(map(int, sqlalchemy.__version__.split(".")))
 
 if SQLALCHEMY_VERSION >= (1, 4):
     from sqlalchemy.engine.row import Row
@@ -44,7 +44,7 @@ else:
 
 
 def _translate_type(
-    column: sqlalchemy.Column
+    column: sqlalchemy.Column,
 ) -> Optional[Union[IntegerMeta, StringMeta]]:
     if isinstance(column.type, sqlalchemy.Integer):
         return Integer
@@ -55,21 +55,26 @@ def _translate_type(
 
 
 def _table_repr(table: sqlalchemy.Table) -> str:
-    return 'Table({})'.format(', '.join(
-        [repr(table.name), repr(table.metadata), '...',
-         'schema={!r}'.format(table.schema)]
-    ))
+    return "Table({})".format(
+        ", ".join(
+            [
+                repr(table.name),
+                repr(table.metadata),
+                "...",
+                "schema={!r}".format(table.schema),
+            ]
+        )
+    )
 
 
 @pass_context
 class FieldsQuery:
-
     def __init__(
         self,
         engine_key: str,
         from_clause: sqlalchemy.Table,
         *,
-        primary_key: Optional[sqlalchemy.Column] = None
+        primary_key: Optional[sqlalchemy.Column] = None,
     ) -> None:
         self.engine_key = engine_key
         self.from_clause = from_clause
@@ -77,16 +82,22 @@ class FieldsQuery:
             self.primary_key = primary_key
         else:
             # currently only one column supported
-            self.primary_key, = from_clause.primary_key
+            (self.primary_key,) = from_clause.primary_key
 
     def __repr__(self) -> str:
         if isinstance(self.from_clause, sqlalchemy.Table):
             from_clause_repr = _table_repr(self.from_clause)
         else:
             from_clause_repr = repr(self.from_clause)
-        return ('<{}.{}: engine_key={!r}, from_clause={}, primary_key={!r}>'
-                .format(self.__class__.__module__, self.__class__.__name__,
-                        self.engine_key, from_clause_repr, self.primary_key))
+        return (
+            "<{}.{}: engine_key={!r}, from_clause={}, primary_key={!r}>".format(
+                self.__class__.__module__,
+                self.__class__.__name__,
+                self.engine_key,
+                from_clause_repr,
+                self.primary_key,
+            )
+        )
 
     def __postprocess__(self, field: Field) -> None:
         if field.type is None:
@@ -99,9 +110,7 @@ class FieldsQuery:
         return column.in_(values)
 
     def select_expr(
-        self,
-        fields_: List[QueryField],
-        ids: Iterable
+        self, fields_: List[QueryField], ids: Iterable
     ) -> Tuple[Select, Callable]:
         columns = [self.from_clause.c[f.name] for f in fields_]
         expr = (
@@ -111,8 +120,9 @@ class FieldsQuery:
         )
 
         def result_proc(rows: List[Row]) -> List:
-            rows_map = {row[self.primary_key]: [row[c] for c in columns]
-                        for row in rows}
+            rows_map = {
+                row[self.primary_key]: [row[c] for c in columns] for row in rows
+            }
 
             nulls = [None for _ in fields_]
             return [rows_map.get(id_, nulls) for id_ in ids]
@@ -120,10 +130,7 @@ class FieldsQuery:
         return expr, result_proc
 
     def __call__(
-        self,
-        ctx: Context,
-        fields_: List[QueryField],
-        ids: List
+        self, ctx: Context, fields_: List[QueryField], ids: List
     ) -> Any:
         if not ids:
             return []
@@ -155,26 +162,32 @@ def _to_many_mapper(pairs: List[Tuple], values: List) -> List:
 
 
 class LinkQuery:
-
     def __init__(
         self,
         engine_key: str,
         *,
         from_column: sqlalchemy.Column,
-        to_column: sqlalchemy.Column
+        to_column: sqlalchemy.Column,
     ) -> None:
         if from_column.table is not to_column.table:
-            raise ValueError('from_column and to_column should belong to '
-                             'one table')
+            raise ValueError(
+                "from_column and to_column should belong to " "one table"
+            )
 
         self.engine_key = engine_key
         self.from_column = from_column
         self.to_column = to_column
 
     def __repr__(self) -> str:
-        return ('<{}.{}: engine_key={!r}, from_column={!r}, to_column={!r}>'
-                .format(self.__class__.__module__, self.__class__.__name__,
-                        self.engine_key, self.from_column, self.to_column))
+        return (
+            "<{}.{}: engine_key={!r}, from_column={!r}, to_column={!r}>".format(
+                self.__class__.__module__,
+                self.__class__.__name__,
+                self.engine_key,
+                self.from_column,
+                self.to_column,
+            )
+        )
 
     def __postprocess__(self, link: Link) -> None:
         if link.type_enum is One:
@@ -196,11 +209,12 @@ class LinkQuery:
         # TODO: make this optional, but enabled by default
         filtered_ids = [i for i in set(ids) if i is not None]
         if filtered_ids:
-            return (
-                sqlalchemy.select([self.from_column.label('from_column'),
-                                   self.to_column.label('to_column')])
-                .where(self.in_impl(self.from_column, filtered_ids))
-            )
+            return sqlalchemy.select(
+                [
+                    self.from_column.label("from_column"),
+                    self.to_column.label("to_column"),
+                ]
+            ).where(self.in_impl(self.from_column, filtered_ids))
         else:
             return None
 

@@ -31,21 +31,24 @@ def _encode(value: Any) -> ast.ValueNode:
     elif isinstance(value, list):
         return ast.ListValueNode(values=[_encode(v) for v in value])
     elif isinstance(value, dict):
-        return ast.ObjectValueNode(fields=[
-            ast.ObjectFieldNode(name=_name(key), value=_encode(val))
-            for key, val in value.items()
-        ])
+        return ast.ObjectValueNode(
+            fields=[
+                ast.ObjectFieldNode(name=_name(key), value=_encode(val))
+                for key, val in value.items()
+            ]
+        )
     else:
-        raise TypeError('Unsupported type: {!r}'.format(value))
+        raise TypeError("Unsupported type: {!r}".format(value))
 
 
 class Exporter(QueryVisitor):
-
     def visit_field(self, obj: Field) -> ast.FieldNode:
         arguments = None
         if obj.options:
-            arguments = [ast.ArgumentNode(name=_name(key), value=_encode(val))
-                         for key, val in obj.options.items()]
+            arguments = [
+                ast.ArgumentNode(name=_name(key), value=_encode(val))
+                for key, val in obj.options.items()
+            ]
         return ast.FieldNode(
             name=_name(obj.name),
             alias=_name(obj.alias),
@@ -55,8 +58,10 @@ class Exporter(QueryVisitor):
     def visit_link(self, obj: Link) -> ast.FieldNode:
         arguments = None
         if obj.options:
-            arguments = [ast.ArgumentNode(name=_name(key), value=_encode(val))
-                         for key, val in obj.options.items()]
+            arguments = [
+                ast.ArgumentNode(name=_name(key), value=_encode(val))
+                for key, val in obj.options.items()
+            ]
         return ast.FieldNode(
             name=_name(obj.name),
             alias=_name(obj.alias),
@@ -71,9 +76,11 @@ class Exporter(QueryVisitor):
 
 
 def export(query: Node) -> ast.DocumentNode:
-    return ast.DocumentNode(definitions=[
-        ast.OperationDefinitionNode(
-            operation=ast.OperationType.QUERY,
-            selection_set=Exporter().visit(query),
-        )
-    ])
+    return ast.DocumentNode(
+        definitions=[
+            ast.OperationDefinitionNode(
+                operation=ast.OperationType.QUERY,
+                selection_set=Exporter().visit(query),
+            )
+        ]
+    )

@@ -42,24 +42,23 @@ from .utils import cached_property
 
 
 class Reference:
-    __slots__ = ('node', 'ident')
+    __slots__ = ("node", "ident")
 
     def __init__(self, node: str, ident: t.Any) -> None:
         self.node = node
         self.ident = ident
 
     def __repr__(self) -> str:
-        return '<{}[{!r}]>'.format(self.node, self.ident)
+        return "<{}[{!r}]>".format(self.node, self.ident)
 
     def __hash__(self) -> int:
         return hash((self.node, self.ident))
 
 
-ROOT = Reference('__root__', '__root__')
+ROOT = Reference("__root__", "__root__")
 
 
 class Index(defaultdict):
-
     def __init__(self) -> None:
         super(Index, self).__init__(lambda: defaultdict(dict))
 
@@ -75,7 +74,8 @@ class Index(defaultdict):
 
 class Proxy:
     """Proxy is a dict-like interface to index."""
-    __slots__ = ('__idx__', '__ref__', '__node__')
+
+    __slots__ = ("__idx__", "__ref__", "__node__")
 
     def __init__(self, index: Index, reference: Reference, node: Node) -> None:
         self.__idx__ = index
@@ -86,31 +86,39 @@ class Proxy:
         try:
             field: t.Union[Field, Link] = self.__node__.result_map[item]
         except KeyError:
-            raise KeyError("Field {!r} wasn't requested in the query"
-                           .format(item))
+            raise KeyError(
+                "Field {!r} wasn't requested in the query".format(item)
+            )
 
         try:
             obj: t.Dict = self.__idx__[self.__ref__.node][self.__ref__.ident]
         except KeyError:
-            raise AssertionError('Object {}[{!r}] is missing in the index'
-                                 .format(self.__ref__.node, self.__ref__.ident))
+            raise AssertionError(
+                "Object {}[{!r}] is missing in the index".format(
+                    self.__ref__.node, self.__ref__.ident
+                )
+            )
         try:
             value: t.Any = obj[field.index_key]
         except KeyError:
-            raise AssertionError('Field {}[{!r}].{} is missing in the index'
-                                 .format(self.__ref__.node, self.__ref__.ident,
-                                         field.index_key))
+            raise AssertionError(
+                "Field {}[{!r}].{} is missing in the index".format(
+                    self.__ref__.node, self.__ref__.ident, field.index_key
+                )
+            )
 
         if isinstance(field, Field):
             return value
         elif isinstance(value, Reference):
             return self.__class__(self.__idx__, value, field.node)
         elif (
-            isinstance(value, list) and value
+            isinstance(value, list)
+            and value
             and isinstance(value[0], Reference)
         ):
-            return [self.__class__(self.__idx__, ref, field.node)
-                    for ref in value]
+            return [
+                self.__class__(self.__idx__, ref, field.node) for ref in value
+            ]
         else:
             return value
 
@@ -122,25 +130,29 @@ class Proxy:
 
 
 def _denormalize_type(
-    type_: GenericMeta,
-    result: t.Any,
-    query_obj: t.Union[Field, Link]
+    type_: GenericMeta, result: t.Any, query_obj: t.Union[Field, Link]
 ) -> t.Any:
     if isinstance(query_obj, Field):
         return result
     elif isinstance(query_obj, Link):
         if isinstance(type_, SequenceMeta):
-            return [_denormalize_type(type_.__item_type__, item, query_obj)
-                    for item in result]
+            return [
+                _denormalize_type(type_.__item_type__, item, query_obj)
+                for item in result
+            ]
         elif isinstance(type_, OptionalMeta):
-            return (_denormalize_type(type_.__type__, result, query_obj)
-                    if result is not None else None)
+            return (
+                _denormalize_type(type_.__type__, result, query_obj)
+                if result is not None
+                else None
+            )
         else:
             assert isinstance(type_, RecordMeta), type(type_)
             field_types = type_.__field_types__
             return {
-                f.name: _denormalize_type(field_types[f.name],
-                                          result[f.name], f)
+                f.name: _denormalize_type(
+                    field_types[f.name], result[f.name], f
+                )
                 for f in query_obj.node.fields
             }
     assert False, (type_, query_obj)
@@ -150,13 +162,14 @@ def _denormalize(
     graph: Graph,
     graph_obj: t.Union[GraphNode, GraphField, GraphLink],
     result: t.Any,
-    query_obj: t.Union[Field, Link, Node]
+    query_obj: t.Union[Field, Link, Node],
 ) -> t.Any:
     if isinstance(query_obj, Node):
         assert isinstance(graph_obj, GraphNode)
         return {
-            f.result_key: _denormalize(graph, graph_obj.fields_map[f.name],
-                                       result[f.result_key], f)
+            f.result_key: _denormalize(
+                graph, graph_obj.fields_map[f.name], result[f.result_key], f
+            )
             for f in query_obj.fields
         }
 
@@ -172,8 +185,10 @@ def _denormalize(
         elif isinstance(graph_obj, GraphLink):
             graph_node = graph.nodes_map[graph_obj.node]
             if graph_obj.type_enum is Many:
-                return [_denormalize(graph, graph_node, v, query_obj.node)
-                        for v in result]
+                return [
+                    _denormalize(graph, graph_node, v, query_obj.node)
+                    for v in result
+                ]
             elif graph_obj.type_enum is Maybe and result is None:
                 return None
             else:

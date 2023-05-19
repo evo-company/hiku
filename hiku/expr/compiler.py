@@ -9,13 +9,12 @@ from .nodes import Symbol, Keyword
 
 
 class Environ:
-
     def __init__(self):
         self.vars = Counter()
 
     def __getitem__(self, key):
         i = self.vars[key]
-        return '{}_{}'.format(key, i) if i > 1 else key
+        return "{}_{}".format(key, i) if i > 1 else key
 
     def __contains__(self, key):
         return key in self.vars
@@ -32,8 +31,8 @@ class Environ:
 
 
 class ExpressionCompiler:
-    ctx_var = 'ctx'
-    env_var = 'env'
+    ctx_var = "ctx"
+    env_var = "env"
 
     def __init__(self):
         self.env = Environ()
@@ -54,8 +53,9 @@ class ExpressionCompiler:
             py.arg(cls.ctx_var, None),
         ]
         py_args.extend(py.arg(name, None) for name in args)
-        expr = py.Lambda(py.arguments([], py_args, None, [], [], None, []),
-                         body)
+        expr = py.Lambda(
+            py.arguments([], py_args, None, [], [], None, []), body
+        )
         py.fix_missing_locations(expr)
         return py.Expression(expr)
 
@@ -63,15 +63,17 @@ class ExpressionCompiler:
         return py.Name(name, py.Load())
 
     def _ctx_load(self, name):
-        return py.Subscript(py.Name(self.ctx_var, py.Load()),
-                            py.Index(py.Str(name)), py.Load())
+        return py.Subscript(
+            py.Name(self.ctx_var, py.Load()), py.Index(py.Str(name)), py.Load()
+        )
 
     def _env_load(self, name):
-        return py.Subscript(py.Name(self.env_var, py.Load()),
-                            py.Index(py.Str(name)), py.Load())
+        return py.Subscript(
+            py.Name(self.env_var, py.Load()), py.Index(py.Str(name)), py.Load()
+        )
 
     def visit(self, node):
-        if hasattr(node, 'accept'):
+        if hasattr(node, "accept"):
             return node.accept(self)
         else:
             return self.generic_visit(node)
@@ -117,7 +119,7 @@ class ExpressionCompiler:
             )
             expr = py.IfExp(test, self.visit(then_), self.visit(else_))
         gen = py.GeneratorExp(expr, [comp])
-        return py.Call(py.Name('next', py.Load()), [gen], [])
+        return py.Call(py.Name("next", py.Load()), [gen], [])
 
     def visit_each_expr(self, node):
         sym, var, col, body = node.values
@@ -126,19 +128,24 @@ class ExpressionCompiler:
         with self.env.push([var.name]):
             var_name = self.env[var.name]
             body_expr = self.visit(body)
-        return py.ListComp(body_expr,
-                           [py.comprehension(py.Name(var_name, py.Store()),
-                                             col_expr, [], False)])
+        return py.ListComp(
+            body_expr,
+            [
+                py.comprehension(
+                    py.Name(var_name, py.Store()), col_expr, [], False
+                )
+            ],
+        )
 
     def visit_tuple(self, node):
         sym = node.values[0]
-        if sym.name == 'get':
+        if sym.name == "get":
             return self.visit_get_expr(node)
-        elif sym.name == 'if':
+        elif sym.name == "if":
             return self.visit_if_expr(node)
-        elif sym.name == 'if_some':
+        elif sym.name == "if_some":
             return self.visit_if_some_expr(node)
-        elif sym.name == 'each':
+        elif sym.name == "each":
             return self.visit_each_expr(node)
         else:
             values = [self.visit(node) for node in node.values]
@@ -154,13 +161,14 @@ class ExpressionCompiler:
             return self._ctx_load(node.name)
 
     def visit_list(self, node):
-        return py.List([self.visit(value) for value in node.values],
-                       py.Load())
+        return py.List([self.visit(value) for value in node.values], py.Load())
 
     def visit_dict(self, node):
-        assert not len(node.values) % 2, 'Probably missing keyword value'
+        assert not len(node.values) % 2, "Probably missing keyword value"
         keys = node.values[::2]
         values = node.values[1::2]
-        assert all(isinstance(k, Keyword) for k in keys), 'Wrong arguments'
-        return py.Dict([py.Str(key.name) for key in keys],
-                       [self.visit(value) for value in values])
+        assert all(isinstance(k, Keyword) for k in keys), "Wrong arguments"
+        return py.Dict(
+            [py.Str(key.name) for key in keys],
+            [self.visit(value) for value in values],
+        )

@@ -43,6 +43,11 @@ commands:
     description: Build docker image for test
     depends: [_build-base]
     cmd: docker build -t hiku-tests -f Dockerfile --target tests .
+    
+  _build-dev:
+    description: Build docker image for dev
+    depends: [_build-base]
+    cmd: docker build -t hiku-dev -f Dockerfile --target dev .
 
   docs:
     description: Build docs
@@ -52,39 +57,36 @@ commands:
   test:
     description: Run tests
     depends: [_build-tests]
-    cmd: [docker-compose, run, --rm, pytest]
+    cmd: [docker-compose, run, --rm, test]
+    
+  test-tox:
+    description: Run tests using tox
+    depends: [_build-tests]
+    cmd: docker-compose run --rm test tox
 
   bench:
     description: Run benchmarks
     depends: [_build-tests]
-    cmd: docker-compose run --rm pytest tests/benchmarks --benchmark-enable $@
+    cmd: docker-compose run --rm test-base tests/benchmarks --benchmark-enable $@
 
   flake:
     description: Run flake8
-    depends: [_build-tests]
-    cmd: docker-compose run --rm test-base tox -e flake8
+    depends: [_build-dev]
+    cmd: docker-compose run --rm dev pdm run flake
+    
+  black:
+    description: Run flake8
+    depends: [_build-dev]
+    cmd: docker-compose run --rm dev pdm run black
 
   mypy:
     description: |
       Run mypy
       Examples:
-        lets mypy
+        lets mypy hiku
         lets mypy hiku/graph.py
-    depends: [_build-tests]
-    cmd: |
-      docker-compose run --rm test-base tox -e mypy -- $LETS_COMMAND_ARGS
-
-  reqs:
-    description: Update requirements.txt
-    cmd: pip-compile -U requirements.in
-
-  reqs-docs:
-    description: Update requirements-docs.txt
-    cmd: pip-compile -U requirements-docs.in
-
-  reqs-tests:
-    description: Update requirements-tests.txt
-    cmd: pip-compile -U requirements-tests.in
+    depends: [_build-dev]
+    cmd: docker-compose run --rm dev pdm run mypy $LETS_COMMAND_ARGS
 
   examples-federation:
     description: Run federation app from examples

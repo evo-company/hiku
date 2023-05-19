@@ -19,56 +19,53 @@ from hiku.sources.sqlalchemy import LinkQuery, FieldsQuery
 from .base import check_result
 
 
-SA_ENGINE_KEY = 'sa-engine'
+SA_ENGINE_KEY = "sa-engine"
 
 metadata = MetaData()
 
 thread_pool = ThreadPoolExecutor(2)
 
 foo_table = Table(
-    'foo',
+    "foo",
     metadata,
-    Column('id', Integer, primary_key=True, autoincrement=True),
-    Column('name', Unicode),
-    Column('count', Integer),
-    Column('bar_id', ForeignKey('bar.id')),
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("name", Unicode),
+    Column("count", Integer),
+    Column("bar_id", ForeignKey("bar.id")),
 )
 
 bar_table = Table(
-    'bar',
+    "bar",
     metadata,
-    Column('id', Integer, primary_key=True, autoincrement=True),
-    Column('name', Unicode),
-    Column('type', Integer),
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("name", Unicode),
+    Column("type", Integer),
 )
 
 
 def setup_db(db_engine):
     metadata.create_all(db_engine)
     for r in [
-        {'id': 0, 'name': 'bar0', 'type': 4},
-        {'id': 4, 'name': 'bar1', 'type': 1},
-        {'id': 5, 'name': 'bar2', 'type': 2},
-        {'id': 6, 'name': 'bar3', 'type': 3},
+        {"id": 0, "name": "bar0", "type": 4},
+        {"id": 4, "name": "bar1", "type": 1},
+        {"id": 5, "name": "bar2", "type": 2},
+        {"id": 6, "name": "bar3", "type": 3},
     ]:
         db_engine.execute(bar_table.insert(), r)
     for r in [
-        {'name': 'foo1', 'count': 5, 'bar_id': None},
-        {'name': 'foo2', 'count': 10, 'bar_id': 5},
-        {'name': 'foo3', 'count': 15, 'bar_id': 4},
-        {'name': 'foo4', 'count': 20, 'bar_id': 6},
-        {'name': 'foo5', 'count': 25, 'bar_id': 5},
-        {'name': 'foo6', 'count': 30, 'bar_id': 4},
-        {'name': 'foo7', 'count': 35, 'bar_id': 0},
+        {"name": "foo1", "count": 5, "bar_id": None},
+        {"name": "foo2", "count": 10, "bar_id": 5},
+        {"name": "foo3", "count": 15, "bar_id": 4},
+        {"name": "foo4", "count": 20, "bar_id": 6},
+        {"name": "foo5", "count": 25, "bar_id": 5},
+        {"name": "foo6", "count": 30, "bar_id": 4},
+        {"name": "foo7", "count": 35, "bar_id": 0},
     ]:
         db_engine.execute(foo_table.insert(), r)
 
 
 def graph_factory(
-    *,
-    async_=False,
-    fields_query_cls=FieldsQuery,
-    link_query_cls=LinkQuery
+    *, async_=False, fields_query_cls=FieldsQuery, link_query_cls=LinkQuery
 ):
     def foo_list():
         return [3, 2, 1]
@@ -109,39 +106,72 @@ def graph_factory(
         to_column=bar_table.c.id,
     )
 
-    graph = Graph([
-        Node(foo_table.name, [
-            Field('id', None, foo_query),
-            Field('name', None, foo_query),
-            Field('count', None, foo_query),
-            Field('bar_id', None, foo_query),
-            Link('bar', Optional[TypeRef['bar']], to_bar_query,
-                 requires='bar_id'),
-        ]),
-        Node(bar_table.name, [
-            Field('id', None, bar_query),
-            Field('name', None, bar_query),
-            Field('type', None, bar_query),
-            Link('foo_s', Sequence[TypeRef['foo']], to_foo_query,
-                 requires='id'),
-        ]),
-        Root([
-            Link('foo_list', Sequence[TypeRef['foo']],
-                 foo_list, requires=None),
-            Link('bar_list', Sequence[TypeRef['bar']],
-                 bar_list, requires=None),
-            Link('not_found_one', TypeRef['bar'],
-                 not_found_one, requires=None),
-            Link('not_found_list', Sequence[TypeRef['bar']],
-                 not_found_list, requires=None),
-            Link('falsy_one', TypeRef['bar'],
-                 falsy_one, requires=None),
-        ]),
-    ])
+    graph = Graph(
+        [
+            Node(
+                foo_table.name,
+                [
+                    Field("id", None, foo_query),
+                    Field("name", None, foo_query),
+                    Field("count", None, foo_query),
+                    Field("bar_id", None, foo_query),
+                    Link(
+                        "bar",
+                        Optional[TypeRef["bar"]],
+                        to_bar_query,
+                        requires="bar_id",
+                    ),
+                ],
+            ),
+            Node(
+                bar_table.name,
+                [
+                    Field("id", None, bar_query),
+                    Field("name", None, bar_query),
+                    Field("type", None, bar_query),
+                    Link(
+                        "foo_s",
+                        Sequence[TypeRef["foo"]],
+                        to_foo_query,
+                        requires="id",
+                    ),
+                ],
+            ),
+            Root(
+                [
+                    Link(
+                        "foo_list",
+                        Sequence[TypeRef["foo"]],
+                        foo_list,
+                        requires=None,
+                    ),
+                    Link(
+                        "bar_list",
+                        Sequence[TypeRef["bar"]],
+                        bar_list,
+                        requires=None,
+                    ),
+                    Link(
+                        "not_found_one",
+                        TypeRef["bar"],
+                        not_found_one,
+                        requires=None,
+                    ),
+                    Link(
+                        "not_found_list",
+                        Sequence[TypeRef["bar"]],
+                        not_found_list,
+                        requires=None,
+                    ),
+                    Link("falsy_one", TypeRef["bar"], falsy_one, requires=None),
+                ]
+            ),
+        ]
+    )
     return graph
 
 
-@pytest.fixture(name='graph')
+@pytest.fixture(name="graph")
 def graph_fixture(request):
     graph = graph_factory()
     if request.instance:
@@ -152,100 +182,126 @@ def graph_fixture(request):
 
 def test_same_table():
     with pytest.raises(ValueError) as e:
-        LinkQuery(SA_ENGINE_KEY, from_column=foo_table.c.id,
-                  to_column=bar_table.c.id)
-    e.match('should belong')
+        LinkQuery(
+            SA_ENGINE_KEY, from_column=foo_table.c.id, to_column=bar_table.c.id
+        )
+    e.match("should belong")
 
 
 def test_types(graph):
     assert isinstance(
-        graph.nodes_map[foo_table.name].fields_map['id'].type,
+        graph.nodes_map[foo_table.name].fields_map["id"].type,
         IntegerMeta,
     )
     assert isinstance(
-        graph.nodes_map[foo_table.name].fields_map['name'].type,
+        graph.nodes_map[foo_table.name].fields_map["name"].type,
         StringMeta,
     )
 
 
 class SourceSQLAlchemyTestBase(ABC):
-
     @abstractmethod
     def check(self, src, value):
         pass
 
     def test_many_to_one(self):
         self.check(
-            '[{:foo_list [:name :count :bar_id {:bar [:name :type]}]}]',
-            {'foo_list': [
-                {'name': 'foo3', 'count': 15, 'bar_id': 4,
-                 'bar': {'name': 'bar1', 'type': 1}},
-                {'name': 'foo2', 'count': 10, 'bar_id': 5,
-                 'bar': {'name': 'bar2', 'type': 2}},
-                {'name': 'foo1', 'count': 5, 'bar_id': None,
-                 'bar': None},
-            ]}
+            "[{:foo_list [:name :count :bar_id {:bar [:name :type]}]}]",
+            {
+                "foo_list": [
+                    {
+                        "name": "foo3",
+                        "count": 15,
+                        "bar_id": 4,
+                        "bar": {"name": "bar1", "type": 1},
+                    },
+                    {
+                        "name": "foo2",
+                        "count": 10,
+                        "bar_id": 5,
+                        "bar": {"name": "bar2", "type": 2},
+                    },
+                    {"name": "foo1", "count": 5, "bar_id": None, "bar": None},
+                ]
+            },
         )
 
     def test_one_to_many(self):
         self.check(
-            '[{:bar_list [:id :name :type {:foo_s [:name :count]}]}]',
-            {'bar_list': [
-                {'id': 6, 'name': 'bar3', 'type': 3, 'foo_s': [
-                    {'name': 'foo4', 'count': 20},
-                ]},
-                {'id': 5, 'name': 'bar2', 'type': 2, 'foo_s': [
-                    {'name': 'foo2', 'count': 10},
-                    {'name': 'foo5', 'count': 25},
-                ]},
-                {'id': 4, 'name': 'bar1', 'type': 1, 'foo_s': [
-                    {'name': 'foo3', 'count': 15},
-                    {'name': 'foo6', 'count': 30},
-                ]},
-            ]},
+            "[{:bar_list [:id :name :type {:foo_s [:name :count]}]}]",
+            {
+                "bar_list": [
+                    {
+                        "id": 6,
+                        "name": "bar3",
+                        "type": 3,
+                        "foo_s": [
+                            {"name": "foo4", "count": 20},
+                        ],
+                    },
+                    {
+                        "id": 5,
+                        "name": "bar2",
+                        "type": 2,
+                        "foo_s": [
+                            {"name": "foo2", "count": 10},
+                            {"name": "foo5", "count": 25},
+                        ],
+                    },
+                    {
+                        "id": 4,
+                        "name": "bar1",
+                        "type": 1,
+                        "foo_s": [
+                            {"name": "foo3", "count": 15},
+                            {"name": "foo6", "count": 30},
+                        ],
+                    },
+                ]
+            },
         )
 
     def test_not_found(self):
         self.check(
-            '[{:not_found_one [:name :type]}'
-            ' {:not_found_list [:name :type]}]',
+            "[{:not_found_one [:name :type]}"
+            " {:not_found_list [:name :type]}]",
             {
-                'not_found_one': {'name': None, 'type': None},
-                'not_found_list': [
-                    {'name': 'bar3', 'type': 3},
-                    {'name': None, 'type': None},
-                    {'name': 'bar1', 'type': 1},
+                "not_found_one": {"name": None, "type": None},
+                "not_found_list": [
+                    {"name": "bar3", "type": 3},
+                    {"name": None, "type": None},
+                    {"name": "bar1", "type": 1},
                 ],
             },
         )
 
     def test_falsy_one(self):
         self.check(
-            '[{:falsy_one [:name :type {:foo_s [:name :count]}]}]',
+            "[{:falsy_one [:name :type {:foo_s [:name :count]}]}]",
             {
-                'falsy_one': {
-                    'name': 'bar0',
-                    'type': 4,
-                    'foo_s': [
-                        {'name': 'foo7', 'count': 35},
+                "falsy_one": {
+                    "name": "bar0",
+                    "type": 4,
+                    "foo_s": [
+                        {"name": "foo7", "count": 35},
                     ],
                 }
             },
         )
 
 
-@pytest.mark.usefixtures('graph')
+@pytest.mark.usefixtures("graph")
 class TestSourceSQLAlchemy(SourceSQLAlchemyTestBase):
-
     def check(self, src, value):
         sa_engine = create_engine(
-            'sqlite://',
-            connect_args={'check_same_thread': False},
+            "sqlite://",
+            connect_args={"check_same_thread": False},
             poolclass=StaticPool,
         )
         setup_db(sa_engine)
 
         engine = Engine(ThreadsExecutor(thread_pool))
-        result = engine.execute(self.graph, read(src),
-                                {SA_ENGINE_KEY: sa_engine})
+        result = engine.execute(
+            self.graph, read(src), {SA_ENGINE_KEY: sa_engine}
+        )
         check_result(result, value)

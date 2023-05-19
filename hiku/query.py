@@ -57,19 +57,23 @@ from collections.abc import Sequence
 from .directives import QueryDirective
 from .utils import cached_property
 
-T = t.TypeVar('T', bound='Base')
+T = t.TypeVar("T", bound="Base")
 
 
 def _compute_hash(obj: t.Any) -> int:
     if isinstance(obj, dict):
-        return hash(tuple((_compute_hash(k), _compute_hash(v))
-                          for k, v in sorted(obj.items())))
+        return hash(
+            tuple(
+                (_compute_hash(k), _compute_hash(v))
+                for k, v in sorted(obj.items())
+            )
+        )
     if isinstance(obj, list):
         return hash(tuple(_compute_hash(i) for i in obj))
     if isinstance(obj, bytes):
         return int(hashlib.sha1(obj).hexdigest(), 16)
     if isinstance(obj, str):
-        return int(hashlib.sha1(obj.encode('utf-8')).hexdigest(), 16)
+        return int(hashlib.sha1(obj.encode("utf-8")).hexdigest(), 16)
     return hash(obj)
 
 
@@ -77,22 +81,27 @@ class Base:
     __attrs__: t.Tuple[str, ...] = ()
 
     def __repr__(self) -> str:
-        kwargs = ', '.join('{}={!r}'.format(attr, self.__dict__[attr])
-                           for attr in self.__attrs__)
-        return '{}({})'.format(self.__class__.__name__, kwargs)
+        kwargs = ", ".join(
+            "{}={!r}".format(attr, self.__dict__[attr])
+            for attr in self.__attrs__
+        )
+        return "{}({})".format(self.__class__.__name__, kwargs)
 
     def __eq__(self, other: t.Any) -> bool:
-        return (self.__class__ is other.__class__
-                and all(self.__dict__[attr] == other.__dict__[attr]
-                        for attr in self.__attrs__))
+        return self.__class__ is other.__class__ and all(
+            self.__dict__[attr] == other.__dict__[attr]
+            for attr in self.__attrs__
+        )
 
     def __ne__(self, other: t.Any) -> bool:
         return not self.__eq__(other)
 
     def copy(self: T, **kwargs: t.Any) -> T:
         obj = self.__class__.__new__(self.__class__)
-        obj.__dict__.update((attr, kwargs.get(attr, self.__dict__[attr]))
-                            for attr in self.__attrs__)
+        obj.__dict__.update(
+            (attr, kwargs.get(attr, self.__dict__[attr]))
+            for attr in self.__attrs__
+        )
         return obj
 
 
@@ -118,7 +127,7 @@ class FieldBase(Base):
     @cached_property
     def index_key(self) -> str:
         if self.options_hash is not None:
-            return '{}[{}]'.format(self.name, self.options_hash)
+            return "{}[{}]".format(self.name, self.options_hash)
         else:
             return self.name
 
@@ -130,7 +139,8 @@ class Field(FieldBase):
     :param optional options: field options -- mapping of names to values
     :param optional alias: field's name in result
     """
-    __attrs__ = ('name', 'options', 'alias', 'directives')
+
+    __attrs__ = ("name", "options", "alias", "directives")
 
     def __init__(
         self,
@@ -148,7 +158,7 @@ class Field(FieldBase):
     def directives_map(self) -> OrderedDict:
         return OrderedDict((d.name, d) for d in self.directives)
 
-    def accept(self, visitor: 'QueryVisitor') -> t.Any:
+    def accept(self, visitor: "QueryVisitor") -> t.Any:
         return visitor.visit_field(self)
 
 
@@ -161,12 +171,13 @@ class Link(FieldBase):
     :param optional options: link options -- mapping of names to values
     :param optional alias: link's name in result
     """
-    __attrs__ = ('name', 'node', 'options', 'alias', 'directives')
+
+    __attrs__ = ("name", "node", "options", "alias", "directives")
 
     def __init__(
         self,
         name: str,
-        node: 'Node',
+        node: "Node",
         options: t.Optional[t.Dict[str, t.Any]] = None,
         alias: t.Optional[str] = None,
         directives: t.Optional[t.Tuple[QueryDirective, ...]] = None,
@@ -182,7 +193,7 @@ class Link(FieldBase):
     def directives_map(self) -> OrderedDict:
         return OrderedDict((d.name, d) for d in self.directives)
 
-    def accept(self, visitor: 'QueryVisitor') -> t.Any:
+    def accept(self, visitor: "QueryVisitor") -> t.Any:
         return visitor.visit_link(self)
 
 
@@ -194,12 +205,11 @@ class Node(Base):
     :param ordered: whether to compute fields of this node sequentially
         in order or not
     """
-    __attrs__ = ('fields', 'ordered')
+
+    __attrs__ = ("fields", "ordered")
 
     def __init__(
-        self,
-        fields: t.List[t.Union[Field, Link]],
-        ordered: bool = False
+        self, fields: t.List[t.Union[Field, Link]], ordered: bool = False
     ) -> None:
         self.fields = fields
         self.ordered = ordered
@@ -212,7 +222,7 @@ class Node(Base):
     def result_map(self) -> OrderedDict:
         return OrderedDict((f.result_key, f) for f in self.fields)
 
-    def accept(self, visitor: 'QueryVisitor') -> t.Any:
+    def accept(self, visitor: "QueryVisitor") -> t.Any:
         return visitor.visit_node(self)
 
 
@@ -253,7 +263,6 @@ def merge(nodes: t.Iterable[Node]) -> Node:
 
 
 class QueryVisitor:
-
     def visit(self, obj: t.Any) -> t.Any:
         return obj.accept(self)
 
@@ -269,7 +278,6 @@ class QueryVisitor:
 
 
 class QueryTransformer:
-
     def visit(self, obj: t.Any) -> t.Any:
         return obj.accept(self)
 

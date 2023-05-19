@@ -2,7 +2,6 @@ from .query import Node, Field, Link
 
 
 class Handle:
-
     def __init__(self, name=None, options=None, alias=None, items=None):
         self.__field_name__ = name
         self.__field_options__ = options
@@ -27,10 +26,12 @@ class Handle:
         assert not self.__field_options__
         assert not self.__field_alias__
         assert not self.__node_items__
-        return self.__class__(other.__field_name__,
-                              other.__field_options__,
-                              self.__field_name__,  # alias
-                              other.__node_items__)
+        return self.__class__(
+            other.__field_name__,
+            other.__field_options__,
+            self.__field_name__,  # alias
+            other.__node_items__,
+        )
 
     def __call__(self, **options):
         assert self.__field_options__ is None, self.__field_options__
@@ -63,12 +64,20 @@ def build(items):
     for handle in items:
         assert handle.__field_name__ is not None
         if handle.__node_items__ is None:
-            query_items.append(Field(handle.__field_name__,
-                                     handle.__field_options__,
-                                     handle.__field_alias__))
+            query_items.append(
+                Field(
+                    handle.__field_name__,
+                    handle.__field_options__,
+                    handle.__field_alias__,
+                )
+            )
         else:
-            query_items.append(Link(handle.__field_name__,
-                                    build(handle.__node_items__),
-                                    handle.__field_options__,
-                                    handle.__field_alias__))
+            query_items.append(
+                Link(
+                    handle.__field_name__,
+                    build(handle.__node_items__),
+                    handle.__field_options__,
+                    handle.__field_alias__,
+                )
+            )
     return Node(query_items)

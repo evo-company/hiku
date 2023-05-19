@@ -5,13 +5,13 @@ from collections import OrderedDict
 
 
 class GenericMeta(type):
-
     def __repr__(cls) -> str:
         return cls.__name__
 
     def __eq__(cls, other: t.Any) -> bool:
-        return (cls.__class__ is other.__class__
-                and cls.__dict__ == other.__dict__)
+        return (
+            cls.__class__ is other.__class__ and cls.__dict__ == other.__dict__
+        )
 
     def __ne__(cls, other: t.Any) -> bool:
         return not cls.__eq__(other)
@@ -19,13 +19,12 @@ class GenericMeta(type):
     def __hash__(self) -> int:
         return hash(self.__name__)
 
-    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
+    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
         raise NotImplementedError(type(cls))
 
 
 class AnyMeta(GenericMeta):
-
-    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
+    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
         return visitor.visit_any(cls)
 
 
@@ -34,8 +33,7 @@ class Any(metaclass=AnyMeta):
 
 
 class BooleanMeta(GenericMeta):
-
-    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
+    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
         return visitor.visit_boolean(cls)
 
 
@@ -44,8 +42,7 @@ class Boolean(metaclass=BooleanMeta):
 
 
 class StringMeta(GenericMeta):
-
-    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
+    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
         return visitor.visit_string(cls)
 
 
@@ -54,8 +51,7 @@ class String(metaclass=StringMeta):
 
 
 class IntegerMeta(GenericMeta):
-
-    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
+    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
         return visitor.visit_integer(cls)
 
 
@@ -64,8 +60,7 @@ class Integer(metaclass=IntegerMeta):
 
 
 class FloatMeta(GenericMeta):
-
-    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
+    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
         return visitor.visit_float(cls)
 
 
@@ -73,7 +68,7 @@ class Float(metaclass=FloatMeta):
     pass
 
 
-TM = t.TypeVar('TM', bound='TypingMeta')
+TM = t.TypeVar("TM", bound="TypingMeta")
 
 
 class TypingMeta(GenericMeta, type):
@@ -87,7 +82,7 @@ class TypingMeta(GenericMeta, type):
 
     def __getitem__(cls: TM, parameters: t.Any) -> TM:
         if cls.__final__:
-            raise TypeError('Cannot substitute parameters in {!r}'.format(cls))
+            raise TypeError("Cannot substitute parameters in {!r}".format(cls))
         type_ = cls.__class__(cls.__name__, cls.__bases__, dict(cls.__dict__))
         type_.__cls_init__(parameters)
         type_.__final__ = True
@@ -110,9 +105,9 @@ class OptionalMeta(TypingMeta):
         cls.__type__: GenericMeta = _maybe_typeref(type_)
 
     def __cls_repr__(self) -> str:
-        return '{}[{!r}]'.format(self.__name__, self.__type__)
+        return "{}[{!r}]".format(self.__name__, self.__type__)
 
-    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
+    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
         return visitor.visit_optional(cls)
 
 
@@ -127,9 +122,9 @@ class SequenceMeta(TypingMeta):
         cls.__item_type__: GenericMeta = _maybe_typeref(item_type)
 
     def __cls_repr__(self) -> str:
-        return '{}[{!r}]'.format(self.__name__, self.__item_type__)
+        return "{}[{!r}]".format(self.__name__, self.__item_type__)
 
-    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
+    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
         return visitor.visit_sequence(cls)
 
 
@@ -147,10 +142,11 @@ class MappingMeta(TypingMeta):
         cls.__value_type__ = _maybe_typeref(value_type)
 
     def __cls_repr__(self) -> str:
-        return '{}[{!r}, {!r}]'.format(self.__name__, self.__key_type__,
-                                       self.__value_type__)
+        return "{}[{!r}, {!r}]".format(
+            self.__name__, self.__key_type__, self.__value_type__
+        )
 
-    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
+    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
         return visitor.visit_mapping(cls)
 
 
@@ -164,12 +160,11 @@ class RecordMeta(TypingMeta):
     def __cls_init__(
         cls,
         field_types: t.Union[
-            t.Dict[str, GenericMeta],
-            t.List[t.Tuple[str, GenericMeta]]
-        ]
+            t.Dict[str, GenericMeta], t.List[t.Tuple[str, GenericMeta]]
+        ],
     ) -> None:
         items: t.Iterable
-        if hasattr(field_types, 'items'):
+        if hasattr(field_types, "items"):
             field_types = t.cast(t.Dict[str, GenericMeta], field_types)
             items = list(field_types.items())
         else:
@@ -179,9 +174,9 @@ class RecordMeta(TypingMeta):
         )
 
     def __cls_repr__(self) -> str:
-        return '{}[{!r}]'.format(self.__name__, dict(self.__field_types__))
+        return "{}[{!r}]".format(self.__name__, dict(self.__field_types__))
 
-    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
+    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
         return visitor.visit_record(cls)
 
 
@@ -190,15 +185,15 @@ class Record(metaclass=RecordMeta):
 
 
 class CallableMeta(TypingMeta):
-
     def __cls_init__(cls, arg_types: t.Iterable[GenericMeta]) -> None:
         cls.__arg_types__ = [_maybe_typeref(typ) for typ in arg_types]
 
     def __cls_repr__(self) -> str:
-        return '{}[{}]'.format(self.__name__,
-                               ', '.join(map(repr, self.__arg_types__)))
+        return "{}[{}]".format(
+            self.__name__, ", ".join(map(repr, self.__arg_types__))
+        )
 
-    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
+    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
         return visitor.visit_callable(cls)
 
 
@@ -210,14 +205,14 @@ class TypeRefMeta(TypingMeta):
     __type_name__: str
 
     def __cls_init__(cls, *args: str) -> None:
-        assert len(args) == 1, f'{cls.__name__} takes exactly one argument'
+        assert len(args) == 1, f"{cls.__name__} takes exactly one argument"
 
         cls.__type_name__ = args[0]
 
     def __cls_repr__(self) -> str:
-        return '{}[{!r}]'.format(self.__name__, self.__type_name__)
+        return "{}[{!r}]".format(self.__name__, self.__type_name__)
 
-    def accept(cls, visitor: 'AbstractTypeVisitor') -> t.Any:
+    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
         return visitor.visit_typeref(cls)
 
 
@@ -240,7 +235,6 @@ def _maybe_typeref(typ: t.Union[str, GenericMeta]) -> GenericMeta:
 
 
 class AbstractTypeVisitor(ABC):
-
     def visit(self, obj: GenericMeta) -> t.Any:
         return obj.accept(self)
 
@@ -290,7 +284,6 @@ class AbstractTypeVisitor(ABC):
 
 
 class TypeVisitor(AbstractTypeVisitor):
-
     def visit_any(self, obj: AnyMeta) -> t.Any:
         pass
 

@@ -14,23 +14,23 @@ from ..protobuf import query_pb2
 def _transform(pb_node):
     fields = []
     for i in pb_node.items:
-        item_type = i.WhichOneof('value')
-        if item_type == 'field':
+        item_type = i.WhichOneof("value")
+        if item_type == "field":
             if not i.field.name:
-                raise TypeError('Field name is empty: {!r}'.format(i))
+                raise TypeError("Field name is empty: {!r}".format(i))
             options = None
-            if i.field.HasField('options'):
+            if i.field.HasField("options"):
                 options = MessageToDict(i.field.options)
             fields.append(Field(i.field.name, options))
-        elif item_type == 'link':
+        elif item_type == "link":
             if not i.link.name:
-                raise TypeError('Link name is empty: {!r}'.format(i))
+                raise TypeError("Link name is empty: {!r}".format(i))
             options = None
-            if i.link.HasField('options'):
+            if i.link.HasField("options"):
                 options = MessageToDict(i.link.options)
             fields.append(Link(i.link.name, _transform(i.link.node), options))
         else:
-            raise TypeError('Node item is empty: {!r}'.format(i))
+            raise TypeError("Node item is empty: {!r}".format(i))
     return Node(fields)
 
 
