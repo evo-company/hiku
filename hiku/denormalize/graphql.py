@@ -14,18 +14,14 @@ from .base import Denormalize
 
 
 class DenormalizeGraphQL(Denormalize):
-
     def __init__(
-        self,
-        graph: Graph,
-        result: Proxy,
-        root_type_name: str
+        self, graph: Graph, result: Proxy, root_type_name: str
     ) -> None:
         super().__init__(graph, result)
         self._type_name = deque([root_type_name])
 
     def visit_field(self, obj: Field) -> None:
-        if obj.name == '__typename':
+        if obj.name == "__typename":
             self._res[-1][obj.result_key] = self._type_name[-1]
         else:
             super().visit_field(obj)

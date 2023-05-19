@@ -49,11 +49,13 @@ def _name(value: t.Optional[str]) -> t.Optional[ast.NameNode]:
 
 
 @t.overload
-def coerce_type(x: str) -> ast.NameNode: ...
+def coerce_type(x: str) -> ast.NameNode:
+    ...
 
 
 @t.overload
-def coerce_type(x: ast.Node) -> ast.Node: ...
+def coerce_type(x: ast.Node) -> ast.Node:
+    ...
 
 
 def coerce_type(x):  # type: ignore[no-untyped-def]
@@ -66,33 +68,32 @@ def _non_null_type(val: t.Union[str, ast.Node]) -> ast.NonNullTypeNode:
     return ast.NonNullTypeNode(type=coerce_type(val))
 
 
-def _encode_type(value: t.Any) -> t.Union[
-    ast.NonNullTypeNode,
-    ast.NameNode,
-]:
+def _encode_type(
+    value: t.Any,
+) -> t.Union[ast.NonNullTypeNode, ast.NameNode]:
     def _encode(
-        val: t.Optional[GenericMeta]
+        val: t.Optional[GenericMeta],
     ) -> t.Union[str, t.Tuple, ast.ListTypeNode]:
         if isinstance(val, OptionalMeta):
             return _encode(val.__type__), True
         elif isinstance(val, TypeRefMeta):
             return val.__type_name__
         elif isinstance(val, IntegerMeta):
-            return 'Int'
+            return "Int"
         elif isinstance(val, StringMeta):
-            return 'String'
+            return "String"
         elif isinstance(val, BooleanMeta):
-            return 'Boolean'
+            return "Boolean"
         elif isinstance(val, SequenceMeta):
             return ast.ListTypeNode(type=_encode_type(val.__item_type__))
         elif isinstance(val, AnyMeta):
-            return 'Any'
+            return "Any"
         elif isinstance(val, FloatMeta):
-            return 'Float'
+            return "Float"
         elif val is None:
-            return ''
+            return ""
         else:
-            raise TypeError('Unsupported type: {!r}'.format(val))
+            raise TypeError("Unsupported type: {!r}".format(val))
 
     encoded = _encode(value)
     if isinstance(encoded, tuple):
@@ -141,8 +142,11 @@ class Exporter(GraphVisitor):
                 name=_name(name),
                 type=_encode_type(type_),
             )
-        fields = [new_field(f_name, field)
-                  for f_name, field in obj.__field_types__.items()]
+
+        fields = [
+            new_field(f_name, field)
+            for f_name, field in obj.__field_types__.items()
+        ]
         return ast.ObjectTypeDefinitionNode(
             name=_name(type_name),
             fields=fields,
@@ -152,17 +156,19 @@ class Exporter(GraphVisitor):
         """List of ObjectTypeDefinitionNode and ObjectTypeExtensionNode"""
         return [
             self.get_any_type(),
-            *[self.export_record(type_name, type_)
-              for type_name, type_ in obj.data_types.items()],
-            *[self.visit(item) for item in obj.items]
+            *[
+                self.export_record(type_name, type_)
+                for type_name, type_ in obj.data_types.items()
+            ],
+            *[self.visit(item) for item in obj.items],
         ]
 
     def get_any_type(self) -> ast.ScalarTypeDefinitionNode:
-        return ast.ScalarTypeDefinitionNode(name=_name('Any'))
+        return ast.ScalarTypeDefinitionNode(name=_name("Any"))
 
     def visit_root(self, obj: Root) -> ast.ObjectTypeExtensionNode:
         return ast.ObjectTypeExtensionNode(
-            name=_name('Query'),
+            name=_name("Query"),
             fields=[self.visit(item) for item in obj.fields],
         )
 
@@ -171,7 +177,7 @@ class Exporter(GraphVisitor):
             name=_name(obj.name),
             type=_encode_type(obj.type),
             arguments=[self.visit(o) for o in obj.options],
-            directives=[self.visit(d) for d in obj.directives]
+            directives=[self.visit(d) for d in obj.directives],
         )
 
     def visit_node(self, obj: Node) -> ast.ObjectTypeDefinitionNode:
@@ -180,7 +186,7 @@ class Exporter(GraphVisitor):
         return ast.ObjectTypeDefinitionNode(
             name=_name(obj.name),
             fields=fields,
-            directives=[self.visit(d) for d in obj.directives]
+            directives=[self.visit(d) for d in obj.directives],
         )
 
     def visit_link(self, obj: Link) -> ast.FieldDefinitionNode:
@@ -188,7 +194,7 @@ class Exporter(GraphVisitor):
             name=_name(obj.name),
             arguments=[self.visit(o) for o in obj.options],
             type=_encode_type(obj.type),
-            directives=[self.visit(d) for d in obj.directives]
+            directives=[self.visit(d) for d in obj.directives],
         )
 
     def visit_option(self, obj: Option) -> ast.InputValueDefinitionNode:
@@ -201,10 +207,10 @@ class Exporter(GraphVisitor):
 
     def visit_key_directive(self, obj: Key) -> ast.DirectiveNode:
         return ast.DirectiveNode(
-            name=_name('key'),
+            name=_name("key"),
             arguments=[
                 ast.ArgumentNode(
-                    name=_name('fields'),
+                    name=_name("fields"),
                     value=ast.StringValueNode(value=obj.fields),
                 ),
             ],
@@ -212,10 +218,10 @@ class Exporter(GraphVisitor):
 
     def visit_provides_directive(self, obj: Provides) -> ast.DirectiveNode:
         return ast.DirectiveNode(
-            name=_name('provides'),
+            name=_name("provides"),
             arguments=[
                 ast.ArgumentNode(
-                    name=_name('fields'),
+                    name=_name("fields"),
                     value=ast.StringValueNode(value=obj.fields),
                 ),
             ],
@@ -223,27 +229,27 @@ class Exporter(GraphVisitor):
 
     def visit_requires_directive(self, obj: Requires) -> ast.DirectiveNode:
         return ast.DirectiveNode(
-            name=_name('requires'),
+            name=_name("requires"),
             arguments=[
                 ast.ArgumentNode(
-                    name=_name('fields'),
+                    name=_name("fields"),
                     value=ast.StringValueNode(value=obj.fields),
                 ),
             ],
         )
 
     def visit_external_directive(self, obj: External) -> ast.DirectiveNode:
-        return ast.DirectiveNode(name=_name('external'))
+        return ast.DirectiveNode(name=_name("external"))
 
     def visit_extends_directive(self, obj: Extends) -> ast.DirectiveNode:
-        return ast.DirectiveNode(name=_name('extends'))
+        return ast.DirectiveNode(name=_name("extends"))
 
     def visit_deprecated_directive(self, obj: Deprecated) -> ast.DirectiveNode:
         return ast.DirectiveNode(
-            name=_name('deprecated'),
+            name=_name("deprecated"),
             arguments=[
                 ast.ArgumentNode(
-                    name=_name('reason'),
+                    name=_name("reason"),
                     value=ast.StringValueNode(value=obj.reason),
                 ),
             ],
@@ -258,7 +264,7 @@ def get_ast(graph: Graph) -> ast.DocumentNode:
 class _StripGraph(GraphTransformer):
     def visit_root(self, obj: Root) -> Root:
         def skip(field: t.Union[Field, Link]) -> bool:
-            return field.name in ['__typename', '_entities']
+            return field.name in ["__typename", "_entities"]
 
         return Root([self.visit(f) for f in obj.fields if not skip(f)])
 
@@ -266,24 +272,24 @@ class _StripGraph(GraphTransformer):
         def skip(node: Node) -> bool:
             if node.name is None:
                 # check if it is a Root node from introspection
-                return '__schema' in node.fields_map
+                return "__schema" in node.fields_map
 
-            return node.name.startswith('__')
+            return node.name.startswith("__")
 
         return Graph(
             [self.visit(node) for node in obj.items if not skip(node)],
-            obj.data_types
+            obj.data_types,
         )
 
     def visit_node(self, obj: Node) -> Node:
         def skip(field: t.Union[Field, Link]) -> bool:
-            return field.name in ['__typename']
+            return field.name in ["__typename"]
 
         return Node(
             obj.name,
             fields=[self.visit(f) for f in obj.fields if not skip(f)],
             description=obj.description,
-            directives=obj.directives
+            directives=obj.directives,
         )
 
 

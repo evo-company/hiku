@@ -11,9 +11,9 @@ def check_read(source, query):
 
 def test_invalid_root():
     with pytest.raises(TypeError):
-        read('{:foo []}')
+        read("{:foo []}")
     with pytest.raises(TypeError):
-        read(':foo')
+        read(":foo")
 
 
 def test_field():
@@ -21,7 +21,7 @@ def test_field():
         """
         [:foo :bar]
         """,
-        Node([Field('foo'), Field('bar')]),
+        Node([Field("foo"), Field("bar")]),
     )
 
 
@@ -29,7 +29,7 @@ def test_field_invalid():
     with pytest.raises(TypeError):
         read('["foo"]')
     with pytest.raises(TypeError):
-        read('[1]')
+        read("[1]")
 
 
 def test_field_options():
@@ -37,27 +37,26 @@ def test_field_options():
         """
         [(:foo {:bar 1}) :baz]
         """,
-        Node([Field('foo', options={'bar': 1}),
-              Field('baz')]),
+        Node([Field("foo", options={"bar": 1}), Field("baz")]),
     )
 
 
 def test_field_invalid_options():
     # missing options
     with pytest.raises(TypeError):
-        read('[(:foo)]')
+        read("[(:foo)]")
 
     # invalid options type
     with pytest.raises(TypeError):
-        read('[(:foo :bar)]')
+        read("[(:foo :bar)]")
 
     # more arguments than expected
     with pytest.raises(TypeError):
-        read('[(:foo 1 2)]')
+        read("[(:foo 1 2)]")
 
     # invalid option key
     with pytest.raises(TypeError):
-        read('[(:foo {1 2})]')
+        read("[(:foo {1 2})]")
 
 
 def test_link():
@@ -65,7 +64,7 @@ def test_link():
         """
         [{:foo [:bar :baz]}]
         """,
-        Node([Link('foo', Node([Field('bar'), Field('baz')]))]),
+        Node([Link("foo", Node([Field("bar"), Field("baz")]))]),
     )
 
 
@@ -74,8 +73,7 @@ def test_link_options():
         """
         [{(:foo {:bar 1}) [:baz]}]
         """,
-        Node([Link('foo', Node([Field('baz')]),
-                   options={'bar': 1})]),
+        Node([Link("foo", Node([Field("baz")]), options={"bar": 1})]),
     )
 
 
@@ -83,22 +81,22 @@ def test_link_invalid():
     with pytest.raises(TypeError):
         read('[{"foo" [:baz]}]')
     with pytest.raises(TypeError):
-        read('[{foo [:baz]}]')
+        read("[{foo [:baz]}]")
 
 
 def test_link_invalid_options():
     # missing options
     with pytest.raises(TypeError):
-        read('[{(:foo) [:baz]}]')
+        read("[{(:foo) [:baz]}]")
 
     # invalid options type
     with pytest.raises(TypeError):
-        read('[{(:foo :bar) [:baz]}]')
+        read("[{(:foo :bar) [:baz]}]")
 
     # more arguments than expected
     with pytest.raises(TypeError):
-        read('[{(:foo 1 2) [:bar]}]')
+        read("[{(:foo 1 2) [:bar]}]")
 
     # invalid option key
     with pytest.raises(TypeError):
-        read('[{(:foo {1 2}) [:bar]}]')
+        read("[{(:foo {1 2}) [:bar]}]")

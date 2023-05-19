@@ -66,64 +66,64 @@ class InMemoryCache(BaseCache):
         self._store.update(items)
 
 
-SA_ENGINE_KEY = 'sa-engine'
+SA_ENGINE_KEY = "sa-engine"
 metadata = MetaData()
 
 thread_pool = ThreadPoolExecutor(2)
 
 product_table = Table(
-    'product',
+    "product",
     metadata,
-    Column('id', SaInteger, primary_key=True, autoincrement=True),
-    Column('name', Unicode),
-    Column('company_id', ForeignKey('company.id')),
+    Column("id", SaInteger, primary_key=True, autoincrement=True),
+    Column("name", Unicode),
+    Column("company_id", ForeignKey("company.id")),
 )
 
 attribute_table = Table(
-    'attribute',
+    "attribute",
     metadata,
-    Column('id', SaInteger, primary_key=True, autoincrement=True),
-    Column('product_id', SaInteger),
-    Column('name', Unicode),
+    Column("id", SaInteger, primary_key=True, autoincrement=True),
+    Column("product_id", SaInteger),
+    Column("name", Unicode),
 )
 
 attribute_value_table = Table(
-    'attribute_value',
+    "attribute_value",
     metadata,
-    Column('id', SaInteger, primary_key=True, autoincrement=True),
-    Column('attr_id', SaInteger),
-    Column('name', Unicode),
+    Column("id", SaInteger, primary_key=True, autoincrement=True),
+    Column("attr_id", SaInteger),
+    Column("name", Unicode),
 )
 
 company_table = Table(
-    'company',
+    "company",
     metadata,
-    Column('id', SaInteger, primary_key=True, autoincrement=True),
-    Column('owner_id', SaInteger),
-    Column('name', Unicode),
+    Column("id", SaInteger, primary_key=True, autoincrement=True),
+    Column("owner_id", SaInteger),
+    Column("name", Unicode),
 )
 
 
 user_table = Table(
-    'users',
+    "users",
     metadata,
-    Column('id', SaInteger, primary_key=True, autoincrement=True),
-    Column('company_id', SaInteger),
-    Column('username', Unicode),
+    Column("id", SaInteger, primary_key=True, autoincrement=True),
+    Column("company_id", SaInteger),
+    Column("username", Unicode),
 )
 
 
 def setup_db(db_engine):
     metadata.create_all(db_engine)
-    for r in [c._asdict() for c in DB['companies'].values()]:
+    for r in [c._asdict() for c in DB["companies"].values()]:
         db_engine.execute(company_table.insert(), r)
-    for r in [c._asdict() for c in DB['users'].values()]:
+    for r in [c._asdict() for c in DB["users"].values()]:
         db_engine.execute(user_table.insert(), r)
-    for r in [p._asdict() for p in DB['attributes'].values()]:
+    for r in [p._asdict() for p in DB["attributes"].values()]:
         db_engine.execute(attribute_table.insert(), r)
-    for r in [p._asdict() for p in DB['attribute_values'].values()]:
+    for r in [p._asdict() for p in DB["attribute_values"].values()]:
         db_engine.execute(attribute_value_table.insert(), r)
-    for r in [p._asdict() for p in DB['products'].values()]:
+    for r in [p._asdict() for p in DB["products"].values()]:
         db_engine.execute(product_table.insert(), r)
 
 
@@ -158,26 +158,26 @@ class User(t.NamedTuple):
 
 
 DB = {
-    'products': {
-        1: Product(id=1, name='iphone 10', company_id=10),
-        2: Product(id=2, name='windows phone', company_id=20),
-        3: Product(id=3, name='iphone 5', company_id=10),
+    "products": {
+        1: Product(id=1, name="iphone 10", company_id=10),
+        2: Product(id=2, name="windows phone", company_id=20),
+        3: Product(id=3, name="iphone 5", company_id=10),
     },
-    'attributes': {
-      11: Attribute(id=11, product_id=1, name='color'),
-      12: Attribute(id=12, product_id=1, name='year'),
+    "attributes": {
+        11: Attribute(id=11, product_id=1, name="color"),
+        12: Attribute(id=12, product_id=1, name="year"),
     },
-    'attribute_values': {
-        111: AttributeValue(id=111, attr_id=11, name='red'),
-        112: AttributeValue(id=112, attr_id=11, name='blue'),
+    "attribute_values": {
+        111: AttributeValue(id=111, attr_id=11, name="red"),
+        112: AttributeValue(id=112, attr_id=11, name="blue"),
     },
-    'companies': {
-        10: Company(id=10, name='apple', owner_id=100),
-        20: Company(id=20, name='microsoft', owner_id=200),
+    "companies": {
+        10: Company(id=10, name="apple", owner_id=100),
+        20: Company(id=20, name="microsoft", owner_id=200),
     },
-    'users': {
-        100: User(id=100, company_id=10, username='steve'),
-        200: User(id=200, company_id=20, username='bill'),
+    "users": {
+        100: User(id=100, company_id=10, username="steve"),
+        200: User(id=200, company_id=20, username="bill"),
     },
 }
 
@@ -187,7 +187,7 @@ def direct_link(ids):
 
 
 def link_user(opts):
-    return opts['id']
+    return opts["id"]
 
 
 def link_empty_user(ids):
@@ -195,75 +195,79 @@ def link_empty_user(ids):
 
 
 def link_company(opts):
-    return opts['id']
+    return opts["id"]
 
 
 def link_product(opts):
-    return DB['products'][opts['id']]
+    return DB["products"][opts["id"]]
 
 
 def link_products():
-    return [p for p in DB['products'].values()]
+    return [p for p in DB["products"].values()]
 
 
 def link_product_attributes(ids):
-    attributes = DB['attributes']
+    attributes = DB["attributes"]
     reqs = []
     for id_ in ids:
-        reqs.append([at.id for at in attributes.values()
-                     if at.product_id == id_])
+        reqs.append(
+            [at.id for at in attributes.values() if at.product_id == id_]
+        )
 
     return reqs
 
 
 def link_attribute_values(ids):
-    attribute_values = DB['attribute_values']
+    attribute_values = DB["attribute_values"]
     reqs = []
     for id_ in ids:
-        reqs.append([at.id for at in attribute_values.values()
-                     if at.attr_id == id_])
+        reqs.append(
+            [at.id for at in attribute_values.values() if at.attr_id == id_]
+        )
 
     return reqs
 
 
-ROOT = Root([
-    Link(
-        'product',
-        TypeRef['Product'],
-        link_product,
-        options=[
-            Option('id', Integer),
-        ],
-        requires=None
-    ),
-    Link(
-        'company',
-        TypeRef['Company'],
-        link_company,
-        options=[
-            Option('id', Integer),
-        ],
-        requires=None
-    ),
-    Link(
-        'user',
-        TypeRef['User'],
-        link_user,
-        options=[
-            Option('id', Integer),
-        ],
-        requires=None
-    ),
-    Link(
-        'products',
-        Sequence[TypeRef['Product']],
-        link_products,
-        requires=None
-    ),
-])
+ROOT = Root(
+    [
+        Link(
+            "product",
+            TypeRef["Product"],
+            link_product,
+            options=[
+                Option("id", Integer),
+            ],
+            requires=None,
+        ),
+        Link(
+            "company",
+            TypeRef["Company"],
+            link_company,
+            options=[
+                Option("id", Integer),
+            ],
+            requires=None,
+        ),
+        Link(
+            "user",
+            TypeRef["User"],
+            link_user,
+            options=[
+                Option("id", Integer),
+            ],
+            requires=None,
+        ),
+        Link(
+            "products",
+            Sequence[TypeRef["Product"]],
+            link_products,
+            requires=None,
+        ),
+    ]
+)
 
 
-@pytest.fixture(name='sync_low_level_graph_sqlalchemy')
+@pytest.fixture(name="sync_low_level_graph_sqlalchemy")
 def sync_low_level_graph_sqlalchemy_fixture():
     user_query = FieldsQuery(SA_ENGINE_KEY, user_table)
     company_query = FieldsQuery(SA_ENGINE_KEY, company_table)
@@ -295,48 +299,84 @@ def sync_low_level_graph_sqlalchemy_fixture():
         to_column=attribute_value_table.c.id,
     )
 
-    return Graph([
-        Node('User', [
-            Field('id', Integer, user_query),
-            Field('company_id', Integer, user_query),
-            Field('username', String, user_query),
-        ]),
-        Node('Company', [
-            Field('id', Integer, company_query),
-            Field('name', String, company_query),
-            Field('owner_id', Integer, company_query),
-            Link('owner', TypeRef['User'], to_user_query, requires='owner_id')
-        ]),
-        Node('AttributeValue', [
-           Field('id', Integer, attribute_value_query),
-           Field('name', String, attribute_value_query),
-        ]),
-        Node('Attribute', [
-           Field('id', Integer, attribute_query),
-           Field('name', String, attribute_query),
-           Link('values', Sequence[TypeRef['AttributeValue']],
-                to_attribute_values_query, requires='id')
-        ]),
-        Node('Product', [
-            Field('id', Integer, product_query),
-            Field('name', String, product_query),
-            Field('company_id', Integer, product_query),
-            Link('attributes', Sequence[TypeRef['Attribute']],
-                 to_attribute_query, requires='id'),
-            Link('company', TypeRef['Company'], to_company_query,
-                 requires='company_id')
-        ]),
-    ])
+    return Graph(
+        [
+            Node(
+                "User",
+                [
+                    Field("id", Integer, user_query),
+                    Field("company_id", Integer, user_query),
+                    Field("username", String, user_query),
+                ],
+            ),
+            Node(
+                "Company",
+                [
+                    Field("id", Integer, company_query),
+                    Field("name", String, company_query),
+                    Field("owner_id", Integer, company_query),
+                    Link(
+                        "owner",
+                        TypeRef["User"],
+                        to_user_query,
+                        requires="owner_id",
+                    ),
+                ],
+            ),
+            Node(
+                "AttributeValue",
+                [
+                    Field("id", Integer, attribute_value_query),
+                    Field("name", String, attribute_value_query),
+                ],
+            ),
+            Node(
+                "Attribute",
+                [
+                    Field("id", Integer, attribute_query),
+                    Field("name", String, attribute_query),
+                    Link(
+                        "values",
+                        Sequence[TypeRef["AttributeValue"]],
+                        to_attribute_values_query,
+                        requires="id",
+                    ),
+                ],
+            ),
+            Node(
+                "Product",
+                [
+                    Field("id", Integer, product_query),
+                    Field("name", String, product_query),
+                    Field("company_id", Integer, product_query),
+                    Link(
+                        "attributes",
+                        Sequence[TypeRef["Attribute"]],
+                        to_attribute_query,
+                        requires="id",
+                    ),
+                    Link(
+                        "company",
+                        TypeRef["Company"],
+                        to_company_query,
+                        requires="company_id",
+                    ),
+                ],
+            ),
+        ]
+    )
 
 
 data_types = {
-    'Address': Record[{
-        'city': String,
-    }]
+    "Address": Record[
+        {
+            "city": String,
+        }
+    ]
 }
 
 
-@pytest.fixture(name='sync_high_level_graph_sqlalchemy')
+@pytest.fixture(name="sync_high_level_graph_sqlalchemy")
 def sync_high_level_graph_fixture(sync_low_level_graph_sqlalchemy):
     """This graph covers all cases of data access.
 
@@ -348,101 +388,139 @@ def sync_high_level_graph_fixture(sync_low_level_graph_sqlalchemy):
     """
     low_level_graph = sync_low_level_graph_sqlalchemy
 
-    company_sg = SubGraph(low_level_graph, 'Company')
-    attribute_sg = SubGraph(low_level_graph, 'Attribute')
-    attribute_value_sg = SubGraph(low_level_graph, 'AttributeValue')
-    user_sg = SubGraph(low_level_graph, 'User')
+    company_sg = SubGraph(low_level_graph, "Company")
+    attribute_sg = SubGraph(low_level_graph, "Attribute")
+    attribute_value_sg = SubGraph(low_level_graph, "AttributeValue")
+    user_sg = SubGraph(low_level_graph, "User")
 
     def get_photo(fields, ids):
         def get_field(f):
-            if f.name == 'photo':
-                size = f.options['size']
-                return f'https://example.com/photo.jpg?size={size}'
+            if f.name == "photo":
+                size = f.options["size"]
+                return f"https://example.com/photo.jpg?size={size}"
 
         return [[get_field(f) for f in fields] for _ in ids]
 
-    @define(Record[{'id': Integer}])
+    @define(Record[{"id": Integer}])
     def get_address(company):
-        return {
-            'city': 'Kyiv'
-        }
+        return {"city": "Kyiv"}
 
     def resolve_product_fields(fields, products):
         def get_field(field, product):
-            if field.name == 'id':
+            if field.name == "id":
                 return product.id
-            elif field.name == 'name':
+            elif field.name == "name":
                 return product.name
-            elif field.name == 'company_id':
+            elif field.name == "company_id":
                 return product.company_id
-            elif field.name == '_attributes':
+            elif field.name == "_attributes":
                 return [
-                    at.id for at in DB['attributes'].values()
+                    at.id
+                    for at in DB["attributes"].values()
                     if at.product_id == product.id
                 ]
 
         return [[get_field(f, p) for f in fields] for p in products]
 
-    return Graph([
-        Node('User', [
-            Field('id', Integer, user_sg),
-            Field('company_id', Integer, user_sg),
-            Field('username', String, user_sg),
-            Field('photo', String, get_photo, options=[
-                Option('size', Integer),
-            ]),
-        ]),
-        Node('Company', [
-            Field('id', Integer, company_sg),
-            Field('name', String, company_sg),
-            Field('owner_id', Integer, company_sg),
-            Field('address', TypeRef['Address'],
-                  company_sg.c(get_address(S.this))),
-            Link('owner', TypeRef['User'], direct_link, requires='owner_id'),
-            Link(
-                'emptyOwner',
-                Optional[TypeRef['User']],
-                link_empty_user,
-                requires='id',
-            )
-        ]),
-        Node('AttributeValue', [
-           Field('id', Integer, attribute_value_sg),
-           Field('name', String, attribute_value_sg),
-        ]),
-        Node('Attribute', [
-           Field('id', Integer, attribute_sg),
-           Field('name', String, attribute_sg),
-           Link('values', Sequence[TypeRef['AttributeValue']],
-                link_attribute_values, requires='id')
-        ]),
-        Node('Product', [
-            Field('id', Integer, resolve_product_fields),
-            Field('name', String, resolve_product_fields),
-            Field('company_id', Integer, resolve_product_fields),
-            Field('_attributes', Sequence[Any], resolve_product_fields),
-            Link('attributes', Sequence[TypeRef['Attribute']],
-                 direct_link,
-                 requires='_attributes'),
-            Link('company', TypeRef['Company'], direct_link,
-                 requires='company_id')
-        ]),
-        ROOT
-    ])
+    return Graph(
+        [
+            Node(
+                "User",
+                [
+                    Field("id", Integer, user_sg),
+                    Field("company_id", Integer, user_sg),
+                    Field("username", String, user_sg),
+                    Field(
+                        "photo",
+                        String,
+                        get_photo,
+                        options=[
+                            Option("size", Integer),
+                        ],
+                    ),
+                ],
+            ),
+            Node(
+                "Company",
+                [
+                    Field("id", Integer, company_sg),
+                    Field("name", String, company_sg),
+                    Field("owner_id", Integer, company_sg),
+                    Field(
+                        "address",
+                        TypeRef["Address"],
+                        company_sg.c(get_address(S.this)),
+                    ),
+                    Link(
+                        "owner",
+                        TypeRef["User"],
+                        direct_link,
+                        requires="owner_id",
+                    ),
+                    Link(
+                        "emptyOwner",
+                        Optional[TypeRef["User"]],
+                        link_empty_user,
+                        requires="id",
+                    ),
+                ],
+            ),
+            Node(
+                "AttributeValue",
+                [
+                    Field("id", Integer, attribute_value_sg),
+                    Field("name", String, attribute_value_sg),
+                ],
+            ),
+            Node(
+                "Attribute",
+                [
+                    Field("id", Integer, attribute_sg),
+                    Field("name", String, attribute_sg),
+                    Link(
+                        "values",
+                        Sequence[TypeRef["AttributeValue"]],
+                        link_attribute_values,
+                        requires="id",
+                    ),
+                ],
+            ),
+            Node(
+                "Product",
+                [
+                    Field("id", Integer, resolve_product_fields),
+                    Field("name", String, resolve_product_fields),
+                    Field("company_id", Integer, resolve_product_fields),
+                    Field("_attributes", Sequence[Any], resolve_product_fields),
+                    Link(
+                        "attributes",
+                        Sequence[TypeRef["Attribute"]],
+                        direct_link,
+                        requires="_attributes",
+                    ),
+                    Link(
+                        "company",
+                        TypeRef["Company"],
+                        direct_link,
+                        requires="company_id",
+                    ),
+                ],
+            ),
+            ROOT,
+        ]
+    )
 
 
-@pytest.fixture(name='sync_graph_sqlalchemy')
+@pytest.fixture(name="sync_graph_sqlalchemy")
 def sync_graph_sqlalchemy_fixture(sync_high_level_graph_sqlalchemy):
     low_level = sync_high_level_graph_sqlalchemy
 
-    return Graph([
-        *low_level.nodes,
-        ROOT
-    ], data_types=data_types)
+    return Graph([*low_level.nodes, ROOT], data_types=data_types)
 
 
 def get_product_query(product_id: int) -> str:
-    return """
+    return (
+        """
     query Product {
         product(id: %s) {
             id
@@ -469,7 +547,9 @@ def get_product_query(product_id: int) -> str:
             }
         }
     }
-    """ % product_id
+    """
+        % product_id
+    )
 
 
 def get_products_query() -> str:
@@ -507,8 +587,8 @@ def assert_dict_equal(got, exp):
 def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
     graph = sync_graph_sqlalchemy
     sa_engine = create_engine(
-        'sqlite://',
-        connect_args={'check_same_thread': False},
+        "sqlite://",
+        connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
     setup_db(sa_engine)
@@ -518,94 +598,94 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
     cache_settings = CacheSettings(cache)
     cache_info = CacheInfo(cache_settings)
     engine = Engine(ThreadsExecutor(thread_pool), cache_settings)
-    ctx = {
-        SA_ENGINE_KEY: sa_engine,
-        'locale': 'en'
-    }
+    ctx = {SA_ENGINE_KEY: sa_engine, "locale": "en"}
 
     def execute(q):
         proxy = engine.execute(graph, q, ctx)
-        return DenormalizeGraphQL(graph, proxy, 'query').process(q)
+        return DenormalizeGraphQL(graph, proxy, "query").process(q)
 
     query = read(get_product_query(1))
-    company_link = query.fields_map['product'].node.fields_map['company']
-    attributes_link = query.fields_map['product'].node.fields_map['attributes']
+    company_link = query.fields_map["product"].node.fields_map["company"]
+    attributes_link = query.fields_map["product"].node.fields_map["attributes"]
 
     photo_field = (
-        query.fields_map['product']
-        .node.fields_map['company']
-        .node.fields_map['owner']
-        .node.fields_map['photo']
+        query.fields_map["product"]
+        .node.fields_map["company"]
+        .node.fields_map["owner"]
+        .node.fields_map["photo"]
     )
 
     company_key = cache_info.query_hash(ctx, company_link, 10)
     attributes_key = cache_info.query_hash(ctx, attributes_link, [11, 12])
 
     company_cache = {
-        'User': {
+        "User": {
             100: {
-                'username': 'steve',
-                photo_field.index_key: 'https://example.com/photo.jpg?size=50'
+                "username": "steve",
+                photo_field.index_key: "https://example.com/photo.jpg?size=50",
             }
         },
-        'Company': {
+        "Company": {
             10: {
-                'id': 10,
-                'name': 'apple',
-                'address': {'city': 'Kyiv'},
-                'owner': Reference('User', 100),
-                'emptyOwner': None,
+                "id": 10,
+                "name": "apple",
+                "address": {"city": "Kyiv"},
+                "owner": Reference("User", 100),
+                "emptyOwner": None,
             },
         },
-        'Product': {'company': Reference('Company', 10)}
+        "Product": {"company": Reference("Company", 10)},
     }
 
     attributes_cache = {
-        'AttributeValue': {
-            111: {'id': 111, 'name': 'red'},
-            112: {'id': 112, 'name': 'blue'}
+        "AttributeValue": {
+            111: {"id": 111, "name": "red"},
+            112: {"id": 112, "name": "blue"},
         },
-        'Attribute': {
-            11: {'id': 11, 'name': 'color', 'values': [
-                Reference('AttributeValue', 111),
-                Reference('AttributeValue', 112),
-            ]},
-            12: {'id': 12, 'name': 'year', 'values': []},
+        "Attribute": {
+            11: {
+                "id": 11,
+                "name": "color",
+                "values": [
+                    Reference("AttributeValue", 111),
+                    Reference("AttributeValue", 112),
+                ],
+            },
+            12: {"id": 12, "name": "year", "values": []},
         },
-        'Product': {'attributes': [
-            Reference('Attribute', 11), Reference('Attribute', 12)
-        ]}
+        "Product": {
+            "attributes": [
+                Reference("Attribute", 11),
+                Reference("Attribute", 12),
+            ]
+        },
     }
 
     expected_result = {
-        'product': {
-            'id': 1,
-            'name': 'iphone 10',
-            'attributes': [
+        "product": {
+            "id": 1,
+            "name": "iphone 10",
+            "attributes": [
                 {
-                    'id': 11,
-                    'name': 'color',
-                    'values': [
-                        {'id': 111, 'name': 'red'},
-                        {'id': 112, 'name': 'blue'},
-                    ]
+                    "id": 11,
+                    "name": "color",
+                    "values": [
+                        {"id": 111, "name": "red"},
+                        {"id": 112, "name": "blue"},
+                    ],
                 },
-                {
-                    'id': 12,
-                    'name': 'year',
-                    'values': []
-                }
+                {"id": 12, "name": "year", "values": []},
             ],
-            'company': {
-                'id': 10,
-                'name': 'apple',
-                'address': {'city': 'Kyiv'},
-                'owner': {
-                    'username': 'steve',
-                    'photo': 'https://example.com/photo.jpg?size=50'
+            "company": {
+                "id": 10,
+                "name": "apple",
+                "address": {"city": "Kyiv"},
+                "owner": {
+                    "username": "steve",
+                    "photo": "https://example.com/photo.jpg?size=50",
                 },
-                'emptyOwner': None,
-            }
+                "emptyOwner": None,
+            },
         }
     }
 
@@ -615,29 +695,30 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
 
     calls = {
         **cache.set_many.mock_calls[0][1][0],
-        **cache.set_many.mock_calls[1][1][0]
+        **cache.set_many.mock_calls[1][1][0],
     }
-    assert_dict_equal(calls, {
-        attributes_key: attributes_cache,
-        company_key: company_cache
-    })
+    assert_dict_equal(
+        calls, {attributes_key: attributes_cache, company_key: company_cache}
+    )
 
     cache.reset_mock()
 
     check_result(execute(query), expected_result)
 
-    cache.get_many.assert_has_calls([
-        call([attributes_key]),
-        call([company_key]),
-    ])
+    cache.get_many.assert_has_calls(
+        [
+            call([attributes_key]),
+            call([company_key]),
+        ]
+    )
     cache.set_many.assert_not_called()
 
 
 def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
     graph = sync_graph_sqlalchemy
     sa_engine = create_engine(
-        'sqlite://',
-        connect_args={'check_same_thread': False},
+        "sqlite://",
+        connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
     setup_db(sa_engine)
@@ -646,30 +727,27 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
     cache = Mock(wraps=cache)
 
     def cache_key(ctx, hasher):
-        hasher.update(ctx['locale'].encode('utf-8'))
+        hasher.update(ctx["locale"].encode("utf-8"))
 
     cache_settings = CacheSettings(cache, cache_key)
     cache_info = CacheInfo(cache_settings)
     engine = Engine(ThreadsExecutor(thread_pool), cache_settings)
-    ctx = {
-        SA_ENGINE_KEY: sa_engine,
-        'locale': 'en'
-    }
+    ctx = {SA_ENGINE_KEY: sa_engine, "locale": "en"}
 
     def execute(q):
         proxy = engine.execute(graph, q, ctx)
-        return DenormalizeGraphQL(graph, proxy, 'query').process(q)
+        return DenormalizeGraphQL(graph, proxy, "query").process(q)
 
     query = read(get_products_query())
 
-    company_link = query.fields_map['products'].node.fields_map['company']
-    attributes_link = query.fields_map['products'].node.fields_map['attributes']
+    company_link = query.fields_map["products"].node.fields_map["company"]
+    attributes_link = query.fields_map["products"].node.fields_map["attributes"]
 
     photo_field = (
-        query.fields_map['products']
-        .node.fields_map['company']
-        .node.fields_map['owner']
-        .node.fields_map['photo']
+        query.fields_map["products"]
+        .node.fields_map["company"]
+        .node.fields_map["owner"]
+        .node.fields_map["photo"]
     )
 
     company10_key = cache_info.query_hash(ctx, company_link, 10)
@@ -678,115 +756,120 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
     attributes_none_key = cache_info.query_hash(ctx, attributes_link, [])
 
     company10_cache = {
-        'User': {
+        "User": {
             100: {
-                'username': 'steve',
-                photo_field.index_key: 'https://example.com/photo.jpg?size=50'
+                "username": "steve",
+                photo_field.index_key: "https://example.com/photo.jpg?size=50",
             }
         },
-        'Company': {
+        "Company": {
             10: {
-                'id': 10,
-                'name': 'apple',
-                'address': {'city': 'Kyiv'},
-                'owner': Reference('User', 100)
+                "id": 10,
+                "name": "apple",
+                "address": {"city": "Kyiv"},
+                "owner": Reference("User", 100),
             },
         },
-        'Product': {'company': Reference('Company', 10)}
+        "Product": {"company": Reference("Company", 10)},
     }
     company20_cache = {
-        'User': {
+        "User": {
             200: {
-                'username': 'bill',
-                photo_field.index_key: 'https://example.com/photo.jpg?size=50'
+                "username": "bill",
+                photo_field.index_key: "https://example.com/photo.jpg?size=50",
             }
         },
-        'Company': {
+        "Company": {
             20: {
-                'id': 20,
-                'name': 'microsoft',
-                'address': {'city': 'Kyiv'},
-                'owner': Reference('User', 200)
+                "id": 20,
+                "name": "microsoft",
+                "address": {"city": "Kyiv"},
+                "owner": Reference("User", 200),
             },
         },
-        'Product': {'company': Reference('Company', 20)}
+        "Product": {"company": Reference("Company", 20)},
     }
 
     attributes11_12_cache = {
-        'AttributeValue': {
-            111: {'id': 111, 'name': 'red'},
-            112: {'id': 112, 'name': 'blue'}
+        "AttributeValue": {
+            111: {"id": 111, "name": "red"},
+            112: {"id": 112, "name": "blue"},
         },
-        'Attribute': {
-            11: {'id': 11, 'name': 'color', 'values': [
-                Reference('AttributeValue', 111),
-                Reference('AttributeValue', 112),
-            ]},
-            12: {'id': 12, 'name': 'year', 'values': []},
+        "Attribute": {
+            11: {
+                "id": 11,
+                "name": "color",
+                "values": [
+                    Reference("AttributeValue", 111),
+                    Reference("AttributeValue", 112),
+                ],
+            },
+            12: {"id": 12, "name": "year", "values": []},
         },
-        'Product': {'attributes': [
-            Reference('Attribute', 11), Reference('Attribute', 12)
-        ]}
+        "Product": {
+            "attributes": [
+                Reference("Attribute", 11),
+                Reference("Attribute", 12),
+            ]
+        },
     }
-    attributes_none_cache = {
-        'Product': {'attributes': []}
-    }
+    attributes_none_cache = {"Product": {"attributes": []}}
 
     expected_result = {
-        'products': [{
-            'id': 1,
-            'name': 'iphone 10',
-            'attributes': [
-                {
-                    'id': 11,
-                    'name': 'color',
-                    'values': [
-                        {'id': 111, 'name': 'red'},
-                        {'id': 112, 'name': 'blue'},
-                    ]
+        "products": [
+            {
+                "id": 1,
+                "name": "iphone 10",
+                "attributes": [
+                    {
+                        "id": 11,
+                        "name": "color",
+                        "values": [
+                            {"id": 111, "name": "red"},
+                            {"id": 112, "name": "blue"},
+                        ],
+                    },
+                    {"id": 12, "name": "year", "values": []},
+                ],
+                "company": {
+                    "id": 10,
+                    "name": "apple",
+                    "address": {"city": "Kyiv"},
+                    "owner": {
+                        "username": "steve",
+                        "photo": "https://example.com/photo.jpg?size=50",
+                    },
                 },
-                {
-                    'id': 12,
-                    'name': 'year',
-                    'values': []
-                }
-            ],
-            'company': {
-                'id': 10,
-                'name': 'apple',
-                'address': {'city': 'Kyiv'},
-                'owner': {
-                    'username': 'steve',
-                    'photo': 'https://example.com/photo.jpg?size=50'
-                }
-            }
-        }, {
-            'id': 2,
-            'name': 'windows phone',
-            'attributes': [],
-            'company': {
-                'id': 20,
-                'name': 'microsoft',
-                'address': {'city': 'Kyiv'},
-                'owner': {
-                    'username': 'bill',
-                    'photo': 'https://example.com/photo.jpg?size=50'
-                }
-            }
-        }, {
-            'id': 3,
-            'name': 'iphone 5',
-            'attributes': [],
-            'company': {
-                'id': 10,
-                'name': 'apple',
-                'address': {'city': 'Kyiv'},
-                'owner': {
-                    'username': 'steve',
-                    'photo': 'https://example.com/photo.jpg?size=50'
-                }
-            }
-        }]
+            },
+            {
+                "id": 2,
+                "name": "windows phone",
+                "attributes": [],
+                "company": {
+                    "id": 20,
+                    "name": "microsoft",
+                    "address": {"city": "Kyiv"},
+                    "owner": {
+                        "username": "bill",
+                        "photo": "https://example.com/photo.jpg?size=50",
+                    },
+                },
+            },
+            {
+                "id": 3,
+                "name": "iphone 5",
+                "attributes": [],
+                "company": {
+                    "id": 10,
+                    "name": "apple",
+                    "address": {"city": "Kyiv"},
+                    "owner": {
+                        "username": "steve",
+                        "photo": "https://example.com/photo.jpg?size=50",
+                    },
+                },
+            },
+        ]
     }
 
     check_result(execute(query), expected_result)
@@ -794,23 +877,28 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
     assert cache.get_many.call_count == 2
     calls = {
         **cache.set_many.mock_calls[0][1][0],
-        **cache.set_many.mock_calls[1][1][0]
+        **cache.set_many.mock_calls[1][1][0],
     }
-    assert_dict_equal(calls, {
-        attributes11_12_key: attributes11_12_cache,
-        attributes_none_key: attributes_none_cache,
-        company10_key: company10_cache,
-        company20_key: company20_cache,
-    })
+    assert_dict_equal(
+        calls,
+        {
+            attributes11_12_key: attributes11_12_cache,
+            attributes_none_key: attributes_none_cache,
+            company10_key: company10_cache,
+            company20_key: company20_cache,
+        },
+    )
 
     cache.reset_mock()
 
     check_result(execute(query), expected_result)
     assert set(*cache.get_many.mock_calls[0][1]) == {
-        attributes11_12_key, attributes_none_key
+        attributes11_12_key,
+        attributes_none_key,
     }
     assert set(*cache.get_many.mock_calls[1][1]) == {
-        company10_key, company20_key
+        company10_key,
+        company20_key,
     }
 
     cache.set_many.assert_not_called()

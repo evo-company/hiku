@@ -23,7 +23,7 @@ def gen2():
 
 
 async def coroutine():
-    return 'smiting'
+    return "smiting"
 
 
 @pytest.mark.asyncio
@@ -32,21 +32,21 @@ async def test_awaitable_check(event_loop):
 
     with pytest.raises(TypeError) as func_err:
         executor.submit(func)
-    func_err.match('returned non-awaitable object')
+    func_err.match("returned non-awaitable object")
 
     with pytest.raises(TypeError) as func2_err:
         executor.submit(func2)
-    func2_err.match('returned non-awaitable object')
+    func2_err.match("returned non-awaitable object")
 
     with pytest.raises(TypeError) as gen_err:
         executor.submit(gen)
-    gen_err.match('returned non-awaitable object')
+    gen_err.match("returned non-awaitable object")
 
     with pytest.raises(TypeError) as gen2_err:
         executor.submit(gen2)
-    gen2_err.match('returned non-awaitable object')
+    gen2_err.match("returned non-awaitable object")
 
-    assert (await executor.submit(coroutine)) == 'smiting'
+    assert (await executor.submit(coroutine)) == "smiting"
 
 
 @pytest.mark.asyncio
@@ -63,7 +63,7 @@ async def test_cancellation(event_loop):
 
     class TestWorkflow(Workflow):
         def result(self):
-            raise AssertionError('impossible')
+            raise AssertionError("impossible")
 
     executor = AsyncIOExecutor(event_loop)
 

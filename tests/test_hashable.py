@@ -39,43 +39,48 @@ def test_link_requires_field_with_unhashable_data():
         return User(1)
 
     def user_info_fields(fields, data):
-        return [
-            [getattr(d, f.name) for f in fields]
-            for d in data
-        ]
+        return [[getattr(d, f.name) for f in fields] for d in data]
 
     def user_fields(fields, ids):
         def map_field(f, user):
-            if f.name == 'id':
+            if f.name == "id":
                 return user.id
-            if f.name == '_data':
+            if f.name == "_data":
                 return UserData(20)
 
         return [[map_field(f, user) for f in fields] for user in ids]
 
-    GRAPH = Graph([
-        Node('userInfo', [
-            Field('age', Integer, user_info_fields),
-        ]),
-        Node('user', [
-            Field('id', Integer, user_fields),
-            Field('_data', Any, user_fields),
-            Link('info', TypeRef['userInfo'], direct_link, requires='_data'),
-        ]),
-        Root([
-            Link('user', TypeRef['user'], link_user, requires=None),
-        ]),
-    ])
+    GRAPH = Graph(
+        [
+            Node(
+                "userInfo",
+                [
+                    Field("age", Integer, user_info_fields),
+                ],
+            ),
+            Node(
+                "user",
+                [
+                    Field("id", Integer, user_fields),
+                    Field("_data", Any, user_fields),
+                    Link(
+                        "info",
+                        TypeRef["userInfo"],
+                        direct_link,
+                        requires="_data",
+                    ),
+                ],
+            ),
+            Root(
+                [
+                    Link("user", TypeRef["user"], link_user, requires=None),
+                ]
+            ),
+        ]
+    )
 
     with pytest.raises(TypeError) as err:
-        execute(GRAPH, build([
-            Q.user[
-                Q.id,
-                Q.info[
-                    Q.age
-                ]
-            ]
-        ]))
+        execute(GRAPH, build([Q.user[Q.id, Q.info[Q.age]]]))
 
     err.match(
         r"Can't store link values, node: 'user', link: 'info', "
@@ -102,28 +107,38 @@ def test_link_to_sequence():
         return [[getattr(user, f.name) for f in fields] for user in users]
 
     def link_tags(ids):
-        return [[Tag('tag1')] for id_ in ids]
+        return [[Tag("tag1")] for id_ in ids]
 
-    GRAPH = Graph([
-        Node('tags', [
-            Field('name', String, tags_fields),
-        ]),
-        Node('user', [
-            Field('id', Integer, user_fields),
-            Link('tags', Sequence[TypeRef['tags']], link_tags, requires='id'),
-        ]),
-        Root([
-            Link('user', TypeRef['user'], link_user, requires=None),
-        ]),
-    ])
+    GRAPH = Graph(
+        [
+            Node(
+                "tags",
+                [
+                    Field("name", String, tags_fields),
+                ],
+            ),
+            Node(
+                "user",
+                [
+                    Field("id", Integer, user_fields),
+                    Link(
+                        "tags",
+                        Sequence[TypeRef["tags"]],
+                        link_tags,
+                        requires="id",
+                    ),
+                ],
+            ),
+            Root(
+                [
+                    Link("user", TypeRef["user"], link_user, requires=None),
+                ]
+            ),
+        ]
+    )
 
     with pytest.raises(TypeError) as err:
-        execute(GRAPH, build([
-            Q.user[
-                Q.id,
-                Q.tags[Q.name]
-            ]
-        ]))
+        execute(GRAPH, build([Q.user[Q.id, Q.tags[Q.name]]]))
 
     err.match(
         r"Can't store link values, node: 'user', link: 'tags', "
@@ -142,19 +157,26 @@ def test_root_link_resolver_returns_unhashable_data():
 
     def user_fields(fields, ids):
         def map_field(f, user):
-            if f.name == 'id':
+            if f.name == "id":
                 return user.id
 
         return [[map_field(f, user) for f in fields] for user in ids]
 
-    GRAPH = Graph([
-        Node('user', [
-            Field('id', Integer, user_fields),
-        ]),
-        Root([
-            Link('user', TypeRef['user'], link_user, requires=None),
-        ]),
-    ])
+    GRAPH = Graph(
+        [
+            Node(
+                "user",
+                [
+                    Field("id", Integer, user_fields),
+                ],
+            ),
+            Root(
+                [
+                    Link("user", TypeRef["user"], link_user, requires=None),
+                ]
+            ),
+        ]
+    )
 
     with pytest.raises(TypeError) as err:
         execute(GRAPH, build([Q.user[Q.id]]))
@@ -178,15 +200,24 @@ def test_root_link_requires_field_with_unhashable_data():
         for id_ in ids:
             yield [getattr(id_, f.name) for f in fields]
 
-    GRAPH = Graph([
-        Node('user', [
-            Field('id', Integer, user_fields),
-        ]),
-        Root([
-            Field('_user', Any, user_data),
-            Link('user', TypeRef['user'], direct_link, requires='_user'),
-        ]),
-    ])
+    GRAPH = Graph(
+        [
+            Node(
+                "user",
+                [
+                    Field("id", Integer, user_fields),
+                ],
+            ),
+            Root(
+                [
+                    Field("_user", Any, user_data),
+                    Link(
+                        "user", TypeRef["user"], direct_link, requires="_user"
+                    ),
+                ]
+            ),
+        ]
+    )
 
     with pytest.raises(TypeError) as err:
         execute(GRAPH, build([Q.user[Q.id]]))
@@ -206,22 +237,29 @@ def test_root_link_options_unhashable_data():
         ...
 
     def link_options(opts):
-        return UserOpts(opts['id'])
+        return UserOpts(opts["id"])
 
-    GRAPH = Graph([
-        Node('user', [
-            Field('id', Integer, user_fields),
-        ]),
-        Root([
-            Link(
-                'user',
-                TypeRef['user'],
-                link_options,
-                requires=None,
-                options=[Option('id', Integer)]
+    GRAPH = Graph(
+        [
+            Node(
+                "user",
+                [
+                    Field("id", Integer, user_fields),
+                ],
             ),
-        ]),
-    ])
+            Root(
+                [
+                    Link(
+                        "user",
+                        TypeRef["user"],
+                        link_options,
+                        requires=None,
+                        options=[Option("id", Integer)],
+                    ),
+                ]
+            ),
+        ]
+    )
 
     with pytest.raises(TypeError) as err:
         execute(GRAPH, build([Q.user(id=1)[Q.id]]))
@@ -232,24 +270,34 @@ def test_root_link_options_unhashable_data():
     )
 
 
-@pytest.mark.parametrize('typ, expected', [
-    (list, 'list'),
-    (set, 'set'),
-])
+@pytest.mark.parametrize(
+    "typ, expected",
+    [
+        (list, "list"),
+        (set, "set"),
+    ],
+)
 def test_hint_unhashble_type(typ, expected):
-    GRAPH = Graph([
-        Node('user', [
-            Field('tags', Sequence[String], lambda fields, ids: None),
-        ]),
-        Root([
-            Link(
-                'user',
-                TypeRef['user'],
-                lambda: typ(['tag1']),
-                requires=None,
+    GRAPH = Graph(
+        [
+            Node(
+                "user",
+                [
+                    Field("tags", Sequence[String], lambda fields, ids: None),
+                ],
             ),
-        ]),
-    ])
+            Root(
+                [
+                    Link(
+                        "user",
+                        TypeRef["user"],
+                        lambda: typ(["tag1"]),
+                        requires=None,
+                    ),
+                ]
+            ),
+        ]
+    )
 
     with pytest.raises(TypeError) as err:
         execute(GRAPH, build([Q.user[Q.tags]]))
@@ -258,25 +306,33 @@ def test_hint_unhashble_type(typ, expected):
 
 
 def test_hint_unhashble_type_in_tuple():
-    GRAPH = Graph([
-        Node('user', [
-            Field('tags', Sequence[String], lambda fields, ids: [[]]),
-        ]),
-        Root([
-            Link(
-                'user',
-                TypeRef['user'],
-                lambda: tuple([{}, {}]),
-                requires=None,
+    GRAPH = Graph(
+        [
+            Node(
+                "user",
+                [
+                    Field("tags", Sequence[String], lambda fields, ids: [[]]),
+                ],
             ),
-        ]),
-    ])
+            Root(
+                [
+                    Link(
+                        "user",
+                        TypeRef["user"],
+                        lambda: tuple([{}, {}]),
+                        requires=None,
+                    ),
+                ]
+            ),
+        ]
+    )
 
     with pytest.raises(TypeError) as err:
         execute(GRAPH, build([Q.user[Q.tags]]))
 
     err.match(
-        "Hint: Consider adding __hash__ method or use hashable type for '{}'.")
+        "Hint: Consider adding __hash__ method or use hashable type for '{}'."
+    )
 
 
 def test_hint_frozen_dataclass():
@@ -284,19 +340,26 @@ def test_hint_frozen_dataclass():
     class User:
         tags: List[str]
 
-    GRAPH = Graph([
-        Node('user', [
-            Field('tags', Sequence[String], lambda fields, ids: None),
-        ]),
-        Root([
-            Link(
-                'user',
-                TypeRef['user'],
-                lambda: User(['tag1']),
-                requires=None,
+    GRAPH = Graph(
+        [
+            Node(
+                "user",
+                [
+                    Field("tags", Sequence[String], lambda fields, ids: None),
+                ],
             ),
-        ]),
-    ])
+            Root(
+                [
+                    Link(
+                        "user",
+                        TypeRef["user"],
+                        lambda: User(["tag1"]),
+                        requires=None,
+                    ),
+                ]
+            ),
+        ]
+    )
 
     with pytest.raises(TypeError) as err:
         execute(GRAPH, build([Q.user[Q.tags]]))
@@ -309,19 +372,26 @@ def test_hint_dataclass_unhashable_field():
     class User:
         tags: List[str]
 
-    GRAPH = Graph([
-        Node('user', [
-            Field('tags', Sequence[String], lambda fields, ids: None),
-        ]),
-        Root([
-            Link(
-                'user',
-                TypeRef['user'],
-                lambda: User(['tag1']),
-                requires=None,
+    GRAPH = Graph(
+        [
+            Node(
+                "user",
+                [
+                    Field("tags", Sequence[String], lambda fields, ids: None),
+                ],
             ),
-        ]),
-    ])
+            Root(
+                [
+                    Link(
+                        "user",
+                        TypeRef["user"],
+                        lambda: User(["tag1"]),
+                        requires=None,
+                    ),
+                ]
+            ),
+        ]
+    )
 
     with pytest.raises(TypeError) as err:
         execute(GRAPH, build([Q.user[Q.tags]]))

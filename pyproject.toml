@@ -1,0 +1,214 @@
+[project]
+name = "hiku"
+dynamic = ["version"]
+description = "Library to implement Graph APIs"
+readme = "README.rst"
+license = {text = "BSD-3-Clause"}
+authors = [
+    {name = "Vladimir Magamedov", email = "vladimir@magamedov.com"},
+    {name = "Maksym Kindritskyi", email = "kindritskiy.m@gmail.com"},
+]
+dependencies = [
+    "graphql-core",
+    "sqlalchemy>=1.3.9,<2.0.0",
+    "protobuf<4.0.0",
+    "aiopg",
+    "prometheus-client",
+    "typing-extensions"
+]
+requires-python = ">=3.7"
+
+classifiers = [
+    'Development Status :: 5 - Production/Stable',
+    'Intended Audience :: Developers',
+    'License :: OSI Approved :: BSD License',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3.7',
+    'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3 :: Only',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+]
+
+[project.urls]
+Documentation = "https://hiku.readthedocs.io/en/latest/"
+Repository = "https://github.com/evo-company/hiku"
+Homepage = "https://github.com/evo-company/hiku"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm]
+
+[tool.pdm.version]
+source = "file"
+path = "hiku/__init__.py"
+
+[tool.pdm.build]
+includes = [
+    "hiku",
+    "hiku/pytyped",
+]
+excludes = [ "tests", "**/.*.*" ]
+
+[tool.pdm.dev-dependencies]
+test = [
+    "astor==0.8.1",
+    "pytest>=7.3.1",
+    "pytest-cov>=4.0.0",
+    "pytest-asyncio",
+    "faker",
+    "pytest-benchmark",
+]
+dev = [
+    "mypy",
+    "black",
+    "flake8==5.0.4",
+]
+doc = [
+    "sphinx==5.0.2",
+    "sphinx-rtd-theme==1.0.0",
+]
+examples = [
+    "flask==2.1.3",
+    "aiohttp==3.8.1",
+]
+
+[tool.pdm.resolution.overrides]
+importlib-metadata = ">=4.3"
+
+[tool.pdm.scripts]
+test = "python -m pytest"
+test_pg = "python -m pytest tests_pg"
+test-all = {composite = ["test", "test_pg"]}
+fmt = "python -m black hiku"
+mypy = "python -m mypy --show-error-codes hiku"
+flake = "python -m flake8"
+docs = "sphinx-build -b html docs docs/build"
+check = {composite = ["fmt", "test", "mypy", "flake"]}
+
+[tool.pytest.ini_options]
+addopts = "--tb=native --benchmark-disable"
+testpaths = [
+    "tests",
+]
+
+filterwarnings = [
+    "once::DeprecationWarning",
+    "once::PendingDeprecationWarning",
+    "ignore::DeprecationWarning:graphql.*",
+    "ignore::DeprecationWarning:promise.*",
+    "ignore::DeprecationWarning:google.*",
+    "ignore::DeprecationWarning:sqlalchemy.*",
+]
+
+[tool.coverage.run]
+branch = true
+source = [
+    "hiku",
+]
+
+[tool.mypy]
+python_version = 3.7
+check_untyped_defs = true
+#disallow_any_generics = true
+#disallow_untyped_calls = true
+disallow_untyped_defs = true
+follow_imports = "silent"
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+exclude = [
+    "tests",
+    "tests_pg"
+]
+
+[[tool.mypy.overrides]]
+module = "hiku.telemetry.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "hiku.edn.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "hiku.export.simple.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "hiku.export.protobuf.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "hiku.readers.simple.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "hiku.readers.protobuf.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "hiku.expr.refs.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "hiku.expr.checker.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "hiku.expr.compiler.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "hiku.sources.sqlalchemy.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "hiku.sources.aiopg.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "hiku.typedef.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "hiku.builder.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "google.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "graphql.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "sqlalchemy.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "prometheus_client.*"
+ignore_missing_imports = true
+
+[tool.black]
+line-length = 80
+target-version = ['py37']

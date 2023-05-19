@@ -15,33 +15,36 @@ def check_ref(node, chain):
 def check_expr(types, expr):
     ast, functions = to_expr(expr)
     env = fn_types(functions)
-    env.update(types['__root__'].__field_types__)
+    env.update(types["__root__"].__field_types__)
     return check(ast, types, env)
 
 
 def test_get_simple():
     types = {
-        'Bar': Record[{'baz': Integer}],
-        'Foo': Record[{'bar': 'Bar'}],
-        '__root__': Record[{'foo': 'Foo'}],
+        "Bar": Record[{"baz": Integer}],
+        "Foo": Record[{"bar": "Bar"}],
+        "__root__": Record[{"foo": "Foo"}],
     }
     ast = check_expr(types, S.foo.bar.baz)
-    check_ref(ast, [
-        ('baz', Integer),
-        ('bar', TypeRef['Bar']),
-        ('foo', TypeRef['Foo']),
-    ])
+    check_ref(
+        ast,
+        [
+            ("baz", Integer),
+            ("bar", TypeRef["Bar"]),
+            ("foo", TypeRef["Foo"]),
+        ],
+    )
 
 
 def test_each_sequence_of_scalar():
     types = {
-        '__root__': Record[{'foo': Sequence[Integer]}],
+        "__root__": Record[{"foo": Sequence[Integer]}],
     }
     ast = check_expr(types, each(S.x, S.foo, S.x))
     _, x1, _, x2 = ast.values
     ref_chain = [
         (None, Integer),
-        ('foo', Sequence[Integer]),
+        ("foo", Sequence[Integer]),
     ]
     check_ref(x1, ref_chain)
     check_ref(x2, ref_chain)
@@ -49,51 +52,57 @@ def test_each_sequence_of_scalar():
 
 def test_each_sequence_of_record():
     types = {
-        'Bar': Record[{'baz': Integer}],
-        'Foo': Record[{'bar': 'Bar'}],
-        '__root__': Record[{'foo': Sequence['Foo']}],
+        "Bar": Record[{"baz": Integer}],
+        "Foo": Record[{"bar": "Bar"}],
+        "__root__": Record[{"foo": Sequence["Foo"]}],
     }
     ast = check_expr(types, each(S.x, S.foo, S.x.bar.baz))
     _, _, _, x_bar_baz = ast.values
-    check_ref(x_bar_baz, [
-        ('baz', Integer),
-        ('bar', TypeRef['Bar']),
-        (None, TypeRef['Foo']),
-        ('foo', Sequence[TypeRef['Foo']]),
-    ])
+    check_ref(
+        x_bar_baz,
+        [
+            ("baz", Integer),
+            ("bar", TypeRef["Bar"]),
+            (None, TypeRef["Foo"]),
+            ("foo", Sequence[TypeRef["Foo"]]),
+        ],
+    )
 
 
 def test_if_some_optional():
     types = {
-        'Bar': Record[{'baz': Integer}],
-        'Foo': Record[{'bar': Sequence['Bar']}],
-        '__root__': Record[{'foo': Optional['Foo']}],
+        "Bar": Record[{"baz": Integer}],
+        "Foo": Record[{"bar": Sequence["Bar"]}],
+        "__root__": Record[{"foo": Optional["Foo"]}],
     }
-    ast = check_expr(types, if_some([S.x, S.foo],
-                                    each(S.y, S.x.bar,
-                                         S.y.baz), None))
+    ast = check_expr(
+        types, if_some([S.x, S.foo], each(S.y, S.x.bar, S.y.baz), None)
+    )
     _, _, each_ast, _ = ast.values
     _, _, _, y_baz = each_ast.values
-    check_ref(y_baz, [
-        ('baz', Integer),
-        (None, TypeRef['Bar']),
-        ('bar', Sequence[TypeRef['Bar']]),
-        (None, TypeRef['Foo']),
-        ('foo', Optional[TypeRef['Foo']]),
-    ])
+    check_ref(
+        y_baz,
+        [
+            ("baz", Integer),
+            (None, TypeRef["Bar"]),
+            ("bar", Sequence[TypeRef["Bar"]]),
+            (None, TypeRef["Foo"]),
+            ("foo", Optional[TypeRef["Foo"]]),
+        ],
+    )
 
 
 def test_optional_args():
     types = {
-        'Foo': Record[{'bar': Integer}],
-        '__root__': Record[{'foo': Optional['Foo']}],
+        "Foo": Record[{"bar": Integer}],
+        "__root__": Record[{"foo": Optional["Foo"]}],
     }
 
-    @define(Optional[Record[{'bar': Integer}]])
+    @define(Optional[Record[{"bar": Integer}]])
     def requires_bar(_):
         pass
 
-    @define(Optional[Record[{'baz': Integer}]])
+    @define(Optional[Record[{"baz": Integer}]])
     def requires_unknown(_):
         pass
 
@@ -105,7 +114,7 @@ def test_optional_args():
 
 def test_unknown_symbol():
     types = {
-        '__root__': Record[{'foo': Integer}],
+        "__root__": Record[{"foo": Integer}],
     }
     check_expr(types, S.foo)
     with pytest.raises(TypeError) as err:
@@ -115,7 +124,7 @@ def test_unknown_symbol():
 
 def test_missing_field():
     types = {
-        '__root__': Record[{'foo': Record[{'bar': Integer}]}],
+        "__root__": Record[{"foo": Record[{"bar": Integer}]}],
     }
     check_expr(types, S.foo)
     check_expr(types, S.foo.bar)

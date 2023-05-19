@@ -12,8 +12,8 @@ from ..engine import pass_context, _do_pass_context
 from ..sources.graph import CheckedExpr
 
 
-QUERY_CACHE_HITS = Gauge('hiku_query_cache_hits', 'Query cache hits')
-QUERY_CACHE_MISSES = Gauge('hiku_query_cache_misses', 'Query cache misses')
+QUERY_CACHE_HITS = Gauge("hiku_query_cache_hits", "Query cache hits")
+QUERY_CACHE_MISSES = Gauge("hiku_query_cache_misses", "Query cache misses")
 
 
 _METRIC = None
@@ -23,9 +23,9 @@ def _get_default_metric():
     global _METRIC
     if _METRIC is None:
         _METRIC = Summary(
-            'graph_field_time',
-            'Graph field time (seconds)',
-            ['graph', 'node', 'field'],
+            "graph_field_time",
+            "Graph field time (seconds)",
+            ["graph", "node", "field"],
         )
     return _METRIC
 
@@ -35,17 +35,19 @@ def _func_field_names(func):
 
     def wrapper(*args):
         return func([f.name for f in args[fields_pos]], *args)
+
     return wrapper
 
 
 def _subquery_field_names(func):
     def wrapper(fields, *args):
         return func([f.name for _, f in fields], fields, *args)
+
     return wrapper
 
 
 class GraphMetricsBase(GraphTransformer):
-    root_name = 'Root'
+    root_name = "Root"
 
     def __init__(self, name, *, metric=None):
         self._name = name
@@ -74,9 +76,11 @@ class GraphMetricsBase(GraphTransformer):
                 try:
                     field_metric = by_field[name]
                 except KeyError:
-                    field_metric = by_field[name] = \
-                        self._metric.labels(self._name, node_name, name)
+                    field_metric = by_field[name] = self._metric.labels(
+                        self._name, node_name, name
+                    )
                 field_metric.observe(duration)
+
         return observe
 
     def _wrap_field(self, node_name, func):
@@ -125,11 +129,13 @@ class GraphMetricsBase(GraphTransformer):
         if wrapper is None:
             if isinstance(obj.func, CheckedExpr):
                 wrapper = self._wrappers[func] = self._wrap_subquery(
-                    node_name, func,
+                    node_name,
+                    func,
                 )
             else:
                 wrapper = self._wrappers[func] = self._wrap_field(
-                    node_name, func,
+                    node_name,
+                    func,
                 )
 
         if isinstance(obj.func, CheckedExpr):
@@ -151,7 +157,6 @@ class GraphMetricsBase(GraphTransformer):
 
 
 class _SubqueryMixin:
-
     def subquery_wrapper(self, observe, subquery):
         def wrapper(field_names, *args):
             start_time = time.perf_counter()
@@ -161,18 +166,20 @@ class _SubqueryMixin:
                 result = result_proc()
                 observe(start_time, field_names)
                 return result
+
             return proc_wrapper
+
         return wrapper
 
 
 class GraphMetrics(_SubqueryMixin, GraphMetricsBase):
-
     def field_wrapper(self, observe, func):
         def wrapper(field_names, *args):
             start_time = time.perf_counter()
             result = func(*args)
             observe(start_time, field_names)
             return result
+
         return wrapper
 
     def link_wrapper(self, observe, func):
@@ -181,17 +188,18 @@ class GraphMetrics(_SubqueryMixin, GraphMetricsBase):
             result = func(*args)
             observe(start_time, [link_name])
             return result
+
         return wrapper
 
 
 class AsyncGraphMetrics(_SubqueryMixin, GraphMetricsBase):
-
     def field_wrapper(self, observe, func):
         async def wrapper(field_names, *args):
             start_time = time.perf_counter()
             result = await func(*args)
             observe(start_time, field_names)
             return result
+
         return wrapper
 
     def link_wrapper(self, observe, func):
@@ -200,4 +208,5 @@ class AsyncGraphMetrics(_SubqueryMixin, GraphMetricsBase):
             result = await func(*args)
             observe(start_time, [link_name])
             return result
+
         return wrapper

@@ -22,15 +22,10 @@ from ..types import (
 
 
 class Denormalize(QueryVisitor):
-
-    def __init__(
-        self,
-        graph: Graph,
-        result: Proxy
-    ) -> None:
+    def __init__(self, graph: Graph, result: Proxy) -> None:
         self._types = graph.__types__
         self._result = result
-        self._type: Deque[RecordMeta] = deque([self._types['__root__']])
+        self._type: Deque[RecordMeta] = deque([self._types["__root__"]])
         self._data = deque([result])
         self._res: Deque = deque()
 

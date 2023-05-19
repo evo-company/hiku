@@ -33,7 +33,7 @@ async def execute_async(graph, query_dict):
 
 
 ENTITIES_QUERY = {
-    'query': """
+    "query": """
         query($representations:[_Any!]!) {
             _entities(representations:$representations) {
                 ...on Order {
@@ -46,33 +46,45 @@ ENTITIES_QUERY = {
             }
         }
         """,
-    'variables': {
-        'representations': [
-            {'__typename': 'Order', 'cartId': 1},
-            {'__typename': 'Order', 'cartId': 2},
+    "variables": {
+        "representations": [
+            {"__typename": "Order", "cartId": 1},
+            {"__typename": "Order", "cartId": 2},
         ]
-    }
+    },
 }
 
-SDL_QUERY = {'query': '{_service {sdl}}'}
+SDL_QUERY = {"query": "{_service {sdl}}"}
 
 
 def test_execute_sdl():
     result = execute(GRAPH, SDL_QUERY)
-    assert result['data']['_service']['sdl'] is not None
+    assert result["data"]["_service"]["sdl"] is not None
 
 
 def test_execute_sync_executor():
     result = execute(GRAPH, ENTITIES_QUERY)
 
     expect = [
-        {'cart': {'id': 1, 'status': 'NEW',
-                  'items': [{'id': 10, 'name': 'Ipad'}]}},
-        {'cart': {'id': 2, 'status': 'ORDERED',
-                  'items': [{'id': 20, 'name': 'Book'},
-                            {'id': 21, 'name': 'Pen'}]}}
+        {
+            "cart": {
+                "id": 1,
+                "status": "NEW",
+                "items": [{"id": 10, "name": "Ipad"}],
+            }
+        },
+        {
+            "cart": {
+                "id": 2,
+                "status": "ORDERED",
+                "items": [
+                    {"id": 20, "name": "Book"},
+                    {"id": 21, "name": "Pen"},
+                ],
+            }
+        },
     ]
-    assert expect == result['data']['_entities']
+    assert expect == result["data"]["_entities"]
 
 
 @pytest.mark.asyncio
@@ -80,10 +92,22 @@ async def test_execute_async_executor():
     result = await execute_async(ASYNC_GRAPH, ENTITIES_QUERY)
 
     expect = [
-        {'cart': {'id': 1, 'status': 'NEW',
-                  'items': [{'id': 10, 'name': 'Ipad'}]}},
-        {'cart': {'id': 2, 'status': 'ORDERED',
-                  'items': [{'id': 20, 'name': 'Book'},
-                            {'id': 21, 'name': 'Pen'}]}}
+        {
+            "cart": {
+                "id": 1,
+                "status": "NEW",
+                "items": [{"id": 10, "name": "Ipad"}],
+            }
+        },
+        {
+            "cart": {
+                "id": 2,
+                "status": "ORDERED",
+                "items": [
+                    {"id": 20, "name": "Book"},
+                    {"id": 21, "name": "Pen"},
+                ],
+            }
+        },
     ]
-    assert expect == result['data']['_entities']
+    assert expect == result["data"]["_entities"]

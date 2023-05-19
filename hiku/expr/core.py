@@ -25,21 +25,20 @@ from ..readers.simple import transform
 from .nodes import Symbol, Tuple, List, Keyword, Dict, Node
 
 
-THIS = 'this'
+THIS = "this"
 
-_Func = namedtuple('_Func', 'expr, args')
+_Func = namedtuple("_Func", "expr, args")
 
 
 class DotHandler:
-
     def __init__(self, obj: t.Union[Symbol, Tuple]) -> None:
         self.obj = obj
 
     def __repr__(self) -> str:
         return repr(self.obj)
 
-    def __getattr__(self, name: str) -> 'DotHandler':
-        return DotHandler(Tuple([Symbol('get'), self.obj, Symbol(name)]))
+    def __getattr__(self, name: str) -> "DotHandler":
+        return DotHandler(Tuple([Symbol("get"), self.obj, Symbol(name)]))
 
 
 # for backward compatibility
@@ -47,7 +46,6 @@ _DotHandler = DotHandler
 
 
 class _S:
-
     def __getattr__(self, name: str) -> DotHandler:
         return DotHandler(Symbol(name))
 
@@ -59,7 +57,7 @@ S = _S()
 
 def _to_expr(
     obj: t.Union[DotHandler, _Func, t.List, t.Dict, Node],
-    fn_reg: t.Set[t.Callable]
+    fn_reg: t.Set[t.Callable],
 ) -> Node:
     if isinstance(obj, DotHandler):
         return obj.obj
@@ -71,8 +69,11 @@ def _to_expr(
     elif isinstance(obj, list):
         return List([_to_expr(v, fn_reg) for v in obj])
     elif isinstance(obj, dict):
-        values = list(chain.from_iterable((Keyword(k), _to_expr(v, fn_reg))
-                                          for k, v in obj.items()))
+        values = list(
+            chain.from_iterable(
+                (Keyword(k), _to_expr(v, fn_reg)) for k, v in obj.items()
+            )
+        )
         return Dict(values)
     else:
         return obj
@@ -99,8 +100,8 @@ def _query_to_types(
         raise TypeError(type(obj))
 
 
-T = t.TypeVar('T')
-P = ParamSpec('P')
+T = t.TypeVar("T")
+P = ParamSpec("P")
 
 
 def define(
@@ -128,11 +129,12 @@ def define(
     This annotation also gives ability for Hiku to build a query for low-level
     graph.
     """
+
     def decorator(fn: t.Callable[P, T]) -> t.Callable[P, _Func]:
-        _name = kwargs.pop('_name', None)
+        _name = kwargs.pop("_name", None)
         assert not kwargs, repr(kwargs)
 
-        name = _name or '{}/{}_{}'.format(fn.__module__, fn.__name__, id(fn))
+        name = _name or "{}/{}_{}".format(fn.__module__, fn.__name__, id(fn))
 
         @wraps(fn)
         def expr(*args: P.args, **kw: P.kwargs) -> _Func:
@@ -143,16 +145,20 @@ def define(
 
         if len(types) == 1 and isinstance(types[0], str):
             reqs_list = loads(str(types[0]))
-            expr.__def_type__ = Callable[[(_query_to_types(transform(r))  # type: ignore[attr-defined]  # noqa: E501
-                                           if r is not None else Any)
-                                          for r in reqs_list]]
+            expr.__def_type__ = Callable[  # type: ignore[attr-defined]
+                [
+                    (_query_to_types(transform(r)) if r is not None else Any)
+                    for r in reqs_list
+                ]
+            ]
         else:
             expr.__def_type__ = Callable[types]  # type: ignore[attr-defined]
         return expr
+
     return decorator
 
 
-@define(Any, Any, Any, _name='each')
+@define(Any, Any, Any, _name="each")
 def each(var: DotHandler, col: DotHandler, expr: DotHandler) -> None:
     """Returns a list of the results of the expression evaluation for every
     item of the sequence provided.
@@ -172,7 +178,7 @@ def each(var: DotHandler, col: DotHandler, expr: DotHandler) -> None:
     """
 
 
-@define(Any, Any, Any, _name='if')
+@define(Any, Any, Any, _name="if")
 def if_(test: t.Any, then: t.Any, else_: t.Any) -> None:
     """Checks condition and continues to evaluate one of the two expressions
     provided.
@@ -195,7 +201,7 @@ def if_(test: t.Any, then: t.Any, else_: t.Any) -> None:
     """
 
 
-@define(Any, Any, Any, _name='if_some')
+@define(Any, Any, Any, _name="if_some")
 def if_some(bind: t.List, then: _Func, else_: t.Any) -> None:
     """Used to unpack values with ``Optional`` types and using them safely in
     expressions.

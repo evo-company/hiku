@@ -14,11 +14,10 @@ def _encode(value):
     elif isinstance(value, (set, frozenset)):
         return Set(_encode(val) for val in value)
     else:
-        raise TypeError('Unsupported type: {!r}'.format(value))
+        raise TypeError("Unsupported type: {!r}".format(value))
 
 
 class Exporter(QueryVisitor):
-
     def visit_field(self, obj):
         f = Keyword(obj.name)
         if obj.options is not None:

@@ -11,68 +11,67 @@ from hiku.utils import ImmutableDict
 
 
 class Symbol(str):
-
     def __repr__(self):
         return self
 
     def __eq__(self, other):
-        return isinstance(other, type(self)) and \
-            super(Symbol, self).__eq__(other)
+        return isinstance(other, type(self)) and super(Symbol, self).__eq__(
+            other
+        )
 
     def __hash__(self):
         return super(Symbol, self).__hash__()
 
 
 class Keyword(str):
-
     def __repr__(self):
-        return ':{}'.format(self)
+        return ":{}".format(self)
 
     def __eq__(self, other):
-        return isinstance(other, type(self)) and \
-            super(Keyword, self).__eq__(other)
+        return isinstance(other, type(self)) and super(Keyword, self).__eq__(
+            other
+        )
 
     def __hash__(self):
         return super(Keyword, self).__hash__()
 
 
 class List(tuple):
-
     def __repr__(self):
-        return '[{}]'.format(' '.join(map(repr, self)))
+        return "[{}]".format(" ".join(map(repr, self)))
 
 
 class Tuple(tuple):
-
     def __repr__(self):
-        return '({})'.format(' '.join(map(repr, self)))
+        return "({})".format(" ".join(map(repr, self)))
 
 
 class Dict(ImmutableDict):
-
     def __repr__(self):
-        return '{{{}}}'.format(' '.join('{!r} {!r}'.format(*i)
-                               for i in self.items()))
+        return "{{{}}}".format(
+            " ".join("{!r} {!r}".format(*i) for i in self.items())
+        )
 
 
 class Set(frozenset):
-
     def __repr__(self):
-        return '#{{{}}}'.format(' '.join(map(repr, self)))
+        return "#{{{}}}".format(" ".join(map(repr, self)))
 
 
 class TaggedElement:
-
     def __init__(self, name, value):
         self.name = name
         self.value = value
 
     def __repr__(self):
-        return '#{} {!r}'.format(self.name, self.value)
+        return "#{} {!r}".format(self.name, self.value)
 
     def __eq__(self, other):
-        return isinstance(other, type(self)) and \
-            self.name == other.name and self.value == other.value
+        return (
+            isinstance(other, type(self))
+            and self.name == other.name
+            and self.value == other.value
+        )
 
 
 def coroutine(func):
@@ -80,6 +79,7 @@ def coroutine(func):
         cr = func(*args, **kwargs)
         next(cr)
         return cr
+
     return start
 
 
@@ -91,17 +91,17 @@ def appender(lst):
 
 
 def inst_handler(time_string):
-    return datetime.strptime(time_string, '%Y-%m-%dT%H:%M:%S.%fZ')
+    return datetime.strptime(time_string, "%Y-%m-%dT%H:%M:%S.%fZ")
 
 
-TAG_HANDLERS = {'inst': inst_handler, 'uuid': UUID}
+TAG_HANDLERS = {"inst": inst_handler, "uuid": UUID}
 
 STOP_CHARS = " ,\n\r\t"
 
 _CHAR_HANDLERS = {
-    'newline': '\n',
-    'space': ' ',
-    'tab': '\t',
+    "newline": "\n",
+    "space": " ",
+    "tab": "\t",
 }
 
 _CHAR_MAP = {
@@ -115,10 +115,10 @@ _CHAR_MAP = {
 }
 
 _END_CHARS = {
-    '#': '}',
-    '{': '}',
-    '[': ']',
-    '(': ')',
+    "#": "}",
+    "{": "}",
+    "[": "]",
+    "(": ")",
 }
 
 _NIL = object()
@@ -158,8 +158,8 @@ def character_handler():
 
 
 def parse_number(s):
-    s = s.rstrip('MN').upper()
-    if 'E' not in s and '.' not in s:
+    s = s.rstrip("MN").upper()
+    if "E" not in s and "." not in s:
         return int(s)
     return float(s)
 
@@ -178,14 +178,14 @@ def number_handler(s):
 def symbol_handler(s):
     while 1:
         c = yield
-        if c in '}])' + STOP_CHARS:
-            if s[0] == ':':
+        if c in "}])" + STOP_CHARS:
+            if s[0] == ":":
                 yield Keyword(s[1:]), False
-            elif s == 'true':
+            elif s == "true":
                 yield True, False
-            elif s == 'false':
+            elif s == "false":
                 yield False, False
-            elif s == 'nil':
+            elif s == "nil":
                 yield _NIL, False
             else:
                 yield Symbol(s), False
@@ -216,15 +216,15 @@ def parser(target, tag_handlers, stop=None):
             return
         if c in STOP_CHARS:
             continue
-        if c == ';':
+        if c == ";":
             v = yield
-            while v != '\n':
+            while v != "\n":
                 pass
         elif c == '"':
             chars = []
             while 1:
                 char = yield
-                if char == '\\':
+                if char == "\\":
                     char = yield
                     char2 = _CHAR_MAP.get(char)
                     if char2 is not None:
@@ -232,26 +232,26 @@ def parser(target, tag_handlers, stop=None):
                     else:
                         chars.append(char)
                 elif char == '"':
-                    target.send(''.join(chars))
+                    target.send("".join(chars))
                     break
                 else:
                     chars.append(char)
-        elif c == '\\':
+        elif c == "\\":
             handler = character_handler()
-        elif c in '0123456789':
+        elif c in "0123456789":
             handler = number_handler(c)
-        elif c in '-.':
+        elif c in "-.":
             c2 = yield
             if c2.isdigit():  # .5 should be an error
                 handler = number_handler(c + c2)
             else:
                 handler = symbol_handler(c + c2)
-        elif c.isalpha() or c == ':':
+        elif c.isalpha() or c == ":":
             handler = symbol_handler(c)
-        elif c in '[({#':
-            if c == '#':
+        elif c in "[({#":
+            if c == "#":
                 c2 = yield
-                if c2 != '{':
+                if c2 != "{":
                     handler = tag_handler(c2, tag_handlers)
                     continue
             end_char = _END_CHARS[c]
@@ -263,14 +263,15 @@ def parser(target, tag_handlers, stop=None):
                     p.send(v)
             except StopIteration:
                 pass
-            if c == '[':
+            if c == "[":
                 target.send(List(lst))
-            elif c == '(':
+            elif c == "(":
                 target.send(Tuple(lst))
-            elif c == '{':
+            elif c == "{":
                 if len(lst) % 2:
-                    raise Exception("Map literal must contain an even "
-                                    "number of elements")
+                    raise Exception(
+                        "Map literal must contain an even " "number of elements"
+                    )
                 target.send(Dict(zip(lst[::2], lst[1::2])))
             else:
                 target.send(Set(lst))
@@ -280,16 +281,18 @@ def parser(target, tag_handlers, stop=None):
 
 def loads(s, tag_handlers=None):
     if not isinstance(s, str):
-        raise TypeError('The EDN value must be "str", not {!r}'
-                        .format(type(s).__name__))
+        raise TypeError(
+            'The EDN value must be "str", not {!r}'.format(type(s).__name__)
+        )
     lst = []
     target = parser(appender(lst), dict(tag_handlers or (), **TAG_HANDLERS))
     for c in s:
         target.send(c)
-    target.send(' ')
+    target.send(" ")
     if len(lst) != 1:
-        raise ValueError("Expected exactly one top-level element "
-                         "in edn string", s)
+        raise ValueError(
+            "Expected exactly one top-level element " "in edn string", s
+        )
     return lst[0]
 
 
@@ -306,31 +309,31 @@ def _iterencode_items(items, default, encoder):
             next_item = next(items_iter)
         except StopIteration:
             return
-        yield ' '
+        yield " "
         for chunk in _iterencode(next_item, default, encoder):
             yield chunk
 
 
 def _default(obj):
-    raise ValueError('{!r} is not EDN serializable'.format(obj))
+    raise ValueError("{!r} is not EDN serializable".format(obj))
 
 
 def _iterencode(obj, default, encoder):
     if obj is None:
-        yield 'nil'
+        yield "nil"
     elif obj is True:
-        yield 'true'
+        yield "true"
     elif obj is False:
-        yield 'false'
+        yield "false"
     elif isinstance(obj, int):
         yield str(int(obj))
     elif isinstance(obj, float):
         # FIXME: proper float encoding
         yield str(float(obj))
     elif isinstance(obj, Decimal):
-        yield '{}M'.format(obj)
+        yield "{}M".format(obj)
     elif isinstance(obj, Keyword):
-        yield ':{}'.format(obj)
+        yield ":{}".format(obj)
     elif isinstance(obj, Symbol):
         yield obj
     elif isinstance(obj, str):
@@ -338,26 +341,27 @@ def _iterencode(obj, default, encoder):
     elif isinstance(obj, (list, List)):
         # NOTE: `(list, List)` check should be before `(tuple, Tuple)`,
         # because `List` is implemented as tuple subclass
-        yield '['
+        yield "["
         for chunk in _iterencode_items(obj, default, encoder):
             yield chunk
-        yield ']'
+        yield "]"
     elif isinstance(obj, (tuple, Tuple)):
-        yield '('
+        yield "("
         for chunk in _iterencode_items(obj, default, encoder):
             yield chunk
-        yield ')'
+        yield ")"
     elif isinstance(obj, (dict, Dict)):
-        yield '{'
-        for chunk in _iterencode_items(chain.from_iterable(obj.items()),
-                                       default, encoder):
+        yield "{"
+        for chunk in _iterencode_items(
+            chain.from_iterable(obj.items()), default, encoder
+        ):
             yield chunk
-        yield '}'
+        yield "}"
     elif isinstance(obj, (set, Set)):
-        yield '#{'
+        yield "#{"
         for chunk in _iterencode_items(obj, default, encoder):
             yield chunk
-        yield '}'
+        yield "}"
     elif isinstance(obj, datetime):
         # FIXME: proper RFC-3339 encoding
         assert not obj.tzinfo
@@ -365,7 +369,7 @@ def _iterencode(obj, default, encoder):
     elif isinstance(obj, UUID):
         yield '#uuid "{}"'.format(obj)
     elif isinstance(obj, TaggedElement):
-        yield '#{} '.format(obj.name)
+        yield "#{} ".format(obj.name)
         for chunk in _iterencode(obj.value, _default, encoder):
             yield chunk
     else:
@@ -381,4 +385,4 @@ def dumps(obj, default=None, ensure_ascii=True):
         encoder = encode_basestring_ascii
     else:
         encoder = encode_basestring
-    return ''.join(_iterencode(obj, default, encoder))
+    return "".join(_iterencode(obj, default, encoder))

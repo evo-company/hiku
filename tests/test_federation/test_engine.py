@@ -23,31 +23,43 @@ async def execute_async_executor(graph, query_, ctx=None):
     return await engine.execute(graph, query_, ctx=ctx)
 
 
-QUERY = Node(fields=[
-    Link(
-        '_entities',
-        Node(fields=[
-            Link('cart', Node(fields=[
-                Field('id'),
-                Field('status'),
-                Link('items', Node(fields=[
-                    Field('id'),
-                    Field('name'),
-                ]))
-            ]))
-        ]),
-        options={
-            'representations': [
-                {'__typename': 'Order', 'cartId': 1},
-                {'__typename': 'Order', 'cartId': 2},
-            ]
-        }
-    )
-])
+QUERY = Node(
+    fields=[
+        Link(
+            "_entities",
+            Node(
+                fields=[
+                    Link(
+                        "cart",
+                        Node(
+                            fields=[
+                                Field("id"),
+                                Field("status"),
+                                Link(
+                                    "items",
+                                    Node(
+                                        fields=[
+                                            Field("id"),
+                                            Field("name"),
+                                        ]
+                                    ),
+                                ),
+                            ]
+                        ),
+                    )
+                ]
+            ),
+            options={
+                "representations": [
+                    {"__typename": "Order", "cartId": 1},
+                    {"__typename": "Order", "cartId": 2},
+                ]
+            },
+        )
+    ]
+)
 
-SDL_QUERY = Node(fields=[
-    Link('_service', Node(fields=[Field('sdl')]))
-])
+SDL_QUERY = Node(fields=[Link("_service", Node(fields=[Field("sdl")]))])
 
 
 def test_validate_entities_query():
@@ -57,7 +69,7 @@ def test_validate_entities_query():
 
 def test_execute_sdl():
     result = execute(GRAPH, SDL_QUERY, {})
-    assert result['sdl'] is not None
+    assert result["sdl"] is not None
 
 
 def test_execute_sync_executor():
@@ -69,11 +81,23 @@ def test_execute_sync_executor():
     )
 
     expect = [
-        {'cart': {'id': 1, 'status': 'NEW',
-                  'items': [{'id': 10, 'name': 'Ipad'}]}},
-        {'cart': {'id': 2, 'status': 'ORDERED',
-                  'items': [{'id': 20, 'name': 'Book'},
-                            {'id': 21, 'name': 'Pen'}]}}
+        {
+            "cart": {
+                "id": 1,
+                "status": "NEW",
+                "items": [{"id": 10, "name": "Ipad"}],
+            }
+        },
+        {
+            "cart": {
+                "id": 2,
+                "status": "ORDERED",
+                "items": [
+                    {"id": 20, "name": "Book"},
+                    {"id": 21, "name": "Pen"},
+                ],
+            }
+        },
     ]
     assert expect == data
 
@@ -88,10 +112,22 @@ async def test_execute_async_executor():
     )
 
     expect = [
-        {'cart': {'id': 1, 'status': 'NEW',
-                  'items': [{'id': 10, 'name': 'Ipad'}]}},
-        {'cart': {'id': 2, 'status': 'ORDERED',
-                  'items': [{'id': 20, 'name': 'Book'},
-                            {'id': 21, 'name': 'Pen'}]}}
+        {
+            "cart": {
+                "id": 1,
+                "status": "NEW",
+                "items": [{"id": 10, "name": "Ipad"}],
+            }
+        },
+        {
+            "cart": {
+                "id": 2,
+                "status": "ORDERED",
+                "items": [
+                    {"id": 20, "name": "Book"},
+                    {"id": 21, "name": "Pen"},
+                ],
+            }
+        },
     ]
     assert expect == data

@@ -4,7 +4,41 @@ Development
 Tools
 ~~~~~
 
-We use `lets <https://lets-cli.org/>`_ to run project tests, build docs and so on.
+- `pdm` package manager - https://pdm.fming.dev/
+- `lets` task runner https://lets-cli.org to run project tests, build docs and so on.
+
+Setup development
+~~~~~~~~~~~~~~~~~
+
+1. Install `pdm` package manager - https://pdm.fming.dev/
+2. Run `pdm install` to install dependencies
+
+Run tests using pdm
+
+.. code-block:: bash
+
+    $ pdm run test
+
+Or using lets task runner run tests in docker
+
+.. code-block:: bash
+
+    $ lets test
+
+Run linters, formatters and other checks
+
+.. code-block:: bash
+
+    $ pdm run flake
+    $ pdm run black
+    $ pdm run mypy
+
+Build docs
+Docs will be available at ``docs/build``
+
+.. code-block:: bash
+
+    $ pdm run docs
 
 
 Changelog

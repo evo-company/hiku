@@ -47,16 +47,13 @@ OptionValue = t.Union[
 
 
 class _AssumeRecord(AbstractTypeVisitor):
-
     def __init__(
-        self,
-        data_types: t.Dict[str, t.Type[Record]],
-        _nested: bool = False
+        self, data_types: t.Dict[str, t.Type[Record]], _nested: bool = False
     ):
         self._data_types = data_types
         self._nested = _nested
 
-    def _get_nested(self) -> '_AssumeRecord':
+    def _get_nested(self) -> "_AssumeRecord":
         return _AssumeRecord(self._data_types, _nested=True)
 
     def visit(self, obj: t.Any) -> t.Any:
@@ -93,7 +90,6 @@ class _AssumeRecord(AbstractTypeVisitor):
 
 
 class _AssumeField(GraphVisitor):
-
     def __init__(self, node: Node, errors: Errors) -> None:
         self.node = node
         self.errors = errors
@@ -102,42 +98,43 @@ class _AssumeField(GraphVisitor):
         return True
 
     def visit_link(self, obj: Link) -> bool:
-        self.errors.report('Trying to query "{}.{}" link as it was a field'
-                           .format(self.node.name or 'root', obj.name))
+        self.errors.report(
+            'Trying to query "{}.{}" link as it was a field'.format(
+                self.node.name or "root", obj.name
+            )
+        )
         return False
 
     def visit_node(self, obj: Node) -> bool:
-        assert self.node.name is None,\
-            'Nested node can be only in the root node'
-        self.errors.report('Trying to query "{}" node as it was a field'
-                           .format(obj.name))
+        assert (
+            self.node.name is None
+        ), "Nested node can be only in the root node"
+        self.errors.report(
+            'Trying to query "{}" node as it was a field'.format(obj.name)
+        )
         return False
 
     def visit_root(self, obj: Root) -> t.NoReturn:
-        raise AssertionError('Root node is not expected here')
+        raise AssertionError("Root node is not expected here")
 
 
 class _OptionError(TypeError):
-
     def __init__(self, description: str) -> None:
         self.description = description
         super(_OptionError, self).__init__(description)
 
 
 class _OptionTypeError(_OptionError):
-
     def __init__(self, value: OptionValue, expected: GenericMeta) -> None:
-        description = '"{}" instead of {!r}'.format(type(value).__name__,
-                                                    expected)
+        description = '"{}" instead of {!r}'.format(
+            type(value).__name__, expected
+        )
         super(_OptionTypeError, self).__init__(description)
 
 
 class _OptionTypeValidator:
-
     def __init__(
-        self,
-        data_types: t.Dict[str, t.Type[Record]],
-        value: OptionValue
+        self, data_types: t.Dict[str, t.Type[Record]], value: OptionValue
     ) -> None:
         self._data_types = data_types
         self._value = [value]
@@ -211,13 +208,13 @@ class _OptionTypeValidator:
 
         unknown = set(self.value).difference(type_.__field_types__)
         if unknown:
-            fields = ', '.join(sorted(map(repr, unknown)))
-            raise _OptionError('unknown fields: {}'.format(fields))
+            fields = ", ".join(sorted(map(repr, unknown)))
+            raise _OptionError("unknown fields: {}".format(fields))
 
         missing = set(type_.__field_types__).difference(self.value)
         if missing:
-            fields = ', '.join(sorted(missing))
-            raise _OptionError('missing fields: {}'.format(fields))
+            fields = ", ".join(sorted(missing))
+            raise _OptionError("missing fields: {}".format(fields))
 
         for key, value_type in type_.__field_types__.items():
             with self.push(self.value[key]):
@@ -226,19 +223,19 @@ class _OptionTypeValidator:
         return None
 
     def visit_typeref(self, type_: TypeRefMeta) -> None:
-        assert type_.__type_name__ in self._data_types, \
-            f'"{type_.__type_name__}" type is not present in graph data_types'
+        assert (
+            type_.__type_name__ in self._data_types
+        ), f'"{type_.__type_name__}" type is not present in graph data_types'
         self.visit(self._data_types[type_.__type_name__])
 
 
 class _ValidateOptions(GraphVisitor):
-
     def __init__(
         self,
         data_types: t.Dict[str, t.Type[Record]],
         options: t.Optional[t.Dict],
         for_: t.Tuple[t.Any, ...],
-        errors: Errors
+        errors: Errors,
     ) -> None:
         self._data_types = data_types
         self.options = options
@@ -251,8 +248,11 @@ class _ValidateOptions(GraphVisitor):
         unknown = set(self._options).difference(obj.options_map)
         if unknown:
             node, field = self.for_
-            self.errors.report('Unknown options for "{}.{}": {}'.
-                               format(node, field, ', '.join(unknown)))
+            self.errors.report(
+                'Unknown options for "{}.{}": {}'.format(
+                    node, field, ", ".join(unknown)
+                )
+            )
 
         return None
 
@@ -262,33 +262,37 @@ class _ValidateOptions(GraphVisitor):
         value = self._options.get(obj.name, obj.default)
         if value is Nothing:
             node, field = self.for_
-            self.errors.report('Required option "{}.{}:{}" is not specified'
-                               .format(node, field, obj.name))
+            self.errors.report(
+                'Required option "{}.{}:{}" is not specified'.format(
+                    node, field, obj.name
+                )
+            )
         elif obj.type is not None:
             try:
                 _OptionTypeValidator(self._data_types, value).visit(obj.type)
             except _OptionError as err:
                 node, field = self.for_
-                self.errors.report('Invalid value for option "{}.{}:{}", {}'
-                                   .format(node, field, obj.name,
-                                           err.description))
+                self.errors.report(
+                    'Invalid value for option "{}.{}:{}", {}'.format(
+                        node, field, obj.name, err.description
+                    )
+                )
 
         return None
 
     def visit_node(self, obj: Node) -> None:
-        assert self.options is None, 'Node can not have options'
+        assert self.options is None, "Node can not have options"
 
     def visit_root(self, obj: Root) -> t.NoReturn:
-        raise AssertionError('Root node is not expected here')
+        raise AssertionError("Root node is not expected here")
 
 
 class _RecordFieldsValidator(QueryVisitor):
-
     def __init__(
         self,
         data_types: t.Dict[str, t.Type[Record]],
         field_types: t.OrderedDict,
-        errors: Errors
+        errors: Errors,
     ) -> None:
         self._data_types = data_types
         self._field_types = field_types
@@ -298,25 +302,27 @@ class _RecordFieldsValidator(QueryVisitor):
         if obj.name not in self._field_types:
             self._errors.report('Unknown field name "{}"'.format(obj.name))
         elif obj.options is not None:
-            self._errors.report('Options are not expected')
+            self._errors.report("Options are not expected")
         elif _AssumeRecord(self._data_types).visit(self._field_types[obj.name]):
-            self._errors.report('Trying to query "{}" link as it was a field'
-                                .format(obj.name))
+            self._errors.report(
+                'Trying to query "{}" link as it was a field'.format(obj.name)
+            )
 
     def visit_link(self, obj: QueryLink) -> None:
-        field_types = _AssumeRecord(self._data_types) \
-            .visit(self._field_types[obj.name])
+        field_types = _AssumeRecord(self._data_types).visit(
+            self._field_types[obj.name]
+        )
         if field_types is not None:
-            fields_validator = _RecordFieldsValidator(self._data_types,
-                                                      field_types,
-                                                      self._errors)
+            fields_validator = _RecordFieldsValidator(
+                self._data_types, field_types, self._errors
+            )
             for field in obj.node.fields:
                 fields_validator.visit(field)
         else:
             self._errors.report('"{}" is not a link'.format(obj.name))
 
     def visit_node(self, obj: QueryNode) -> None:
-        raise AssertionError('Node is not expected here')
+        raise AssertionError("Node is not expected here")
 
 
 def _field_eq(
@@ -326,7 +332,6 @@ def _field_eq(
 
 
 class QueryValidator(QueryVisitor):
-
     def __init__(self, graph: Graph):
         self.graph = graph
         self.path = [graph.root]
@@ -338,39 +343,47 @@ class QueryValidator(QueryVisitor):
         if field is not None:
             is_field = _AssumeField(node, self.errors).visit(field)
             if is_field:
-                for_ = (node.name or 'root', obj.name)
-                _ValidateOptions(self.graph.data_types, obj.options, for_,
-                                 self.errors).visit(field)
+                for_ = (node.name or "root", obj.name)
+                _ValidateOptions(
+                    self.graph.data_types, obj.options, for_, self.errors
+                ).visit(field)
         else:
-            self.errors.report('Field "{}" is not implemented in the "{}" node'
-                               .format(obj.name, node.name or 'root'))
+            self.errors.report(
+                'Field "{}" is not implemented in the "{}" node'.format(
+                    obj.name, node.name or "root"
+                )
+            )
 
     def visit_link(self, obj: QueryLink) -> None:
         node = self.path[-1]
         graph_obj = node.fields_map.get(obj.name, _undefined)
         if isinstance(graph_obj, Field):
-            for_ = (node.name or 'root', obj.name)
-            _ValidateOptions(self.graph.data_types, obj.options, for_,
-                             self.errors).visit(graph_obj)
+            for_ = (node.name or "root", obj.name)
+            _ValidateOptions(
+                self.graph.data_types, obj.options, for_, self.errors
+            ).visit(graph_obj)
 
-            field_types = _AssumeRecord(self.graph.data_types)\
-                .visit(graph_obj.type)
+            field_types = _AssumeRecord(self.graph.data_types).visit(
+                graph_obj.type
+            )
             if field_types is not None:
-                fields_validator = _RecordFieldsValidator(self.graph.data_types,
-                                                          field_types,
-                                                          self.errors)
+                fields_validator = _RecordFieldsValidator(
+                    self.graph.data_types, field_types, self.errors
+                )
                 for field in obj.node.fields:
                     fields_validator.visit(field)
             else:
-                self.errors.report('Trying to query "{}.{}" simple field '
-                                   'as node'
-                                   .format(node.name or 'root', obj.name))
+                self.errors.report(
+                    'Trying to query "{}.{}" simple field '
+                    "as node".format(node.name or "root", obj.name)
+                )
 
         elif isinstance(graph_obj, Link):
             linked_node = self.graph.nodes_map[graph_obj.node]
-            for_ = (node.name or 'root', obj.name)
-            _ValidateOptions(self.graph.data_types, obj.options, for_,
-                             self.errors).visit(graph_obj)
+            for_ = (node.name or "root", obj.name)
+            _ValidateOptions(
+                self.graph.data_types, obj.options, for_, self.errors
+            ).visit(graph_obj)
 
             self.path.append(linked_node)
             try:
@@ -379,8 +392,11 @@ class QueryValidator(QueryVisitor):
                 self.path.pop()
 
         elif graph_obj is _undefined:
-            self.errors.report('Link "{}" is not implemented in the "{}" node'
-                               .format(obj.name, node.name or 'root'))
+            self.errors.report(
+                'Link "{}" is not implemented in the "{}" node'.format(
+                    obj.name, node.name or "root"
+                )
+            )
         else:
             raise TypeError(repr(graph_obj))
 
@@ -390,10 +406,13 @@ class QueryValidator(QueryVisitor):
             seen = fields.get(field.result_key)
             if seen is not None:
                 if not _field_eq(field, seen):
-                    node = self.path[-1].name or 'root'
-                    self.errors.report('Found distinct fields with the same '
-                                       'resulting name "{}" for the node "{}"'
-                                       .format(field.result_key, node))
+                    node = self.path[-1].name or "root"
+                    self.errors.report(
+                        "Found distinct fields with the same "
+                        'resulting name "{}" for the node "{}"'.format(
+                            field.result_key, node
+                        )
+                    )
             else:
                 fields[field.result_key] = field
             self.visit(field)

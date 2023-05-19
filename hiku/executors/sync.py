@@ -15,11 +15,10 @@ if TYPE_CHECKING:
     )
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class FutureLike:
-
     def __init__(self, result: T) -> None:
         self._result = result
 
@@ -28,20 +27,10 @@ class FutureLike:
 
 
 class SyncExecutor(BaseSyncExecutor):
-
-    def submit(
-        self,
-        fn: Callable,
-        *args: Any,
-        **kwargs: Any
-    ) -> FutureLike:
+    def submit(self, fn: Callable, *args: Any, **kwargs: Any) -> FutureLike:
         return FutureLike(fn(*args, **kwargs))
 
-    def process(
-        self,
-        queue: 'Queue',
-        workflow: 'Workflow'
-    ) -> Proxy:
+    def process(self, queue: "Queue", workflow: "Workflow") -> Proxy:
         while queue.__futures__:
             queue.progress(queue.__futures__)
         return workflow.result()

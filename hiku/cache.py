@@ -40,17 +40,17 @@ if TYPE_CHECKING:
 
 
 RESULT_CACHE_HITS = Counter(
-    name='hiku_result_cache_hits',
-    documentation='Resolver result cache hits',
-    labelnames=['graph', 'query_name', 'node', 'field']
+    name="hiku_result_cache_hits",
+    documentation="Resolver result cache hits",
+    labelnames=["graph", "query_name", "node", "field"],
 )
 RESULT_CACHE_MISSES = Counter(
-    name='hiku_result_cache_misses',
-    documentation='Resolver result cache misses',
-    labelnames=['graph', 'query_name', 'node', 'field']
+    name="hiku_result_cache_misses",
+    documentation="Resolver result cache misses",
+    labelnames=["graph", "query_name", "node", "field"],
 )
 
-CACHE_VERSION = '1'
+CACHE_VERSION = "1"
 
 
 class Hasher(Protocol):
@@ -58,7 +58,7 @@ class Hasher(Protocol):
         ...
 
 
-CacheKeyFn = Callable[['Context', Hasher], None]
+CacheKeyFn = Callable[["Context", Hasher], None]
 
 
 class BaseCache(abc.ABC):
@@ -87,29 +87,29 @@ class CacheSettings:
 
 
 class CacheInfo:
-    __slots__ = ('cache', 'cache_key', 'metrics', 'query_name')
+    __slots__ = ("cache", "cache_key", "metrics", "query_name")
 
     def __init__(
-        self,
-        cache_settings: CacheSettings,
-        query_name: Optional[str] = None
+        self, cache_settings: CacheSettings, query_name: Optional[str] = None
     ):
         self.cache = cache_settings.cache
         self.cache_key = cache_settings.cache_key
         self.metrics = cache_settings.metrics
-        self.query_name = query_name or 'unknown'
+        self.query_name = query_name or "unknown"
 
     def _track(self, node: str, field: str, hits: int, misses: int) -> None:
         if not self.metrics:
             return
 
         self.metrics.hits_counter.labels(
-            self.metrics.name, self.query_name, node, field).inc(hits)
+            self.metrics.name, self.query_name, node, field
+        ).inc(hits)
         self.metrics.misses_counter.labels(
-            self.metrics.name, self.query_name, node, field).inc(misses)
+            self.metrics.name, self.query_name, node, field
+        ).inc(misses)
 
     def query_hash(
-        self, ctx: 'Context', query_link: QueryLink, req: Any
+        self, ctx: "Context", query_link: QueryLink, req: Any
     ) -> str:
         hasher = hashlib.sha1()
         get_query_hash(hasher, query_link, req)
@@ -146,6 +146,7 @@ class CacheVisitor(QueryVisitor):
     """Visit cached query link to extract all data from index
     that needs to be cached
     """
+
     def __init__(
         self, cache: CacheInfo, index: Index, graph: Graph, node: Node
     ) -> None:
@@ -201,7 +202,7 @@ class CacheVisitor(QueryVisitor):
         self._node.pop()
 
     def process(
-        self, link: QueryLink, ids: List, reqs: List, ctx: 'Context'
+        self, link: QueryLink, ids: List, reqs: List, ctx: "Context"
     ) -> Dict:
         to_cache = {}
         for i, req in zip(ids, reqs):
@@ -221,16 +222,14 @@ class CacheVisitor(QueryVisitor):
 
 
 def get_query_hash(
-    hasher: Hasher,
-    query_link: Union[QueryLink, QueryField],
-    req: Any
+    hasher: Hasher, query_link: Union[QueryLink, QueryField], req: Any
 ) -> None:
     hash_visitor = HashVisitor(hasher)
     hash_visitor.visit(query_link)
 
     if isinstance(req, list):
         for r in req:
-            hasher.update(str(hash(r)).encode('utf-8'))
+            hasher.update(str(hash(r)).encode("utf-8"))
     else:
-        hasher.update(str(hash(req)).encode('utf-8'))
-    hasher.update(CACHE_VERSION.encode('utf-8'))
+        hasher.update(str(hash(req)).encode("utf-8"))
+    hasher.update(CACHE_VERSION.encode("utf-8"))

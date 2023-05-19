@@ -15,18 +15,25 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Set up PDM
+      uses: pdm-project/setup-pdm@v3
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        python -m pip install tox tox-gh-actions codecov
-        python -m pip install -r requirements-tox.txt
+        pdm sync -d -G test -G dev
+        pip install tox tox-pdm tox-gh-actions
     - name: Run flake8
       if: startsWith(matrix.python-version, '3.7')
-      run: tox -e flake8
+      run: pdm run flake
     - name: Run mypy
       if: startsWith(matrix.python-version, '3.7')
-      run: tox -e mypy
+      run: pdm run mypy
+    - name: Run black
+      if: startsWith(matrix.python-version, '3.7')
+      run: pdm run fmt --check
     - name: Run unit tests
-      run: tox -- --cov
+      run: tox run -- --cov-report=term

@@ -17,34 +17,34 @@ from hiku.result import Proxy
 
 
 class SubmitRes(Protocol):
-    def result(self) -> Any: ...
+    def result(self) -> Any:
+        ...
 
 
 class Workflow:
-
     def result(self) -> Proxy:
         raise NotImplementedError(type(self))
 
 
 class TaskSet:
-
-    def __init__(self, queue: 'Queue') -> None:
+    def __init__(self, queue: "Queue") -> None:
         self._queue = queue
 
-    def submit(
-        self, fn: Callable, *args: Any, **kwargs: Any
-    ) -> SubmitRes:
+    def submit(self, fn: Callable, *args: Any, **kwargs: Any) -> SubmitRes:
         return self._queue.submit(self, fn, *args, **kwargs)
 
 
 # TODO: make queue generic over futures
 class Queue:
-
     def __init__(self, executor: BaseExecutor) -> None:
         self._executor = executor
         self._futures: Dict = {}
         self._forks: Dict = {}
-        self._callbacks: DefaultDict[Union[SubmitRes, TaskSet], List] = defaultdict(list)  # noqa: E501
+        self._callbacks: DefaultDict[
+            Union[SubmitRes, TaskSet], List
+        ] = defaultdict(
+            list
+        )  # noqa: E501
 
     @property
     def __futures__(self) -> List:
@@ -59,9 +59,11 @@ class Queue:
                 callback()
 
         while True:
-            completed_task_sets = [ts for ts in self._futures.keys()
-                                   if not self._futures[ts] and
-                                   not self._forks[ts]]
+            completed_task_sets = [
+                ts
+                for ts in self._futures.keys()
+                if not self._futures[ts] and not self._forks[ts]
+            ]
             if not completed_task_sets:
                 break
 
@@ -74,17 +76,13 @@ class Queue:
                     fork_set.discard(task_set)
 
     def submit(
-        self,
-        task_set: 'TaskSet',
-        fn: Callable,
-        *args: Any,
-        **kwargs: Any
+        self, task_set: "TaskSet", fn: Callable, *args: Any, **kwargs: Any
     ) -> SubmitRes:
         fut = self._executor.submit(fn, *args, **kwargs)
         self._futures[task_set].add(fut)
         return fut
 
-    def fork(self, from_: Optional['TaskSet']) -> 'TaskSet':
+    def fork(self, from_: Optional["TaskSet"]) -> "TaskSet":
         task_set = TaskSet(self)
         self._futures[task_set] = set()
         self._forks[task_set] = set()
@@ -93,6 +91,6 @@ class Queue:
         return task_set
 
     def add_callback(
-        self, obj: Union[SubmitRes, 'TaskSet'], callback: Callable
+        self, obj: Union[SubmitRes, "TaskSet"], callback: Callable
     ) -> None:
         self._callbacks[obj].append(callback)

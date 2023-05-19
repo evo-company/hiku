@@ -2,34 +2,37 @@ FROM python:3.7.13-slim as base
 
 WORKDIR /work
 
-COPY requirements.txt .
+ENV PIP_VERSION=23.1.2
+ENV PDM_VERSION=2.6
+ENV PDM_USE_VENV=no
+ENV PYTHONPATH=/work/__pypackages__/3.7/lib
 
-RUN python3 -m pip install \
-    --no-deps --no-cache-dir --disable-pip-version-check \
-    -r requirements.txt
+RUN apt-get update && apt-get install -y libpq-dev && \
+    pip install --upgrade pip==${PIP_VERSION} && pip install pdm==${PDM_VERSION}
+
+# for pyproject.toml to extract version
+COPY hiku/__init__.py ./hiku/__init__.py
+# for pyproject.toml to read readme
+COPY README.rst .
+
+COPY pyproject.toml .
+COPY pdm.lock .
+
+RUN pdm sync --prod
+
+FROM base as dev
+
+RUN pdm sync -G dev
 
 FROM base as docs
 
-COPY requirements-docs.txt .
-
-RUN python3 -m pip install \
-    --no-deps --no-cache-dir --disable-pip-version-check \
-    -r requirements-docs.txt
-RUN python3 -m pip install importlib-metadata
+RUN pdm sync -G docs
 
 FROM base as tests
 
-COPY requirements-tests.txt .
+RUN pdm sync -G tests
+RUN python3 -m pip install tox tox-pdm
 
-RUN python3 -m pip install \
-    --no-deps --no-cache-dir --disable-pip-version-check \
-    -r requirements-tests.txt
-RUN python3 -m pip install tox
+FROM base as examples
 
-RUN python3 -m pip install tox
-
-FROM tests as examples
-
-RUN python3 -m pip install \
-    flask==2.1.3 \
-    aiohttp==3.8.1
+RUN pdm sync -G examples

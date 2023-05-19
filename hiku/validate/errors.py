@@ -2,7 +2,6 @@ from typing import List
 
 
 class Errors:
-
     def __init__(self) -> None:
         self.list: List[str] = []
 

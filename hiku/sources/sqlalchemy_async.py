@@ -14,12 +14,8 @@ FETCH_SIZE = 100
 
 
 class FieldsQuery(_sa.FieldsQuery):
-
     async def __call__(
-        self,
-        ctx: Context,
-        fields_: List[Field],
-        ids: Iterable
+        self, ctx: Context, fields_: List[Field], ids: Iterable
     ) -> List:
         if not ids:
             return []
@@ -41,12 +37,8 @@ class FieldsQuery(_sa.FieldsQuery):
 
 
 class LinkQuery(_sa.LinkQuery):
-
     async def __call__(
-        self,
-        result_proc: Callable,
-        ctx: Context,
-        ids: Iterable
+        self, result_proc: Callable, ctx: Context, ids: Iterable
     ) -> Any:
         expr = self.select_expr(ids)
         if expr is None:

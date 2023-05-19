@@ -33,6 +33,8 @@ Changes in 0.7
   - ``Link(requires=['a', 'b'])`` can be specified as a list of strings. It is useful when you want to require multiple fields at once. It will pass a list of dicts to the resolver.
   - Added support for Python 3.11
   - Added hints when failing on unhashable return values
+  - Migrated to ``pdm`` package manager
+  - Reformat code with ``black``
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

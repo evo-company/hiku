@@ -32,9 +32,8 @@ _type_names: t.Dict[OperationType, str] = {
 
 
 class GraphQLError(Exception):
-
     def __init__(self, *, errors: t.List[str]):
-        super().__init__('{} errors'.format(len(errors)))
+        super().__init__("{} errors".format(len(errors)))
         self.errors = errors
 
 
@@ -42,31 +41,36 @@ class _StripQuery(QueryTransformer):
     """Removes __typename fields from query"""
 
     def visit_node(self, obj: Node) -> Node:
-        return obj.copy(fields=[self.visit(f) for f in obj.fields
-                                if f.name != '__typename'])
+        return obj.copy(
+            fields=[self.visit(f) for f in obj.fields if f.name != "__typename"]
+        )
 
 
 def _switch_graph(
-    data: t.Dict,
-    query_graph: Graph,
-    mutation_graph: t.Optional[Graph] = None
+    data: t.Dict, query_graph: Graph, mutation_graph: t.Optional[Graph] = None
 ) -> t.Tuple[Graph, Operation]:
     try:
-        op = read_operation(data['query'],
-                            variables=data.get('variables'),
-                            operation_name=data.get('operationName'))
+        op = read_operation(
+            data["query"],
+            variables=data.get("variables"),
+            operation_name=data.get("operationName"),
+        )
     except TypeError as e:
-        raise GraphQLError(errors=[
-            'Failed to read query: {}'.format(e),
-        ])
+        raise GraphQLError(
+            errors=[
+                "Failed to read query: {}".format(e),
+            ]
+        )
     if op.type is OperationType.QUERY:
         graph = query_graph
     elif op.type is OperationType.MUTATION and mutation_graph is not None:
         graph = mutation_graph
     else:
-        raise GraphQLError(errors=[
-            'Unsupported operation type: {!r}'.format(op.type),
-        ])
+        raise GraphQLError(
+            errors=[
+                "Unsupported operation type: {!r}".format(op.type),
+            ]
+        )
     return graph, op
 
 
@@ -92,7 +96,7 @@ class BaseGraphQLEndpoint(ABC):
         self,
         engine: Engine,
         query_graph: Graph,
-        mutation_graph: t.Optional[Graph] = None
+        mutation_graph: t.Optional[Graph] = None,
     ):
         self.engine = engine
 
@@ -139,16 +143,17 @@ class GraphQLEndpoint(BaseSyncGraphQLEndpoint):
     def dispatch(self, data: t.Dict) -> t.Dict:
         try:
             graph, op = _switch_graph(
-                data, self.query_graph, self.mutation_graph,
+                data,
+                self.query_graph,
+                self.mutation_graph,
             )
             result = self.execute(graph, op, {})
-            return {'data': result}
+            return {"data": result}
         except GraphQLError as e:
-            return {'errors': [{'message': e} for e in e.errors]}
+            return {"errors": [{"message": e} for e in e.errors]}
 
 
 class BatchGraphQLEndpoint(GraphQLEndpoint):
-
     @t.overload
     def dispatch(self, data: t.List[t.Dict]) -> t.List[t.Dict]:
         ...
@@ -185,16 +190,17 @@ class AsyncGraphQLEndpoint(BaseAsyncGraphQLEndpoint):
     async def dispatch(self, data: t.Dict) -> t.Dict:
         try:
             graph, op = _switch_graph(
-                data, self.query_graph, self.mutation_graph,
+                data,
+                self.query_graph,
+                self.mutation_graph,
             )
             result = await self.execute(graph, op, {})
-            return {'data': result}
+            return {"data": result}
         except GraphQLError as e:
-            return {'errors': [{'message': e} for e in e.errors]}
+            return {"errors": [{"message": e} for e in e.errors]}
 
 
 class AsyncBatchGraphQLEndpoint(AsyncGraphQLEndpoint):
-
     @t.overload
     async def dispatch(self, data: t.List[t.Dict]) -> t.List[t.Dict]:
         ...
@@ -207,9 +213,13 @@ class AsyncBatchGraphQLEndpoint(AsyncGraphQLEndpoint):
         self, data: t.Union[t.Dict, t.List[t.Dict]]
     ) -> t.Union[t.Dict, t.List[t.Dict]]:
         if isinstance(data, list):
-            return list(await gather(*(
-                super(AsyncBatchGraphQLEndpoint, self).dispatch(item)
-                for item in data
-            )))
+            return list(
+                await gather(
+                    *(
+                        super(AsyncBatchGraphQLEndpoint, self).dispatch(item)
+                        for item in data
+                    )
+                )
+            )
         else:
             return await super(AsyncBatchGraphQLEndpoint, self).dispatch(data)

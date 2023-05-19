@@ -16,3 +16,5 @@ env
 .benchmarks
 todo
 TODO
+.pdm-python
+__pypackages__

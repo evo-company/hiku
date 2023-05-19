@@ -1,4 +1,5 @@
 from functools import reduce
+
 try:
     from itertools import zip_longest
     from unittest.mock import patch as _patch, Mock as _Mock
@@ -16,7 +17,7 @@ call = _call
 ANY = _ANY
 
 
-_missing = type('<missing>', (object,), {})
+_missing = type("<missing>", (object,), {})
 
 
 def result_match(result, value, path=None):
@@ -43,10 +44,13 @@ def result_match(result, value, path=None):
 def check_result(result, value):
     ok, path, subres, subval = result_match(result, value)
     if not ok:
-        path_str = 'result' + ''.join('[{!r}]'.format(v) for v in path)
-        msg = ('Result mismatch, first different element '
-               'path: {}, value: {!r}, expected: {!r}'
-               .format(path_str, subres, subval))
+        path_str = "result" + "".join("[{!r}]".format(v) for v in path)
+        msg = (
+            "Result mismatch, first different element "
+            "path: {}, value: {!r}, expected: {!r}".format(
+                path_str, subres, subval
+            )
+        )
         raise AssertionError(msg)
 
 
