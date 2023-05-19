@@ -113,12 +113,8 @@ commands:
       
       export APOLLO_ELV2_LICENSE=accept
       
-      #cd examples/federation-compatibility
-  
-      
       npx @apollo/federation-subgraph-compatibility docker \
         --compose ./examples/federation-compatibility/docker-compose.yml \
         --path /graphql \
         --schema ./examples/federation-compatibility/products.graphql \
         --debug
-
