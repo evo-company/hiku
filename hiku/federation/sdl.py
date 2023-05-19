@@ -19,6 +19,7 @@ from hiku.federation.directive import (
     Key,
     Link as LinkDirective,
 )
+from hiku.federation.version import DEFAULT_FEDERATION_VERSION
 from hiku.introspection.graphql import _BUILTIN_DIRECTIVES
 from hiku.graph import (
     Link,
@@ -169,9 +170,9 @@ def schema_to_graphql_directive(
 
 
 class Exporter(GraphVisitor):
-    def __init__(self, graph: Graph, enable_v2: bool = False):
+    def __init__(self, graph: Graph, federation_version: int):
         self.graph = graph
-        self.enable_v2 = enable_v2
+        self.federation_version = federation_version
 
     def get_entity_types(self) -> t.List[str]:
         entity_nodes = set()
@@ -240,7 +241,7 @@ class Exporter(GraphVisitor):
                             yield directive
 
     def get_schema_node(self) -> t.Optional[ast.SchemaExtensionNode]:
-        if not self.enable_v2:
+        if self.federation_version == 1:
             return None
 
         directives_in_use: List[str] = []
@@ -398,7 +399,7 @@ class Exporter(GraphVisitor):
         )
 
     def visit_directive(self, directive: SchemaDirective) -> ast.DirectiveNode:
-        if isinstance(directive, Key) and not self.enable_v2:
+        if isinstance(directive, Key) and not self.federation_version == 1:
             # To support Apollo Federation v1, we need to drop resolvable field
             # from @key directive usage
             return schema_to_graphql_directive(directive, skip_fields=['resolvable'])
@@ -406,9 +407,9 @@ class Exporter(GraphVisitor):
         return schema_to_graphql_directive(directive)
 
 
-def get_ast(graph: Graph, enable_v2: bool = False) -> ast.DocumentNode:
+def get_ast(graph: Graph, federation_version: int) -> ast.DocumentNode:
     graph = _StripGraph().visit(graph)
-    return ast.DocumentNode(definitions=Exporter(graph, enable_v2).visit(graph))
+    return ast.DocumentNode(definitions=Exporter(graph, federation_version).visit(graph))
 
 
 
@@ -445,6 +446,6 @@ class _StripGraph(GraphTransformer):
         )
 
 
-def print_sdl(graph: Graph, enable_v2: bool = False) -> str:
+def print_sdl(graph: Graph, federation_version: int = DEFAULT_FEDERATION_VERSION) -> str:
     """Print graphql AST into a string"""
-    return print_ast(get_ast(graph, enable_v2))
+    return print_ast(get_ast(graph, federation_version))

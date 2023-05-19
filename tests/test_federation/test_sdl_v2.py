@@ -45,7 +45,7 @@ class Custom(FederationSchemaDirective):
 
 def execute(graph, query_string):
     graphql_endpoint = FederatedGraphQLEndpoint(
-        Engine(SyncExecutor(), enable_v2=True),
+        Engine(SyncExecutor()),
         graph,
     )
 
@@ -120,7 +120,7 @@ expected = """
 
 
 def test_print_graph_sdl():
-    sdl = print_sdl(GRAPH, enable_v2=True)
+    sdl = print_sdl(GRAPH)
     assert sdl.strip() == textwrap.dedent(expected).strip()
 
 
@@ -129,6 +129,6 @@ def test_print_introspected_graph_sdl():
         FederatedGraphQLIntrospection(GRAPH),
     ])
 
-    sdl = print_sdl(INTROSPECTED_GRAPH, enable_v2=True)
+    sdl = print_sdl(INTROSPECTED_GRAPH)
 
     assert sdl.strip() == textwrap.dedent(expected).strip()

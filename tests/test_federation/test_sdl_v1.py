@@ -103,7 +103,7 @@ expected = """
 
 
 def test_print_graph_sdl():
-    sdl = print_sdl(GRAPH)
+    sdl = print_sdl(GRAPH, federation_version=1)
     assert sdl.strip() == textwrap.dedent(expected).strip()
 
 
@@ -112,6 +112,6 @@ def test_print_introspected_graph_sdl():
         FederatedGraphQLIntrospection(GRAPH),
     ])
 
-    sdl = print_sdl(INTROSPECTED_GRAPH)
+    sdl = print_sdl(INTROSPECTED_GRAPH, federation_version=1)
 
     assert sdl.strip() == textwrap.dedent(expected).strip()

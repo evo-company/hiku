@@ -429,7 +429,7 @@ QUERY_GRAPH = Graph([
 app = Flask(__name__)
 
 graphql_endpoint = FederatedGraphQLEndpoint(
-    Engine(SyncExecutor(), enable_v2=True),
+    Engine(SyncExecutor()),
     QUERY_GRAPH,
 )
 
@@ -451,7 +451,7 @@ def main():
 
 def dump():
     from hiku.federation.sdl import print_sdl
-    sdl = print_sdl(QUERY_GRAPH, enable_v2=True)
+    sdl = print_sdl(QUERY_GRAPH)
     with open("products.graphql", "w") as f:
         f.write(sdl)
 

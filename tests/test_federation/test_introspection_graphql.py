@@ -156,7 +156,7 @@ def introspect(query_graph, ):
 
 def execute_v2(graph, query_string):
     graphql_endpoint = FederatedGraphQLEndpoint(
-        Engine(SyncExecutor(), enable_v2=True),
+        Engine(SyncExecutor()),
         graph,
     )
 

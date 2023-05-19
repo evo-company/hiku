@@ -16,7 +16,7 @@ from tests.test_federation.utils import (
 
 def execute_v1(graph, query_dict):
     graphql_endpoint = FederatedGraphQLEndpoint(
-        Engine(SyncExecutor()),
+        Engine(SyncExecutor(), federation_version=1),
         graph,
     )
 
@@ -25,7 +25,7 @@ def execute_v1(graph, query_dict):
 
 async def execute_async_v1(graph, query_dict):
     graphql_endpoint = AsyncFederatedGraphQLEndpoint(
-        Engine(AsyncIOExecutor()),
+        Engine(AsyncIOExecutor(), federation_version=1),
         graph,
     )
 
@@ -34,7 +34,7 @@ async def execute_async_v1(graph, query_dict):
 
 def execute_v2(graph, query_dict):
     graphql_endpoint = FederatedGraphQLEndpoint(
-        Engine(SyncExecutor(), enable_v2=True),
+        Engine(SyncExecutor()),
         graph,
     )
 
@@ -43,7 +43,7 @@ def execute_v2(graph, query_dict):
 
 async def execute_async_v2(graph, query_dict):
     graphql_endpoint = AsyncFederatedGraphQLEndpoint(
-        Engine(AsyncIOExecutor(), enable_v2=True),
+        Engine(AsyncIOExecutor()),
         graph,
     )
 

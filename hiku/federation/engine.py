@@ -17,6 +17,7 @@ from hiku.engine import (
     Context,
 )
 from hiku.executors.queue import Queue
+from hiku.federation.version import DEFAULT_FEDERATION_VERSION
 from hiku.graph import Graph
 from hiku.result import (
     Proxy,
@@ -42,15 +43,17 @@ class Engine(BaseEngine):
         self,
         executor: SyncAsyncExecutor,
         cache: Optional[CacheSettings] = None,
-        enable_v2: bool = False,
+        federation_version: int = DEFAULT_FEDERATION_VERSION,
     ) -> None:
         super().__init__(executor, cache)
-        self.enable_v2 = enable_v2
+        if federation_version not in (1, 2):
+            raise ValueError('federation_version must be 1 or 2')
+        self.federation_version = federation_version
 
     def execute_service(self, graph: Graph) -> Union[Proxy, Awaitable[Proxy]]:
         idx = Index()
         idx[ROOT.node] = Index()
-        idx[ROOT.node][ROOT.ident] = {"sdl": print_sdl(graph, self.enable_v2)}
+        idx[ROOT.node][ROOT.ident] = {"sdl": print_sdl(graph, self.federation_version)}
         result = Proxy(idx, ROOT, Node(fields=[Field("sdl")]))
         if isinstance(self.executor, AsyncIOExecutor):
             return async_result(result)
