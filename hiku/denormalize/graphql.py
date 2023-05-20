@@ -14,7 +14,9 @@ from .base import Denormalize
 
 
 class DenormalizeGraphQL(Denormalize):
-    def __init__(self, graph: Graph, result: Proxy, root_type_name: str) -> None:
+    def __init__(
+        self, graph: Graph, result: Proxy, root_type_name: str
+    ) -> None:
         super().__init__(graph, result)
         self._type_name = deque([root_type_name])
 

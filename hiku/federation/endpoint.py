@@ -84,7 +84,10 @@ class BaseFederatedGraphEndpoint(ABC):
         pass
 
     def __init__(
-        self, engine: Engine, query_graph: Graph, mutation_graph: Optional[Graph] = None,
+        self,
+        engine: Engine,
+        query_graph: Graph,
+        mutation_graph: Optional[Graph] = None,
     ):
         self.engine = engine
 
@@ -99,7 +102,9 @@ class BaseFederatedGraphEndpoint(ABC):
     def context(self, op: Operation) -> Iterator[Dict]:
         yield {}
 
-    def postprocess_result(self, result: Proxy, graph: Graph, op: Operation) -> Dict:
+    def postprocess_result(
+        self, result: Proxy, graph: Graph, op: Operation
+    ) -> Dict:
         if "_service" in op.query.fields_map:
             return {"_service": {"sdl": result["sdl"]}}
         elif "_entities" in op.query.fields_map:
@@ -169,7 +174,9 @@ class AsyncFederatedGraphQLEndpoint(BaseAsyncFederatedGraphQLEndpoint):
     def introspection_cls(self) -> Type[BaseFederatedGraphQLIntrospection]:
         return AsyncFederatedGraphQLIntrospection
 
-    async def execute(self, graph: Graph, op: Operation, ctx: Optional[Dict]) -> Dict:
+    async def execute(
+        self, graph: Graph, op: Operation, ctx: Optional[Dict]
+    ) -> Dict:
         stripped_query = _process_query(graph, op.query)
         coro = self.engine.execute(graph, stripped_query, ctx)
         assert isawaitable(coro)
@@ -200,8 +207,12 @@ class AsyncBatchFederatedGraphQLEndpoint(AsyncFederatedGraphQLEndpoint):
     async def dispatch(self, data: Dict) -> Dict:
         ...
 
-    async def dispatch(self, data: Union[Dict, List[Dict]]) -> Union[Dict, List[Dict]]:
+    async def dispatch(
+        self, data: Union[Dict, List[Dict]]
+    ) -> Union[Dict, List[Dict]]:
         if isinstance(data, list):
-            return list(await gather(*(super().dispatch(item) for item in data)))
+            return list(
+                await gather(*(super().dispatch(item) for item in data))
+            )
 
         return await super().dispatch(data)

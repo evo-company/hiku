@@ -3,7 +3,9 @@ from typing import (
     Optional,
     Dict,
     Awaitable,
-    TYPE_CHECKING, Union,
+    TYPE_CHECKING,
+    TypeVar,
+    Union,
 )
 
 from hiku.cache import CacheInfo, CacheSettings
@@ -12,7 +14,8 @@ from hiku.executors.base import SyncAsyncExecutor
 from hiku.federation.sdl import print_sdl
 from hiku.federation.utils import get_representation_ident
 from hiku.engine import (
-    BaseEngine, InitOptions,
+    BaseEngine,
+    InitOptions,
     Query,
     Context,
 )
@@ -34,7 +37,10 @@ if TYPE_CHECKING:
     from hiku.readers.graphql import Operation
 
 
-async def async_result(val):
+V = TypeVar("V")
+
+
+async def async_result(val: V) -> V:
     return val
 
 
@@ -47,13 +53,15 @@ class Engine(BaseEngine):
     ) -> None:
         super().__init__(executor, cache)
         if federation_version not in (1, 2):
-            raise ValueError('federation_version must be 1 or 2')
+            raise ValueError("federation_version must be 1 or 2")
         self.federation_version = federation_version
 
     def execute_service(self, graph: Graph) -> Union[Proxy, Awaitable[Proxy]]:
         idx = Index()
         idx[ROOT.node] = Index()
-        idx[ROOT.node][ROOT.ident] = {"sdl": print_sdl(graph, self.federation_version)}
+        idx[ROOT.node][ROOT.ident] = {
+            "sdl": print_sdl(graph, self.federation_version)
+        }
         result = Proxy(idx, ROOT, Node(fields=[Field("sdl")]))
         if isinstance(self.executor, AsyncIOExecutor):
             return async_result(result)
@@ -81,14 +89,14 @@ class Engine(BaseEngine):
         for typename in type_ids_map:
             ids = type_ids_map[typename]
             node = graph.nodes_map[typename]
-            # TODO(mkind): here we must execute resolve_reference function and only then
-            #  run process_node !
+            # TODO(mkind): we probably execute some `resolve_reference`
+            #  function and only then run process_node !
             query_workflow.process_node(path, node, query, ids)
 
         return self.executor.process(queue, query_workflow)
 
     def execute_query(
-        self, graph: Graph, query: Node, ctx: Dict
+        self, graph: Graph, query: Node, ctx: Dict, op: Optional["Operation"]
     ) -> Union[Proxy, Awaitable[Proxy]]:
         query = InitOptions(graph).visit(query)
         queue = Queue(self.executor)
@@ -103,7 +111,9 @@ class Engine(BaseEngine):
             else None
         )
 
-        query_workflow = Query(queue, task_set, graph, query, Context(ctx), cache)
+        query_workflow = Query(
+            queue, task_set, graph, query, Context(ctx), cache
+        )
 
         query_workflow.start()
         return self.executor.process(queue, query_workflow)
@@ -123,4 +133,4 @@ class Engine(BaseEngine):
         elif "_entities" in query.fields_map:
             return self.execute_entities(graph, query, ctx)
 
-        return self.execute_query(graph, query, ctx)
+        return self.execute_query(graph, query, ctx, op)

@@ -56,7 +56,8 @@ S = _S()
 
 
 def _to_expr(
-    obj: t.Union[DotHandler, _Func, t.List, t.Dict, Node], fn_reg: t.Set[t.Callable]
+    obj: t.Union[DotHandler, _Func, t.List, t.Dict, Node],
+    fn_reg: t.Set[t.Callable],
 ) -> Node:
     if isinstance(obj, DotHandler):
         return obj.obj
@@ -78,7 +79,9 @@ def _to_expr(
         return obj
 
 
-def to_expr(obj: t.Union[DotHandler, _Func]) -> t.Tuple[Node, t.Tuple[t.Callable, ...]]:
+def to_expr(
+    obj: t.Union[DotHandler, _Func]
+) -> t.Tuple[Node, t.Tuple[t.Callable, ...]]:
     functions: t.Set[t.Callable] = set([])
     node = _to_expr(obj, functions)
     return node, tuple(functions)
@@ -142,13 +145,9 @@ def define(
 
         if len(types) == 1 and isinstance(types[0], str):
             reqs_list = loads(str(types[0]))
-            expr.__def_type__ = Callable[
+            expr.__def_type__ = Callable[  # type: ignore[attr-defined]
                 [
-                    (
-                        _query_to_types(transform(r))  # type: ignore[attr-defined]  # noqa: E501
-                        if r is not None
-                        else Any
-                    )
+                    (_query_to_types(transform(r)) if r is not None else Any)
                     for r in reqs_list
                 ]
             ]

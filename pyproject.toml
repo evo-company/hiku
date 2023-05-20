@@ -86,7 +86,7 @@ test = "python -m pytest"
 test_pg = "python -m pytest tests_pg"
 test-all = {composite = ["test", "test_pg"]}
 fmt = "python -m black hiku"
-mypy = "python -m mypy --show-error-codes hiku"
+mypy = "python -m mypy"
 flake = "python -m flake8"
 docs = "sphinx-build -b html docs docs/build"
 check = {composite = ["fmt", "test", "mypy", "flake"]}
@@ -113,6 +113,9 @@ source = [
 ]
 
 [tool.mypy]
+files = [
+    "hiku",
+]
 python_version = 3.7
 check_untyped_defs = true
 #disallow_any_generics = true
@@ -122,6 +125,8 @@ follow_imports = "silent"
 strict_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
+show_error_codes = true
+ignore_errors = false
 
 exclude = [
     "tests",

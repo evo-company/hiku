@@ -32,7 +32,7 @@ from tests.test_federation.utils import field_resolver, link_resolver
 
 def execute(graph, query_string):
     graphql_endpoint = FederatedGraphQLEndpoint(
-        Engine(SyncExecutor()),
+        Engine(SyncExecutor(), federation_version=1),
         graph,
     )
 

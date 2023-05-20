@@ -74,7 +74,7 @@ class FieldsQuery:
         engine_key: str,
         from_clause: sqlalchemy.Table,
         *,
-        primary_key: Optional[sqlalchemy.Column] = None
+        primary_key: Optional[sqlalchemy.Column] = None,
     ) -> None:
         self.engine_key = engine_key
         self.from_clause = from_clause
@@ -89,12 +89,14 @@ class FieldsQuery:
             from_clause_repr = _table_repr(self.from_clause)
         else:
             from_clause_repr = repr(self.from_clause)
-        return "<{}.{}: engine_key={!r}, from_clause={}, primary_key={!r}>".format(
-            self.__class__.__module__,
-            self.__class__.__name__,
-            self.engine_key,
-            from_clause_repr,
-            self.primary_key,
+        return (
+            "<{}.{}: engine_key={!r}, from_clause={}, primary_key={!r}>".format(
+                self.__class__.__module__,
+                self.__class__.__name__,
+                self.engine_key,
+                from_clause_repr,
+                self.primary_key,
+            )
         )
 
     def __postprocess__(self, field: Field) -> None:
@@ -102,7 +104,9 @@ class FieldsQuery:
             column = self.from_clause.c[field.name]
             field.type = _translate_type(column)
 
-    def in_impl(self, column: sqlalchemy.Column, values: Iterable) -> BinaryExpression:
+    def in_impl(
+        self, column: sqlalchemy.Column, values: Iterable
+    ) -> BinaryExpression:
         return column.in_(values)
 
     def select_expr(
@@ -125,7 +129,9 @@ class FieldsQuery:
 
         return expr, result_proc
 
-    def __call__(self, ctx: Context, fields_: List[QueryField], ids: List) -> Any:
+    def __call__(
+        self, ctx: Context, fields_: List[QueryField], ids: List
+    ) -> Any:
         if not ids:
             return []
 
@@ -161,22 +167,26 @@ class LinkQuery:
         engine_key: str,
         *,
         from_column: sqlalchemy.Column,
-        to_column: sqlalchemy.Column
+        to_column: sqlalchemy.Column,
     ) -> None:
         if from_column.table is not to_column.table:
-            raise ValueError("from_column and to_column should belong to " "one table")
+            raise ValueError(
+                "from_column and to_column should belong to " "one table"
+            )
 
         self.engine_key = engine_key
         self.from_column = from_column
         self.to_column = to_column
 
     def __repr__(self) -> str:
-        return "<{}.{}: engine_key={!r}, from_column={!r}, to_column={!r}>".format(
-            self.__class__.__module__,
-            self.__class__.__name__,
-            self.engine_key,
-            self.from_column,
-            self.to_column,
+        return (
+            "<{}.{}: engine_key={!r}, from_column={!r}, to_column={!r}>".format(
+                self.__class__.__module__,
+                self.__class__.__name__,
+                self.engine_key,
+                self.from_column,
+                self.to_column,
+            )
         )
 
     def __postprocess__(self, link: Link) -> None:
@@ -190,7 +200,9 @@ class LinkQuery:
             raise TypeError(repr(link.type_enum))
         link.func = pass_context(func)
 
-    def in_impl(self, column: sqlalchemy.Column, values: Iterable) -> BinaryExpression:
+    def in_impl(
+        self, column: sqlalchemy.Column, values: Iterable
+    ) -> BinaryExpression:
         return column.in_(values)
 
     def select_expr(self, ids: Iterable) -> Optional[Select]:
@@ -206,7 +218,9 @@ class LinkQuery:
         else:
             return None
 
-    def __call__(self, result_proc: Callable, ctx: Context, ids: Iterable) -> Any:
+    def __call__(
+        self, result_proc: Callable, ctx: Context, ids: Iterable
+    ) -> Any:
         expr = self.select_expr(ids)
         if expr is None:
             pairs = []

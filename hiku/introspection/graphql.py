@@ -8,6 +8,7 @@ from collections import OrderedDict
 from ..directives import (
     Cached,
     Deprecated,
+    Directive,
     _SkipDirective,
     _IncludeDirective,
     SchemaDirective,
@@ -64,7 +65,9 @@ from .types import (
 
 
 # TODO(mkind): expose as public API
-_BUILTIN_DIRECTIVES = (
+_BUILTIN_DIRECTIVES: t.Tuple[
+    t.Union[t.Type[Directive], t.Type[SchemaDirective]], ...
+] = (
     _SkipDirective,
     _IncludeDirective,
     Deprecated,
@@ -87,8 +90,10 @@ class SchemaInfo:
     def __init__(
         self,
         query_graph: Graph,
-        mutation_graph: t.Optional[Graph] = None,
-        directives: t.Optional[t.Sequence[SchemaDirective]] = None,
+        mutation_graph: t.Optional[Graph],
+        directives: t.Tuple[
+            t.Union[t.Type[Directive], t.Type[SchemaDirective]], ...
+        ],
     ):
         self.query_graph = query_graph
         self.data_types = query_graph.data_types
@@ -97,7 +102,9 @@ class SchemaInfo:
 
     @cached_property
     def directives_map(self) -> OrderedDict:
-        return OrderedDict((d.__directive_info__.name, d) for d in self.directives)
+        return OrderedDict(
+            (d.__directive_info__.name, d) for d in self.directives  # type: ignore  # noqa: E501
+        )
 
 
 class TypeIdent(AbstractTypeVisitor):
@@ -126,7 +133,9 @@ class TypeIdent(AbstractTypeVisitor):
 
     def visit_typeref(self, obj: TypeRefMeta) -> HashedNamedTuple:
         if self._input_mode:
-            assert obj.__type_name__ in self._graph.data_types, obj.__type_name__
+            assert (
+                obj.__type_name__ in self._graph.data_types
+            ), obj.__type_name__
             return NON_NULL(INPUT_OBJECT(obj.__type_name__))
         else:
             return NON_NULL(OBJECT(obj.__type_name__))
@@ -240,8 +249,11 @@ def root_schema_mutation_type(
         return Nothing
 
 
-def root_schema_directives(schema: SchemaInfo) -> t.List[DIRECTIVE]:
-    return [DIRECTIVE(directive.__directive_info__.name) for directive in schema.directives]
+def root_schema_directives(schema: SchemaInfo) -> t.List[DIRECTIVE]:  # type: ignore[valid-type]  # noqa: E501
+    return [
+        DIRECTIVE(directive.__directive_info__.name)  # type: ignore[union-attr]
+        for directive in schema.directives
+    ]
 
 
 @listify
@@ -353,7 +365,9 @@ def field_info(
 
 
 @listify
-def field_type_link(schema: SchemaInfo, ids: t.List) -> t.Iterator[HashedNamedTuple]:
+def field_type_link(
+    schema: SchemaInfo, ids: t.List
+) -> t.Iterator[HashedNamedTuple]:
     nodes_map = _nodes_map(schema)
     type_ident = TypeIdent(schema.query_graph)
     for ident in ids:
@@ -468,26 +482,30 @@ def input_value_type_link(
 
 @listify
 def directive_value_info(
-    schema: SchemaInfo, fields: t.List[Field], ids: t.List[DIRECTIVE]
+    schema: SchemaInfo,
+    fields: t.List[Field],
+    ids: t.List[DIRECTIVE],  # type: ignore[valid-type]
 ) -> t.Iterator[t.List[Any]]:
     for ident in ids:
-        if ident.name in schema.directives_map:
-            directive = schema.directives_map[ident.name].__directive_info__
-            info = {
-                "name": directive.name,
-                "description": directive.description,
-                "locations": [loc.value for loc in directive.locations],
+        if ident.name in schema.directives_map:  # type: ignore[attr-defined]
+            info = schema.directives_map[ident.name].__directive_info__  # type: ignore  # noqa: E501
+            data = {
+                "name": info.name,
+                "description": info.description,
+                "locations": [loc.value for loc in info.locations],
             }
-            yield [info[f.name] for f in fields]
+            yield [data[f.name] for f in fields]
 
 
 def directive_args_link(
     schema: SchemaInfo, ids: t.List[str]
-) -> t.List[t.List[DirectiveArgIdent]]:
+) -> t.List[t.List[DirectiveArgIdent]]:  # type: ignore[valid-type]
     links = []
     for ident in ids:
         directive = schema.directives_map[ident].__directive_info__
-        links.append([DirectiveArgIdent(ident, arg.name) for arg in directive.args])
+        links.append(
+            [DirectiveArgIdent(ident, arg.name) for arg in directive.args]
+        )
     return links
 
 
@@ -506,13 +524,23 @@ GRAPH = Graph(
                     Sequence[TypeRef["__Field"]],
                     type_fields_link,
                     requires="id",
-                    options=[Option("includeDeprecated", Boolean, default=False)],
+                    options=[
+                        Option("includeDeprecated", Boolean, default=False)
+                    ],
                 ),
                 # OBJECT only
-                Link("interfaces", Sequence[TypeRef["__Type"]], na_many, requires="id"),
+                Link(
+                    "interfaces",
+                    Sequence[TypeRef["__Type"]],
+                    na_many,
+                    requires="id",
+                ),
                 # INTERFACE and UNION only
                 Link(
-                    "possibleTypes", Sequence[TypeRef["__Type"]], na_many, requires="id"
+                    "possibleTypes",
+                    Sequence[TypeRef["__Type"]],
+                    na_many,
+                    requires="id",
                 ),
                 # ENUM only
                 Link(
@@ -520,7 +548,9 @@ GRAPH = Graph(
                     Sequence[TypeRef["__EnumValue"]],
                     na_many,
                     requires="id",
-                    options=[Option("includeDeprecated", Boolean, default=False)],
+                    options=[
+                        Option("includeDeprecated", Boolean, default=False)
+                    ],
                 ),
                 # INPUT_OBJECT only
                 Link(
@@ -561,7 +591,12 @@ GRAPH = Graph(
                 Field("id", None, input_value_info),
                 Field("name", String, input_value_info),
                 Field("description", String, input_value_info),
-                Link("type", TypeRef["__Type"], input_value_type_link, requires="id"),
+                Link(
+                    "type",
+                    TypeRef["__Type"],
+                    input_value_type_link,
+                    requires="id",
+                ),
                 Field("defaultValue", String, input_value_info),
             ],
         ),
@@ -625,7 +660,9 @@ GRAPH = Graph(
         ),
         Root(
             [
-                Link("__schema", TypeRef["__Schema"], schema_link, requires=None),
+                Link(
+                    "__schema", TypeRef["__Schema"], schema_link, requires=None
+                ),
                 Link(
                     "__type",
                     Optional[TypeRef["__Type"]],
@@ -670,7 +707,9 @@ class ValidateGraph(GraphVisitor):
             super(ValidateGraph, self).visit_node(obj)
             self._path.pop()
         else:
-            self._add_error(obj.name, "No fields in the {} node".format(obj.name))
+            self._add_error(
+                obj.name, "No fields in the {} node".format(obj.name)
+            )
 
     def visit_root(self, obj: Root) -> None:
         if obj.fields:
@@ -691,14 +730,14 @@ class ValidateGraph(GraphVisitor):
         super(ValidateGraph, self).visit_link(obj)
 
     def visit_option(self, obj: Option) -> None:
-        """TODO(mkind): validate that default=None can only be used with Optional type
-        This was captured as an error by ApolloRouter
+        """TODO(mkind): validate that default=None can only be used with
+        Optional type
         """
         if not self._name_re.match(obj.name):
-            self._add_error(obj.name, "Invalid option name: {}".format(obj.name))
+            self._add_error(
+                obj.name, "Invalid option name: {}".format(obj.name)
+            )
         super(ValidateGraph, self).visit_option(obj)
-
-    # TODO(mkind): do we need to validate directives
 
 
 class BindToSchema(GraphTransformer):
@@ -745,7 +784,9 @@ def type_name_field_func(
 
 
 class AddIntrospection(GraphTransformer):
-    def __init__(self, introspection_graph: Graph, type_name_field_factory: t.Callable):
+    def __init__(
+        self, introspection_graph: Graph, type_name_field_factory: t.Callable
+    ):
         self.introspection_graph = introspection_graph
         self.type_name_field_factory = type_name_field_factory
 
@@ -779,7 +820,9 @@ class GraphQLIntrospection(GraphTransformer):
 
     """
 
-    __directives__: t.Tuple[SchemaDirective, ...] = _BUILTIN_DIRECTIVES
+    __directives__: t.Tuple[
+        t.Union[t.Type[Directive], t.Type[SchemaDirective]], ...
+    ] = _BUILTIN_DIRECTIVES
 
     def __init__(
         self,
@@ -794,12 +837,14 @@ class GraphQLIntrospection(GraphTransformer):
         """
         self._schema = SchemaInfo(
             query_graph,
-            mutation_graph,  # TODO(mkind): what if mutation_graph has directives too ?
+            mutation_graph,
             self.__directives__ + tuple(query_graph.directives or ()),
         )
 
     def __type_name__(self, node_name: t.Optional[str]) -> Field:
-        return Field("__typename", String, partial(type_name_field_func, node_name))
+        return Field(
+            "__typename", String, partial(type_name_field_func, node_name)
+        )
 
     def __introspection_graph__(self) -> Graph:
         return BindToSchema(self._schema).visit(GRAPH)
@@ -819,7 +864,9 @@ class GraphQLIntrospection(GraphTransformer):
         introspection_graph = self.__introspection_graph__()
         items = [self.visit(node) for node in obj.items]
         items.extend(introspection_graph.items)
-        return Graph(items, data_types=obj.data_types, directives=obj.directives)
+        return Graph(
+            items, data_types=obj.data_types, directives=obj.directives
+        )
 
 
 class AsyncGraphQLIntrospection(GraphQLIntrospection):

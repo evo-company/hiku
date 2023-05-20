@@ -62,7 +62,8 @@ def _extract(values):
                     options = None
                 else:
                     raise TypeError(
-                        "Link name defined not as keyword, " "but as {!r}".format(key)
+                        "Link name defined not as keyword, "
+                        "but as {!r}".format(key)
                     )
                 yield Link(name, transform(val), options)
         else:
@@ -74,7 +75,8 @@ def transform(value: t.List) -> Node:
         return merge([Node(list(_extract(value)))])
     else:
         raise TypeError(
-            "Node should be defined as vector, " "{!r} provided instead".format(value)
+            "Node should be defined as vector, "
+            "{!r} provided instead".format(value)
         )
 
 

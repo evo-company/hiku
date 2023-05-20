@@ -23,7 +23,10 @@ class Ref:
         return "{!r} > {!r}".format(self.to, self.backref)
 
     def __eq__(self, other):
-        return self.__class__ is other.__class__ and self.__dict__ == other.__dict__
+        return (
+            self.__class__ is other.__class__
+            and self.__dict__ == other.__dict__
+        )
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -123,7 +126,9 @@ class RequirementsExtractor(NodeVisitor):
             for arg, arg_type in zip(args, sym_ref.to.__arg_types__):
                 arg_query = type_to_query(arg_type)
                 if arg_query is not None:
-                    self._reqs.append(ref_to_req(self._types, arg.__ref__, arg_query))
+                    self._reqs.append(
+                        ref_to_req(self._types, arg.__ref__, arg_query)
+                    )
                 else:
                     self.visit(arg)
         else:

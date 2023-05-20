@@ -48,7 +48,9 @@ OptionValue = t.Union[
 
 
 class _AssumeRecord(AbstractTypeVisitor):
-    def __init__(self, data_types: t.Dict[str, t.Type[Record]], _nested: bool = False):
+    def __init__(
+        self, data_types: t.Dict[str, t.Type[Record]], _nested: bool = False
+    ):
         self._data_types = data_types
         self._nested = _nested
 
@@ -106,7 +108,9 @@ class _AssumeField(GraphVisitor):
         return False
 
     def visit_node(self, obj: Node) -> bool:
-        assert self.node.name is None, "Nested node can be only in the root node"
+        assert (
+            self.node.name is None
+        ), "Nested node can be only in the root node"
         self.errors.report(
             'Trying to query "{}" node as it was a field'.format(obj.name)
         )
@@ -124,7 +128,9 @@ class _OptionError(TypeError):
 
 class _OptionTypeError(_OptionError):
     def __init__(self, value: OptionValue, expected: GenericMeta) -> None:
-        description = '"{}" instead of {!r}'.format(type(value).__name__, expected)
+        description = '"{}" instead of {!r}'.format(
+            type(value).__name__, expected
+        )
         super(_OptionTypeError, self).__init__(description)
 
 
@@ -310,7 +316,9 @@ class _RecordFieldsValidator(QueryVisitor):
             )
 
     def visit_link(self, obj: QueryLink) -> None:
-        field_types = _AssumeRecord(self._data_types).visit(self._field_types[obj.name])
+        field_types = _AssumeRecord(self._data_types).visit(
+            self._field_types[obj.name]
+        )
         if field_types is not None:
             fields_validator = _RecordFieldsValidator(
                 self._data_types, field_types, self._errors
@@ -362,7 +370,9 @@ class QueryValidator(QueryVisitor):
                 self.graph.data_types, obj.options, for_, self.errors
             ).visit(graph_obj)
 
-            field_types = _AssumeRecord(self.graph.data_types).visit(graph_obj.type)
+            field_types = _AssumeRecord(self.graph.data_types).visit(
+                graph_obj.type
+            )
             if field_types is not None:
                 fields_validator = _RecordFieldsValidator(
                     self.graph.data_types, field_types, self.errors

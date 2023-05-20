@@ -216,11 +216,16 @@ def _check_store_fields(
         if (
             isinstance(result, Sequence)
             and len(result) == len(ids)
-            and all(isinstance(r, Sequence) and len(r) == len(fields) for r in result)
+            and all(
+                isinstance(r, Sequence) and len(r) == len(fields)
+                for r in result
+            )
         ):
             return
         else:
-            expected = "list (len: {}) of lists (len: {})".format(len(ids), len(fields))
+            expected = "list (len: {}) of lists (len: {})".format(
+                len(ids), len(fields)
+            )
     else:
         if isinstance(result, Sequence) and len(result) == len(fields):
             return
@@ -271,7 +276,8 @@ def store_fields(
 ) -> None:
     if inspect.isgenerator(query_result):
         warnings.warn(
-            "Data loading functions should not return generators", DeprecationWarning
+            "Data loading functions should not return generators",
+            DeprecationWarning,
         )
         query_result = list(query_result)
 
@@ -339,9 +345,7 @@ _LINK_REF_MAKER: Dict[Any, Callable] = {
 }
 
 
-HASH_HINT = (
-    "\nHint: Consider adding __hash__ method or use hashable type for '{!r}'.".format
-)  # noqa: E501
+HASH_HINT = "\nHint: Consider adding __hash__ method or use hashable type for '{!r}'.".format  # noqa: E501
 SEQ_HINT = "\nHint: Consider using tuple instead of '{}'.".format
 DATACLASS_FROZEN_HINT = "\nHint: Use @dataclass(frozen=True) on '{}'.".format
 DATACLASS_FIELD_HINT = (
@@ -453,7 +457,9 @@ def store_links(
     return None
 
 
-def link_result_to_ids(from_list: bool, link_type: Any, result: Any) -> List:  # Const
+def link_result_to_ids(
+    from_list: bool, link_type: Any, result: Any
+) -> List:  # Const
     if from_list:
         if link_type is Maybe:
             return [i for i in result if i is not Nothing]
@@ -545,11 +551,15 @@ class Query(Workflow):
             step_func, step_item = steps.pop(0)
             if isinstance(step_item, list):
                 self._track(path)
-                dep = self._schedule_fields(path, node, step_func, step_item, ids)
+                dep = self._schedule_fields(
+                    path, node, step_func, step_item, ids
+                )
             else:
                 graph_link, query_link = step_item
                 self._track(path)
-                dep = self._schedule_link(path, node, graph_link, query_link, ids)
+                dep = self._schedule_link(
+                    path, node, graph_link, query_link, ids
+                )
 
             if steps:
                 self._queue.add_callback(dep, lambda: proc(steps))
@@ -583,7 +593,9 @@ class Query(Workflow):
         to_dep: Dict[Callable, Dep] = {}
         for func, func_fields in from_func.items():
             self._track(path)
-            to_dep[func] = self._schedule_fields(path, node, func, func_fields, ids)
+            to_dep[func] = self._schedule_fields(
+                path, node, func, func_fields, ids
+            )
 
         # schedule link resolve
         for graph_link, query_link in links:
@@ -637,7 +649,10 @@ class Query(Workflow):
         to_ids = link_result_to_ids(from_list, graph_link.type_enum, result)
         if to_ids:
             self.process_node(
-                path, self._graph.nodes_map[graph_link.node], query_link.node, to_ids
+                path,
+                self._graph.nodes_map[graph_link.node],
+                query_link.node,
+                to_ids,
             )
         else:
             self._untrack(path)
@@ -690,7 +705,9 @@ class Query(Workflow):
             )
 
         keys = set(info[0] for info in key_info)
-        dep = self._submit(self._cache.get_many, list(keys), node.name, graph_link.name)
+        dep = self._submit(
+            self._cache.get_many, list(keys), node.name, graph_link.name
+        )
 
         def callback() -> None:
             result = dep.result()
@@ -739,7 +756,9 @@ class Query(Workflow):
             reqs: Any = link_reqs(self._index, node, graph_link, ids)
 
             if (
-                "cached" in query_link.directives_map and self._cache and not skip_cache
+                "cached" in query_link.directives_map
+                and self._cache
+                and not skip_cache
             ):  # noqa: E501
                 return self._update_index_from_cache(
                     path, node, graph_link, query_link, ids, reqs
@@ -779,7 +798,9 @@ R = TypeVar("R")
 P = ParamSpec("P")
 
 
-def pass_context(func: Callable[P, R]) -> Callable[Concatenate["Context", P], R]:
+def pass_context(
+    func: Callable[P, R]
+) -> Callable[Concatenate["Context", P], R]:
     """Decorator to pass context to a function as a first argument.
 
     Can be used on functions for ``Field`` and ``Link``.
@@ -853,6 +874,8 @@ class Engine(BaseEngine):
             if self.cache_settings
             else None
         )
-        query_workflow = Query(queue, task_set, graph, query, Context(ctx), cache)
+        query_workflow = Query(
+            queue, task_set, graph, query, Context(ctx), cache
+        )
         query_workflow.start()
         return self.executor.process(queue, query_workflow)

@@ -5,19 +5,6 @@ from typing import (
     Optional,
 )
 
-from hiku.federation.directive import (
-    ComposeDirective,
-    External,
-    Inaccessible,
-    InterfaceObject,
-    Key,
-    Override,
-    Provides,
-    Requires,
-    Shareable,
-    Tag,
-    Link as LinkDirective,
-)
 from hiku.graph import Graph
 from hiku.query import Node as QueryNode
 
@@ -25,24 +12,6 @@ from hiku.introspection.graphql import GraphQLIntrospection
 from hiku.introspection.graphql import AsyncGraphQLIntrospection
 
 from hiku.federation.utils import get_keys
-
-_DIRECTIVES_V1 = (
-    Key,
-    Provides,
-    Requires,
-    External,
-)
-
-_DIRECTIVES_V2 = (
-    *_DIRECTIVES_V1,
-    Tag,
-    Override,
-    Inaccessible,
-    Shareable,
-    InterfaceObject,
-    ComposeDirective,
-    LinkDirective,
-)
 
 
 def is_introspection_query(query: QueryNode) -> bool:
@@ -124,7 +93,11 @@ def extend_with_federation(graph: Graph, data: dict) -> None:
         _type("_Entity", "UNION", possibleTypes=union_types)
     )
     data["__schema"]["types"].append(
-        _type("_Service", "OBJECT", fields=[_field("sdl", _type("String", "SCALAR"))])
+        _type(
+            "_Service",
+            "OBJECT",
+            fields=[_field("sdl", _type("String", "SCALAR"))],
+        )
     )
 
     entities_field = _field(

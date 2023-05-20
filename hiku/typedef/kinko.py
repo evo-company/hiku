@@ -104,7 +104,9 @@ class _IndentedPrinter:
 
     def _print_arg(self, type_):
         if isinstance(type_, TypeDoc):
-            self._descriptions[len(self._buffer) - 1] = type_.__type_description__
+            self._descriptions[
+                len(self._buffer) - 1
+            ] = type_.__type_description__
             type_ = type_.__type__
         if isinstance(type_, _CONTAINER_TYPES):
             with self._add_indent():

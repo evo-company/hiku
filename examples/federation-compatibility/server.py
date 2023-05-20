@@ -4,10 +4,11 @@ import typing as t
 
 from flask import Flask, request, jsonify
 
-from hiku.directives import Deprecated, Location, SchemaDirective
+from hiku.directives import Deprecated, Location
 from hiku.federation.directive import (
     Extends,
-    FederationSchemaDirective, Inaccessible,
+    FederationSchemaDirective,
+    Inaccessible,
     InterfaceObject,
     Key,
     External,
@@ -15,12 +16,14 @@ from hiku.federation.directive import (
     Provides,
     Requires,
     Shareable,
-    Tag, schema_directive,
+    Tag,
+    schema_directive,
 )
 from hiku.federation.endpoint import FederatedGraphQLEndpoint
 from hiku.federation.engine import Engine
 from hiku.graph import (
-    Nothing, Root,
+    Nothing,
+    Root,
     Field,
     Option,
     Node,
@@ -29,8 +32,11 @@ from hiku.graph import (
 )
 from hiku.readers.graphql import setup_query_cache
 from hiku.types import (
-    Float, ID, Integer,
-    Record, TypeRef,
+    Float,
+    ID,
+    Integer,
+    Record,
+    TypeRef,
     String,
     Optional,
     Sequence,
@@ -43,12 +49,12 @@ log = logging.getLogger(__name__)
 
 def get_by_id(id_, collection):
     for item in collection:
-        if item['id'] == id_:
+        if item["id"] == id_:
             return item
 
 
 def direct_link_id(opts):
-    return opts['id']
+    return opts["id"]
 
 
 def direct_link(ids):
@@ -133,42 +139,42 @@ products = [
     },
 ]
 
-inventory = {
-    "id": "apollo-oss",
-    "deprecatedProducts": [deprecated_product]
-}
+inventory = {"id": "apollo-oss", "deprecatedProducts": [deprecated_product]}
 
 
 @listify
 def product_fields_resolver(fields: t.List[Field], ids: t.List[str]):
     def get_field(field: Field, product: dict):
         if field.name == "id":
-            return product['id']
+            return product["id"]
         elif field.name == "sku":
-            return product['sku']
+            return product["sku"]
         elif field.name == "package":
-            return product['package']
+            return product["package"]
         elif field.name == "notes":
-            return product['notes']
+            return product["notes"]
         elif field.name == "variation":
-            return product['variation']
+            return product["variation"]
         elif field.name == "_createdBy":
-            return product['created_by']
+            return product["created_by"]
         else:
             raise ValueError(f"Unknown field {field.name}")
 
     for product_id in ids:
         if isinstance(product_id, ImmutableDict):
-            log.info('product_id %s', product_id)
-            sku = product_id['sku']
+            log.info("product_id %s", product_id)
+            sku = product_id["sku"]
             for product in products:
-                if product['sku'] == sku:
-                    if 'package' in product_id:
-                        if product['package'] == product_id['package']:
+                if product["sku"] == sku:
+                    if "package" in product_id:
+                        if product["package"] == product_id["package"]:
                             data = product
                             break
-                    elif 'variation' in product_id:
-                        if product['variation']['id'] == product_id['variation']['id']:
+                    elif "variation" in product_id:
+                        if (
+                            product["variation"]["id"]
+                            == product_id["variation"]["id"]
+                        ):
                             data = product
                             break
             if not product:
@@ -183,14 +189,16 @@ def link_product_dimensions(ids: t.List[str]) -> t.Iterable[Dimension]:
     for product_id in ids:
         data = get_by_id(product_id, products)
         yield Dimension(
-            data['dimensions']['size'],
-            data['dimensions']['weight'],
-            data['dimensions']['unit'],
+            data["dimensions"]["size"],
+            data["dimensions"]["weight"],
+            data["dimensions"]["unit"],
         )
 
 
 @listify
-def product_dimension_fields_resolver(fields: t.List[Field], dimensions: t.List[Dimension]):
+def product_dimension_fields_resolver(
+    fields: t.List[Field], dimensions: t.List[Dimension]
+):
     def get_field(field: Field, dim: Dimension):
         if field.name == "size":
             return dim.size
@@ -211,10 +219,10 @@ def gen_researches(researches: t.List[dict]) -> t.Iterable[Research]:
     for res in researches:
         yield Research(
             Study(
-                res['study']['case_number'],
-                res['study']['description'],
+                res["study"]["case_number"],
+                res["study"]["description"],
             ),
-            res['outcome'],
+            res["outcome"],
         )
 
 
@@ -222,13 +230,12 @@ def gen_researches(researches: t.List[dict]) -> t.Iterable[Research]:
 def link_product_research(ids: t.List[str]):
     for product_id in ids:
         data = get_by_id(product_id, products)
-        yield from gen_researches(data['research'])
+        yield from gen_researches(data["research"])
 
 
 @listify
 def product_research_fields_resolver(
-    fields: t.List[Field],
-    researches: t.List[t.Union[Research, ImmutableDict]]
+    fields: t.List[Field], researches: t.List[t.Union[Research, ImmutableDict]]
 ):
     def get_field(field: Field, r: Research):
         if field.name == "study":
@@ -244,7 +251,7 @@ def product_research_fields_resolver(
     for item in researches:
         # if we are here this is federated query
         if isinstance(item, ImmutableDict):
-            case_number = item['study']['caseNumber']
+            case_number = item["study"]["caseNumber"]
             res = next(
                 (
                     product_research
@@ -255,10 +262,10 @@ def product_research_fields_resolver(
             )
             research = Research(
                 Study(
-                    res['study']['case_number'],
-                    res['study']['description'],
+                    res["study"]["case_number"],
+                    res["study"]["description"],
                 ),
-                res['outcome'],
+                res["outcome"],
             )
         else:
             research = item
@@ -269,16 +276,18 @@ def product_research_fields_resolver(
 def user_fields_resolver(fields: t.List[Field], emails: t.List[str]):
     def get_field(field: Field, u: dict):
         if field.name == "email":
-            return u['email']
+            return u["email"]
         elif field.name == "name":
-            return u['name']
+            return u["name"]
         elif field.name == "totalProductsCreated":
-            return u['total_products_created']
+            return u["total_products_created"]
         elif field.name == "yearsOfEmployment":
-            return u['years_of_employment']
+            return u["years_of_employment"]
         elif field.name == "averageProductsCreatedPerYear":
-            if u['total_products_created'] is not None:
-                return round(u['total_products_created'] / u['years_of_employment'])
+            if u["total_products_created"] is not None:
+                return round(
+                    u["total_products_created"] / u["years_of_employment"]
+                )
 
             return None
         else:
@@ -289,21 +298,26 @@ def user_fields_resolver(fields: t.List[Field], emails: t.List[str]):
 
 
 @listify
-def deprecated_product_fields_resolver(fields: t.List[Field], ids: t.List[ImmutableDict]):
+def deprecated_product_fields_resolver(
+    fields: t.List[Field], ids: t.List[ImmutableDict]
+):
     def get_field(field: Field, p: dict):
-        if field.name == 'sku':
-            return p['sku']
-        elif field.name == 'package':
-            return p['package']
-        elif field.name == 'reason':
-            return p['reason']
-        elif field.name == '_createdBy':
-            return p['created_by']
+        if field.name == "sku":
+            return p["sku"]
+        elif field.name == "package":
+            return p["package"]
+        elif field.name == "reason":
+            return p["reason"]
+        elif field.name == "_createdBy":
+            return p["created_by"]
 
         raise ValueError(f"Unknown field {field.name}")
 
     for id_ in ids:
-        if deprecated_product['sku'] == id_['sku'] and deprecated_product['package'] == id_['package']:
+        if (
+            deprecated_product["sku"] == id_["sku"]
+            and deprecated_product["package"] == id_["package"]
+        ):
             p = deprecated_product
             yield [get_field(field, p) for field in fields]
         else:
@@ -313,9 +327,9 @@ def deprecated_product_fields_resolver(fields: t.List[Field], ids: t.List[Immuta
 @listify
 def inventory_fields_resolver(fields: t.List[Field], ids: t.List[str]):
     def get_field(field: Field, id_):
-        if field.name == 'id':
-            if inventory['id'] == id_:
-                return inventory['id']
+        if field.name == "id":
+            if inventory["id"] == id_:
+                return inventory["id"]
 
         raise ValueError(f"Unknown field {field.name}")
 
@@ -330,15 +344,15 @@ def link_deprecated_product():
 @listify
 def link_inventory_products(ids):
     for id_ in ids:
-        if id_ == inventory['id']:
+        if id_ == inventory["id"]:
             yield [
-                ImmutableDict({'sku': p['sku'], 'package': p['package']})
-                for p in inventory['deprecatedProducts']
+                ImmutableDict({"sku": p["sku"], "package": p["package"]})
+                for p in inventory["deprecatedProducts"]
             ]
 
 
 @schema_directive(
-    name='custom',
+    name="custom",
     locations=[Location.OBJECT],
     compose=True,
     import_url="https://myspecs.dev/myCustomDirective/v1.0",
@@ -347,83 +361,193 @@ class Custom(FederationSchemaDirective):
     ...
 
 
-QUERY_GRAPH = Graph([
-    Node('User', [
-        Field(
-            'averageProductsCreatedPerYear',
-            Optional[Integer],
-            user_fields_resolver,
+QUERY_GRAPH = Graph(
+    [
+        Node(
+            "User",
+            [
+                Field(
+                    "averageProductsCreatedPerYear",
+                    Optional[Integer],
+                    user_fields_resolver,
+                    directives=[
+                        Requires("totalProductsCreated yearsOfEmployment")
+                    ],
+                ),
+                Field(
+                    "email", ID, user_fields_resolver, directives=[External()]
+                ),
+                Field(
+                    "name",
+                    Optional[String],
+                    user_fields_resolver,
+                    directives=[Override("users")],
+                ),
+                Field(
+                    "totalProductsCreated",
+                    Optional[Integer],
+                    user_fields_resolver,
+                    directives=[External()],
+                ),
+                Field(
+                    "yearsOfEmployment",
+                    Integer,
+                    user_fields_resolver,
+                    directives=[External()],
+                ),
+            ],
+            directives=[Key("email"), Extends()],
+        ),
+        Node(
+            "Product",
+            [
+                Field("id", ID, product_fields_resolver),
+                Field("sku", Optional[String], product_fields_resolver),
+                Field("package", Optional[String], product_fields_resolver),
+                Field(
+                    "notes",
+                    Optional[String],
+                    product_fields_resolver,
+                    directives=[Tag("internal")],
+                ),
+                Field(
+                    "variation",
+                    Optional[TypeRef["ProductVariation"]],
+                    product_fields_resolver,
+                ),
+                Field("_createdBy", Optional[String], product_fields_resolver),
+                Link(
+                    "dimensions",
+                    Optional[TypeRef["ProductDimension"]],
+                    link_product_dimensions,
+                    requires="id",
+                ),
+                Link(
+                    "createdBy",
+                    Optional[TypeRef["User"]],
+                    direct_link,
+                    requires="_createdBy",
+                    directives=[Provides("totalProductsCreated")],
+                ),
+                Link(
+                    "research",
+                    Sequence[TypeRef["ProductResearch"]],
+                    link_product_research,
+                    requires="id",
+                ),
+            ],
             directives=[
-                Requires("totalProductsCreated yearsOfEmployment")
-            ])
-        ,
-        Field('email', ID, user_fields_resolver, directives=[External()]),
-        Field('name', Optional[String], user_fields_resolver, directives=[Override("users")]),
-        Field('totalProductsCreated', Optional[Integer], user_fields_resolver, directives=[External()]),
-        Field('yearsOfEmployment', Integer, user_fields_resolver, directives=[External()]),
-    ], directives=[Key('email'), Extends()]),
-    Node('Product', [
-        Field('id', ID, product_fields_resolver),
-        Field('sku', Optional[String], product_fields_resolver),
-        Field('package', Optional[String], product_fields_resolver),
-        Field('notes', Optional[String], product_fields_resolver, directives=[Tag("internal")]),
-        Field('variation', Optional[TypeRef['ProductVariation']], product_fields_resolver),
-        Field('_createdBy', Optional[String], product_fields_resolver),
-        Link('dimensions', Optional[TypeRef['ProductDimension']], link_product_dimensions, requires='id'),
-        Link('createdBy', Optional[TypeRef['User']], direct_link, requires='_createdBy', directives=[Provides("totalProductsCreated")]),
-        Link('research', Sequence[TypeRef['ProductResearch']], link_product_research, requires='id'),
-    ], directives=[Custom(), Key('id'), Key("sku package"), Key("sku variation { id }")]),
-    Node('ProductDimension', [
-        Field('size', Optional[String], product_dimension_fields_resolver),
-        Field('weight', Optional[Float], product_dimension_fields_resolver),
-        Field('unit', Optional[String], product_dimension_fields_resolver, directives=[Inaccessible()]),
-    ], directives=[Shareable()]),
-    Node('ProductResearch', [
-        Field('study', TypeRef['CaseStudy'], product_research_fields_resolver),
-        Field('outcome', Optional[String], product_research_fields_resolver),
-    ], directives=[Key('study { caseNumber }')]),
-    Node('DeprecatedProduct', [
-        Field('sku', String, deprecated_product_fields_resolver),
-        Field('package', String, deprecated_product_fields_resolver),
-        Field('reason', Optional[String], deprecated_product_fields_resolver),
-        Field('_createdBy', Optional[String], deprecated_product_fields_resolver),
-        Link('createdBy', Optional[TypeRef['User']], direct_link, requires='_createdBy'),
-    ], directives=[Key('sku package')]),
-    Node('Inventory', [
-        Field('id', ID, inventory_fields_resolver),
-        Link('deprecatedProducts', Sequence[TypeRef['DeprecatedProduct']], link_inventory_products, requires='id'),
-    ], directives=[InterfaceObject(), Key('id')]),
-    Root([
-        Link(
-            'product',
-            Optional[TypeRef['Product']],
-            direct_link_id,
-            requires=None,
-            options=[
-                Option('id', ID)
+                Custom(),
+                Key("id"),
+                Key("sku package"),
+                Key("sku variation { id }"),
             ],
         ),
-        Link(
-            'deprecatedProduct',
-            Optional[TypeRef['DeprecatedProduct']],
-            link_deprecated_product,
-            requires=None,
-            options=[
-                Option('sku', String),
-                Option('package', String),
+        Node(
+            "ProductDimension",
+            [
+                Field(
+                    "size", Optional[String], product_dimension_fields_resolver
+                ),
+                Field(
+                    "weight", Optional[Float], product_dimension_fields_resolver
+                ),
+                Field(
+                    "unit",
+                    Optional[String],
+                    product_dimension_fields_resolver,
+                    directives=[Inaccessible()],
+                ),
             ],
-            directives=[Deprecated("Use product query instead")]
-        )
-    ]),
-], data_types={
-    'ProductVariation': Record[{
-        'id': ID
-    }],
-    'CaseStudy': Record[{
-        'caseNumber': ID,
-        'description': Optional[String],
-    }],
-}, directives=[Custom])
+            directives=[Shareable()],
+        ),
+        Node(
+            "ProductResearch",
+            [
+                Field(
+                    "study",
+                    TypeRef["CaseStudy"],
+                    product_research_fields_resolver,
+                ),
+                Field(
+                    "outcome",
+                    Optional[String],
+                    product_research_fields_resolver,
+                ),
+            ],
+            directives=[Key("study { caseNumber }")],
+        ),
+        Node(
+            "DeprecatedProduct",
+            [
+                Field("sku", String, deprecated_product_fields_resolver),
+                Field("package", String, deprecated_product_fields_resolver),
+                Field(
+                    "reason",
+                    Optional[String],
+                    deprecated_product_fields_resolver,
+                ),
+                Field(
+                    "_createdBy",
+                    Optional[String],
+                    deprecated_product_fields_resolver,
+                ),
+                Link(
+                    "createdBy",
+                    Optional[TypeRef["User"]],
+                    direct_link,
+                    requires="_createdBy",
+                ),
+            ],
+            directives=[Key("sku package")],
+        ),
+        Node(
+            "Inventory",
+            [
+                Field("id", ID, inventory_fields_resolver),
+                Link(
+                    "deprecatedProducts",
+                    Sequence[TypeRef["DeprecatedProduct"]],
+                    link_inventory_products,
+                    requires="id",
+                ),
+            ],
+            directives=[InterfaceObject(), Key("id")],
+        ),
+        Root(
+            [
+                Link(
+                    "product",
+                    Optional[TypeRef["Product"]],
+                    direct_link_id,
+                    requires=None,
+                    options=[Option("id", ID)],
+                ),
+                Link(
+                    "deprecatedProduct",
+                    Optional[TypeRef["DeprecatedProduct"]],
+                    link_deprecated_product,
+                    requires=None,
+                    options=[
+                        Option("sku", String),
+                        Option("package", String),
+                    ],
+                    directives=[Deprecated("Use product query instead")],
+                ),
+            ]
+        ),
+    ],
+    data_types={
+        "ProductVariation": Record[{"id": ID}],
+        "CaseStudy": Record[
+            {
+                "caseNumber": ID,
+                "description": Optional[String],
+            }
+        ],
+    },
+    directives=[Custom],
+)
 
 
 app = Flask(__name__)
@@ -434,7 +558,7 @@ graphql_endpoint = FederatedGraphQLEndpoint(
 )
 
 
-@app.route('/graphql', methods={'POST'})
+@app.route("/graphql", methods={"POST"})
 def handle_graphql():
     data = request.get_json()
     result = graphql_endpoint.dispatch(data)
@@ -446,23 +570,24 @@ def main():
     logging.basicConfig(level=logging.DEBUG)
 
     setup_query_cache(size=128)
-    app.run(host='0.0.0.0', port=4001, debug=True)
+    app.run(host="0.0.0.0", port=4001, debug=True)
 
 
 def dump():
     from hiku.federation.sdl import print_sdl
+
     sdl = print_sdl(QUERY_GRAPH)
     with open("products.graphql", "w") as f:
         f.write(sdl)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     """
     Run server: python3 ./examples/federation-compatibility/server.py
     Dump schema: python3 ./examples/federation-compatibility/ dump
-    Federation Compatibility test: ./examples/federation-compatibility/run_compatibility_test.sh 
+    Federation Compatibility test: ./examples/federation-compatibility/run_compatibility_test.sh  # noqa
     """
-    if len(sys.argv) > 1 and sys.argv[1] == 'dump':
+    if len(sys.argv) > 1 and sys.argv[1] == "dump":
         dump()
         sys.exit(0)
 

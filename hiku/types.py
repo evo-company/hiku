@@ -9,7 +9,9 @@ class GenericMeta(type):
         return cls.__name__
 
     def __eq__(cls, other: t.Any) -> bool:
-        return cls.__class__ is other.__class__ and cls.__dict__ == other.__dict__
+        return (
+            cls.__class__ is other.__class__ and cls.__dict__ == other.__dict__
+        )
 
     def __ne__(cls, other: t.Any) -> bool:
         return not cls.__eq__(other)
@@ -196,7 +198,9 @@ class CallableMeta(TypingMeta):
         cls.__arg_types__ = [_maybe_typeref(typ) for typ in arg_types]
 
     def __cls_repr__(self) -> str:
-        return "{}[{}]".format(self.__name__, ", ".join(map(repr, self.__arg_types__)))
+        return "{}[{}]".format(
+            self.__name__, ", ".join(map(repr, self.__arg_types__))
+        )
 
     def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
         return visitor.visit_callable(cls)
@@ -334,12 +338,16 @@ class TypeVisitor(AbstractTypeVisitor):
 
 
 @t.overload
-def get_type(types: t.Dict[str, t.Type[Record]], typ: TypeRefMeta) -> t.Type[Record]:
+def get_type(
+    types: t.Dict[str, t.Type[Record]], typ: TypeRefMeta
+) -> t.Type[Record]:
     ...
 
 
 @t.overload
-def get_type(types: t.Dict[str, t.Type[Record]], typ: GenericMeta) -> GenericMeta:
+def get_type(
+    types: t.Dict[str, t.Type[Record]], typ: GenericMeta
+) -> GenericMeta:
     ...
 
 

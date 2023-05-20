@@ -1,4 +1,4 @@
-from hiku.directives import DirectiveField, Location, SchemaDirective, schema_directive
+from hiku.directives import SchemaDirectiveField, Location, SchemaDirective, schema_directive
 from hiku.graph import Field, Graph, Link, Node, Root, apply
 from hiku.introspection.graphql import GraphQLIntrospection
 from hiku.introspection.types import NON_NULL, SCALAR
@@ -12,7 +12,7 @@ def test_directives_has_info():
         description='Custom directive'
     )
     class Custom(SchemaDirective):
-        from_: str = DirectiveField(
+        from_: str = SchemaDirectiveField(
             name='from',
             type_ident=NON_NULL(SCALAR('String'))
         )
@@ -61,7 +61,7 @@ def test_custom_graph_directives():
         locations=[Location.FIELD_DEFINITION]
     )
     class Custom(SchemaDirective):
-        text: str = DirectiveField(
+        text: str = SchemaDirectiveField(
             name='text',
             type_ident=NON_NULL(SCALAR('String'))
         )
@@ -79,4 +79,4 @@ def test_custom_graph_directives():
         GraphQLIntrospection(GRAPH),
     ])
 
-    assert GRAPH.directives == [Custom]
+    assert GRAPH.directives == (Custom,)

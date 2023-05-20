@@ -92,10 +92,12 @@ class GraphValidator(GraphVisitor):
         return "".join(self._name_formatter.visit(i) for i in path)
 
     def _validate_deprecated_duplicates(self, obj: Union[Field, Link]) -> None:
-        deprecated_count = sum((1 for d in obj.directives if isinstance(d, Deprecated)))
+        deprecated_count = sum(
+            (1 for d in obj.directives if isinstance(d, Deprecated))
+        )
         if deprecated_count > 1:
             self.errors.report(
-                'Deprecated directive must be used only once for "{}", found {}'.format(
+                'Deprecated directive must be used only once for "{}", found {}'.format(  # noqa: E501
                     self._format_path(obj), deprecated_count
                 )
             )
@@ -110,7 +112,9 @@ class GraphValidator(GraphVisitor):
     def visit_link(self, obj: Link) -> None:
         assert isinstance(self.ctx, Node)
 
-        invalid = [f for f in obj.options if not isinstance(f, self._link_accept_types)]
+        invalid = [
+            f for f in obj.options if not isinstance(f, self._link_accept_types)
+        ]
         if invalid:
             self.errors.report(
                 'Invalid types provided as link "{}" options: {}'.format(
@@ -132,13 +136,15 @@ class GraphValidator(GraphVisitor):
 
         if obj.requires is not None:
             requires = (
-                obj.requires if isinstance(obj.requires, list) else [obj.requires]
+                obj.requires
+                if isinstance(obj.requires, list)
+                else [obj.requires]
             )
 
             for r in requires:
                 if r not in self.ctx.fields_map:
                     self.errors.report(
-                        'Link "{}" requires missing field "{}" in the "{}" node'.format(
+                        'Link "{}" requires missing field "{}" in the "{}" node'.format(  # noqa: E501
                             obj.name, r, self._format_path()
                         )
                     )
@@ -147,7 +153,9 @@ class GraphValidator(GraphVisitor):
 
     def visit_node(self, obj: Node) -> None:
         node_name = obj.name or "root"
-        invalid = [f for f in obj.fields if not isinstance(f, self._node_accept_types)]
+        invalid = [
+            f for f in obj.fields if not isinstance(f, self._node_accept_types)
+        ]
         if invalid:
             self.errors.report(
                 'Node can not contain these types: {} in node "{}"'.format(
@@ -178,7 +186,9 @@ class GraphValidator(GraphVisitor):
         self.visit_graph_items(obj.items)
 
     def visit_graph_items(self, items: List[Node]) -> None:
-        invalid = [f for f in items if not isinstance(f, self._graph_accept_types)]
+        invalid = [
+            f for f in items if not isinstance(f, self._graph_accept_types)
+        ]
         if invalid:
             self.errors.report(
                 "Graph can not contain these types: {}".format(
@@ -196,7 +206,9 @@ class GraphValidator(GraphVisitor):
             if item.name is not None:
                 self.visit(item)
 
-        duplicates = self._get_duplicates(e.name for e in items if e.name is not None)
+        duplicates = self._get_duplicates(
+            e.name for e in items if e.name is not None
+        )
         if duplicates:
             self.errors.report(
                 "Duplicated nodes found in the graph: {}".format(

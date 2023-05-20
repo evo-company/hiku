@@ -49,14 +49,19 @@ def _create_result_proc(
     def result_proc() -> List[List]:
         sq_result = engine_query.result()
         return [
-            [proc(this, sq_result, *opt_args) for proc, opt_args in zip(procs, options)]
+            [
+                proc(this, sq_result, *opt_args)
+                for proc, opt_args in zip(procs, options)
+            ]
             for this in sq_result[THIS]
         ]
 
     return result_proc
 
 
-def _yield_options(query_field: QueryField, graph_field: Field) -> Iterator[Any]:
+def _yield_options(
+    query_field: QueryField, graph_field: Field
+) -> Iterator[Any]:
     options = query_field.options or {}
     for option in graph_field.options:
         value = options.get(option.name, option.default)
@@ -93,14 +98,16 @@ class BoundExpr:
 
         option_names_set = set(opt.name for opt in field.options)
         reqs = RequirementsExtractor.extract(self.sub_graph.types, expr)
-        reqs = query.Node([f for f in reqs.fields if f.name not in option_names_set])
+        reqs = query.Node(
+            [f for f in reqs.fields if f.name not in option_names_set]
+        )
 
         option_names = [opt.name for opt in field.options]
         code = ExpressionCompiler.compile_lambda_expr(expr, option_names)
         proc = partial(
             eval(compile(code, "<expr>", "eval")),
-            {f.__def_name__: f.__def_body__ for f in funcs},
-        )  # type: ignore[attr-defined] # noqa: E501
+            {f.__def_name__: f.__def_body__ for f in funcs},  # type: ignore[attr-defined] # noqa: E501
+        )
         field.func = CheckedExpr(self.sub_graph, expr, reqs, proc)  # type: ignore[assignment] # noqa: E501
 
     def __call__(self, *args: Any, **kwargs: Any) -> NoReturn:
@@ -158,7 +165,9 @@ class SubGraph:
         option_values = []
         for gf, qf in fields:
             if gf.options and qf.options:
-                option_values.append([qf.options[opt.name] for opt in gf.options])
+                option_values.append(
+                    [qf.options[opt.name] for opt in gf.options]
+                )
             else:
                 option_values.append([])
 

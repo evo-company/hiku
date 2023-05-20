@@ -48,7 +48,8 @@ from hiku.types import (
 )
 
 _BUILTIN_DIRECTIVES_NAMES = {
-    directive.__directive_info__.name for directive in _BUILTIN_DIRECTIVES
+    directive.__directive_info__.name  # type: ignore[union-attr]
+    for directive in _BUILTIN_DIRECTIVES
 }
 
 
@@ -80,7 +81,7 @@ def _non_null_type(val: t.Union[str, ast.Node]) -> ast.NonNullTypeNode:
 
 def _encode_type(
     value: t.Any, input_type: bool = False
-) -> t.Union[ast.NonNullTypeNode, ast.NameNode,]:
+) -> t.Union[ast.NonNullTypeNode, ast.NameNode]:
     def _encode(
         val: t.Optional[GenericMeta],
     ) -> t.Union[str, t.Tuple, ast.ListTypeNode]:
@@ -99,7 +100,9 @@ def _encode_type(
         elif isinstance(val, BooleanMeta):
             return "Boolean"
         elif isinstance(val, SequenceMeta):
-            return ast.ListTypeNode(type=_encode_type(val.__item_type__, input_type))
+            return ast.ListTypeNode(
+                type=_encode_type(val.__item_type__, input_type)
+            )
         elif isinstance(val, AnyMeta):
             return "Any"
         elif isinstance(val, MappingMeta):
@@ -141,7 +144,9 @@ def _encode_default_value(value: t.Any) -> Optional[ast.ValueNode]:
 
     if isinstance(value, Iterable) and not isinstance(value, str):
         maybe_value_nodes = (_encode_default_value(item) for item in value)
-        value_nodes: t.List[ast.ValueNode] = list(filter(None, maybe_value_nodes))
+        value_nodes: t.List[ast.ValueNode] = list(
+            filter(None, maybe_value_nodes)
+        )
         return ast.ListValueNode(values=value_nodes)
 
     raise TypeError(f"Cannot convert value to AST: {inspect(value)}.")
@@ -153,18 +158,21 @@ def schema_to_graphql_directive(
 ) -> ast.DirectiveNode:
     skip_fields = skip_fields or []
 
+    info = directive.__directive_info__  # type: ignore[attr-defined]
     arguments = []
-    for arg in directive.__directive_info__.args:
+    for arg in info.args:
         if arg.field_name in skip_fields:
             continue
 
-        arguments.append(ast.ArgumentNode(
-            name=_name(arg.field_name),
-            value=_encode_default_value(getattr(directive, arg.name)),
-        ))
+        arguments.append(
+            ast.ArgumentNode(
+                name=_name(arg.field_name),
+                value=_encode_default_value(getattr(directive, arg.name)),
+            )
+        )
 
     return ast.DirectiveNode(
-        name=_name(directive.__directive_info__.name),
+        name=_name(info.name),
         arguments=arguments,
     )
 
@@ -185,7 +193,9 @@ class Exporter(GraphVisitor):
 
     def export_data_types(
         self,
-    ) -> t.Union[ast.ObjectTypeDefinitionNode, ast.InputObjectTypeDefinitionNode]:
+    ) -> t.Iterator[
+        t.Union[ast.ObjectTypeDefinitionNode, ast.InputObjectTypeDefinitionNode]
+    ]:
         for type_name, type_ in self.graph.data_types.items():
             yield ast.ObjectTypeDefinitionNode(
                 name=_name(type_name),
@@ -209,35 +219,37 @@ class Exporter(GraphVisitor):
             )
 
     def visit_graph(self, graph: Graph) -> List[ast.DefinitionNode]:
-        """List of ObjectTypeDefinitionNode and ObjectTypeExtensionNode"""
-        return list(
-            filter(
-                None,
-                [
-                    self.get_schema_node(),
-                    *self.get_custom_directives(),
-                    *self.export_data_types(),
-                    *[self.visit(item) for item in graph.items],
-                    self.get_any_scalar(),
-                    self.get_entity_union(),
-                    self.get_service_type(),
-                ],
-            )
-        )
+        nodes: t.List[ast.DefinitionNode] = []
+
+        for node in [
+            self.get_schema_node(),
+            *self.get_custom_directives(),
+            *self.export_data_types(),
+            *[self.visit(item) for item in graph.items],
+            self.get_any_scalar(),
+            self.get_entity_union(),
+            self.get_service_type(),
+        ]:
+            if node:
+                nodes.append(node)
+
+        return nodes
 
     def _iter_directives(self) -> t.Iterator[SchemaDirective]:
         """Return nodes + fields directives"""
         visited = set()
         for node in self.graph.nodes:
             for directive in node.directives:
-                if directive.__directive_info__.name not in visited:
-                    visited.add(directive.__directive_info__.name)
+                info = directive.__directive_info__
+                if info.name not in visited:
+                    visited.add(info.name)
                     yield directive
 
                 for field in node.fields:
                     for directive in field.directives:
-                        if directive.__directive_info__.name not in visited:
-                            visited.add(directive.__directive_info__.name)
+                        info = directive.__directive_info__
+                        if info.name not in visited:
+                            visited.add(info.name)
                             yield directive
 
     def get_schema_node(self) -> t.Optional[ast.SchemaExtensionNode]:
@@ -246,16 +258,21 @@ class Exporter(GraphVisitor):
 
         directives_in_use: List[str] = []
 
-        for d in self._iter_directives():
-            if isinstance(d, FederationSchemaDirective) and not d.__directive_info__.compose_options:
-                directives_in_use.append(d.__directive_info__.name)
+        for directive in self._iter_directives():
+            info = directive.__directive_info__  # type: ignore[attr-defined]
+            if (
+                isinstance(directive, FederationSchemaDirective)
+                and not info.compose_options
+            ):
+                directives_in_use.append(info.name)
 
-        compose_directives_in_use: List[FederationSchemaDirective] = []
+        compose_directives_in_use: List[t.Type[FederationSchemaDirective]] = []
 
-        for d in self.graph.directives:
-            if issubclass(d, FederationSchemaDirective):
-                if d.__directive_info__.compose_options:
-                    compose_directives_in_use.append(d)
+        for custom_directive in self.graph.directives:
+            if issubclass(custom_directive, FederationSchemaDirective):
+                info = custom_directive.__directive_info__  # type: ignore
+                if info.compose_options:
+                    compose_directives_in_use.append(custom_directive)
 
         if compose_directives_in_use:
             directives_in_use.append("composeDirective")
@@ -263,30 +280,41 @@ class Exporter(GraphVisitor):
         schema_directives = []
 
         link_default = LinkDirective(
-            url="https://specs.apollo.dev/federation/v2.3",
-            import_=[f"@{d}" for d in directives_in_use],
+            "https://specs.apollo.dev/federation/v2.3",
+            None,
+            None,
+            [f"@{d}" for d in directives_in_use],
         )
 
         schema_directives.append(
             schema_to_graphql_directive(link_default, skip_fields=["as", "for"])
         )
 
-        for d in compose_directives_in_use:
-            directive_name = d.__directive_info__.name
+        for compose_directive in compose_directives_in_use:
+            info = compose_directive.__directive_info__  # type: ignore[attr-defined]  # noqa: E501
+            import_url = info.compose_options.import_url
 
-            link_custom = LinkDirective(
-                url=d.__directive_info__.compose_options.import_url,
-                import_=[f"@{directive_name}"],
+            # import url is required by Apollo Federation, but since it is not
+            # used in any validations we can provide a default url.
+            if import_url is None:
+                import_url = (
+                    f"https://directives.hiku.evo.company/{info.name}/v0.1"
+                )
+
+            schema_directives.append(
+                schema_to_graphql_directive(
+                    LinkDirective(
+                        import_url,
+                        None,
+                        None,
+                        [f"@{info.name}"],
+                    ),
+                    skip_fields=["as", "for"],
+                )
             )
 
             schema_directives.append(
-                schema_to_graphql_directive(link_custom, skip_fields=["as", "for"])
-            )
-
-            compose = ComposeDirective(f"@{directive_name}")
-
-            schema_directives.append(
-                schema_to_graphql_directive(compose)
+                schema_to_graphql_directive(ComposeDirective(f"@{info.name}"))
             )
 
         return ast.SchemaExtensionNode(
@@ -297,15 +325,15 @@ class Exporter(GraphVisitor):
     def get_custom_directives(self) -> t.List[ast.DirectiveDefinitionNode]:
         directives = []
         for d in self.graph.directives:
-            directive_info = d.__directive_info__
+            info = d.__directive_info__  # type: ignore
             directives.append(
                 ast.DirectiveDefinitionNode(
                     description=(
-                        _encode_default_value(directive_info.description)
-                        if directive_info.description
+                        _encode_default_value(info.description)
+                        if info.description
                         else None
                     ),
-                    name=_name(directive_info.name),
+                    name=_name(info.name),
                     arguments=[
                         ast.InputValueDefinitionNode(
                             name=_name(arg.field_name),
@@ -315,12 +343,14 @@ class Exporter(GraphVisitor):
                                 else None
                             ),
                             type=_encode_type(arg.type_ident),
-                            default_value=_encode_default_value(arg.default_value),
+                            default_value=_encode_default_value(
+                                arg.default_value
+                            ),
                         )
-                        for arg in directive_info.args
+                        for arg in info.args
                     ],
-                    repeatable=directive_info.repeatable,
-                    locations=[_name(loc.value) for loc in directive_info.locations],
+                    repeatable=info.repeatable,
+                    locations=[_name(loc.value) for loc in info.locations],
                 )
             )
         return directives
@@ -332,7 +362,10 @@ class Exporter(GraphVisitor):
         """Expose _Entity union type if there are any entity types
         marked with @key directive
         """
-        types = [ast.NamedTypeNode(name=_name(typ)) for typ in self.get_entity_types()]
+        types = [
+            ast.NamedTypeNode(name=_name(typ))
+            for typ in self.get_entity_types()
+        ]
         if not types:
             return None
 
@@ -368,9 +401,12 @@ class Exporter(GraphVisitor):
 
     def visit_node(
         self, obj: Node
-    ) -> t.Union[ast.ObjectTypeDefinitionNode, ast.ObjectTypeExtensionNode,]:
+    ) -> t.Union[ast.ObjectTypeDefinitionNode, ast.ObjectTypeExtensionNode]:
         fields = [self.visit(field) for field in obj.fields]
-        _Node = ast.ObjectTypeDefinitionNode
+        _Node: t.Union[
+            t.Type[ast.ObjectTypeDefinitionNode],
+            t.Type[ast.ObjectTypeExtensionNode],
+        ] = ast.ObjectTypeDefinitionNode
         directives = []
         for directive in obj.directives:
             if isinstance(directive, Extends):
@@ -398,19 +434,24 @@ class Exporter(GraphVisitor):
             default_value=_encode_default_value(obj.default),
         )
 
-    def visit_directive(self, directive: SchemaDirective) -> ast.DirectiveNode:
-        if isinstance(directive, Key) and not self.federation_version == 1:
+    def visit_schema_directive(
+        self, directive: SchemaDirective
+    ) -> ast.DirectiveNode:
+        if isinstance(directive, Key) and self.federation_version == 1:
             # To support Apollo Federation v1, we need to drop resolvable field
             # from @key directive usage
-            return schema_to_graphql_directive(directive, skip_fields=['resolvable'])
+            return schema_to_graphql_directive(
+                directive, skip_fields=["resolvable"]
+            )
 
         return schema_to_graphql_directive(directive)
 
 
 def get_ast(graph: Graph, federation_version: int) -> ast.DocumentNode:
     graph = _StripGraph().visit(graph)
-    return ast.DocumentNode(definitions=Exporter(graph, federation_version).visit(graph))
-
+    return ast.DocumentNode(
+        definitions=Exporter(graph, federation_version).visit(graph)
+    )
 
 
 class _StripGraph(GraphTransformer):
@@ -446,6 +487,8 @@ class _StripGraph(GraphTransformer):
         )
 
 
-def print_sdl(graph: Graph, federation_version: int = DEFAULT_FEDERATION_VERSION) -> str:
+def print_sdl(
+    graph: Graph, federation_version: int = DEFAULT_FEDERATION_VERSION
+) -> str:
     """Print graphql AST into a string"""
     return print_ast(get_ast(graph, federation_version))
