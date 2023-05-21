@@ -24,3 +24,4 @@ supergraph-config.yaml
 supergraph.graphql
 results.md
 htmlcov
+.DS_Store

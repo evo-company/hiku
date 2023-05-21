@@ -12,7 +12,7 @@ User's Guide
   asyncio
   graphql
   protobuf
-  schema_directives
+  directives
   federation
   telemetry
   caching

@@ -12,7 +12,7 @@ There a two types of directions in graphql:
 - Schema directives - used to annotate schema types, fields, etc.
 
 Operation directives
---------------------
+~~~~~~~~~~~~~~~~~~~~
 
 Operation directives in GraphQL are utilized to alter the evaluation of schema elements or operations.
 These operation directives can be incorporated into any GraphQL operation, including queries, subscriptions, or mutations.
@@ -22,7 +22,7 @@ For example in graphql you can use
 `@include` directive to include a field only if a given argument is true.
 
 Built-in operation directives
------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Hiku comes with a few built-in operation directives:
 
@@ -31,7 +31,7 @@ Hiku comes with a few built-in operation directives:
 - `@cached` - caches a field for a given amount of time
 
 Locations for Operation Directives
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Operation directives must be used only in specific locations within the query.
 These locations must be included in the directive's definition. In Strawberry, the location is defined in the directive function's parameter locations.
@@ -42,7 +42,7 @@ These locations must be included in the directive's definition. In Strawberry, t
    @directive(locations=[Location.FIELD])
 
 Operation Directives Locations
----------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following list shows all allowed locations for operation directives:
 
@@ -56,12 +56,12 @@ The following list shows all allowed locations for operation directives:
 
 
 Operation schema directives
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Hiku does not allows create custom operation directives yet, but they are on our roadmap.
 
 Schema directives
------------------
+~~~~~~~~~~~~~~~~~
 
 Hiku supports schema directives, which are directives that don't change the behavior of your GraphQL schema
 but instead provide a way to add additional metadata to it.
@@ -69,13 +69,13 @@ but instead provide a way to add additional metadata to it.
 .. note:: Apollo Federation integration is based on schema directives.
 
 Built-in schema directives
---------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - `@deprecated` - marks a field as deprecated
 
-Example of `@deprecated` directive in graphql`
+Example of `@deprecated` directive in graphql
 
-.. code-block:: graphql
+.. code-block::
 
     type Order
         id: ID!
@@ -101,7 +101,7 @@ In Hiku you can use `@deprecated` directive like this:
     ])
 
 Custom schema directives
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 You can also define your own directives (reimplementation of `Deprecated` directive).
 
