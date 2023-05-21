@@ -48,8 +48,7 @@ from hiku.types import (
 )
 
 _BUILTIN_DIRECTIVES_NAMES = {
-    directive.__directive_info__.name
-    for directive in _BUILTIN_DIRECTIVES
+    directive.__directive_info__.name for directive in _BUILTIN_DIRECTIVES
 }
 
 

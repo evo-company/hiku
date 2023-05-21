@@ -105,7 +105,11 @@ class GraphValidator(GraphVisitor):
             )
 
     def visit_option(self, obj: Option) -> None:
-        if isinstance(obj.type, GenericMeta) and not isinstance(obj.type, OptionalMeta) and obj.default is None:
+        if (
+            isinstance(obj.type, GenericMeta)
+            and not isinstance(obj.type, OptionalMeta)
+            and obj.default is None
+        ):
             self.errors.report(
                 'Non-optional option "{}" must have a default value'.format(
                     self._format_path(obj)
@@ -114,7 +118,9 @@ class GraphValidator(GraphVisitor):
 
     def visit_field(self, obj: Field) -> None:
         invalid = [
-            f for f in obj.options if not isinstance(f, self._field_accept_types)
+            f
+            for f in obj.options
+            if not isinstance(f, self._field_accept_types)
         ]
         if invalid:
             self.errors.report(
