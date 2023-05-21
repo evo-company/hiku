@@ -730,9 +730,6 @@ class ValidateGraph(GraphVisitor):
         super(ValidateGraph, self).visit_link(obj)
 
     def visit_option(self, obj: Option) -> None:
-        """TODO(mkind): validate that default=None can only be used with
-        Optional type
-        """
         if not self._name_re.match(obj.name):
             self._add_error(
                 obj.name, "Invalid option name: {}".format(obj.name)
