@@ -157,7 +157,7 @@ class Field(FieldBase):
     @cached_property
     def directives_map(self) -> OrderedDict:
         return OrderedDict(
-            (d.__directive_info__.name, d) for d in self.directives  # type: ignore  # noqa: E501
+            (d.__directive_info__.name, d) for d in self.directives
         )
 
     def accept(self, visitor: "QueryVisitor") -> t.Any:
@@ -193,7 +193,7 @@ class Link(FieldBase):
     @cached_property
     def directives_map(self) -> OrderedDict:
         return OrderedDict(
-            (d.__directive_info__.name, d) for d in self.directives  # type: ignore  # noqa: E501
+            (d.__directive_info__.name, d) for d in self.directives
         )
 
     def accept(self, visitor: "QueryVisitor") -> t.Any:

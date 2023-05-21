@@ -1,5 +1,7 @@
 Directives
-=================
+==========
+
+.. _directives-doc:
 
 Graphql supports concept of directives. Directives are used to annotate various parts of schema.
 For example in graphql schema you can use `@deprecated` directive to mark a field as deprecated.

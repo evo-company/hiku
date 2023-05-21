@@ -48,7 +48,7 @@ from hiku.types import (
 )
 
 _BUILTIN_DIRECTIVES_NAMES = {
-    directive.__directive_info__.name  # type: ignore[union-attr]
+    directive.__directive_info__.name
     for directive in _BUILTIN_DIRECTIVES
 }
 
@@ -158,7 +158,7 @@ def schema_to_graphql_directive(
 ) -> ast.DirectiveNode:
     skip_fields = skip_fields or []
 
-    info = directive.__directive_info__  # type: ignore[attr-defined]
+    info = directive.__directive_info__
     arguments = []
     for arg in info.args:
         if arg.field_name in skip_fields:
@@ -259,7 +259,7 @@ class Exporter(GraphVisitor):
         directives_in_use: List[str] = []
 
         for directive in self._iter_directives():
-            info = directive.__directive_info__  # type: ignore[attr-defined]
+            info = directive.__directive_info__
             if (
                 isinstance(directive, FederationSchemaDirective)
                 and not info.compose_options
@@ -270,7 +270,7 @@ class Exporter(GraphVisitor):
 
         for custom_directive in self.graph.directives:
             if issubclass(custom_directive, FederationSchemaDirective):
-                info = custom_directive.__directive_info__  # type: ignore
+                info = custom_directive.__directive_info__
                 if info.compose_options:
                     compose_directives_in_use.append(custom_directive)
 
@@ -291,7 +291,7 @@ class Exporter(GraphVisitor):
         )
 
         for compose_directive in compose_directives_in_use:
-            info = compose_directive.__directive_info__  # type: ignore[attr-defined]  # noqa: E501
+            info = compose_directive.__directive_info__
             import_url = info.compose_options.import_url
 
             # import url is required by Apollo Federation, but since it is not
@@ -325,7 +325,7 @@ class Exporter(GraphVisitor):
     def get_custom_directives(self) -> t.List[ast.DirectiveDefinitionNode]:
         directives = []
         for d in self.graph.directives:
-            info = d.__directive_info__  # type: ignore
+            info = d.__directive_info__
             directives.append(
                 ast.DirectiveDefinitionNode(
                     description=(

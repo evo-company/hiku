@@ -103,7 +103,7 @@ class SchemaInfo:
     @cached_property
     def directives_map(self) -> OrderedDict:
         return OrderedDict(
-            (d.__directive_info__.name, d) for d in self.directives  # type: ignore  # noqa: E501
+            (d.__directive_info__.name, d) for d in self.directives
         )
 
 
@@ -251,7 +251,7 @@ def root_schema_mutation_type(
 
 def root_schema_directives(schema: SchemaInfo) -> t.List[DIRECTIVE]:  # type: ignore[valid-type]  # noqa: E501
     return [
-        DIRECTIVE(directive.__directive_info__.name)  # type: ignore[union-attr]
+        DIRECTIVE(directive.__directive_info__.name)
         for directive in schema.directives
     ]
 
@@ -737,6 +737,7 @@ class ValidateGraph(GraphVisitor):
             self._add_error(
                 obj.name, "Invalid option name: {}".format(obj.name)
             )
+
         super(ValidateGraph, self).visit_option(obj)
 
 

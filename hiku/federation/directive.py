@@ -54,7 +54,7 @@ def schema_directive(
 
         cls = wrap_dataclass(cls)  # type: ignore[arg-type, assignment]
         fields = get_fields(cls, SchemaDirectiveField)  # type: ignore[arg-type]
-        cls.__directive_info__ = FederationSchemaDirectiveInfo(  # type: ignore[attr-defined]  # noqa: E501
+        cls.__directive_info__ = FederationSchemaDirectiveInfo(
             name=name,
             locations=locations,
             args=fields,

@@ -66,7 +66,7 @@ if TYPE_CHECKING:
     from .readers.graphql import Operation
 
 
-NodePath = Tuple[str, ...]
+NodePath = Tuple[Optional[str], ...]
 
 
 def _yield_options(
@@ -574,7 +574,7 @@ class Query(Workflow):
         query: QueryNode,
         ids: Any,
     ) -> None:
-        path = path + (node.name,)  # type: ignore
+        path = path + (node.name,)
         self._path_callback[path] = lambda: self._untrack(path)
 
         if query.ordered:

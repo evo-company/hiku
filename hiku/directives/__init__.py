@@ -113,12 +113,12 @@ class DirectiveInfo:
 class Directive:
     """Base class for all operation directives."""
 
-    # __directive_info__: t.Any  # DirectiveInfo
+    __directive_info__: t.Any  # DirectiveInfo
 
     @classmethod
     def args_map(cls) -> OrderedDict:
         return OrderedDict(
-            (arg.name, arg) for arg in cls.__directive_info__.args  # type: ignore[attr-defined]  # noqa: E501
+            (arg.name, arg) for arg in cls.__directive_info__.args
         )
 
     def accept(self, visitor: t.Any) -> t.Any:
@@ -295,12 +295,12 @@ def schema_directive(
 class SchemaDirective:
     """Base class for all schema directives."""
 
-    # __directive_info__: t.Any  # SchemaDirectiveInfo
+    __directive_info__: t.Any  # SchemaDirectiveInfo
 
     @classmethod
     def args_map(cls) -> OrderedDict:
         return OrderedDict(
-            (arg.name, arg) for arg in cls.__directive_info__.args  # type: ignore[attr-defined]  # noqa: E501
+            (arg.name, arg) for arg in cls.__directive_info__.args
         )
 
     def accept(self, visitor: t.Any) -> t.Any:
