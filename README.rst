@@ -18,6 +18,17 @@ Bug fixes and new features are frequently published via release candidates:
 
   $ pip3 install --upgrade --pre hiku
 
+Optional dependencies
+~~~~~~~~~~~~~~~~~~~~~
+
+* `graphql-core`_ - for GraphQL support
+* `protobuf`_ - for Protobuf support
+* `sqlalchemy`_ - for SQLAlchemy support as a data-source
+* `aiopg`_ - for async PostgreSQL support with `aiopg`
+* `asyncpg`_ - for async PostgreSQL support with `asyncpg`
+* `prometheus-client`_ - for Prometheus metrics support
+
+
 Highlights
 ~~~~~~~~~~
 
