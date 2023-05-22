@@ -3,9 +3,9 @@ import logging
 from flask import Flask, request, jsonify
 
 from hiku.federation.directive import (
+    Extends,
     Key,
     External,
-    Extends,
 )
 from hiku.federation.endpoint import FederatedGraphQLEndpoint
 from hiku.federation.engine import Engine
@@ -27,6 +27,7 @@ from hiku.types import (
 )
 from hiku.executors.sync import SyncExecutor
 from hiku.utils import listify
+
 
 log = logging.getLogger(__name__)
 
@@ -130,7 +131,7 @@ QUERY_GRAPH = Graph([
 app = Flask(__name__)
 
 graphql_endpoint = FederatedGraphQLEndpoint(
-    Engine(SyncExecutor(), federation_version=1),
+    Engine(SyncExecutor()),
     QUERY_GRAPH,
 )
 
@@ -145,9 +146,14 @@ def handle_graphql():
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
+
     setup_query_cache(size=128)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=4001, debug=True)
 
 
 if __name__ == '__main__':
+    """
+    Run server: python3 ./examples/graphql_federation_v2.py
+    """
+
     main()

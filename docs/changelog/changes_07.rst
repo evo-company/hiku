@@ -8,7 +8,7 @@ Changes in 0.7
   - Added support for Python 3.10
   - Added support for `Apollo Federation (v1) <https://www.apollographql.com/docs/federation/v1/>`_
   - [internal] Refactored introspection directives
-  - Added graph directives support
+  - Added graph schema directives support
 
     - Added ``directives`` argument to :py:class:`hiku.graph.Field`
     - Added ``directives`` argument to :py:class:`hiku.graph.Link`
@@ -35,8 +35,12 @@ Changes in 0.7
   - Added hints when failing on unhashable return values
   - Migrated to ``pdm`` package manager
   - Reformat code with ``black``
+  - Added support for Apollo Federation v2
+  - Added support for custom schema directives :ref:`Check directives documentation <directives-doc>`
+  - Added `ID` type.
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
   - Dropped Python 3.6 support, minimum supported version now is Python 3.7
+  - Validate Option's default value. Now if `type` is not marked as `Optiona[...]` and `default=None`, validation will fail.

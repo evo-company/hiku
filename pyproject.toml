@@ -63,6 +63,8 @@ test = [
     "pytest-asyncio",
     "faker",
     "pytest-benchmark",
+    "asyncpg",  # for tests_pg
+    "greenlet",  # for tests_pg
 ]
 dev = [
     "mypy",
@@ -82,11 +84,12 @@ examples = [
 importlib-metadata = ">=4.3"
 
 [tool.pdm.scripts]
-test = "python -m pytest"
-test_pg = "python -m pytest tests_pg"
-test-all = {composite = ["test", "test_pg"]}
+test = "python -m pytest {args:tests}"
+test-pg = "python -m pytest {args:tests_pg}"
+test-pg-local = "python -m pytest --pg-host=localhost {args:tests_pg}"
+test-all = {composite = ["test", "test-pg"]}
 fmt = "python -m black hiku"
-mypy = "python -m mypy --show-error-codes hiku"
+mypy = "python -m mypy"
 flake = "python -m flake8"
 docs = "sphinx-build -b html docs docs/build"
 check = {composite = ["fmt", "test", "mypy", "flake"]}
@@ -95,6 +98,7 @@ check = {composite = ["fmt", "test", "mypy", "flake"]}
 addopts = "--tb=native --benchmark-disable"
 testpaths = [
     "tests",
+    "tests_pg"
 ]
 
 filterwarnings = [
@@ -113,6 +117,9 @@ source = [
 ]
 
 [tool.mypy]
+files = [
+    "hiku",
+]
 python_version = 3.7
 check_untyped_defs = true
 #disallow_any_generics = true
@@ -122,6 +129,8 @@ follow_imports = "silent"
 strict_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
+show_error_codes = true
+ignore_errors = false
 
 exclude = [
     "tests",

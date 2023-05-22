@@ -17,8 +17,8 @@ from graphql.language import ast
 from graphql.language.parser import parse
 
 from ..directives import (
-    QueryDirective,
     Cached,
+    Directive,
 )
 from ..query import Node, Field, Link, merge
 from ..telemetry.prometheus import (
@@ -254,14 +254,13 @@ class SelectionSetVisitMixin:
         if not isinstance(ttl, int):
             raise TypeError("@cached ttl argument must be an integer")
 
-        return Cached(ttl)
+        return Cached(ttl=ttl)
 
     def visit_field(self, obj: ast.FieldNode) -> Iterator[Union[Field, Link]]:
         if self._should_skip(obj):
             return
 
-        # TODO: add plugins functionality to parse custom directives
-        directives: List[QueryDirective] = []
+        directives: List[Directive] = []
         cached = self._is_cached(obj)
         if cached is not None:
             directives.append(cached)

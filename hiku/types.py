@@ -50,6 +50,15 @@ class String(metaclass=StringMeta):
     pass
 
 
+class IDMeta(GenericMeta):
+    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
+        return visitor.visit_id(cls)
+
+
+class ID(metaclass=IDMeta):
+    pass
+
+
 class IntegerMeta(GenericMeta):
     def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
         return visitor.visit_integer(cls)
@@ -251,6 +260,10 @@ class AbstractTypeVisitor(ABC):
         pass
 
     @abstractmethod
+    def visit_id(self, obj: IDMeta) -> t.Any:
+        pass
+
+    @abstractmethod
     def visit_integer(self, obj: IntegerMeta) -> t.Any:
         pass
 
@@ -291,6 +304,9 @@ class TypeVisitor(AbstractTypeVisitor):
         pass
 
     def visit_string(self, obj: StringMeta) -> t.Any:
+        pass
+
+    def visit_id(self, obj: IDMeta) -> t.Any:
         pass
 
     def visit_integer(self, obj: IntegerMeta) -> t.Any:

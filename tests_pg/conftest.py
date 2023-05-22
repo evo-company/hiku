@@ -7,11 +7,18 @@ import psycopg2.extensions
 from tests.test_source_sqlalchemy import setup_db
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--pg-host", action="store", default="postgres",
+    )
+
+
 @pytest.fixture(scope='session', name='db_dsn')
 def db_dsn_fixture(request):
+    host = request.config.getoption('--pg-host', default='postgres')
     name = 'test_{}'.format(uuid.uuid4().hex)
-    pg_dsn = 'postgresql://postgres:postgres@postgres:5432/postgres'
-    db_dsn = 'postgresql://postgres:postgres@postgres:5432/{}'.format(name)
+    pg_dsn = f'postgresql://postgres:postgres@{host}:5432/postgres'
+    db_dsn = 'postgresql://postgres:postgres@{}:5432/{}'.format(host, name)
 
     pg_engine = sqlalchemy.create_engine(pg_dsn)
     pg_engine.raw_connection()\

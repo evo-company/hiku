@@ -13,13 +13,22 @@ Setup development
 1. Install `pdm` package manager - https://pdm.fming.dev/
 2. Run `pdm install` to install dependencies
 
-Run tests using pdm
+Run unit tests using pdm
 
 .. code-block:: bash
 
     $ pdm run test
 
-Or using lets task runner run tests in docker
+Run integration tests (with real postgress) using pdm.
+Postgres in this case accessed via localhost.
+
+.. code-block:: bash
+
+    $ docker-compose up -d postgres
+    $ pdm run test-pg-local
+    $ docker-compose down
+
+Or you can use lets task runner to run unit + integration tests (all-on-one) in docker
 
 .. code-block:: bash
 
@@ -40,6 +49,19 @@ Docs will be available at ``docs/build``
 
     $ pdm run docs
 
+
+Setup PDM with PyCharm
+~~~~~~~~~~~~~~~~~~~~~~
+
+Pdm supports two ways of dependency management: venv and pep582 https://pdm.fming.dev/latest/#virtualenv-and-pep-582
+
+PyCharm supports only venv way, so in case you want to use pep582 with ``__pypackages__`` you need to setup it manually.
+
+#. Open PyCharm Settings -> Project Structure
+#. Mark ``__pypackages__`` as Excluded
+#. Mark ``__pypackages__/<python_version>/lib`` both as `Excluded` (to exclude files from search) and `Sources` (to enable autocompletion)
+
+Pdm also provides how-to guides on how to configure other IDE/editors https://pdm.fming.dev/latest/usage/pep582
 
 Changelog
 ~~~~~~~~~

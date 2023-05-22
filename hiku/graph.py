@@ -32,7 +32,7 @@ from .utils import (
     const,
     Const,
 )
-from .directives import DirectiveBase
+from .directives import SchemaDirective
 
 from .compat import TypeAlias
 
@@ -194,7 +194,7 @@ class Field(AbstractField):
         *,
         options: t.Optional[t.Sequence[Option]] = None,
         description: t.Optional[str] = None,
-        directives: t.Optional[t.Sequence[DirectiveBase]] = None,
+        directives: t.Optional[t.Sequence[SchemaDirective]] = None,
     ):
         """
         :param str name: name of the field
@@ -381,7 +381,7 @@ class Link(AbstractLink):
         requires: t.Optional[t.Union[str, t.List[str]]],
         options: t.Optional[t.Sequence[Option]] = None,
         description: t.Optional[str] = None,
-        directives: t.Optional[t.Sequence[DirectiveBase]] = None,
+        directives: t.Optional[t.Sequence[SchemaDirective]] = None,
     ):
         ...
 
@@ -395,7 +395,7 @@ class Link(AbstractLink):
         requires: t.Optional[t.Union[str, t.List[str]]],
         options: t.Optional[t.Sequence[Option]] = None,
         description: t.Optional[str] = None,
-        directives: t.Optional[t.Sequence[DirectiveBase]] = None,
+        directives: t.Optional[t.Sequence[SchemaDirective]] = None,
     ):
         ...
 
@@ -409,7 +409,7 @@ class Link(AbstractLink):
         requires: t.Optional[t.Union[str, t.List[str]]],
         options: t.Optional[t.Sequence[Option]] = None,
         description: t.Optional[str] = None,
-        directives: t.Optional[t.Sequence[DirectiveBase]] = None,
+        directives: t.Optional[t.Sequence[SchemaDirective]] = None,
     ):
         ...
 
@@ -486,7 +486,7 @@ class Node(AbstractNode):
         fields: t.List[t.Union[Field, Link]],
         *,
         description: t.Optional[str] = None,
-        directives: t.Optional[t.Sequence[DirectiveBase]] = None,
+        directives: t.Optional[t.Sequence[SchemaDirective]] = None,
     ):
         """
         :param name: name of the node
@@ -496,7 +496,7 @@ class Node(AbstractNode):
         self.name = name
         self.fields = fields
         self.description = description
-        self.directives = directives or ()
+        self.directives: t.Tuple[SchemaDirective, ...] = tuple(directives or ())
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, ...)".format(
@@ -566,6 +566,7 @@ class Graph(AbstractGraph):
         self,
         items: t.List[Node],
         data_types: t.Optional[t.Dict[str, t.Type[Record]]] = None,
+        directives: t.Optional[t.Sequence[t.Type[SchemaDirective]]] = None,
     ):
         """
         :param items: list of nodes
@@ -577,6 +578,9 @@ class Graph(AbstractGraph):
         self.items = GraphInit.init(items)
         self.data_types = data_types or {}
         self.__types__ = GraphTypes.get_types(self.items, self.data_types)
+        self.directives: t.Tuple[t.Type[SchemaDirective], ...] = tuple(
+            directives or ()
+        )
 
     def __repr__(self) -> str:
         return "{}({!r})".format(self.__class__.__name__, self.items)
@@ -587,7 +591,7 @@ class Graph(AbstractGraph):
                 for field in node.fields:
                     yield field
 
-    def iter_nodes(self) -> t.Iterator[t.Union[Node]]:
+    def iter_nodes(self) -> t.Iterator[Node]:
         for node in self.items:
             if node.name is not None:
                 yield node
@@ -708,7 +712,11 @@ class GraphTransformer(AbstractGraphVisitor):
         return Root([self.visit(f) for f in obj.fields])
 
     def visit_graph(self, obj: Graph) -> Graph:
-        return Graph([self.visit(node) for node in obj.items], obj.data_types)
+        return Graph(
+            [self.visit(node) for node in obj.items],
+            obj.data_types,
+            obj.directives,
+        )
 
 
 def apply(graph: Graph, transformers: List[GraphTransformer]) -> Graph:

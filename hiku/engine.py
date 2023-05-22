@@ -1,3 +1,4 @@
+import abc
 import inspect
 import warnings
 import dataclasses
@@ -65,7 +66,7 @@ if TYPE_CHECKING:
     from .readers.graphql import Operation
 
 
-NodePath = Tuple[str, ...]
+NodePath = Tuple[Optional[str], ...]
 
 
 def _yield_options(
@@ -317,7 +318,7 @@ def link_reqs(
 
         return [node_idx[i][link.requires] for i in ids]
     else:
-        # TODO: add support for requires as list in root node
+        # TODO(mkind): add support for requires as list in root node
         return index.root[link.requires]
 
 
@@ -457,8 +458,8 @@ def store_links(
 
 
 def link_result_to_ids(
-    from_list: bool, link_type: Any, result: Any  # Const
-) -> List:
+    from_list: bool, link_type: Any, result: Any
+) -> List:  # Const
     if from_list:
         if link_type is Maybe:
             return [i for i in result if i is not Nothing]
@@ -573,7 +574,7 @@ class Query(Workflow):
         query: QueryNode,
         ids: Any,
     ) -> None:
-        path = path + (node.name,)  # type: ignore
+        path = path + (node.name,)
         self._path_callback[path] = lambda: self._untrack(path)
 
         if query.ordered:
@@ -832,7 +833,7 @@ class Context(Mapping):
             )
 
 
-class Engine:
+class BaseEngine(abc.ABC):
     def __init__(
         self,
         executor: SyncAsyncExecutor,
@@ -841,6 +842,18 @@ class Engine:
         self.executor = executor
         self.cache_settings = cache
 
+    @abc.abstractmethod
+    def execute(
+        self,
+        graph: Graph,
+        query: QueryNode,
+        ctx: Optional[Dict] = None,
+        op: Optional["Operation"] = None,
+    ) -> Union[Proxy, Awaitable[Proxy]]:
+        ...
+
+
+class Engine(BaseEngine):
     def execute(
         self,
         graph: Graph,

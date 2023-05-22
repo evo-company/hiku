@@ -2,7 +2,7 @@ import pytest
 
 from hiku.directives import Deprecated
 from hiku.graph import Graph, Node, Field, Root, Link, Option
-from hiku.types import TypeRef, Sequence
+from hiku.types import Integer, TypeRef, Sequence
 from hiku.validate.graph import GraphValidationError
 
 
@@ -104,6 +104,22 @@ def test_node_contain_invalid_types():
             ),
         ],
         [('Node can not contain these types: {!r} in node "foo"'.format(int))],
+    )
+
+
+def test_option_default_none_with_non_optional_type():
+    check_errors(
+        [
+            Node(
+                "foo",
+                [
+                    Field("bar", None, _fields_func, options=[
+                        Option("bar", Integer, default=None),
+                    ]),
+                ],
+            ),
+        ],
+        ['Non-optional option "foo.bar:bar" must have a default value'],
     )
 
 

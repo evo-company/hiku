@@ -1,4 +1,3 @@
-import asyncio
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 
@@ -17,6 +16,12 @@ from hiku.executors.threads import ThreadsExecutor
 from hiku.sources.sqlalchemy import LinkQuery, FieldsQuery
 
 from .base import check_result
+
+
+def asyncify(fn):
+    async def wrapper(*args, **kwargs):
+        return fn(*args, **kwargs)
+    return wrapper
 
 
 SA_ENGINE_KEY = "sa-engine"
@@ -84,11 +89,11 @@ def graph_factory(
         return 0
 
     if async_:
-        foo_list = asyncio.coroutine(foo_list)
-        bar_list = asyncio.coroutine(bar_list)
-        not_found_one = asyncio.coroutine(not_found_one)
-        not_found_list = asyncio.coroutine(not_found_list)
-        falsy_one = asyncio.coroutine(falsy_one)
+        foo_list = asyncify(foo_list)
+        bar_list = asyncify(bar_list)
+        not_found_one = asyncify(not_found_one)
+        not_found_list = asyncify(not_found_list)
+        falsy_one = asyncify(falsy_one)
 
     foo_query = fields_query_cls(SA_ENGINE_KEY, foo_table)
 

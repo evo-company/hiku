@@ -88,6 +88,11 @@ commands:
     description: Run federation app from examples
     depends: [_build-examples]
     cmd: docker-compose up examples-federation
+    
+  examples-federation-v2:
+    description: Run federation 2 app from examples
+    depends: [_build-examples]
+    cmd: docker-compose up examples-federation-v2
 
   examples-flask:
     description: Run flask app from examples
@@ -98,3 +103,18 @@ commands:
     description: Run aiohttp app from examples
     depends: [_build-examples]
     cmd: docker-compose up examples-aiohttp
+
+  federation-compatibility-test:
+    description: Run federation compatibility test
+    depends: [_build-examples]
+    cmd: |
+      docker-compose run --rm federation-compatibility-server dump
+      mv products.graphql examples/federation-compatibility/products.graphql
+      
+      export APOLLO_ELV2_LICENSE=accept
+      
+      npx @apollo/federation-subgraph-compatibility docker \
+        --compose ./examples/federation-compatibility/docker-compose.yml \
+        --path /graphql \
+        --schema ./examples/federation-compatibility/products.graphql \
+        --debug

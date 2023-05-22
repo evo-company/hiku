@@ -22,6 +22,7 @@ from ..graph import (
 from ..graph import AbstractNode, AbstractField, AbstractLink, AbstractOption
 
 from .errors import Errors
+from ..types import GenericMeta, OptionalMeta
 
 
 class GraphValidationError(TypeError):
@@ -52,6 +53,7 @@ class GraphValidator(GraphVisitor):
     _graph_accept_types = (AbstractNode,)
     _node_accept_types = (AbstractField, AbstractLink)
     _link_accept_types = (AbstractOption,)
+    _field_accept_types = (AbstractOption,)
 
     def __init__(self, items: List[Node]) -> None:
         self.items = items
@@ -103,10 +105,34 @@ class GraphValidator(GraphVisitor):
             )
 
     def visit_option(self, obj: Option) -> None:
-        # TODO: check option default value according to the option type
-        pass
+        if (
+            isinstance(obj.type, GenericMeta)
+            and not isinstance(obj.type, OptionalMeta)
+            and obj.default is None
+        ):
+            self.errors.report(
+                'Non-optional option "{}" must have a default value'.format(
+                    self._format_path(obj)
+                ),
+            )
 
     def visit_field(self, obj: Field) -> None:
+        invalid = [
+            f
+            for f in obj.options
+            if not isinstance(f, self._field_accept_types)
+        ]
+        if invalid:
+            self.errors.report(
+                'Invalid types provided as field "{}" options: {}'.format(
+                    self._format_path(obj), self._format_types(invalid)
+                )
+            )
+            return
+
+        with self.push_ctx(obj):
+            super(GraphValidator, self).visit_field(obj)
+
         self._validate_deprecated_duplicates(obj)
 
     def visit_link(self, obj: Link) -> None:

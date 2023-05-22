@@ -67,3 +67,14 @@ class ImmutableDict(Dict, Generic[K, V]):
 
     __delitem__ = __setitem__ = _immutable  # type: ignore
     clear = pop = popitem = setdefault = update = _immutable  # type: ignore
+
+
+def to_immutable_dict(data: Dict[K, V]) -> ImmutableDict[K, V]:
+    immutable: Dict[Any, Any] = dict()
+    for key in data:
+        if isinstance(data[key], dict):
+            immutable[key] = to_immutable_dict(cast(Dict[K, V], data[key]))
+        else:
+            immutable[key] = data[key]
+
+    return ImmutableDict(immutable)

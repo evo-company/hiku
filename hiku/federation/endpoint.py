@@ -16,15 +16,16 @@ from typing import (
     Type,
 )
 
-from .engine import Engine
-from .utils import get_keys
-from .introspection import (
+from hiku.federation.engine import Engine
+from hiku.federation.utils import get_representation_ident
+from hiku.federation.introspection import (
+    BaseFederatedGraphQLIntrospection,
     FederatedGraphQLIntrospection,
     AsyncFederatedGraphQLIntrospection,
     is_introspection_query,
     extend_with_federation,
 )
-from .validate import validate
+from hiku.federation.validate import validate
 
 from hiku.denormalize.graphql import DenormalizeGraphQL
 from hiku.federation.denormalize import DenormalizeEntityGraphQL
@@ -64,15 +65,11 @@ def denormalize_entities(
     entities = []
     for r in representations:
         typename = r["__typename"]
-        for key in get_keys(graph, typename):
-            if key not in r:
-                continue
-            ident = r[key]
-            result.__ref__ = Reference(typename, ident)
-            data = DenormalizeEntityGraphQL(graph, result, typename).process(
-                node
-            )
-            entities.append(data)
+        ident = get_representation_ident(r, graph)
+
+        result.__ref__ = Reference(typename, ident)
+        data = DenormalizeEntityGraphQL(graph, result, typename).process(node)
+        entities.append(data)
 
     return entities
 
@@ -83,7 +80,7 @@ class BaseFederatedGraphEndpoint(ABC):
 
     @property
     @abstractmethod
-    def introspection_cls(self) -> Type[FederatedGraphQLIntrospection]:
+    def introspection_cls(self) -> Type[BaseFederatedGraphQLIntrospection]:
         pass
 
     def __init__(
@@ -105,8 +102,9 @@ class BaseFederatedGraphEndpoint(ABC):
     def context(self, op: Operation) -> Iterator[Dict]:
         yield {}
 
-    @staticmethod
-    def postprocess_result(result: Proxy, graph: Graph, op: Operation) -> Dict:
+    def postprocess_result(
+        self, result: Proxy, graph: Graph, op: Operation
+    ) -> Dict:
         if "_service" in op.query.fields_map:
             return {"_service": {"sdl": result["sdl"]}}
         elif "_entities" in op.query.fields_map:
@@ -147,11 +145,13 @@ class FederatedGraphQLEndpoint(BaseSyncFederatedGraphQLEndpoint):
         - _entities
     """
 
-    introspection_cls = FederatedGraphQLIntrospection
+    @property
+    def introspection_cls(self) -> Type[BaseFederatedGraphQLIntrospection]:
+        return FederatedGraphQLIntrospection
 
     def execute(self, graph: Graph, op: Operation, ctx: Optional[Dict]) -> Dict:
         stripped_query = _process_query(graph, op.query)
-        result = self.engine.execute(graph, stripped_query, ctx or {})
+        result = self.engine.execute(graph, stripped_query, ctx or {}, op)
         assert isinstance(result, Proxy)
         return self.postprocess_result(result, graph, op)
 
@@ -170,7 +170,9 @@ class FederatedGraphQLEndpoint(BaseSyncFederatedGraphQLEndpoint):
 
 
 class AsyncFederatedGraphQLEndpoint(BaseAsyncFederatedGraphQLEndpoint):
-    introspection_cls = AsyncFederatedGraphQLIntrospection
+    @property
+    def introspection_cls(self) -> Type[BaseFederatedGraphQLIntrospection]:
+        return AsyncFederatedGraphQLIntrospection
 
     async def execute(
         self, graph: Graph, op: Operation, ctx: Optional[Dict]

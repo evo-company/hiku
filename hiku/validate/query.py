@@ -5,6 +5,7 @@ from collections import abc as collections_abc
 
 from ..types import (
     AbstractTypeVisitor,
+    IDMeta,
     Record,
     OptionalMeta,
     SequenceMeta,
@@ -66,6 +67,7 @@ class _AssumeRecord(AbstractTypeVisitor):
     visit_any = _false
     visit_boolean = _false
     visit_string = _false
+    visit_id = _false
     visit_integer = _false
     visit_float = _false
     visit_mapping = _false
@@ -163,6 +165,11 @@ class _OptionTypeValidator:
         return None
 
     def visit_string(self, type_: StringMeta) -> None:
+        if not isinstance(self.value, str):
+            raise _OptionTypeError(self.value, type_)
+        return None
+
+    def visit_id(self, type_: IDMeta) -> None:
         if not isinstance(self.value, str):
             raise _OptionTypeError(self.value, type_)
         return None

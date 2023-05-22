@@ -54,7 +54,7 @@ from collections import (
 )
 from collections.abc import Sequence
 
-from .directives import QueryDirective
+from .directives import Directive
 from .utils import cached_property
 
 T = t.TypeVar("T", bound="Base")
@@ -147,7 +147,7 @@ class Field(FieldBase):
         name: str,
         options: t.Optional[t.Dict[str, t.Any]] = None,
         alias: t.Optional[str] = None,
-        directives: t.Optional[t.Tuple[QueryDirective, ...]] = None,
+        directives: t.Optional[t.Tuple[Directive, ...]] = None,
     ):
         self.name = name
         self.options = options
@@ -156,7 +156,9 @@ class Field(FieldBase):
 
     @cached_property
     def directives_map(self) -> OrderedDict:
-        return OrderedDict((d.name, d) for d in self.directives)
+        return OrderedDict(
+            (d.__directive_info__.name, d) for d in self.directives
+        )
 
     def accept(self, visitor: "QueryVisitor") -> t.Any:
         return visitor.visit_field(self)
@@ -180,18 +182,19 @@ class Link(FieldBase):
         node: "Node",
         options: t.Optional[t.Dict[str, t.Any]] = None,
         alias: t.Optional[str] = None,
-        directives: t.Optional[t.Tuple[QueryDirective, ...]] = None,
+        directives: t.Optional[t.Tuple[Directive, ...]] = None,
     ):
         self.name = name
         self.node = node
         self.options = options
         self.alias = alias
-        # TODO does one link can have multiple directives with same name ?
         self.directives = directives or ()
 
     @cached_property
     def directives_map(self) -> OrderedDict:
-        return OrderedDict((d.name, d) for d in self.directives)
+        return OrderedDict(
+            (d.__directive_info__.name, d) for d in self.directives
+        )
 
     def accept(self, visitor: "QueryVisitor") -> t.Any:
         return visitor.visit_link(self)

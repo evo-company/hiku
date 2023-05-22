@@ -1,4 +1,3 @@
-from unittest import TestCase
 from unittest.mock import ANY
 
 from hiku.federation.endpoint import FederatedGraphQLEndpoint
@@ -13,57 +12,58 @@ def _noop():
 
 
 def _non_null(t):
-    return {"kind": "NON_NULL", "name": None, "ofType": t}
+    return {'kind': 'NON_NULL', 'name': None, 'ofType': t}
 
 
-_INT = {"kind": "SCALAR", "name": "Int", "ofType": None}
-_STR = {"kind": "SCALAR", "name": "String", "ofType": None}
-_BOOL = {"kind": "SCALAR", "name": "Boolean", "ofType": None}
-_FLOAT = {"kind": "SCALAR", "name": "Float", "ofType": None}
-_ANY = {"kind": "SCALAR", "name": "Any", "ofType": None}
-_FIELDSET = {"kind": "SCALAR", "name": "_FieldSet", "ofType": None}
+def _scalar(name):
+    return {'kind': 'SCALAR', 'name': name, 'ofType': None}
+
+
+_INT = _scalar('Int')
+_STR = _scalar('String')
+_BOOL = _scalar('Boolean')
+_FLOAT = _scalar('Float')
+_ANY = _scalar('Any')
+_FIELDSET = _scalar('_FieldSet')
 
 
 def _obj(name):
-    return {"kind": "OBJECT", "name": name, "ofType": None}
+    return {'kind': 'OBJECT', 'name': name, 'ofType': None}
 
 
 def _iobj(name):
-    return {"kind": "INPUT_OBJECT", "name": name, "ofType": None}
+    return {'kind': 'INPUT_OBJECT', 'name': name, 'ofType': None}
 
 
 def _union(name, possible_types=None):
-    return {"kind": "UNION", "name": name, "possibleTypes": possible_types}
+    return {
+        'kind': 'UNION',
+        'name': name,
+        'possibleTypes': possible_types
+    }
 
 
 def _seq_of(_type):
-    return {
-        "kind": "NON_NULL",
-        "name": None,
-        "ofType": {
-            "kind": "LIST",
-            "name": None,
-            "ofType": {"kind": "NON_NULL", "name": None, "ofType": _type},
-        },
-    }
+    return {'kind': 'NON_NULL', 'name': None,
+            'ofType': {'kind': 'LIST', 'name': None,
+                       'ofType': {'kind': 'NON_NULL', 'name': None,
+                                  'ofType': _type}}}
 
 
 def _seq_of_nullable(_type):
-    return {
-        "kind": "NON_NULL",
-        "name": None,
-        "ofType": {"kind": "LIST", "name": None, "ofType": _type},
-    }
+    return {'kind': 'NON_NULL', 'name': None,
+            'ofType': {'kind': 'LIST', 'name': None,
+                       'ofType': _type}}
 
 
 def _field(name, type_, **kwargs):
     data = {
-        "args": [],
-        "deprecationReason": None,
-        "description": None,
-        "isDeprecated": False,
-        "name": name,
-        "type": type_,
+        'args': [],
+        'deprecationReason': None,
+        'description': None,
+        'isDeprecated': False,
+        'name': name,
+        'type': type_
     }
     data.update(kwargs)
     return data
@@ -71,123 +71,73 @@ def _field(name, type_, **kwargs):
 
 def _type(name, kind, **kwargs):
     data = {
-        "description": None,
-        "enumValues": [],
-        "fields": [],
-        "inputFields": [],
-        "interfaces": [],
-        "kind": kind,
-        "name": name,
-        "possibleTypes": [],
+        'description': None,
+        'enumValues': [],
+        'fields': [],
+        'inputFields': [],
+        'interfaces': [],
+        'kind': kind,
+        'name': name,
+        'possibleTypes': [],
     }
     data.update(**kwargs)
     return data
 
 
-def _field_directive(name, args):
+def _directive(name, locs, args=None):
     return {
-        "name": name,
-        "description": ANY,
-        "locations": ["FIELD", "FRAGMENT_SPREAD", "INLINE_FRAGMENT"],
-        "args": args,
-    }
-
-
-def _field_enum_directive(name, args):
-    return {
-        "name": name,
-        "description": ANY,
-        "locations": ["FIELD_DEFINITION", "ENUM_VALUE"],
-        "args": args,
-    }
-
-
-def _object_directive(name, args):
-    return {
-        "name": name,
-        "description": ANY,
-        "locations": ["OBJECT", "INTERFACE"],
-        "args": args,
-    }
-
-
-def _field_def_directive(name, args):
-    return {
-        "name": name,
-        "description": ANY,
-        "locations": ["FIELD_DEFINITION"],
-        "args": args,
+        'name': name,
+        'description': ANY,
+        'locations': locs,
+        'args': args or [],
     }
 
 
 def _ival(name, type_, **kwargs):
     data = {
-        "name": name,
-        "type": type_,
-        "description": None,
-        "defaultValue": None,
+        'name': name,
+        'type': type_,
+        'description': None,
+        'defaultValue': None,
     }
     data.update(kwargs)
     return data
 
 
 def _schema(types, with_mutation=False) -> dict:
-    names = [t["name"] for t in types]
-    assert "Query" in names, names
+    names = [t['name'] for t in types]
+    assert 'Query' in names, names
     return {
-        "__schema": {
-            "directives": [
-                _field_directive(
-                    "skip",
-                    [
-                        _ival("if", _non_null(_BOOL), description=ANY),
-                    ],
-                ),
-                _field_directive(
-                    "include",
-                    [
-                        _ival("if", _non_null(_BOOL), description=ANY),
-                    ],
-                ),
-                _field_enum_directive(
-                    "deprecated", [_ival("reason", _STR, description=ANY)]
-                ),
-                _field_directive(
-                    "cached", [_ival("ttl", _non_null(_INT), description=ANY)]
-                ),
-                _object_directive(
-                    "key",
-                    [
-                        _ival("fields", _non_null(_FIELDSET), description=ANY),
-                    ],
-                ),
-                _field_def_directive(
-                    "provides",
-                    [
-                        _ival("fields", _non_null(_FIELDSET), description=ANY),
-                    ],
-                ),
-                _field_def_directive(
-                    "requires",
-                    [
-                        _ival("fields", _non_null(_FIELDSET), description=ANY),
-                    ],
-                ),
-                _field_def_directive("external", []),
+        '__schema': {
+            'directives': [
+                _directive('skip',
+                           ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'] ,
+                           [_ival('if', _non_null(_BOOL), description=ANY)]
+                           ),
+                _directive('include',
+                           ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'], [
+                               _ival('if', _non_null(_BOOL), description=ANY),
+                           ]),
+                _directive('deprecated', ['FIELD_DEFINITION', 'ENUM_VALUE'], [
+                    _ival('reason', _STR, description=ANY)
+                ]),
+                _directive('cached', ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'], [
+                    _ival('ttl', _non_null(_INT), description=ANY)
+                ]),
             ],
-            "mutationType": {"name": "Mutation"} if with_mutation else None,
-            "queryType": {"name": "Query"},
-            "types": SCALARS + types,
+            'mutationType': {'name': 'Mutation'} if with_mutation else None,
+            'queryType': {'name': 'Query'},
+            'types': SCALARS + types,
         }
     }
 
 
 SCALARS = [
-    _type("String", "SCALAR"),
-    _type("Int", "SCALAR"),
-    _type("Boolean", "SCALAR"),
-    _type("Float", "SCALAR"),
-    _type("Any", "SCALAR"),
+    _type('String', 'SCALAR'),
+    _type('Int', 'SCALAR'),
+    _type('Boolean', 'SCALAR'),
+    _type('Float', 'SCALAR'),
+    _type('Any', 'SCALAR'),
 ]
 
 
@@ -200,125 +150,132 @@ def execute(graph, query_string):
     return graphql_endpoint.dispatch(query_string)
 
 
-def introspect(query_graph):
-    return execute(query_graph, {"query": INTROSPECTION_QUERY})
+def introspect(query_graph, ):
+    return execute(query_graph, {'query': INTROSPECTION_QUERY})
 
 
-class TestFederatedGraphIntrospection(TestCase):
-    def test_federated_introspection_query_entities(self):
-        self.maxDiff = None
-        exp = _schema(
-            [
-                _type(
-                    "Order",
-                    "OBJECT",
-                    fields=[
-                        _field("cartId", _non_null(_INT)),
-                        _field(
-                            "oldCart",
-                            _non_null(_obj("Cart")),
-                            isDeprecated=True,
-                            deprecationReason="use cart instead",
-                        ),
-                        _field("cart", _non_null(_obj("Cart"))),
-                    ],
+def execute_v2(graph, query_string):
+    graphql_endpoint = FederatedGraphQLEndpoint(
+        Engine(SyncExecutor()),
+        graph,
+    )
+
+    return graphql_endpoint.dispatch(query_string)
+
+
+def introspect_v2(query_graph):
+    return execute_v2(query_graph, {'query': INTROSPECTION_QUERY})
+
+
+def test_federated_introspection_v1():
+    exp = _schema([
+        _type('Order', 'OBJECT', fields=[
+            _field('cartId', _non_null(_INT)),
+            _field('cart', _non_null(_obj('Cart'))),
+        ]),
+        _type('Cart', 'OBJECT', fields=[
+            _field('id', _non_null(_INT)),
+            _field('status', _non_null(_obj('Status'))),
+        ]),
+        _type('Query', 'OBJECT', fields=[
+            _field('order', _obj('Order'), args=[
+                _ival(
+                    'id',
+                    _non_null(_INT),
+                    defaultValue=ANY
                 ),
-                _type(
-                    "Cart",
-                    "OBJECT",
-                    fields=[
-                        _field("id", _non_null(_INT)),
-                        _field("status", _non_null(_obj("Status"))),
-                        _field("items", _seq_of(_obj("CartItem"))),
-                    ],
+            ]),
+            _field(
+                '_entities',
+                _seq_of_nullable(
+                    _union('_Entity', [_obj('Order'), _obj('Cart')])
                 ),
-                _type(
-                    "CartItem",
-                    "OBJECT",
-                    fields=[
-                        _field("id", _non_null(_INT)),
-                        _field("cart_id", _non_null(_INT)),
-                        _field(
-                            "name",
-                            _non_null(_STR),
-                            isDeprecated=True,
-                            deprecationReason="do not use",
-                        ),
-                        _field(
-                            "photo",
-                            _STR,
-                            args=[
-                                _ival(
-                                    "width", _non_null(_INT), defaultValue=ANY
-                                ),
-                                _ival(
-                                    "height", _non_null(_INT), defaultValue=ANY
-                                ),
-                            ],
-                        ),
-                    ],
+                args=[
+                    _ival(
+                        'representations',
+                        _seq_of(_type('_Any', 'SCALAR')),
+                        defaultValue=ANY
+                    ),
+                ]
+            ),
+            _field(
+                '_service',
+                _non_null(_obj('_Service')),
+            ),
+        ]),
+        _type('Status', 'OBJECT', fields=[
+            _field('id', _non_null(_INT)),
+            _field('title', _non_null(_STR)),
+        ]),
+        _type('IOStatus', 'INPUT_OBJECT', inputFields=[
+            _ival('id', _non_null(_INT)),
+            _ival('title', _non_null(_STR)),
+        ]),
+        _type('_Any', 'SCALAR'),
+        _type('_FieldSet', 'SCALAR'),
+        _type('_Entity', 'UNION', possibleTypes=[
+            _obj('Order'), _obj('Cart')
+        ]),
+        _type('_Service', 'OBJECT', fields=[
+            _field('sdl', _type('String', 'SCALAR')),
+        ]),
+    ])
+    got = introspect(GRAPH)
+    assert exp == got['data']
+
+
+def test_federated_introspection_v2():
+    exp = _schema([
+        _type('Order', 'OBJECT', fields=[
+            _field('cartId', _non_null(_INT)),
+            _field('cart', _non_null(_obj('Cart'))),
+        ]),
+        _type('Cart', 'OBJECT', fields=[
+            _field('id', _non_null(_INT)),
+            _field('status', _non_null(_obj('Status'))),
+        ]),
+        _type('Query', 'OBJECT', fields=[
+            _field('order', _obj('Order'), args=[
+                _ival(
+                    'id',
+                    _non_null(_INT),
+                    defaultValue=ANY
                 ),
-                _type(
-                    "Query",
-                    "OBJECT",
-                    fields=[
-                        _field(
-                            "cart",
-                            _obj("Cart"),
-                            args=[
-                                _ival("id", _non_null(_INT), defaultValue=ANY),
-                            ],
-                        ),
-                        _field(
-                            "_entities",
-                            _seq_of_nullable(
-                                _union("_Entity", [_obj("Order"), _obj("Cart")])
-                            ),
-                            args=[
-                                _ival(
-                                    "representations",
-                                    _seq_of(_type("_Any", "SCALAR")),
-                                    defaultValue=ANY,
-                                ),
-                            ],
-                        ),
-                        _field(
-                            "_service",
-                            _non_null(_obj("_Service")),
-                        ),
-                    ],
+            ]),
+            _field(
+                '_entities',
+                _seq_of_nullable(
+                    _union('_Entity', [_obj('Order'), _obj('Cart')])
                 ),
-                _type(
-                    "Status",
-                    "OBJECT",
-                    fields=[
-                        _field("id", _non_null(_INT)),
-                        _field("title", _non_null(_STR)),
-                    ],
-                ),
-                _type(
-                    "IOStatus",
-                    "INPUT_OBJECT",
-                    inputFields=[
-                        _ival("id", _non_null(_INT)),
-                        _ival("title", _non_null(_STR)),
-                    ],
-                ),
-                _type("_Any", "SCALAR"),
-                _type("_FieldSet", "SCALAR"),
-                _type(
-                    "_Entity",
-                    "UNION",
-                    possibleTypes=[_obj("Order"), _obj("Cart")],
-                ),
-                _type(
-                    "_Service",
-                    "OBJECT",
-                    fields=[
-                        _field("sdl", _type("String", "SCALAR")),
-                    ],
-                ),
-            ]
-        )
-        got = introspect(GRAPH)
-        self.assertEqual(exp, got["data"])
+                args=[
+                    _ival(
+                        'representations',
+                        _seq_of(_type('_Any', 'SCALAR')),
+                        defaultValue=ANY
+                    ),
+                ]
+            ),
+            _field(
+                '_service',
+                _non_null(_obj('_Service')),
+            ),
+        ]),
+        _type('Status', 'OBJECT', fields=[
+            _field('id', _non_null(_INT)),
+            _field('title', _non_null(_STR)),
+        ]),
+        _type('IOStatus', 'INPUT_OBJECT', inputFields=[
+            _ival('id', _non_null(_INT)),
+            _ival('title', _non_null(_STR)),
+        ]),
+        _type('_Any', 'SCALAR'),
+        _type('_FieldSet', 'SCALAR'),
+        _type('_Entity', 'UNION', possibleTypes=[
+            _obj('Order'), _obj('Cart')
+        ]),
+        _type('_Service', 'OBJECT', fields=[
+            _field('sdl', _type('String', 'SCALAR')),
+        ]),
+    ])
+    got = introspect_v2(GRAPH)
+    assert exp == got['data']

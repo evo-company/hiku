@@ -8,9 +8,10 @@ services:
     volumes:
       - ./hiku:/work/hiku
       - ./tests:/work/tests
+      - ./tests_pg:/work/tests_pg
       - ./examples:/work/examples
       - ./docs:/work/docs
-      - ./Readme.md:/work/Readme.md
+      - ./Readme.rst:/work/Readme.rst
       - ./scripts:/work/scripts
       - ./.flake8:/work/.flake8
       - ./pyproject.toml:/work/pyproject.toml
@@ -38,15 +39,23 @@ services:
 
   examples-federation:
     <<: *examples-base
+    command: python3 examples/graphql_federation.py
+    
+  examples-federation-v2:
+    <<: *examples-base
     command: python3 examples/graphql_federation_v2.py
-          
+  
   examples-flask:
     <<: *examples-base
     command: python3 examples/graphql_flask.py  
               
   examples-aiohttp:
     <<: *examples-base
-    command: python3 examples/graphql_aiohttp.py  
+    command: python3 examples/graphql_aiohttp.py
+    
+  federation-compatibility-server:
+    <<: *examples-base
+    entrypoint: python3 examples/federation-compatibility/server.py
     
   test-base: &test-base
     <<: *base
@@ -55,8 +64,15 @@ services:
   test:
     <<: *test-base
     depends_on:
-      - pg
+      - postgres
     command: pdm run test-all
 
-  pg:
+  postgres:
     image: postgres:13-alpine
+    init: true
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - 5432:5432
