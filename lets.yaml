@@ -19,11 +19,7 @@ commands:
         lets release 0.7.1 --message="Added federation"
         lets release 0.7.2rc1 --message="Added feature"
     cmd: |
-      echo "__version__ = '${LETSOPT_VERSION}'" > hiku/__init__.py
-      git add hiku/__init__.py
-      git commit -m "Release ${LETSOPT_VERSION}"
-      git tag -a v${LETSOPT_VERSION} -m "${LETSOPT_MESSAGE}"
-      git push origin master --tags
+      VERSION=${LETSOPT_VERSION} MESSAGE=${LETSOPT_MESSAGE} pdm run release
 
   _build-base:
     description: Build base docker image
