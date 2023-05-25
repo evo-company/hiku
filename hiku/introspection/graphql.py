@@ -546,6 +546,7 @@ GRAPH = Graph(
                 Link(
                     "enumValues",
                     Sequence[TypeRef["__EnumValue"]],
+                    # TODO: add enums handling
                     na_many,
                     requires="id",
                     options=[

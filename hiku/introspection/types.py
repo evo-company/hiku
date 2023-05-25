@@ -36,6 +36,7 @@ DIRECTIVE = _namedtuple("DIRECTIVE", "name")
 INPUT_OBJECT = _namedtuple("INPUT_OBJECT", "name")
 LIST = _namedtuple("LIST", "of_type")
 NON_NULL = _namedtuple("NON_NULL", "of_type")
+ENUM = _namedtuple("ENUM", "name of_types")
 
 FieldIdent = _namedtuple("FieldIdent", "node, name")
 FieldArgIdent = _namedtuple("FieldArgIdent", "node, field, name")

@@ -2,11 +2,11 @@ from typing import Any, Dict, List, Union
 
 from hiku.graph import Graph
 
-from hiku.federation.directive import Key
+from hiku.federation.directive import FieldSet, Key
 from hiku.utils import ImmutableDict, to_immutable_dict
 
 
-def get_keys(graph: Graph, typename: str) -> List[str]:
+def get_keys(graph: Graph, typename: str) -> List[FieldSet]:
     """Get all 'key' directives fields"""
     node = graph.nodes_map[typename]
     return [d.fields for d in node.directives if isinstance(d, Key)]

@@ -109,7 +109,7 @@ You can also define your own directives (reimplementation of `Deprecated` direct
 
     from hiku.graph import Graph, Field, Node
     from hiku.types import ID, Integer, String
-    from hiku.directives import schema_directive, SchemaDirective, Location, SchemaDirectiveField
+    from hiku.directives import schema_directive, SchemaDirective, Location, schema_directive_field
 
     @schema_directive(
         name='deprecated',
@@ -117,9 +117,8 @@ You can also define your own directives (reimplementation of `Deprecated` direct
         description='Marks a field as deprecated',
     )
     class Deprecated(SchemaDirective):
-        why: int = SchemaDirectiveField(
+        why: int = schema_directive_field(
             name='why',
-            type_ident=SCALAR('String'),
             description='Why deprecated ?',
         )
 
@@ -130,3 +129,8 @@ You can also define your own directives (reimplementation of `Deprecated` direct
                   directives=[Deprecated("Old field")]),
         ]),
     ], directives=[Deprecated])
+
+Note that type annotations for fields such as `why: int` are required, because `hiku`
+will use them to generate types for schema introspection.
+
+Also you can omit `name='why`, and `hiku` will then use the name of the field in the class automatically.

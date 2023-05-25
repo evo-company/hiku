@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from enum import Enum
 from typing_extensions import dataclass_transform
 
-from hiku.introspection.types import NON_NULL, SCALAR
+from hiku.utils.typing import builtin_to_introspection_type
 
 if TYPE_CHECKING:
     from hiku.graph import Field, Link
@@ -63,15 +63,9 @@ _T = t.TypeVar("_T")
 
 
 class DirectiveField(dataclasses.Field, t.Generic[_T]):
-    if t.TYPE_CHECKING:
-
-        def __get__(self, instance: t.Any, owner: t.Any) -> _T:
-            ...
-
     def __init__(
         self,
-        name: str,
-        type_ident: t.Any,  # hiku.introspection.types.*
+        name: t.Optional[str] = None,
         description: str = "",
         default_value: t.Any = dataclasses.MISSING,
     ):
@@ -91,14 +85,20 @@ class DirectiveField(dataclasses.Field, t.Generic[_T]):
             **kwargs,
         )
 
-        # name attribute is used by dataclasses.Field
         self.field_name = name
-        # TODO: infer typeident from annotations
-        self.type_ident = type_ident
+        self.type_ident = None
         self.description = description
         self.default_value = (
             None if default_value is dataclasses.MISSING else default_value
         )
+
+
+def directive_field(
+    name: t.Optional[str] = None,
+    description: str = "",
+    default_value: t.Any = dataclasses.MISSING,
+) -> t.Any:  # note: t.Any is a workaround for mypy
+    return DirectiveField(name, description, default_value)
 
 
 @dataclass
@@ -136,10 +136,15 @@ def directive(
     """Decorator to mark class as operation directive.
     A class with a @directive decorator will become a dataclass.
     """
+    # TODO: validation locations
 
     def _wrap(cls: T) -> T:
         cls = t.cast(T, wrap_dataclass(cls))
         fields = get_fields(cls, DirectiveField)
+        for field in fields:
+            field.type_ident = builtin_to_introspection_type(field.type)
+            field.field_name = field.field_name or field.name
+
         cls.__directive_info__ = DirectiveInfo(
             name=name,
             locations=locations,
@@ -168,9 +173,7 @@ def directive(
     description="Caches node and all its fields",
 )
 class Cached(Directive):
-    ttl: int = DirectiveField(  # type: ignore[assignment]
-        name="ttl",
-        type_ident=NON_NULL(SCALAR("Int")),
+    ttl: int = directive_field(
         description="How long field will live in cache.",
     )
 
@@ -189,9 +192,8 @@ class Cached(Directive):
     ),
 )
 class _SkipDirective(Directive):
-    if_: DirectiveField[bool] = DirectiveField(
+    if_: bool = directive_field(
         name="if",
-        type_ident=NON_NULL(SCALAR("Boolean")),
         description="Skipped when true.",
     )
 
@@ -209,9 +211,8 @@ class _SkipDirective(Directive):
     ),
 )
 class _IncludeDirective(Directive):
-    if_: DirectiveField[bool] = DirectiveField(
+    if_: bool = directive_field(
         name="if",
-        type_ident=NON_NULL(SCALAR("Boolean")),
         description="Included when true.",
     )
 
@@ -219,8 +220,7 @@ class _IncludeDirective(Directive):
 class SchemaDirectiveField(dataclasses.Field, t.Generic[_T]):
     def __init__(
         self,
-        name: str,
-        type_ident: t.Any,  # hiku.introspection.types.*
+        name: t.Optional[str] = None,
         description: str = "",
         default_value: t.Any = dataclasses.MISSING,
     ):
@@ -240,14 +240,20 @@ class SchemaDirectiveField(dataclasses.Field, t.Generic[_T]):
             **kwargs,
         )
 
-        # name attribute is used by dataclasses.Field
         self.field_name = name
-        # TODO: infer typeident from annotations
-        self.type_ident = type_ident
+        self.type_ident = None
         self.description = description
         self.default_value = (
             None if default_value is dataclasses.MISSING else default_value
         )
+
+
+def schema_directive_field(
+    name: t.Optional[str] = None,
+    description: str = "",
+    default_value: t.Any = dataclasses.MISSING,
+) -> t.Any:  # note: t.Any is a workaround for mypy
+    return SchemaDirectiveField(name, description, default_value)
 
 
 @dataclass
@@ -274,6 +280,10 @@ def schema_directive(
     def _wrap(cls: T) -> T:
         cls = t.cast(T, wrap_dataclass(cls))
         fields = get_fields(cls, SchemaDirectiveField)
+        for field in fields:
+            field.type_ident = builtin_to_introspection_type(field.type)
+            field.field_name = field.field_name or field.name
+
         cls.__directive_info__ = SchemaDirectiveInfo(
             name=name,
             locations=locations,
@@ -315,9 +325,7 @@ class SchemaDirective:
 class Deprecated(SchemaDirective):
     """https://spec.graphql.org/June2018/#sec--deprecated"""
 
-    reason: SchemaDirectiveField[t.Optional[str]] = SchemaDirectiveField(
-        name="reason",
-        type_ident=SCALAR("String"),
+    reason: t.Optional[str] = schema_directive_field(
         description="Deprecation reason.",
         default_value=None,
     )
