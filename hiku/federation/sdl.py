@@ -282,7 +282,7 @@ class Exporter(GraphVisitor):
             "https://specs.apollo.dev/federation/v2.3",
             None,
             None,
-            [f"@{d}" for d in directives_in_use],
+            [f"@{d}" for d in directives_in_use],  # type: ignore
         )
 
         schema_directives.append(
@@ -306,7 +306,7 @@ class Exporter(GraphVisitor):
                         import_url,
                         None,
                         None,
-                        [f"@{info.name}"],
+                        [f"@{info.name}"],  # type: ignore
                     ),
                     skip_fields=["as", "for"],
                 )

@@ -1,19 +1,38 @@
 from dataclasses import dataclass
-from typing import Callable, List, Optional, TypeVar
+from enum import Enum
+from typing import Any, Callable, List, Optional, TypeVar
 from typing_extensions import dataclass_transform
 
+from hiku.custom_scalar import scalar
 from hiku.directives import (
     SchemaDirectiveInfo,
     Location,
     SchemaDirective,
     SchemaDirectiveField,
+    schema_directive_field,
     get_fields,
     wrap_dataclass,
 )
-from hiku.introspection.types import LIST, NON_NULL, SCALAR
-
+from hiku.enum import enum
+from hiku.utils.typing import builtin_to_introspection_type
 
 T = TypeVar("T", bound="FederationSchemaDirective")
+
+
+@scalar(name="_FieldSet")
+class FieldSet:
+    ...
+
+
+@scalar(name="link_Import")
+class LinkImport:
+    ...
+
+
+@enum(name="link__Purpose")
+class LinkPurpose(Enum):
+    SECURITY = "SECURITY"
+    EXECUTION = "EXECUTION"
 
 
 @dataclass
@@ -54,6 +73,10 @@ def schema_directive(
 
         cls = wrap_dataclass(cls)  # type: ignore[arg-type, assignment]
         fields = get_fields(cls, SchemaDirectiveField)  # type: ignore[arg-type]
+        for field in fields:
+            field.type_ident = builtin_to_introspection_type(field.type)
+            field.field_name = field.field_name or field.name
+
         cls.__directive_info__ = FederationSchemaDirectiveInfo(
             name=name,
             locations=locations,
@@ -73,7 +96,7 @@ def schema_directive(
 class FederationSchemaDirective(SchemaDirective):
     """Base class for federation directives"""
 
-    # __directive_info__: Any  # FederationSchemaDirectiveInfo
+    __directive_info__: Any  # FederationSchemaDirectiveInfo
 
 
 # v1/v2 directives
@@ -92,18 +115,13 @@ class Key(FederationSchemaDirective):
     https://www.apollographql.com/docs/federation/federated-types/federated-directives#key
     """
 
-    # TODO: type scalar _FieldSet
-    fields: str = SchemaDirectiveField(  # type: ignore[assignment]
-        "fields",
-        type_ident=NON_NULL(SCALAR("_FieldSet")),
+    fields: FieldSet = schema_directive_field(
         description=(
             "A combination of fields that can be used to uniquely "
             "identify and fetch an object or interface"
         ),
     )
-    resolvable: bool = SchemaDirectiveField(  # type: ignore[assignment]
-        "resolvable",
-        type_ident=NON_NULL(SCALAR("Boolean")),
+    resolvable: bool = schema_directive_field(
         description="",
         default_value=True,
     )
@@ -123,9 +141,7 @@ class Provides(FederationSchemaDirective):
     https://www.apollographql.com/docs/federation/federation-spec/#provides
     """
 
-    fields: str = SchemaDirectiveField(  # type: ignore[assignment]
-        "fields",
-        type_ident=NON_NULL(SCALAR("_FieldSet")),
+    fields: FieldSet = schema_directive_field(
         description=(
             "Expected returned fieldset from a field on a base type "
             "that is guaranteed to be selectable by the gateway"
@@ -146,9 +162,7 @@ class Requires(FederationSchemaDirective):
     https://www.apollographql.com/docs/federation/federation-spec/#requires
     """
 
-    fields: str = SchemaDirectiveField(  # type: ignore[assignment]
-        "fields",
-        type_ident=NON_NULL(SCALAR("_FieldSet")),
+    fields: FieldSet = schema_directive_field(
         description=(
             "The required input fieldset from a base type for a " "resolver"
         ),
@@ -210,9 +224,7 @@ class Tag(FederationSchemaDirective):
     https://www.apollographql.com/docs/federation/federated-types/federated-directives#tag
     """
 
-    name: str = SchemaDirectiveField(  # type: ignore[assignment]
-        "name",
-        type_ident=NON_NULL(SCALAR("String")),
+    name: str = schema_directive_field(
         description="The tag name to apply",
     )
 
@@ -230,11 +242,12 @@ class Override(FederationSchemaDirective):
     https://www.apollographql.com/docs/federation/federated-types/federated-directives#override
     """
 
-    from_: str = SchemaDirectiveField(  # type: ignore[assignment]
+    from_: str = schema_directive_field(
         "from",
-        type_ident=NON_NULL(SCALAR("String")),
-        description="The name of the other subgraph that no longer "
-        "resolves the field",
+        description=(
+            "The name of the other subgraph that no longer "
+            "resolves the field"
+        ),
     )
 
 
@@ -314,9 +327,7 @@ class ComposeDirective(FederationSchemaDirective):
     https://www.apollographql.com/docs/federation/federated-types/federated-directives#composedirective
     """
 
-    name: str = SchemaDirectiveField(  # type: ignore[assignment]
-        "name",
-        type_ident=NON_NULL(SCALAR("String")),
+    name: str = schema_directive_field(
         description="The name (including the leading @) of the "
         "directive to preserve during composition.",
     )
@@ -337,24 +348,16 @@ class Link(FederationSchemaDirective):
     https://www.apollographql.com/docs/federation/federated-types/federated-directives#the-link-directive
     """
 
-    url: str = SchemaDirectiveField(  # type: ignore[assignment]
-        "url",
-        type_ident=NON_NULL(SCALAR("String")),
-    )
-    as_: Optional[str] = SchemaDirectiveField(  # type: ignore[assignment]
+    url: str = schema_directive_field()
+    as_: Optional[str] = schema_directive_field(
         "as",
-        type_ident=SCALAR("String"),
         default_value=None,
     )
-    # EXECUTION or SECURITY
-    for_: Optional[str] = SchemaDirectiveField(  # type: ignore[assignment]
+    for_: Optional[LinkPurpose] = schema_directive_field(
         "for",
-        type_ident=SCALAR("link__Purpose"),  # TODO(mkind): this type ???
         default_value=None,
     )
-    # TODO(mkind): this type list(scalar) may be link__Import not [Link__Import
-    import_: Optional[List[str]] = SchemaDirectiveField(  # type: ignore[assignment]  # noqa: E501
+    import_: Optional[List[Optional[LinkImport]]] = schema_directive_field(
         "import",
-        type_ident=LIST(SCALAR("[link__Import]")),
         default_value=None,
     )

@@ -42,6 +42,8 @@ Run linters, formatters and other checks
     $ pdm run black
     $ pdm run mypy
 
+Or you can run `pdm check` - it will reformat code, run linters and test in one command.
+
 Build docs
 Docs will be available at ``docs/build``
 
