@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Union
+from typing import Any, List
 
 from hiku.graph import Graph
 
@@ -12,20 +12,7 @@ def get_keys(graph: Graph, typename: str) -> List[FieldSet]:
     return [d.fields for d in node.directives if isinstance(d, Key)]
 
 
-Scalar = Any
-
-
-def get_representation_ident(
-    representation: Dict, graph: Graph
-) -> Union[Scalar, ImmutableDict]:
-    typename = representation["__typename"]
-    for key in get_keys(graph, typename):
-        if key in representation:
-            # If it's a single field name, then extract the value
-            return representation[key]
-
-    # If it's a multi-field or composite key, then the whole representation
-    # (except __typename) must be an ident.
-    # This works similar to how Link(require=[]) works.
-    rep = {k: v for k, v in representation.items() if k != "__typename"}
-    return to_immutable_dict(rep)
+def representation_to_ident(representation: dict) -> ImmutableDict[str, Any]:
+    """Convert representation to ident.
+    Ident is a immutable dict that can be used as a key in a dict."""
+    return to_immutable_dict(representation, exclude_keys={"__typename"})

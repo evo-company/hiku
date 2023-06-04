@@ -10,7 +10,7 @@ from hiku.graph import (
     Root,
 )
 from hiku.types import (
-    Record,
+    Boolean, Record,
     Integer,
     String,
     TypeRef,
@@ -52,7 +52,15 @@ def execute(graph, query_string):
     return graphql_endpoint.dispatch(query_string)
 
 
+SaveOrderResultNode = Node(
+    "SaveOrderResult",
+    [
+        Field("status", Boolean, lambda: None),
+    ],
+)
+
 GRAPH = Graph([
+    SaveOrderResultNode,
     Node('Order', [
         Field('cartId', Integer, field_resolver, directives=[External()]),
         Link('cart', TypeRef['Cart'], link_resolver, requires='cartId')
@@ -80,7 +88,25 @@ GRAPH = Graph([
 }, directives=[Custom])
 
 
-expected = """
+MUTATION_GRAPH = Graph(
+    GRAPH.nodes
+    + [
+        Root([
+            Link(
+                "saveOrder",
+                TypeRef["SaveOrderResult"],
+                lambda: None,
+                options=[
+                    Option("id", Integer),
+                ],
+                requires=None,
+            ),
+        ])
+    ]
+)
+
+
+expected_tmpl = """
     extend schema @link(url: "https://specs.apollo.dev/federation/v2.3", import: ["@key", "@external", "@extends", "@composeDirective"]) @link(url: "https://myspecs.dev/myCustomDirective/v1.0", import: ["@custom"]) @composeDirective(name: "@custom")
 
     directive @custom on OBJECT
@@ -93,6 +119,10 @@ expected = """
     input IOStatus {
       id: Int!
       title: String!
+    }
+    
+    type SaveOrderResult {
+      status: Boolean!
     }
 
     extend type Order @key(fields: "cartId", resolvable: true) {
@@ -108,7 +138,7 @@ expected = """
     extend type Query {
       order(id: Int!): Order
     }
-    
+    %s
     scalar Any
     
     union _Entity = Cart | Order
@@ -118,10 +148,24 @@ expected = """
     }
 """
 
+expected_with_mutation_tmpl = """
+    extend type Mutation {
+      saveOrder(id: Int!): SaveOrderResult!
+    }
+"""
+
+expected = expected_tmpl % ""
+expected_with_mutation = expected_tmpl % expected_with_mutation_tmpl
+
 
 def test_print_graph_sdl():
     sdl = print_sdl(GRAPH)
     assert sdl.strip() == textwrap.dedent(expected).strip()
+
+
+def test_print_graph_and_mutation_graph_sdl():
+    sdl = print_sdl(GRAPH, MUTATION_GRAPH)
+    assert sdl.strip() == textwrap.dedent(expected_with_mutation).strip()
 
 
 def test_print_introspected_graph_sdl():

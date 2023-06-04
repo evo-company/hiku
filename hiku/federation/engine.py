@@ -12,7 +12,7 @@ from hiku.cache import CacheInfo, CacheSettings
 from hiku.executors.asyncio import AsyncIOExecutor
 from hiku.executors.base import SyncAsyncExecutor
 from hiku.federation.sdl import print_sdl
-from hiku.federation.utils import get_representation_ident
+from hiku.federation.utils import representation_to_ident
 from hiku.engine import (
     BaseEngine,
     InitOptions,
@@ -56,11 +56,17 @@ class Engine(BaseEngine):
             raise ValueError("federation_version must be 1 or 2")
         self.federation_version = federation_version
 
-    def execute_service(self, graph: Graph) -> Union[Proxy, Awaitable[Proxy]]:
+    def execute_service(
+        self, graph: Graph, mutation_graph: Optional[Graph]
+    ) -> Union[Proxy, Awaitable[Proxy]]:
         idx = Index()
         idx[ROOT.node] = Index()
         idx[ROOT.node][ROOT.ident] = {
-            "sdl": print_sdl(graph, self.federation_version)
+            "sdl": print_sdl(
+                graph,
+                mutation_graph,
+                federation_version=self.federation_version,
+            )
         }
         result = Proxy(idx, ROOT, Node(fields=[Field("sdl")]))
         if isinstance(self.executor, AsyncIOExecutor):
@@ -79,19 +85,20 @@ class Engine(BaseEngine):
         task_set = queue.fork(None)
         query_workflow = Query(queue, task_set, graph, query, Context(ctx))
 
-        type_ids_map = defaultdict(list)
+        type_representations_map = defaultdict(list)
 
         for rep in representations:
             typename = rep["__typename"]
-            ident = get_representation_ident(rep, graph)
-            type_ids_map[typename].append(ident)
+            ident = representation_to_ident(rep)
+            type_representations_map[typename].append(ident)
 
-        for typename in type_ids_map:
-            ids = type_ids_map[typename]
+        for typename in type_representations_map:
             node = graph.nodes_map[typename]
             # TODO(mkind): we probably execute some `resolve_reference`
             #  function and only then run process_node !
-            query_workflow.process_node(path, node, query, ids)
+            query_workflow.process_node(
+                path, node, query, type_representations_map[typename]
+            )
 
         return self.executor.process(queue, query_workflow)
 
@@ -128,9 +135,7 @@ class Engine(BaseEngine):
         if ctx is None:
             ctx = {}
 
-        if "_service" in query.fields_map:
-            return self.execute_service(graph)
-        elif "_entities" in query.fields_map:
+        if "_entities" in query.fields_map:
             return self.execute_entities(graph, query, ctx)
 
         return self.execute_query(graph, query, ctx, op)

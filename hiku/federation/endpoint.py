@@ -17,7 +17,7 @@ from typing import (
 )
 
 from hiku.federation.engine import Engine
-from hiku.federation.utils import get_representation_ident
+from hiku.federation.utils import representation_to_ident
 from hiku.federation.introspection import (
     BaseFederatedGraphQLIntrospection,
     FederatedGraphQLIntrospection,
@@ -65,8 +65,7 @@ def denormalize_entities(
     entities = []
     for r in representations:
         typename = r["__typename"]
-        ident = get_representation_ident(r, graph)
-
+        ident = representation_to_ident(r)
         result.__ref__ = Reference(typename, ident)
         data = DenormalizeEntityGraphQL(graph, result, typename).process(node)
         entities.append(data)
@@ -151,7 +150,11 @@ class FederatedGraphQLEndpoint(BaseSyncFederatedGraphQLEndpoint):
 
     def execute(self, graph: Graph, op: Operation, ctx: Optional[Dict]) -> Dict:
         stripped_query = _process_query(graph, op.query)
-        result = self.engine.execute(graph, stripped_query, ctx or {}, op)
+        if "_service" in stripped_query.fields_map:
+            result = self.engine.execute_service(graph, self.mutation_graph)
+        else:
+            result = self.engine.execute(graph, stripped_query, ctx or {}, op)
+
         assert isinstance(result, Proxy)
         return self.postprocess_result(result, graph, op)
 
@@ -178,7 +181,11 @@ class AsyncFederatedGraphQLEndpoint(BaseAsyncFederatedGraphQLEndpoint):
         self, graph: Graph, op: Operation, ctx: Optional[Dict]
     ) -> Dict:
         stripped_query = _process_query(graph, op.query)
-        coro = self.engine.execute(graph, stripped_query, ctx)
+        if "_service" in stripped_query.fields_map:
+            coro = self.engine.execute_service(graph, self.mutation_graph)
+        else:
+            coro = self.engine.execute(graph, stripped_query, ctx)
+
         assert isawaitable(coro)
         result = await coro
         return self.postprocess_result(result, graph, op)

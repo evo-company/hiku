@@ -177,8 +177,14 @@ def schema_to_graphql_directive(
 
 
 class Exporter(GraphVisitor):
-    def __init__(self, graph: Graph, federation_version: int):
+    def __init__(
+        self,
+        graph: Graph,
+        mutation_graph: Optional[Graph],
+        federation_version: int,
+    ):
         self.graph = graph
+        self.mutation_graph = mutation_graph
         self.federation_version = federation_version
 
     def get_entity_types(self) -> t.List[str]:
@@ -225,6 +231,11 @@ class Exporter(GraphVisitor):
             *self.get_custom_directives(),
             *self.export_data_types(),
             *[self.visit(item) for item in graph.items],
+            *(
+                [self.get_mutation_root(self.mutation_graph)]
+                if self.mutation_graph
+                else []
+            ),
             self.get_any_scalar(),
             self.get_entity_union(),
             self.get_service_type(),
@@ -233,6 +244,12 @@ class Exporter(GraphVisitor):
                 nodes.append(node)
 
         return nodes
+
+    def get_mutation_root(self, graph: Graph) -> ast.ObjectTypeExtensionNode:
+        return ast.ObjectTypeExtensionNode(
+            name=_name("Mutation"),
+            fields=[self.visit(item) for item in graph.iter_root()],
+        )
 
     def _iter_directives(self) -> t.Iterator[SchemaDirective]:
         """Return nodes + fields directives"""
@@ -446,10 +463,16 @@ class Exporter(GraphVisitor):
         return schema_to_graphql_directive(directive)
 
 
-def get_ast(graph: Graph, federation_version: int) -> ast.DocumentNode:
+def get_ast(
+    graph: Graph, mutation_graph: Optional[Graph], federation_version: int
+) -> ast.DocumentNode:
     graph = _StripGraph().visit(graph)
+    if mutation_graph is not None:
+        mutation_graph = _StripGraph().visit(mutation_graph)
     return ast.DocumentNode(
-        definitions=Exporter(graph, federation_version).visit(graph)
+        definitions=Exporter(graph, mutation_graph, federation_version).visit(
+            graph
+        )
     )
 
 
@@ -487,7 +510,9 @@ class _StripGraph(GraphTransformer):
 
 
 def print_sdl(
-    graph: Graph, federation_version: int = DEFAULT_FEDERATION_VERSION
+    graph: Graph,
+    mutation_graph: Optional[Graph] = None,
+    federation_version: int = DEFAULT_FEDERATION_VERSION,
 ) -> str:
     """Print graphql AST into a string"""
-    return print_ast(get_ast(graph, federation_version))
+    return print_ast(get_ast(graph, mutation_graph, federation_version))
