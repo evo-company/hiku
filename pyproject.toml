@@ -104,7 +104,7 @@ if [ -z "${MESSAGE}" ]; then
     echo "MESSAGE is not set"
     exit 1
 fi
-echo "__version__ = '${VERSION}'" > hiku/__init__.py
+echo "__version__ = \"${VERSION}\"" > hiku/__init__.py
 git add hiku/__init__.py
 git commit -m "Release ${VERSION}"
 git tag -a v${VERSION} -m "${MESSAGE}"
