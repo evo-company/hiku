@@ -13,6 +13,6 @@ jobs:
     - name: Set up PDM
       uses: pdm-project/setup-pdm@v3
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: "3.7"
     - name: Publish package distributions to PyPI
       run: pdm publish -u "__token__" -P ${{ secrets.TWINE_PASSWORD }}
