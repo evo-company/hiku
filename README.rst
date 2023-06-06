@@ -21,12 +21,12 @@ Bug fixes and new features are frequently published via release candidates:
 Optional dependencies
 ~~~~~~~~~~~~~~~~~~~~~
 
-* `graphql-core`_ - for GraphQL support
-* `protobuf`_ - for Protobuf support
-* `sqlalchemy`_ - for SQLAlchemy support as a data-source
-* `aiopg`_ - for async PostgreSQL support with `aiopg`
-* `asyncpg`_ - for async PostgreSQL support with `asyncpg`
-* `prometheus-client`_ - for Prometheus metrics support
+* `graphql-core` - for GraphQL support
+* `protobuf` - for Protobuf support
+* `sqlalchemy` - for SQLAlchemy support as a data-source
+* `aiopg` - for async PostgreSQL support with `aiopg`
+* `asyncpg` - for async PostgreSQL support with `asyncpg`
+* `prometheus-client` - for Prometheus metrics support
 
 
 Highlights
