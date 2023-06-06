@@ -53,7 +53,8 @@ def test_validate_entities_query():
 
 
 def test_execute_sdl():
-    result = execute(GRAPH, SDL_QUERY, {})
+    engine = Engine(SyncExecutor())
+    result = engine.execute_service(GRAPH, None)
     assert result['sdl'] is not None
 
 

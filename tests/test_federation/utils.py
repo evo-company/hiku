@@ -50,7 +50,7 @@ data = {
 @listify
 def cart_resolver(fields, ids):
     for cart_id in ids:
-        cart = get_by_id(cart_id, data['carts'])
+        cart = get_by_id(cart_id['cartId'], data['carts'])
         yield [cart[f.name] for f in fields]
 
 
