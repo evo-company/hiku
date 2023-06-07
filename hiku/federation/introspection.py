@@ -87,33 +87,34 @@ def extend_with_federation(graph: Graph, data: dict) -> None:
         if get_keys(graph, node.name):
             union_types.append(_obj(node.name))
 
-    data["__schema"]["types"].append(_type("_Any", "SCALAR"))
-    data["__schema"]["types"].append(_type("_FieldSet", "SCALAR"))
-    data["__schema"]["types"].append(
-        _type("_Entity", "UNION", possibleTypes=union_types)
-    )
-    data["__schema"]["types"].append(
-        _type(
-            "_Service",
-            "OBJECT",
-            fields=[_field("sdl", _type("String", "SCALAR"))],
+    if "types" in data["__schema"]:
+        data["__schema"]["types"].append(_type("_Any", "SCALAR"))
+        data["__schema"]["types"].append(_type("_FieldSet", "SCALAR"))
+        data["__schema"]["types"].append(
+            _type("_Entity", "UNION", possibleTypes=union_types)
         )
-    )
+        data["__schema"]["types"].append(
+            _type(
+                "_Service",
+                "OBJECT",
+                fields=[_field("sdl", _type("String", "SCALAR"))],
+            )
+        )
 
-    entities_field = _field(
-        "_entities",
-        _seq_of_nullable(_union("_Entity", union_types)),
-        args=[_ival("representations", _seq_of(_type("_Any", "SCALAR")))],
-    )
+        entities_field = _field(
+            "_entities",
+            _seq_of_nullable(_union("_Entity", union_types)),
+            args=[_ival("representations", _seq_of(_type("_Any", "SCALAR")))],
+        )
 
-    service_field = _field(
-        "_service",
-        _non_null(_obj("_Service")),
-    )
-    for t in data["__schema"]["types"]:
-        if t["kind"] == "OBJECT" and t["name"] == "Query":
-            t["fields"].append(entities_field)
-            t["fields"].append(service_field)
+        service_field = _field(
+            "_service",
+            _non_null(_obj("_Service")),
+        )
+        for t in data["__schema"]["types"]:
+            if t["kind"] == "OBJECT" and t["name"] == "Query":
+                t["fields"].append(entities_field)
+                t["fields"].append(service_field)
 
 
 class BaseFederatedGraphQLIntrospection(GraphQLIntrospection):
