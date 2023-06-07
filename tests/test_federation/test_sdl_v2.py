@@ -68,6 +68,7 @@ GRAPH = Graph([
     Node('Cart', [
         Field('id', Integer, field_resolver),
         Field('status', TypeRef['Status'], field_resolver),
+        Field('_secret', String, field_resolver),
     ], directives=[Key('id')]),
     Root([
         Link(
