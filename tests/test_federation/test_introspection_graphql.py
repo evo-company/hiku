@@ -279,3 +279,19 @@ def test_federated_introspection_v2():
     ])
     got = introspect_v2(GRAPH)
     assert exp == got['data']
+
+
+def test_introspection_partial_query():
+    query = """
+    query IntrospectionQuery {
+        __schema {
+            queryType { name }
+        }
+    }
+    """
+    got = execute_v2(GRAPH, {'query': query})
+    assert got['data'] == {
+        '__schema': {
+            'queryType': {'name': 'Query'}
+        }
+    }
