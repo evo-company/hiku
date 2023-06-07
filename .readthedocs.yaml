@@ -8,5 +8,6 @@ build:
     - pip install pdm==2.6
     - pdm sync -G docs
     - pdm run docs
+    - mkdir -p _readthedocs
     - mv docs/build _readthedocs/html
 
