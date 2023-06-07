@@ -418,7 +418,11 @@ class Exporter(GraphVisitor):
     def visit_node(
         self, obj: Node
     ) -> t.Union[ast.ObjectTypeDefinitionNode, ast.ObjectTypeExtensionNode]:
-        fields = [self.visit(field) for field in obj.fields]
+        fields = [
+            self.visit(field)
+            for field in obj.fields
+            if not field.name.startswith("_")
+        ]
         _Node: t.Union[
             t.Type[ast.ObjectTypeDefinitionNode],
             t.Type[ast.ObjectTypeExtensionNode],
