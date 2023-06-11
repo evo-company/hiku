@@ -169,16 +169,12 @@ def introspect_v2(query_graph):
 
 def test_federated_introspection_v1():
     exp = _schema([
-        _type('Order', 'OBJECT', fields=[
-            _field('cartId', _non_null(_INT)),
-            _field('cart', _non_null(_obj('Cart'))),
-        ]),
         _type('Cart', 'OBJECT', fields=[
             _field('id', _non_null(_INT)),
             _field('status', _non_null(_obj('Status'))),
         ]),
         _type('Query', 'OBJECT', fields=[
-            _field('order', _obj('Order'), args=[
+            _field('cart', _obj('Cart'), args=[
                 _ival(
                     'id',
                     _non_null(_INT),
@@ -188,7 +184,7 @@ def test_federated_introspection_v1():
             _field(
                 '_entities',
                 _seq_of_nullable(
-                    _union('_Entity', [_obj('Order'), _obj('Cart')])
+                    _union('_Entity', [_obj('Cart')])
                 ),
                 args=[
                     _ival(
@@ -214,7 +210,7 @@ def test_federated_introspection_v1():
         _type('_Any', 'SCALAR'),
         _type('_FieldSet', 'SCALAR'),
         _type('_Entity', 'UNION', possibleTypes=[
-            _obj('Order'), _obj('Cart')
+            _obj('Cart')
         ]),
         _type('_Service', 'OBJECT', fields=[
             _field('sdl', _type('String', 'SCALAR')),
@@ -226,16 +222,12 @@ def test_federated_introspection_v1():
 
 def test_federated_introspection_v2():
     exp = _schema([
-        _type('Order', 'OBJECT', fields=[
-            _field('cartId', _non_null(_INT)),
-            _field('cart', _non_null(_obj('Cart'))),
-        ]),
         _type('Cart', 'OBJECT', fields=[
             _field('id', _non_null(_INT)),
             _field('status', _non_null(_obj('Status'))),
         ]),
         _type('Query', 'OBJECT', fields=[
-            _field('order', _obj('Order'), args=[
+            _field('cart', _obj('Cart'), args=[
                 _ival(
                     'id',
                     _non_null(_INT),
@@ -245,7 +237,7 @@ def test_federated_introspection_v2():
             _field(
                 '_entities',
                 _seq_of_nullable(
-                    _union('_Entity', [_obj('Order'), _obj('Cart')])
+                    _union('_Entity', [_obj('Cart')])
                 ),
                 args=[
                     _ival(
@@ -271,7 +263,7 @@ def test_federated_introspection_v2():
         _type('_Any', 'SCALAR'),
         _type('_FieldSet', 'SCALAR'),
         _type('_Entity', 'UNION', possibleTypes=[
-            _obj('Order'), _obj('Cart')
+            _obj('Cart')
         ]),
         _type('_Service', 'OBJECT', fields=[
             _field('sdl', _type('String', 'SCALAR')),

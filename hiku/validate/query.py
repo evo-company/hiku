@@ -18,6 +18,7 @@ from ..types import (
     IntegerMeta,
     FloatMeta,
     MappingMeta,
+    UnionMeta,
 )
 
 from hiku.query import (
@@ -89,6 +90,9 @@ class _AssumeRecord(AbstractTypeVisitor):
 
     def visit_typeref(self, obj: TypeRefMeta) -> t.OrderedDict:
         return self.visit(self._data_types[obj.__type_name__])
+
+    def visit_union(self, obj: UnionMeta) -> t.Any:
+        ...
 
 
 class _AssumeField(GraphVisitor):

@@ -17,7 +17,6 @@ from typing import (
 )
 
 from hiku.federation.engine import Engine
-from hiku.federation.utils import representation_to_ident
 from hiku.federation.introspection import (
     BaseFederatedGraphQLIntrospection,
     FederatedGraphQLIntrospection,
@@ -40,7 +39,7 @@ from hiku.graph import (
     apply,
 )
 from hiku.query import Node
-from hiku.result import Proxy, Reference
+from hiku.result import Proxy
 from hiku.readers.graphql import Operation
 
 
@@ -58,19 +57,15 @@ def denormalize_entities(
     query: Node,
     result: Proxy,
 ) -> List[Dict[str, Any]]:
-    entities_link = query.fields_map["_entities"]
-    node = entities_link.node
-    representations = entities_link.options["representations"]
+    representations = query.fields_map["_entities"].options["representations"]
 
-    entities = []
-    for r in representations:
-        typename = r["__typename"]
-        ident = representation_to_ident(r)
-        result.__ref__ = Reference(typename, ident)
-        data = DenormalizeEntityGraphQL(graph, result, typename).process(node)
-        entities.append(data)
+    if not representations:
+        return []
 
-    return entities
+    typename = representations[0]["__typename"]
+    data = DenormalizeEntityGraphQL(graph, result, typename).process(query)
+
+    return data["_entities"]
 
 
 class BaseFederatedGraphEndpoint(ABC):

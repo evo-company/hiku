@@ -229,6 +229,27 @@ class TypeRef(metaclass=TypeRefMeta):
     ...
 
 
+class UnionMeta(TypingMeta):
+    __union_name__: str
+    __type_names__: t.List[str]
+
+    def __cls_init__(cls, *args: t.Any) -> None:
+        assert len(args) == 1, f"{cls.__name__} takes exactly one argument"
+        [args] = args
+        cls.__union_name__ = args[0]
+        cls.__type_names__ = args[1]
+
+    def __cls_repr__(self) -> str:
+        return "{}[{!r}]".format(self.__name__, "|".join(self.__type_names__))
+
+    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
+        return visitor.visit_union(cls)
+
+
+class Union(metaclass=UnionMeta):
+    """Usage: Union['_Entity', ['Cart', 'Order']]"""
+
+
 @t.overload
 def _maybe_typeref(typ: str) -> TypeRefMeta:
     ...
@@ -295,6 +316,10 @@ class AbstractTypeVisitor(ABC):
     def visit_callable(self, obj: CallableMeta) -> t.Any:
         pass
 
+    @abstractmethod
+    def visit_union(self, obj: UnionMeta) -> t.Any:
+        pass
+
 
 class TypeVisitor(AbstractTypeVisitor):
     def visit_any(self, obj: AnyMeta) -> t.Any:
@@ -316,6 +341,9 @@ class TypeVisitor(AbstractTypeVisitor):
         pass
 
     def visit_typeref(self, obj: TypeRefMeta) -> t.Any:
+        pass
+
+    def visit_union(self, obj: UnionMeta) -> t.Any:
         pass
 
     def visit_optional(self, obj: OptionalMeta) -> t.Any:

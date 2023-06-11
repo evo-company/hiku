@@ -1,6 +1,4 @@
 from hiku.graph import (
-    Graph,
-    Node,
     Field,
     Link,
     Option,
@@ -14,17 +12,16 @@ from hiku.types import (
     Optional,
 )
 from hiku.utils import listify
-from hiku.federation.directive import (
-    External,
-    Key,
-    Extends,
-)
+from hiku.federation.graph import Graph, FederatedNode
+from hiku.federation.directive import Key
 
 
 def get_by_id(id_, collection):
     for item in collection:
         if item['id'] == id_:
             return item
+
+    return None
 
 
 @listify
@@ -50,7 +47,7 @@ data = {
 @listify
 def cart_resolver(fields, ids):
     for cart_id in ids:
-        cart = get_by_id(cart_id['cartId'], data['carts'])
+        cart = get_by_id(cart_id, data['carts'])
         yield [cart[f.name] for f in fields]
 
 
@@ -85,22 +82,20 @@ data_types = {
     }],
 }
 
+
+def resolve_cart(representations):
+    return [r['id'] for r in representations]
+
+
 GRAPH = Graph([
-    Node('Order', [
-        Field('cartId', Integer, ids_resolver, directives=[External()]),
-        Link('cart', TypeRef['Cart'], direct_link, requires='cartId'),
-    ], directives=[
-        Key("cartId"),
-        Extends()
-    ]),
-    Node('Cart', [
+    FederatedNode('Cart', [
         Field('id', Integer, cart_resolver),
         Field('status', TypeRef['Status'], cart_resolver),
-    ], directives=[Key('id')]),
+    ], directives=[Key('id')], resolve_reference=resolve_cart),
     Root([
         Link(
-            'order',
-            Optional[TypeRef['Order']],
+            'cart',
+            Optional[TypeRef['Cart']],
             ids_resolver,
             requires=None,
             options=[
@@ -112,19 +107,14 @@ GRAPH = Graph([
 
 
 ASYNC_GRAPH = Graph([
-    Node('Order', [
-        Field('cartId', Integer, async_ids_resolver,
-              directives=[External()]),
-        Link('cart', TypeRef['Cart'], async_direct_link, requires='cartId'),
-    ], directives=[Key('cartId'), Extends()]),
-    Node('Cart', [
+    FederatedNode('Cart', [
         Field('id', Integer, async_cart_resolver),
         Field('status', TypeRef['Status'], async_cart_resolver),
-    ], directives=[Key('id')]),
+    ], directives=[Key('id')], resolve_reference=resolve_cart),
     Root([
         Link(
-            'order',
-            Optional[TypeRef['Order']],
+            'cart',
+            Optional[TypeRef['Cart']],
             async_ids_resolver,
             requires=None,
             options=[
@@ -132,7 +122,7 @@ ASYNC_GRAPH = Graph([
             ],
         ),
     ]),
-], data_types=data_types)
+], data_types=data_types, is_async=True)
 
 
 def field_resolver(fields, ids):

@@ -26,6 +26,7 @@ from .types import (
     GenericMeta,
     TypingMeta,
     AnyMeta,
+    Union,
 )
 from .utils import (
     cached_property,
@@ -567,20 +568,24 @@ class Graph(AbstractGraph):
         items: t.List[Node],
         data_types: t.Optional[t.Dict[str, t.Type[Record]]] = None,
         directives: t.Optional[t.Sequence[t.Type[SchemaDirective]]] = None,
+        unions: t.Optional[t.Sequence[t.Type[Union]]] = None,
     ):
         """
         :param items: list of nodes
         """
         from .validate.graph import GraphValidator
 
-        GraphValidator.validate(items)
+        unions = tuple(unions or ())
+        GraphValidator.validate(items, unions)
 
         self.items = GraphInit.init(items)
         self.data_types = data_types or {}
+        # TODO: maybe union must be in __types__
         self.__types__ = GraphTypes.get_types(self.items, self.data_types)
         self.directives: t.Tuple[t.Type[SchemaDirective], ...] = tuple(
             directives or ()
         )
+        self.unions: t.Tuple[t.Type[Union], ...] = tuple(unions or ())
 
     def __repr__(self) -> str:
         return "{}({!r})".format(self.__class__.__name__, self.items)
@@ -607,6 +612,10 @@ class Graph(AbstractGraph):
     @cached_property
     def nodes_map(self) -> OrderedDict:
         return OrderedDict((e.name, e) for e in self.iter_nodes())
+
+    @cached_property
+    def unions_map(self) -> OrderedDict:
+        return OrderedDict((u.__union_name__, u) for u in self.unions)
 
     def accept(self, visitor: "AbstractGraphVisitor") -> t.Any:
         return visitor.visit_graph(self)
