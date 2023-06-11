@@ -35,4 +35,4 @@ RUN python3 -m pip install tox tox-pdm
 
 FROM base as examples
 
-RUN pdm sync -G examples
+RUN pdm sync -d -G dev -G examples

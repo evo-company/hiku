@@ -1,6 +1,7 @@
 import logging
 import sys
 import typing as t
+from pathlib import Path
 
 from flask import Flask, request, jsonify
 
@@ -21,6 +22,7 @@ from hiku.federation.directive import (
 )
 from hiku.federation.endpoint import FederatedGraphQLEndpoint
 from hiku.federation.engine import Engine
+from hiku.federation.graph import Graph, FederatedNode
 from hiku.graph import (
     Nothing,
     Root,
@@ -28,7 +30,6 @@ from hiku.graph import (
     Option,
     Node,
     Link,
-    Graph,
 )
 from hiku.readers.graphql import setup_query_cache
 from hiku.types import (
@@ -42,7 +43,7 @@ from hiku.types import (
     Sequence,
 )
 from hiku.executors.sync import SyncExecutor
-from hiku.utils import ImmutableDict, listify
+from hiku.utils import ImmutableDict, listify, to_immutable_dict
 
 log = logging.getLogger(__name__)
 
@@ -162,10 +163,11 @@ def product_fields_resolver(fields: t.List[Field], ids: t.List[str]):
 
     for product_id in ids:
         if isinstance(product_id, ImmutableDict):
-            log.info("product_id %s", product_id)
-            sku = product_id["sku"]
             for product in products:
-                if product["sku"] == sku:
+                if product_id.get("id") == product["id"]:
+                    data = product
+                    break
+                if product_id.get("sku") == product["sku"]:
                     if "package" in product_id:
                         if product["package"] == product_id["package"]:
                             data = product
@@ -351,6 +353,17 @@ def link_inventory_products(ids):
             ]
 
 
+def resolve_reference_by(key):
+    def resolver(representations):
+        return [r[key] for r in representations]
+
+    return resolver
+
+
+def resolve_reference_direct(representations):
+    return [to_immutable_dict(r) for r in representations]
+
+
 @schema_directive(
     name="custom",
     locations=[Location.OBJECT],
@@ -363,7 +376,7 @@ class Custom(FederationSchemaDirective):
 
 QUERY_GRAPH = Graph(
     [
-        Node(
+        FederatedNode(
             "User",
             [
                 Field(
@@ -397,8 +410,9 @@ QUERY_GRAPH = Graph(
                 ),
             ],
             directives=[Key("email"), Extends()],
+            resolve_reference=resolve_reference_by('email')
         ),
-        Node(
+        FederatedNode(
             "Product",
             [
                 Field("id", ID, product_fields_resolver),
@@ -442,6 +456,7 @@ QUERY_GRAPH = Graph(
                 Key("sku package"),
                 Key("sku variation { id }"),
             ],
+            resolve_reference=resolve_reference_direct
         ),
         Node(
             "ProductDimension",
@@ -461,7 +476,7 @@ QUERY_GRAPH = Graph(
             ],
             directives=[Shareable()],
         ),
-        Node(
+        FederatedNode(
             "ProductResearch",
             [
                 Field(
@@ -476,8 +491,9 @@ QUERY_GRAPH = Graph(
                 ),
             ],
             directives=[Key("study { caseNumber }")],
+            resolve_reference=resolve_reference_direct
         ),
-        Node(
+        FederatedNode(
             "DeprecatedProduct",
             [
                 Field("sku", String, deprecated_product_fields_resolver),
@@ -500,8 +516,9 @@ QUERY_GRAPH = Graph(
                 ),
             ],
             directives=[Key("sku package")],
+            resolve_reference=resolve_reference_direct,
         ),
-        Node(
+        FederatedNode(
             "Inventory",
             [
                 Field("id", ID, inventory_fields_resolver),
@@ -513,6 +530,7 @@ QUERY_GRAPH = Graph(
                 ),
             ],
             directives=[InterfaceObject(), Key("id")],
+            resolve_reference=resolve_reference_by("id"),
         ),
         Root(
             [
@@ -576,8 +594,10 @@ def main():
 def dump():
     from hiku.federation.sdl import print_sdl
 
+    out_file = Path(__file__).resolve().parent / 'products.graphql'
+    print(f"Dumping schema to {out_file}")
     sdl = print_sdl(QUERY_GRAPH)
-    with open("products.graphql", "w") as f:
+    with open(out_file, "w") as f:
         f.write(sdl)
 
 

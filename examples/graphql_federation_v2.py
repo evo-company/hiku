@@ -2,20 +2,15 @@ import logging
 
 from flask import Flask, request, jsonify
 
-from hiku.federation.directive import (
-    Extends,
-    Key,
-    External,
-)
+from hiku.federation.directive import Key
 from hiku.federation.endpoint import FederatedGraphQLEndpoint
 from hiku.federation.engine import Engine
+from hiku.federation.graph import Graph, FederatedNode
 from hiku.graph import (
     Root,
     Field,
     Option,
-    Node,
     Link,
-    Graph,
 )
 from hiku.readers.graphql import setup_query_cache
 from hiku.types import (
@@ -90,30 +85,42 @@ def direct_link(ids):
     return ids
 
 
-"""Example of `cart` subgraph.
+def resolve_cart_reference(representations):
+    return [r['id'] for r in representations]
 
-`cart` subgraph has `Cart` and `CartItem` types
-`order` subgraph has `Order` type
 
-This `cart` subgraph extends `order`'s subgraph type `Order` with `cart` field
+def resolve_cart_item_reference(representations):
+    return [r['id'] for r in representations]
+
+
+"""
+Example of `cart` subgraph.
+
+`cart` subgraph has `Cart` and `CartItem` types which can be referenced
+from other subgraphs.
 """
 QUERY_GRAPH = Graph([
-    Node('Order', [
-        Field('cartId', Integer, ids_resolver,
-              directives=[External()]),
-        Link('cart', TypeRef['Cart'], direct_link, requires='cartId'),
-    ], directives=[Key('cartId'), Extends()]),
-    Node('Cart', [
-        Field('id', Integer, cart_resolver),
-        Field('status', String, cart_resolver),
-        Link('items', Sequence[TypeRef['CartItem']], link_cart_items,
-             requires='id')
-    ], directives=[Key('id')]),
-    Node('CartItem', [
-        Field('id', Integer, cart_item_resolver),
-        Field('cart_id', Integer, cart_item_resolver),
-        Field('name', String, cart_item_resolver),
-    ]),
+    FederatedNode(
+        'Cart',
+        [
+            Field('id', Integer, cart_resolver),
+            Field('status', String, cart_resolver),
+            Link('items', Sequence[TypeRef['CartItem']], link_cart_items,
+                 requires='id')
+        ],
+        directives=[Key('id')],
+        resolve_reference=resolve_cart_reference
+    ),
+    FederatedNode(
+        'CartItem',
+        [
+            Field('id', Integer, cart_item_resolver),
+            Field('cart_id', Integer, cart_item_resolver),
+            Field('name', String, cart_item_resolver),
+        ],
+        directives=[Key('id')],
+        resolve_reference=resolve_cart_item_reference
+    ),
     Root([
         Link(
             'cart',

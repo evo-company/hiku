@@ -585,7 +585,7 @@ class Graph(AbstractGraph):
         self.directives: t.Tuple[t.Type[SchemaDirective], ...] = tuple(
             directives or ()
         )
-        self.unions: t.Tuple[t.Type[Union], ...] = tuple(unions or ())
+        self.unions: t.Tuple[t.Type[Union], ...] = unions
 
     def __repr__(self) -> str:
         return "{}({!r})".format(self.__class__.__name__, self.items)
@@ -725,6 +725,7 @@ class GraphTransformer(AbstractGraphVisitor):
             [self.visit(node) for node in obj.items],
             obj.data_types,
             obj.directives,
+            obj.unions,
         )
 
 

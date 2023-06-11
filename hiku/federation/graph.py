@@ -63,6 +63,11 @@ class GraphInit(GraphTransformer):
 
             typ = representations[0]["__typename"]
 
+            if typ not in self.type_to_resolve_reference_map:
+                raise TypeError(
+                    'Type "{}" must have "reference_resolver"'.format(typ)
+                )
+
             resolve_reference = self.type_to_resolve_reference_map[typ]
             return resolve_reference(representations), typ
 
@@ -74,6 +79,13 @@ class GraphInit(GraphTransformer):
                 return [], ""
 
             typ = representations[0]["__typename"]
+
+            if typ not in self.type_to_resolve_reference_map:
+                raise TypeError(
+                    'Type "{}" must have "resolve_reference" function'.format(
+                        typ
+                    )
+                )
 
             resolve_reference = self.type_to_resolve_reference_map[typ]
             coro = resolve_reference(representations)
