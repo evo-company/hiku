@@ -1,5 +1,7 @@
 from collections import defaultdict
 from typing import (
+    Any,
+    List,
     Optional,
     Dict,
     Awaitable,
@@ -7,6 +9,8 @@ from typing import (
     TypeVar,
     Union,
 )
+
+from hiku.types import Sequence, TypeRef, Optional as HikuOptional
 
 from hiku.cache import CacheInfo, CacheSettings
 from hiku.executors.asyncio import AsyncIOExecutor
@@ -16,12 +20,21 @@ from hiku.federation.utils import representation_to_ident
 from hiku.engine import (
     BaseEngine,
     InitOptions,
-    Query,
+    NodePath,
+    Query as _Query,
     Context,
 )
 from hiku.executors.queue import Queue
 from hiku.federation.version import DEFAULT_FEDERATION_VERSION
-from hiku.graph import Graph
+from hiku.graph import (
+    Graph,
+    GraphTransformer,
+    Link,
+    Many,
+    Maybe,
+    One,
+    Node as GraphNode,
+)
 from hiku.result import (
     Proxy,
     Index,
@@ -30,6 +43,7 @@ from hiku.result import (
 from hiku.query import (
     Node,
     Field,
+    Link as QueryLink,
 )
 
 
@@ -42,6 +56,46 @@ V = TypeVar("V")
 
 async def async_result(val: V) -> V:
     return val
+
+
+def union_link_to_type(obj: Link, typ: str) -> Link:
+    link = GraphTransformer().visit_link(obj)
+
+    link.node = typ
+    if link.type_enum is One:
+        link.type = TypeRef[typ]
+    elif link.type_enum is Maybe:
+        link.type = HikuOptional[TypeRef[typ]]
+    elif link.type_enum is Many:
+        link.type = Sequence[TypeRef[typ]]
+    else:
+        raise TypeError(repr(link.type_enum))
+    return link
+
+
+class Query(_Query):
+    def process_link(
+        self,
+        path: NodePath,
+        node: GraphNode,
+        graph_link: Link,
+        query_link: QueryLink,
+        ids: Any,
+        result: List,
+    ) -> None:
+        if graph_link.name == "_entities":
+            if isinstance(result, tuple):
+                # union type narrowing
+                # TODO: backport this to hiku.engine.Query
+                result, typ = list(result[0]), result[1]
+                graph_link = union_link_to_type(graph_link, typ)
+
+            for representation, id_ in zip(ids, result):
+                self._index["__representations_to_ids__"][representation] = id_
+
+        super(Query, self).process_link(
+            path, node, graph_link, query_link, ids, result
+        )
 
 
 class Engine(BaseEngine):
@@ -77,9 +131,9 @@ class Engine(BaseEngine):
         self, graph: Graph, query: Node, ctx: Dict
     ) -> Union[Proxy, Awaitable[Proxy]]:
         path = ("_entities",)
-        entities_link = query.fields_map["_entities"]
-        query = entities_link.node
-        representations = entities_link.options["representations"]
+        representations = query.fields_map["_entities"].options[
+            "representations"
+        ]
 
         queue = Queue(self.executor)
         task_set = queue.fork(None)
@@ -93,11 +147,8 @@ class Engine(BaseEngine):
             type_representations_map[typename].append(ident)
 
         for typename in type_representations_map:
-            node = graph.nodes_map[typename]
-            # TODO(mkind): we probably execute some `resolve_reference`
-            #  function and only then run process_node !
             query_workflow.process_node(
-                path, node, query, type_representations_map[typename]
+                path, graph.root, query, type_representations_map[typename]
             )
 
         return self.executor.process(queue, query_workflow)

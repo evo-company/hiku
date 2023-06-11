@@ -27,15 +27,12 @@ QUERY = Node(fields=[
     Link(
         '_entities',
         Node(fields=[
-            Link('cart', Node(fields=[
-                Field('id'),
-                Field('status'),
-            ]))
+            Field('status'),
         ]),
         options={
             'representations': [
-                {'__typename': 'Order', 'cartId': 1},
-                {'__typename': 'Order', 'cartId': 2},
+                {'__typename': 'Cart', 'id': 1},
+                {'__typename': 'Cart', 'id': 2},
             ]
         }
     )
@@ -67,8 +64,8 @@ def test_execute_sync_executor():
     )
 
     expect = [
-        {'cart': {'id': 1, 'status': 'NEW'}},
-        {'cart': {'id': 2, 'status': 'ORDERED'}}
+        {'status': 'NEW'},
+        {'status': 'ORDERED'}
     ]
     assert expect == data
 
@@ -83,7 +80,7 @@ async def test_execute_async_executor():
     )
 
     expect = [
-        {'cart': {'id': 1, 'status': 'NEW'}},
-        {'cart': {'id': 2, 'status': 'ORDERED'}}
+        {'status': 'NEW'},
+        {'status': 'ORDERED'}
     ]
     assert expect == data

@@ -1,13 +1,8 @@
+import typing as t
+
 from itertools import chain
 from contextlib import contextmanager
 from collections import Counter
-from typing import (
-    List,
-    Any,
-    Optional,
-    Union,
-    Iterable,
-)
 
 from ..directives import Deprecated
 from ..graph import (
@@ -22,11 +17,11 @@ from ..graph import (
 from ..graph import AbstractNode, AbstractField, AbstractLink, AbstractOption
 
 from .errors import Errors
-from ..types import GenericMeta, OptionalMeta
+from ..types import GenericMeta, OptionalMeta, Union
 
 
 class GraphValidationError(TypeError):
-    def __init__(self, errors: List[str]) -> None:
+    def __init__(self, errors: t.List[str]) -> None:
         self.errors = errors
         errors_list = "\n".join("- {}".format(e) for e in errors)
         super(GraphValidationError, self).__init__("\n" + errors_list)
@@ -34,7 +29,7 @@ class GraphValidationError(TypeError):
 
 class GraphValidator(GraphVisitor):
     class _NameFormatter(GraphVisitor):
-        def visit_node(self, obj: Node) -> Optional[str]:
+        def visit_node(self, obj: Node) -> t.Optional[str]:
             return obj.name
 
         def visit_root(self, obj: Root) -> str:
@@ -55,20 +50,25 @@ class GraphValidator(GraphVisitor):
     _link_accept_types = (AbstractOption,)
     _field_accept_types = (AbstractOption,)
 
-    def __init__(self, items: List[Node]) -> None:
+    def __init__(
+        self, items: t.List[Node], unions: t.Tuple[t.Type[Union], ...]
+    ) -> None:
         self.items = items
+        self.unions = unions
         self.errors = Errors()
-        self._ctx: List = []
+        self._ctx: t.List = []
 
     @classmethod
-    def validate(cls, items: List[Node]) -> None:
-        validator = cls(items)
+    def validate(
+        cls, items: t.List[Node], unions: t.Tuple[t.Type[Union], ...]
+    ) -> None:
+        validator = cls(items, unions)
         validator.visit_graph_items(items)
         if validator.errors.list:
             raise GraphValidationError(validator.errors.list)
 
     @contextmanager
-    def push_ctx(self, obj: Union[Node, Link, Field]) -> Any:
+    def push_ctx(self, obj: t.Union[Node, Link, Field]) -> t.Any:
         self._ctx.append(obj)
         try:
             yield
@@ -76,24 +76,26 @@ class GraphValidator(GraphVisitor):
             self._ctx.pop()
 
     @property
-    def ctx(self) -> Union[Node, Link, Field]:
+    def ctx(self) -> t.Union[Node, Link, Field]:
         return self._ctx[-1]
 
-    def _get_duplicates(self, names: Iterable[str]) -> List[str]:
+    def _get_duplicates(self, names: t.Iterable[str]) -> t.List[str]:
         counter = Counter(names)
         return [k for k, v in counter.items() if v > 1]
 
-    def _format_names(self, names: List[str]) -> str:
+    def _format_names(self, names: t.List[str]) -> str:
         return ", ".join('"{}"'.format(name) for name in names)
 
-    def _format_types(self, objects: List[Any]) -> str:
+    def _format_types(self, objects: t.List[t.Any]) -> str:
         return ", ".join(map(repr, set(type(obj) for obj in objects)))
 
-    def _format_path(self, obj: Optional[Any] = None) -> str:
+    def _format_path(self, obj: t.Optional[t.Any] = None) -> str:
         path = self._ctx + ([obj] if obj is not None else [])
         return "".join(self._name_formatter.visit(i) for i in path)
 
-    def _validate_deprecated_duplicates(self, obj: Union[Field, Link]) -> None:
+    def _validate_deprecated_duplicates(
+        self, obj: t.Union[Field, Link]
+    ) -> None:
         deprecated_count = sum(
             (1 for d in obj.directives if isinstance(d, Deprecated))
         )
@@ -153,12 +155,14 @@ class GraphValidator(GraphVisitor):
             super(GraphValidator, self).visit_link(obj)
 
         graph_nodes_map = {e.name for e in self.items if e.name is not None}
+        unions_map = {u.__union_name__: u for u in self.unions}
         if obj.node not in graph_nodes_map:
-            self.errors.report(
-                'Link "{}" points to the missing node "{}"'.format(
-                    self._format_path(obj), obj.node
+            if obj.node not in unions_map:
+                self.errors.report(
+                    'Link "{}" points to the missing node "{}"'.format(
+                        self._format_path(obj), obj.node
+                    )
                 )
-            )
 
         if obj.requires is not None:
             requires = (
@@ -211,7 +215,7 @@ class GraphValidator(GraphVisitor):
     def visit_graph(self, obj: Graph) -> None:
         self.visit_graph_items(obj.items)
 
-    def visit_graph_items(self, items: List[Node]) -> None:
+    def visit_graph_items(self, items: t.List[Node]) -> None:
         invalid = [
             f for f in items if not isinstance(f, self._graph_accept_types)
         ]

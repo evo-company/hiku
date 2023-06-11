@@ -8,6 +8,7 @@ from typing import (
     List,
     Optional,
     Iterable,
+    Set,
     Union,
 )
 
@@ -27,6 +28,13 @@ class Workflow:
 
 
 class TaskSet:
+    """A task set is a group of tasks (or futures) that are related and possibly
+    dependent on each other.
+
+    Task sets can spawn 'forked' task sets, which represent subgroups of tasks
+    that can be processed separately but are associated with the parent task set
+    """
+
     def __init__(self, queue: "Queue") -> None:
         self._queue = queue
 
@@ -36,21 +44,59 @@ class TaskSet:
 
 # TODO: make queue generic over futures
 class Queue:
+    """
+    A Queue is a class used to manage a collection of tasks (or 'futures')
+    for execution.
+
+    By default, tasks are grouped into task sets.
+
+    Each task set can also 'fork' new task sets.
+    Forking is a way to represent a dependency graph of execution.
+    """
+
     def __init__(self, executor: BaseExecutor) -> None:
         self._executor = executor
-        self._futures: Dict = {}
-        self._forks: Dict = {}
+        """
+        A dictionary of futures sets associated with each task set.
+        """
+        self._futures: Dict[TaskSet, Set[SubmitRes]] = {}
+        """
+        A dictionary of forked task sets associated with each task set.
+        """
+        self._forks: Dict[TaskSet, Set[TaskSet]] = {}
+        """
+        A dictionary of callbacks associated with each future or task set.
+        """
         self._callbacks: DefaultDict[
             Union[SubmitRes, TaskSet], List
-        ] = defaultdict(
-            list
-        )  # noqa: E501
+        ] = defaultdict(list)
 
     @property
-    def __futures__(self) -> List:
+    def __futures__(self) -> List[SubmitRes]:
         return list(chain.from_iterable(self._futures.values()))
 
     def progress(self, done: Iterable) -> None:
+        """
+        This method operates in two phases.
+
+        The first phase is to iterate over completed tasks or 'futures' and
+        remove them from their respective task set.
+        For each completed future, it calls the corresponding callback functions
+
+        A callback is usually a function that is either stores result of
+        the future or spawns a new future into the queue.
+
+        The second phase is to enter a loop, where it identifies completed task
+        sets (a task set is considered completed if it doesn't have any futures
+            or forks associated with it).
+        For each completed task set, it calls the corresponding callback
+        functions and removes the task set from the queue.
+
+        If a task set has forks (task sets that were spawned from it),
+        those forks are also removed from the respective fork set.
+
+        This process continues until there are no pending task sets left.
+        """
         for future_set in self._futures.values():
             future_set.difference_update(done)
 
@@ -83,6 +129,12 @@ class Queue:
         return fut
 
     def fork(self, from_: Optional["TaskSet"]) -> "TaskSet":
+        """
+        Forked task sets represent child task sets of a parent task set.
+
+        The parent task set is considered done when all its futures
+        and its forked task sets are done.
+        """
         task_set = TaskSet(self)
         self._futures[task_set] = set()
         self._forks[task_set] = set()

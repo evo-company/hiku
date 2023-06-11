@@ -43,6 +43,7 @@ from ..types import (
     IntegerMeta,
     FloatMeta,
     BooleanMeta,
+    UnionMeta,
 )
 from ..types import Any, RecordMeta, AbstractTypeVisitor
 from ..utils import (
@@ -139,6 +140,9 @@ class TypeIdent(AbstractTypeVisitor):
             return NON_NULL(INPUT_OBJECT(obj.__type_name__))
         else:
             return NON_NULL(OBJECT(obj.__type_name__))
+
+    def visit_union(self, obj: UnionMeta) -> t.Any:
+        ...
 
     def visit_string(self, obj: StringMeta) -> HashedNamedTuple:
         return NON_NULL(SCALAR("String"))
@@ -864,7 +868,10 @@ class GraphQLIntrospection(GraphTransformer):
         items = [self.visit(node) for node in obj.items]
         items.extend(introspection_graph.items)
         return Graph(
-            items, data_types=obj.data_types, directives=obj.directives
+            items,
+            data_types=obj.data_types,
+            directives=obj.directives,
+            unions=obj.unions,
         )
 
 

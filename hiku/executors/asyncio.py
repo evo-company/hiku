@@ -45,13 +45,13 @@ class AsyncIOExecutor(BaseAsyncExecutor):
     async def process(self, queue: "Queue", workflow: "Workflow") -> Proxy:
         try:
             while queue.__futures__:
-                done, _ = await wait(
+                done, _ = await wait(  # type: ignore
                     queue.__futures__, return_when=FIRST_COMPLETED
                 )
                 queue.progress(done)
             return workflow.result()
         except CancelledError:
             for task in queue.__futures__:
-                task.cancel()
-            await gather(*queue.__futures__)
+                task.cancel()  # type: ignore
+            await gather(*queue.__futures__)  # type: ignore
             raise
