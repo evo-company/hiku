@@ -104,9 +104,8 @@ commands:
     description: Run federation compatibility test
     depends: [_build-examples]
     cmd: |
+      echo "Dumping schema..."
       docker-compose run --rm federation-compatibility-server dump
-      mv products.graphql examples/federation-compatibility/products.graphql
-      
       export APOLLO_ELV2_LICENSE=accept
       
       npx @apollo/federation-subgraph-compatibility docker \

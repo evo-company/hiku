@@ -499,6 +499,7 @@ class _StripGraph(GraphTransformer):
             [self.visit(node) for node in obj.items if not skip(node)],
             obj.data_types,
             obj.directives,
+            obj.unions,
         )
 
     def visit_node(self, obj: Node) -> Node:
