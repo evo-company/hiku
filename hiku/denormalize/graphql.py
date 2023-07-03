@@ -1,13 +1,16 @@
+import typing as t
 from collections import deque
 
-from ..graph import Graph
+from ..graph import Graph, Union
 from ..query import Field, Link
 from ..result import Proxy
 from ..types import (
+    Record,
     TypeRefMeta,
     SequenceMeta,
     OptionalMeta,
     GenericMeta,
+    UnionRefMeta,
 )
 
 from .base import Denormalize
@@ -22,21 +25,32 @@ class DenormalizeGraphQL(Denormalize):
 
     def visit_field(self, obj: Field) -> None:
         if obj.name == "__typename":
-            self._res[-1][obj.result_key] = self._type_name[-1]
+            type_name = self._type_name[-1]
+            if isinstance(self._type[-1], Union):
+                type_name = self._data[-1].__ref__.node
+            self._res[-1][obj.result_key] = type_name
         else:
+            if isinstance(self._type[-1], Union):
+                type_name = self._data[-1].__ref__.node
+
+                if obj.name not in self._types[type_name].__field_types__:
+                    return
             super().visit_field(obj)
 
     def visit_link(self, obj: Link) -> None:
-        type_ = self._type[-1].__field_types__[obj.name]
+        type_ = t.cast(
+            Record,
+            self._type[-1],
+        ).__field_types__[obj.name]
         type_ref: GenericMeta
-        if isinstance(type_, TypeRefMeta):
+        if isinstance(type_, (TypeRefMeta, UnionRefMeta)):
             type_ref = type_
         elif isinstance(type_, SequenceMeta):
             type_ref = type_.__item_type__
-            assert isinstance(type_ref, TypeRefMeta), type_ref
+            assert isinstance(type_ref, (TypeRefMeta, UnionRefMeta)), type_ref
         elif isinstance(type_, OptionalMeta):
             type_ref = type_.__type__
-            assert isinstance(type_ref, TypeRefMeta), type_ref
+            assert isinstance(type_ref, (TypeRefMeta, UnionRefMeta)), type_ref
         else:
             raise AssertionError(repr(type_))
         self._type_name.append(type_ref.__type_name__)

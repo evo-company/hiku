@@ -207,11 +207,11 @@ def test_federated_introspection_v1():
             _ival('id', _non_null(_INT)),
             _ival('title', _non_null(_STR)),
         ]),
-        _type('_Any', 'SCALAR'),
-        _type('_FieldSet', 'SCALAR'),
         _type('_Entity', 'UNION', possibleTypes=[
             _obj('Cart')
         ]),
+        _type('_Any', 'SCALAR'),
+        _type('_FieldSet', 'SCALAR'),
         _type('_Service', 'OBJECT', fields=[
             _field('sdl', _type('String', 'SCALAR')),
         ]),
@@ -260,11 +260,11 @@ def test_federated_introspection_v2():
             _ival('id', _non_null(_INT)),
             _ival('title', _non_null(_STR)),
         ]),
-        _type('_Any', 'SCALAR'),
-        _type('_FieldSet', 'SCALAR'),
         _type('_Entity', 'UNION', possibleTypes=[
             _obj('Cart')
         ]),
+        _type('_Any', 'SCALAR'),
+        _type('_FieldSet', 'SCALAR'),
         _type('_Service', 'OBJECT', fields=[
             _field('sdl', _type('String', 'SCALAR')),
         ]),

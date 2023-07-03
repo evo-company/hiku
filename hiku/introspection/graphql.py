@@ -43,7 +43,7 @@ from ..types import (
     IntegerMeta,
     FloatMeta,
     BooleanMeta,
-    UnionMeta,
+    UnionRefMeta,
 )
 from ..types import Any, RecordMeta, AbstractTypeVisitor
 from ..utils import (
@@ -56,6 +56,7 @@ from .types import (
     LIST,
     INPUT_OBJECT,
     OBJECT,
+    UNION,
     DIRECTIVE,
     FieldIdent,
     FieldArgIdent,
@@ -141,8 +142,8 @@ class TypeIdent(AbstractTypeVisitor):
         else:
             return NON_NULL(OBJECT(obj.__type_name__))
 
-    def visit_union(self, obj: UnionMeta) -> t.Any:
-        ...
+    def visit_unionref(self, obj: UnionRefMeta) -> t.Any:
+        return NON_NULL(UNION(obj.__type_name__, tuple()))
 
     def visit_string(self, obj: StringMeta) -> HashedNamedTuple:
         return NON_NULL(SCALAR("String"))
@@ -238,6 +239,10 @@ def root_schema_types(schema: SchemaInfo) -> t.Iterator[HashedNamedTuple]:
         if isinstance(type_, RecordMeta):
             yield OBJECT(name)
             yield INPUT_OBJECT(name)
+    for union in schema.query_graph.unions:
+        yield UNION(
+            union.name, tuple(OBJECT(type_name) for type_name in union.types)
+        )
 
 
 def root_schema_query_type(schema: SchemaInfo) -> HashedNamedTuple:
@@ -290,6 +295,15 @@ def type_info(
             info = {"id": ident, "kind": "LIST"}
         elif isinstance(ident, SCALAR):
             info = {"id": ident, "name": ident.name, "kind": "SCALAR"}
+        elif isinstance(ident, UNION):
+            info = {
+                "id": ident,
+                "kind": "UNION",
+                "name": ident.name,
+                "description": schema.query_graph.unions_map[
+                    ident.name
+                ].description,
+            }
         else:
             raise TypeError(repr(ident))
         yield [info.get(f.name) for f in fields]
@@ -335,6 +349,18 @@ def type_of_type_link(
             yield ident.of_type
         else:
             yield Nothing
+
+
+@listify
+def possible_types_type_link(schema: SchemaInfo, ids: t.List) -> t.Iterator:
+    if ids is None:
+        yield []
+
+    for ident in ids:
+        if isinstance(ident, UNION):
+            yield ident.possible_types
+        else:
+            yield []
 
 
 @listify
@@ -543,7 +569,7 @@ GRAPH = Graph(
                 Link(
                     "possibleTypes",
                     Sequence[TypeRef["__Type"]],
-                    na_many,
+                    possible_types_type_link,
                     requires="id",
                 ),
                 # ENUM only
@@ -865,13 +891,12 @@ class GraphQLIntrospection(GraphTransformer):
     def visit_graph(self, obj: Graph) -> Graph:
         ValidateGraph.validate(obj)
         introspection_graph = self.__introspection_graph__()
-        items = [self.visit(node) for node in obj.items]
+        items = [self.visit(node) for node in obj.items + obj.unions]
         items.extend(introspection_graph.items)
         return Graph(
             items,
             data_types=obj.data_types,
             directives=obj.directives,
-            unions=obj.unions,
         )
 
 

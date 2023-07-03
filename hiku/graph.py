@@ -26,7 +26,8 @@ from .types import (
     GenericMeta,
     TypingMeta,
     AnyMeta,
-    Union,
+    UnionRef,
+    UnionRefMeta,
 )
 from .utils import (
     cached_property,
@@ -233,15 +234,24 @@ LinkType = t.Union[t.Type[TypeRef], t.Type[Optional], t.Type[Sequence]]
 
 
 def get_type_enum(type_: TypingMeta) -> t.Tuple[Const, str]:
-    if isinstance(type_, TypeRefMeta):
+    if isinstance(type_, (TypeRefMeta, UnionRefMeta)):
         return One, type_.__type_name__
     elif isinstance(type_, OptionalMeta):
-        if isinstance(type_.__type__, TypeRefMeta):
+        if isinstance(type_.__type__, (TypeRefMeta, UnionRefMeta)):
             return Maybe, type_.__type__.__type_name__
     elif isinstance(type_, SequenceMeta):
-        if isinstance(type_.__item_type__, TypeRefMeta):
+        if isinstance(type_.__item_type__, (TypeRefMeta, UnionRefMeta)):
             return Many, type_.__item_type__.__type_name__
     raise TypeError("Invalid type specified: {!r}".format(type_))
+
+
+def is_union(type_: GenericMeta) -> bool:
+    if isinstance(type_, OptionalMeta):
+        return isinstance(type_.__type__, UnionRefMeta)
+    if isinstance(type_, SequenceMeta):
+        return isinstance(type_.__item_type__, UnionRefMeta)
+
+    return isinstance(type_, UnionRefMeta)
 
 
 LT = t.TypeVar("LT", bound=t.Hashable)
@@ -390,6 +400,20 @@ class Link(AbstractLink):
     def __init__(
         self,
         name: str,
+        type_: t.Type[UnionRef],
+        func: LinkOneFunc,
+        *,
+        requires: t.Optional[t.Union[str, t.List[str]]],
+        options: t.Optional[t.Sequence[Option]] = None,
+        description: t.Optional[str] = None,
+        directives: t.Optional[t.Sequence[SchemaDirective]] = None,
+    ):
+        ...
+
+    @t.overload
+    def __init__(
+        self,
+        name: str,
         type_: t.Type[Optional],
         func: LinkMaybeFunc,
         *,
@@ -446,6 +470,7 @@ class Link(AbstractLink):
         self.options = options or ()
         self.description = description
         self.directives = directives or ()
+        self.is_union = is_union(type_)
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r}, ...)".format(
@@ -462,6 +487,27 @@ class Link(AbstractLink):
 
 class AbstractNode(AbstractBase, ABC):
     pass
+
+
+class Union(AbstractBase):
+    def __init__(
+        self,
+        name: str,
+        types: t.List[str],
+        *,
+        description: t.Optional[str] = None,
+    ):
+        self.name = name
+        self.types = types
+        self.description = description
+
+    def __repr__(self) -> str:
+        return "{}({!r}, {!r}, ...)".format(
+            self.__class__.__name__, self.name, self.types
+        )
+
+    def accept(self, visitor: "AbstractGraphVisitor") -> t.Any:
+        return visitor.visit_union(self)
 
 
 class Node(AbstractNode):
@@ -568,24 +614,31 @@ class Graph(AbstractGraph):
         items: t.List[Node],
         data_types: t.Optional[t.Dict[str, t.Type[Record]]] = None,
         directives: t.Optional[t.Sequence[t.Type[SchemaDirective]]] = None,
-        unions: t.Optional[t.Sequence[t.Type[Union]]] = None,
     ):
         """
         :param items: list of nodes
         """
         from .validate.graph import GraphValidator
 
-        unions = tuple(unions or ())
-        GraphValidator.validate(items, unions)
+        unions: t.List[Union] = []
+        nodes = []
+        for item in items:
+            if isinstance(item, Union):
+                unions.append(item)
+            else:
+                nodes.append(item)
 
-        self.items = GraphInit.init(items)
+        GraphValidator.validate(nodes, unions)
+
+        self.items = GraphInit.init(nodes)
+        self.unions = unions
         self.data_types = data_types or {}
-        # TODO: maybe union must be in __types__
-        self.__types__ = GraphTypes.get_types(self.items, self.data_types)
+        self.__types__ = GraphTypes.get_types(
+            self.items, self.unions, self.data_types
+        )
         self.directives: t.Tuple[t.Type[SchemaDirective], ...] = tuple(
             directives or ()
         )
-        self.unions: t.Tuple[t.Type[Union], ...] = unions
 
     def __repr__(self) -> str:
         return "{}({!r})".format(self.__class__.__name__, self.items)
@@ -615,7 +668,7 @@ class Graph(AbstractGraph):
 
     @cached_property
     def unions_map(self) -> OrderedDict:
-        return OrderedDict((u.__union_name__, u) for u in self.unions)
+        return OrderedDict((u.name, u) for u in self.unions)
 
     def accept(self, visitor: "AbstractGraphVisitor") -> t.Any:
         return visitor.visit_graph(self)
@@ -643,6 +696,10 @@ class AbstractGraphVisitor(ABC):
         pass
 
     @abstractmethod
+    def visit_union(self, obj: Union) -> t.Any:
+        pass
+
+    @abstractmethod
     def visit_root(self, obj: Root) -> t.Any:
         pass
 
@@ -654,6 +711,9 @@ class AbstractGraphVisitor(ABC):
 class GraphVisitor(AbstractGraphVisitor):
     def visit(self, obj: t.Any) -> t.Any:
         return obj.accept(self)
+
+    def visit_union(self, obj: "Union") -> t.Any:
+        pass
 
     def visit_option(self, obj: "Option") -> t.Any:
         pass
@@ -717,15 +777,22 @@ class GraphTransformer(AbstractGraphVisitor):
             directives=obj.directives,
         )
 
+    def visit_union(self, obj: Union) -> Union:
+        return Union(
+            obj.name,
+            obj.types,
+            description=obj.description,
+        )
+
     def visit_root(self, obj: Root) -> Root:
         return Root([self.visit(f) for f in obj.fields])
 
     def visit_graph(self, obj: Graph) -> Graph:
+        # TODO: here we are loosing Unions
         return Graph(
-            [self.visit(node) for node in obj.items],
+            [self.visit(node) for node in obj.items + obj.unions],
             obj.data_types,
             obj.directives,
-            obj.unions,
         )
 
 
@@ -765,7 +832,10 @@ class GraphInit(GraphTransformer):
 
 class GraphTypes(GraphVisitor):
     def _visit_graph(
-        self, items: t.List[Node], data_types: t.Dict[str, t.Type[Record]]
+        self,
+        items: t.List[Node],
+        unions: t.List[Union],
+        data_types: t.Dict[str, t.Type[Record]],
     ) -> t.Dict[str, t.Type[Record]]:
         types = OrderedDict(data_types)
         roots = []
@@ -774,6 +844,10 @@ class GraphTypes(GraphVisitor):
                 types[item.name] = self.visit(item)
             else:
                 roots.append(self.visit(item))
+
+        for union in unions:
+            types[union.name] = self.visit(union)
+
         types["__root__"] = Record[
             chain.from_iterable(r.__field_types__.items() for r in roots)
         ]
@@ -781,12 +855,15 @@ class GraphTypes(GraphVisitor):
 
     @classmethod
     def get_types(
-        cls, items: t.List[Node], data_types: t.Dict[str, t.Type[Record]]
+        cls,
+        items: t.List[Node],
+        unions: t.List[Union],
+        data_types: t.Dict[str, t.Type[Record]],
     ) -> t.Dict[str, t.Type[Record]]:
-        return cls()._visit_graph(items, data_types)
+        return cls()._visit_graph(items, unions, data_types)
 
     def visit_graph(self, obj: Graph) -> t.Dict[str, t.Type[Record]]:
-        return self._visit_graph(obj.items, obj.data_types)
+        return self._visit_graph(obj.items, obj.unions, obj.data_types)
 
     def visit_node(self, obj: Node) -> t.Type[Record]:
         return Record[[(f.name, self.visit(f)) for f in obj.fields]]
@@ -799,3 +876,6 @@ class GraphTypes(GraphVisitor):
 
     def visit_field(self, obj: Field) -> t.Union[FieldType, AnyMeta]:
         return obj.type or Any
+
+    def visit_union(self, obj: Union) -> Union:
+        return obj

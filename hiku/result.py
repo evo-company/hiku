@@ -82,6 +82,9 @@ class Proxy:
         self.__ref__ = reference
         self.__node__ = node
 
+    def __repr__(self) -> str:
+        return "<Proxy {}>".format(self.__ref__)
+
     def __getitem__(self, item: str) -> t.Any:
         try:
             field: t.Union[Field, Link] = self.__node__.result_map[item]
@@ -178,6 +181,7 @@ def _denormalize(
 
     elif isinstance(query_obj, Link):
         if isinstance(graph_obj, GraphField):
+            assert graph_obj.type is not None
             field_type = get_type(graph.data_types, graph_obj.type)
             assert field_type is not None
             return _denormalize_type(field_type, result, query_obj)

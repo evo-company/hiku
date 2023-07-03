@@ -18,7 +18,6 @@ from ..types import (
     IntegerMeta,
     FloatMeta,
     MappingMeta,
-    UnionMeta,
 )
 
 from hiku.query import (
@@ -36,6 +35,7 @@ from hiku.graph import (
     Option,
     Nothing,
     Graph,
+    Union,
 )
 from .errors import Errors
 
@@ -73,6 +73,7 @@ class _AssumeRecord(AbstractTypeVisitor):
     visit_float = _false
     visit_mapping = _false
     visit_callable = _false
+    visit_unionref = _false  # TODO: maybe we need to support it?
 
     def visit_optional(self, obj: OptionalMeta) -> t.Optional[t.OrderedDict]:
         if not self._nested:
@@ -90,9 +91,6 @@ class _AssumeRecord(AbstractTypeVisitor):
 
     def visit_typeref(self, obj: TypeRefMeta) -> t.OrderedDict:
         return self.visit(self._data_types[obj.__type_name__])
-
-    def visit_union(self, obj: UnionMeta) -> t.Any:
-        ...
 
 
 class _AssumeField(GraphVisitor):
@@ -241,6 +239,15 @@ class _OptionTypeValidator:
 
 
 class _ValidateOptions(GraphVisitor):
+    """
+    Validate options for fields and links.
+
+    :param data_types: Mapping of data types.
+    :param options: Options to validate.
+    :param for_: Path to the field or link. Used in error messages.
+    :param errors: Errors container.
+    """
+
     def __init__(
         self,
         data_types: t.Dict[str, t.Type[Record]],
@@ -343,10 +350,47 @@ def _field_eq(
 
 
 class QueryValidator(QueryVisitor):
+    """
+    Validate query against graph.
+
+    Query must not contain __typename field.
+
+    :param graph: Graph to validate against.
+    """
+
     def __init__(self, graph: Graph):
         self.graph = graph
         self.path = [graph.root]
         self.errors = Errors()
+
+    def _find_union_real_type(
+        self, union: Union, field: t.Union[QueryField, QueryLink]
+    ) -> Node:
+        real_types = [self.graph.nodes_map[type_] for type_ in union.types]
+        found_type = None
+        for type_ in real_types:
+            if field.name in type_.fields_map:
+                if found_type is not None:
+                    raise TypeError(
+                        "Cannot query field '{}' on type '{}'. "
+                        "Did you mean to use an inline fragment on {}?".format(
+                            field.name,
+                            union.name,
+                            " or ".join(
+                                [f"'{type_.name}'" for type_ in real_types]
+                            ),
+                        )
+                    )
+                found_type = type_
+
+        if found_type:
+            return found_type
+
+        raise TypeError(
+            'Field "{}" is not found in any of the types of union "{}"'.format(
+                field.name, union.name
+            )
+        )
 
     def visit_field(self, obj: QueryField) -> None:
         node = self.path[-1]
@@ -390,7 +434,11 @@ class QueryValidator(QueryVisitor):
                 )
 
         elif isinstance(graph_obj, Link):
-            linked_node = self.graph.nodes_map[graph_obj.node]
+            if graph_obj.is_union:
+                linked_node = self.graph.unions_map[graph_obj.node]
+            else:
+                linked_node = self.graph.nodes_map[graph_obj.node]
+
             for_ = (node.name or "root", obj.name)
             _ValidateOptions(
                 self.graph.data_types, obj.options, for_, self.errors
@@ -413,7 +461,19 @@ class QueryValidator(QueryVisitor):
 
     def visit_node(self, obj: QueryNode) -> None:
         fields: t.Dict = {}
+
+        is_union = isinstance(self.path[-1], Union)
+
         for field in obj.fields:
+            if is_union:
+                try:
+                    real_type = self._find_union_real_type(self.path[-1], field)
+                except TypeError as e:
+                    self.errors.report(str(e))
+                    continue
+
+                self.path.append(real_type)
+
             seen = fields.get(field.result_key)
             if seen is not None:
                 if not _field_eq(field, seen):
@@ -427,6 +487,9 @@ class QueryValidator(QueryVisitor):
             else:
                 fields[field.result_key] = field
             self.visit(field)
+
+            if is_union:
+                self.path.pop()
 
 
 def validate(graph: Graph, query: QueryNode) -> t.List[str]:

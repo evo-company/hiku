@@ -47,6 +47,7 @@ from .graph import (
     Field,
     Graph,
     Node,
+    Union as GraphUnion,
 )
 from .result import (
     Proxy,
@@ -60,6 +61,7 @@ from .executors.queue import (
     TaskSet,
     SubmitRes,
 )
+from .union import SplitUnionByNodes
 from .utils import ImmutableDict
 
 if TYPE_CHECKING:
@@ -96,6 +98,49 @@ class InitOptions(QueryTransformer):
         self._graph = graph
         self._path = [graph.root]
 
+    def _find_union_real_type(
+        self,
+        union: GraphUnion,
+        union_nodes: Dict[str, QueryNode],
+        field: Union[QueryField, QueryLink],
+    ) -> QueryNode:
+        for type_ in union_nodes.values():
+            if field.name in type_.fields_map:
+                return type_
+
+        raise TypeError(
+            'Field "{}" is not found in any of the types of union "{}"'.format(
+                field.name, union.name
+            )
+        )
+
+    def visit_node(self, obj: QueryNode) -> QueryNode:
+        fields = []
+        is_union = isinstance(self._path[-1], GraphUnion)
+        if is_union:
+            union_nodes = SplitUnionByNodes(self._graph, self._path[-1]).split(
+                obj
+            )
+        else:
+            union_nodes = None
+
+        for f in obj.fields:
+            if f.name == "__typename":
+                fields.append(f)
+                continue
+
+            if is_union:
+                assert union_nodes is not None
+                real_type = self._find_union_real_type(
+                    self._path[-1], union_nodes, f
+                )
+                self._path.append(real_type)
+            fields.append(self.visit(f))
+            if is_union:
+                self._path.pop()
+
+        return obj.copy(fields=fields)
+
     def visit_field(self, obj: QueryField) -> QueryField:
         graph_obj = self._path[-1].fields_map[obj.name]
         if graph_obj.options:
@@ -107,7 +152,10 @@ class InitOptions(QueryTransformer):
         graph_obj = self._path[-1].fields_map[obj.name]
 
         if isinstance(graph_obj, Link):
-            self._path.append(self._graph.nodes_map[graph_obj.node])
+            if graph_obj.is_union:
+                self._path.append(self._graph.unions_map[graph_obj.node])
+            else:
+                self._path.append(self._graph.nodes_map[graph_obj.node])
             try:
                 node = self.visit(obj.node)
             finally:
@@ -326,15 +374,22 @@ def link_ref_maybe(graph_link: Link, ident: Any) -> Optional[Reference]:
     if ident is Nothing:
         return None
     else:
+        if graph_link.is_union:
+            return Reference(ident[1].__type_name__, ident[0])
         return Reference(graph_link.node, ident)
 
 
 def link_ref_one(graph_link: Link, ident: Any) -> Reference:
     assert ident is not Nothing
+
+    if graph_link.is_union:
+        return Reference(ident[1].__type_name__, ident[0])
     return Reference(graph_link.node, ident)
 
 
 def link_ref_many(graph_link: Link, idents: List) -> List[Reference]:
+    if graph_link.is_union:
+        return [Reference(i[1].__type_name__, i[0]) for i in idents]
     return [Reference(graph_link.node, i) for i in idents]
 
 
@@ -648,12 +703,34 @@ class Query(Workflow):
         from_list = ids is not None and graph_link.requires is not None
         to_ids = link_result_to_ids(from_list, graph_link.type_enum, result)
         if to_ids:
-            self.process_node(
-                path,
-                self._graph.nodes_map[graph_link.node],
-                query_link.node,
-                to_ids,
-            )
+            if graph_link.is_union and isinstance(to_ids, list):
+                grouped_ids = defaultdict(list)
+                for id_, type_ref in to_ids:
+                    grouped_ids[type_ref.__type_name__].append(id_)
+
+                # FIXME: call track len(ids) - 1 times because first track was
+                #  already called by process_node for this link
+                track_times = len(grouped_ids) - 1
+                union_nodes = SplitUnionByNodes(
+                    self._graph, self._graph.unions_map[graph_link.node]
+                ).split(query_link.node)
+                for type_name, type_ids in grouped_ids.items():
+                    self.process_node(
+                        path,
+                        self._graph.nodes_map[type_name],
+                        union_nodes[type_name],
+                        list(type_ids),
+                    )
+                for _ in range(track_times):
+                    self._track(path)
+
+            else:
+                self.process_node(
+                    path,
+                    self._graph.nodes_map[graph_link.node],
+                    query_link.node,
+                    to_ids,
+                )
         else:
             self._untrack(path)
 

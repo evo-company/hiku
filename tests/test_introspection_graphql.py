@@ -4,8 +4,8 @@ from unittest.mock import ANY
 import pytest
 
 from hiku.directives import Deprecated, Location, SchemaDirective, schema_directive
-from hiku.graph import Graph, Root, Field, Node, Link, apply, Option
-from hiku.types import String, Integer, Sequence, TypeRef, Boolean, Float, Any
+from hiku.graph import Graph, Root, Field, Node, Link, Union, apply, Option
+from hiku.types import String, Integer, Sequence, TypeRef, Boolean, Float, Any, UnionRef
 from hiku.types import Optional, Record
 from hiku.result import denormalize
 from hiku.engine import Engine
@@ -33,6 +33,14 @@ _ANY = {'kind': 'SCALAR', 'name': 'Any', 'ofType': None}
 
 def _obj(name):
     return {'kind': 'OBJECT', 'name': name, 'ofType': None}
+
+
+def _union(name):
+    return {
+        'kind': 'UNION',
+        'name': name,
+        'ofType': None
+    }
 
 
 def _iobj(name):
@@ -358,5 +366,46 @@ def test_untyped_fields():
         _type('Query', 'OBJECT', fields=[
             _field('untyped', _ANY),
             _field('any_typed', _ANY),
+        ]),
+    ])
+
+
+def test_unions():
+    graph = Graph([
+        Node('Audio', [
+            Field('id', Integer, _noop),
+            Field('duration', String, _noop),
+        ]),
+        Node('Video', [
+            Field('id', Integer, _noop),
+            Field('thumbnailUrl', String, _noop),
+        ]),
+        Union(
+            'Media', ['Audio', 'Video']
+        ),
+        Root([
+            Link('mediaList', Sequence[UnionRef['Media']], _noop, requires=None),
+            Link('mediaOne', UnionRef['Media'], _noop, requires=None),
+            Link('maybeMedia', Optional[UnionRef['Media']], _noop, requires=None),
+        ]),
+    ])
+
+    assert introspect(graph) == _schema([
+        _type('Audio', 'OBJECT', fields=[
+            _field('id', _non_null(_INT)),
+            _field('duration', _non_null(_STR)),
+        ]),
+        _type('Video', 'OBJECT', fields=[
+            _field('id', _non_null(_INT)),
+            _field('thumbnailUrl', _non_null(_STR)),
+        ]),
+        _type('Query', 'OBJECT', fields=[
+            _field('mediaList', _seq_of(_union('Media'))),
+            _field('mediaOne', _non_null(_union('Media'))),
+            _field('maybeMedia', _union('Media')),
+        ]),
+        _type('Media', 'UNION', possibleTypes=[
+            _obj('Audio'),
+            _obj('Video'),
         ]),
     ])

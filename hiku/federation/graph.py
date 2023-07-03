@@ -4,7 +4,7 @@ from inspect import isawaitable
 from hiku.directives import SchemaDirective
 from hiku.federation.utils import get_entity_types
 
-from hiku.types import Any, Record, Sequence, TypeRef, Union
+from hiku.types import Any, Record, Sequence, TypeRef, UnionRef
 
 from hiku.graph import (
     Field,
@@ -14,6 +14,7 @@ from hiku.graph import (
     Node,
     Option,
     Root,
+    Union,
 )
 
 
@@ -56,10 +57,12 @@ class GraphInit(GraphTransformer):
         return super(GraphInit, self).visit_node(obj)
 
     def entities_link(self) -> Link:
-        def entities_resolver(options: t.Dict) -> t.Tuple[t.List, str]:
+        def entities_resolver(
+            options: t.Dict,
+        ) -> t.List[t.Tuple[t.Any, t.Type[TypeRef]]]:
             representations = options["representations"]
             if not representations:
-                return [], ""
+                return []
 
             typ = representations[0]["__typename"]
 
@@ -69,14 +72,16 @@ class GraphInit(GraphTransformer):
                 )
 
             resolve_reference = self.type_to_resolve_reference_map[typ]
-            return resolve_reference(representations), typ
+            return [
+                (r, TypeRef[typ]) for r in resolve_reference(representations)
+            ]
 
         async def entities_resolver_async(
             options: t.Dict,
-        ) -> t.Tuple[t.List, str]:
+        ) -> t.List[t.Tuple[t.Any, t.Type[TypeRef]]]:
             representations = options["representations"]
             if not representations:
-                return [], ""
+                return []
 
             typ = representations[0]["__typename"]
 
@@ -90,13 +95,13 @@ class GraphInit(GraphTransformer):
             resolve_reference = self.type_to_resolve_reference_map[typ]
             coro = resolve_reference(representations)
             if isawaitable(coro):
-                return await coro, typ
+                return [(r, TypeRef[typ]) for r in await coro]
 
-            return coro, typ
+            return [(r, TypeRef[typ]) for r in coro]
 
         return Link(
             "_entities",
-            Sequence[TypeRef["_Entity"]],  # type: ignore
+            Sequence[UnionRef["_Entity"]],
             entities_resolver_async if self.is_async else entities_resolver,
             options=[
                 Option("representations", Sequence[Any]),
@@ -111,13 +116,9 @@ class Graph(_Graph):
         items: t.List[t.Union[FederatedNode, Node]],
         data_types: t.Optional[t.Dict[str, t.Type[Record]]] = None,
         directives: t.Optional[t.Sequence[t.Type[SchemaDirective]]] = None,
-        unions: t.Optional[t.List[t.Type[Union]]] = None,
         is_async: bool = False,
     ):
         items = GraphInit.init(items, is_async)
-        if unions is None:
-            unions = []
 
-        entity_types = get_entity_types(items)
-        unions.append(Union["_Entity", entity_types])
-        super().__init__(items, data_types, directives, unions)
+        items.append(Union("_Entity", get_entity_types(items)))  # type: ignore
+        super().__init__(items, data_types, directives)

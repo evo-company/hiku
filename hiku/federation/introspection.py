@@ -91,9 +91,6 @@ def extend_with_federation(graph: Graph, data: dict) -> None:
         data["__schema"]["types"].append(_type("_Any", "SCALAR"))
         data["__schema"]["types"].append(_type("_FieldSet", "SCALAR"))
         data["__schema"]["types"].append(
-            _type("_Entity", "UNION", possibleTypes=union_types)
-        )
-        data["__schema"]["types"].append(
             _type(
                 "_Service",
                 "OBJECT",

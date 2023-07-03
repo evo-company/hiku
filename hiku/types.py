@@ -2,6 +2,10 @@ import typing as t
 
 from abc import abstractmethod, ABC
 from collections import OrderedDict
+from typing import TypeVar
+
+if t.TYPE_CHECKING:
+    from hiku.graph import Union
 
 
 class GenericMeta(type):
@@ -229,25 +233,23 @@ class TypeRef(metaclass=TypeRefMeta):
     ...
 
 
-class UnionMeta(TypingMeta):
-    __union_name__: str
-    __type_names__: t.List[str]
+class UnionRefMeta(TypingMeta):
+    __type_name__: str
 
-    def __cls_init__(cls, *args: t.Any) -> None:
+    def __cls_init__(cls, *args: str) -> None:
         assert len(args) == 1, f"{cls.__name__} takes exactly one argument"
-        [args] = args
-        cls.__union_name__ = args[0]
-        cls.__type_names__ = args[1]
+
+        cls.__type_name__ = args[0]
 
     def __cls_repr__(self) -> str:
-        return "{}[{!r}]".format(self.__name__, "|".join(self.__type_names__))
+        return "{}[{!r}]".format(self.__name__, self.__type_name__)
 
     def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
-        return visitor.visit_union(cls)
+        return visitor.visit_unionref(cls)
 
 
-class Union(metaclass=UnionMeta):
-    """Usage: Union['_Entity', ['Cart', 'Order']]"""
+class UnionRef(metaclass=UnionRefMeta):
+    ...
 
 
 @t.overload
@@ -317,7 +319,7 @@ class AbstractTypeVisitor(ABC):
         pass
 
     @abstractmethod
-    def visit_union(self, obj: UnionMeta) -> t.Any:
+    def visit_unionref(self, obj: UnionRefMeta) -> t.Any:
         pass
 
 
@@ -343,7 +345,7 @@ class TypeVisitor(AbstractTypeVisitor):
     def visit_typeref(self, obj: TypeRefMeta) -> t.Any:
         pass
 
-    def visit_union(self, obj: UnionMeta) -> t.Any:
+    def visit_unionref(self, obj: UnionRefMeta) -> t.Any:
         pass
 
     def visit_optional(self, obj: OptionalMeta) -> t.Any:
@@ -365,29 +367,41 @@ class TypeVisitor(AbstractTypeVisitor):
             self.visit(arg_type)
 
 
+T = TypeVar("T", bound=GenericMeta)
+
+Types = t.Mapping[str, t.Union[t.Type[Record], "Union"]]
+
+
 @t.overload
-def get_type(
-    types: t.Dict[str, t.Type[Record]], typ: TypeRefMeta
+def get_type(  # type: ignore[misc]
+    types: Types, typ: TypeRefMeta
 ) -> t.Type[Record]:
     ...
 
 
 @t.overload
-def get_type(
-    types: t.Dict[str, t.Type[Record]], typ: GenericMeta
-) -> GenericMeta:
+def get_type(types: Types, typ: UnionRefMeta) -> "Union":  # type: ignore[misc]
     ...
 
 
 @t.overload
-def get_type(
-    types: t.Dict[str, t.Type[Record]], typ: t.Optional[GenericMeta]
-) -> t.Optional[GenericMeta]:
+def get_type(types: Types, typ: T) -> T:
     ...
 
 
-def get_type(types, typ):  # type: ignore[no-untyped-def]
+#
+#
+# @t.overload
+# def get_type(
+#     types: Types, typ: t.Optional[GenericMeta]
+# ) -> t.Optional[GenericMeta]:
+#     ...
+
+
+def get_type(types: Types, typ: t.Any) -> t.Any:
     if isinstance(typ, TypeRefMeta):
+        return types[typ.__type_name__]
+    if isinstance(typ, UnionRefMeta):
         return types[typ.__type_name__]
     else:
         return typ
