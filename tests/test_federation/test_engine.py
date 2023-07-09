@@ -27,7 +27,7 @@ QUERY = Node(fields=[
     Link(
         '_entities',
         Node(fields=[
-            Field('status'),
+            Field('status', parent_type='Cart'),
         ]),
         options={
             'representations': [

@@ -327,7 +327,15 @@ class SelectionSetVisitMixin:
     ) -> Iterator[Union[Field, Link]]:
         if self._should_skip(obj):
             return
+
+        if hasattr(self, "fragments_transformer"):
+            fragment = self.fragments_transformer.fragments_map[obj.name.value]
+        else:
+            fragment = self.fragments_map[obj.name.value]  # type: ignore[attr-defined] # noqa: E501
         for i in self.transform_fragment(obj.name.value):
+            if isinstance(i, Field):
+                i.parent_type = fragment.type_condition.name.value
+
             yield i
 
     def visit_inline_fragment(
@@ -335,7 +343,11 @@ class SelectionSetVisitMixin:
     ) -> Iterator[Union[Field, Link]]:
         if self._should_skip(obj):
             return
+
         for i in self.visit(obj.selection_set):  # type: ignore[attr-defined]
+            if isinstance(i, Field):
+                i.parent_type = obj.type_condition.name.value
+
             yield i
 
 

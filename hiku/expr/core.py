@@ -13,7 +13,7 @@ from collections import namedtuple
 
 from ..compat import ParamSpec
 from ..edn import loads
-from ..query import Node as QueryNode, Link, Field
+from ..query import Node as QueryNode, Link, Field, Base as QueryBase
 from ..types import (
     Record,
     Callable,
@@ -88,7 +88,7 @@ def to_expr(
 
 
 def _query_to_types(
-    obj: t.Union[QueryNode, Field, Link],
+    obj: QueryBase,
 ) -> t.Union[t.Type[Any], t.Type[Record]]:
     if isinstance(obj, QueryNode):
         return Record[[(f.name, _query_to_types(f)) for f in obj.fields]]

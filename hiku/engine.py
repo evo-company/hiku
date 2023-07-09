@@ -1,4 +1,5 @@
 import abc
+import contextlib
 import inspect
 import warnings
 import dataclasses
@@ -98,46 +99,28 @@ class InitOptions(QueryTransformer):
         self._graph = graph
         self._path = [graph.root]
 
-    def _find_union_real_type(
-        self,
-        union: GraphUnion,
-        union_nodes: Dict[str, QueryNode],
-        field: Union[QueryField, QueryLink],
-    ) -> QueryNode:
-        for type_ in union_nodes.values():
-            if field.name in type_.fields_map:
-                return type_
-
-        raise TypeError(
-            'Field "{}" is not found in any of the types of union "{}"'.format(
-                field.name, union.name
-            )
-        )
+    @contextlib.contextmanager
+    def enter_path(self, type_: Any) -> Iterator[None]:
+        try:
+            self._path.append(type_)
+            yield
+        finally:
+            self._path.pop()
 
     def visit_node(self, obj: QueryNode) -> QueryNode:
         fields = []
         is_union = isinstance(self._path[-1], GraphUnion)
-        if is_union:
-            union_nodes = SplitUnionByNodes(self._graph, self._path[-1]).split(
-                obj
-            )
-        else:
-            union_nodes = None
 
         for f in obj.fields:
             if f.name == "__typename":
                 fields.append(f)
                 continue
 
-            if is_union:
-                assert union_nodes is not None
-                real_type = self._find_union_real_type(
-                    self._path[-1], union_nodes, f
-                )
-                self._path.append(real_type)
-            fields.append(self.visit(f))
-            if is_union:
-                self._path.pop()
+            enter_path = self.enter_path if is_union else contextlib.nullcontext
+            type_ = self._graph.nodes_map[f.parent_type] if is_union else None
+
+            with enter_path(type_):  # type: ignore[operator]
+                fields.append(self.visit(f))
 
         return obj.copy(fields=fields)
 

@@ -216,9 +216,7 @@ class GraphValidator(GraphVisitor):
 
         nodes_map = {e.name: e for e in self.items if e.name is not None}
 
-        invalid = [
-            type_ for type_ in obj.types if type_ not in nodes_map
-        ]
+        invalid = [type_ for type_ in obj.types if type_ not in nodes_map]
 
         if invalid:
             self.errors.report(

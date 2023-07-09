@@ -22,6 +22,7 @@ from ..types import (
 
 from hiku.query import (
     Field as QueryField,
+    FieldBase,
     Node as QueryNode,
     Link as QueryLink,
     QueryVisitor,
@@ -343,9 +344,7 @@ class _RecordFieldsValidator(QueryVisitor):
         raise AssertionError("Node is not expected here")
 
 
-def _field_eq(
-    a: t.Union[QueryField, QueryLink], b: t.Union[QueryField, QueryLink]
-) -> bool:
+def _field_eq(a: FieldBase, b: FieldBase) -> bool:
     return a.name == b.name and a.options == b.options
 
 
@@ -362,35 +361,6 @@ class QueryValidator(QueryVisitor):
         self.graph = graph
         self.path = [graph.root]
         self.errors = Errors()
-
-    def _find_union_real_type(
-        self, union: Union, field: t.Union[QueryField, QueryLink]
-    ) -> Node:
-        real_types = [self.graph.nodes_map[type_] for type_ in union.types]
-        found_type = None
-        for type_ in real_types:
-            if field.name in type_.fields_map:
-                if found_type is not None:
-                    raise TypeError(
-                        "Cannot query field '{}' on type '{}'. "
-                        "Did you mean to use an inline fragment on {}?".format(
-                            field.name,
-                            union.name,
-                            " or ".join(
-                                [f"'{type_.name}'" for type_ in real_types]
-                            ),
-                        )
-                    )
-                found_type = type_
-
-        if found_type:
-            return found_type
-
-        raise TypeError(
-            'Field "{}" is not found in any of the types of union "{}"'.format(
-                field.name, union.name
-            )
-        )
 
     def visit_field(self, obj: QueryField) -> None:
         node = self.path[-1]
@@ -462,17 +432,28 @@ class QueryValidator(QueryVisitor):
     def visit_node(self, obj: QueryNode) -> None:
         fields: t.Dict = {}
 
-        is_union = isinstance(self.path[-1], Union)
+        is_union_link = isinstance(self.path[-1], Union)
 
         for field in obj.fields:
-            if is_union:
-                try:
-                    real_type = self._find_union_real_type(self.path[-1], field)
-                except TypeError as e:
-                    self.errors.report(str(e))
+            if field.name == "__typename":
+                continue
+
+            if is_union_link:
+                union = self.path[-1]
+                if field.parent_type is None:
+                    self.errors.report(
+                        "Cannot query field '{}' on type '{}'. "
+                        "Did you mean to use an inline fragment on {}?".format(
+                            field.name,
+                            union.name,
+                            " or ".join(
+                                [f"'{type_name}'" for type_name in union.types]
+                            ),
+                        )
+                    )
                     continue
 
-                self.path.append(real_type)
+                self.path.append(self.graph.nodes_map[field.parent_type])
 
             seen = fields.get(field.result_key)
             if seen is not None:
@@ -488,7 +469,7 @@ class QueryValidator(QueryVisitor):
                 fields[field.result_key] = field
             self.visit(field)
 
-            if is_union:
+            if is_union_link:
                 self.path.pop()
 
 

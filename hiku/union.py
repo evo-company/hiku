@@ -1,16 +1,16 @@
 import typing as t
 
 from hiku.graph import Graph, Union
-from hiku.query import Node, QueryTransformer
+from hiku.query import Node
 
 
-class SplitUnionByNodes(QueryTransformer):
+class SplitUnionByNodes:
     """
-    Split query node into graph nodes by union types with keys as node names.
+    Split query node into query nodes by union types with keys as graph node names.
 
-    Useful when you need to find graph nodes by its name.
+    Useful when you need to get query nodes for unions
 
-    :return: dict with graph nodes as values and graph node names as keys.
+    :return: dict with query nodes as values and graph node names as keys.
     """
 
     def __init__(self, graph: Graph, union: Union) -> None:
@@ -22,8 +22,14 @@ class SplitUnionByNodes(QueryTransformer):
 
         nodes = {}
         for type_ in types:
-            nodes[type_.name] = obj.copy(
-                fields=[f for f in obj.fields if f.name in type_.fields_map]
-            )
+            fields = []
+            for field in obj.fields:
+                if (
+                    field.parent_type == type_.name
+                    and field.name in type_.fields_map
+                ):
+                    fields.append(field)
+
+            nodes[type_.name] = obj.copy(fields=fields)
 
         return nodes

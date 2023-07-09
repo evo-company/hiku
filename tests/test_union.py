@@ -67,7 +67,9 @@ GRAPH = Graph([
     ]),
     Node('Video', [
         Field('id', Integer, resolve_video_fields),
-        Field('thumbnailUrl', String, resolve_video_fields),
+        Field('thumbnailUrl', String, resolve_video_fields, options=[
+            Option('size', Integer),
+        ]),
     ]),
     Union(
         'Media', ['Audio', 'Video']
@@ -129,16 +131,39 @@ def test_validate_graph_union():
     ]
 
 
+def test_option_not_provided_for_field():
+    query = """
+    query GetMedia {
+      media {
+        __typename
+        ... on Audio {
+          id
+          duration
+        }
+        ... on Video {
+          id
+          thumbnailUrl
+        }
+      }
+    }
+    """
+    with pytest.raises(TypeError) as err:
+        execute(GRAPH, read(query))
+        err.match("Required option \"size\" for Field('thumbnailUrl'")
+
+
 def test_query_union_list():
     query = """
     query SearchMedia($text: String) {
       searchMedia(text: $text) {
         __typename
         ... on Audio {
+          id
           duration
         }
         ... on Video {
-          thumbnailUrl
+          id
+          thumbnailUrl(size: 100)
         }
       }
     }
@@ -146,10 +171,10 @@ def test_query_union_list():
     result = execute(GRAPH, read(query, {'text': 'foo'}))
     assert result == {
         'searchMedia': [
-            {'__typename': 'Audio', 'duration': '1s'},
-            {'__typename': 'Video', 'thumbnailUrl': '/video/2'},
-            {'__typename': 'Audio', 'duration': '3s'},
-            {'__typename': 'Video', 'thumbnailUrl': '/video/4'},
+            {'__typename': 'Audio', 'id': 1, 'duration': '1s'},
+            {'__typename': 'Video', 'id': 2, 'thumbnailUrl': '/video/2'},
+            {'__typename': 'Audio', 'id': 3, 'duration': '3s'},
+            {'__typename': 'Video', 'id': 4, 'thumbnailUrl': '/video/4'},
         ]
     }
 
@@ -165,7 +190,7 @@ def test_query_union_one():
         }
         ... on Video {
           id
-          thumbnailUrl
+          thumbnailUrl(size: 100)
         }
       }
     }
@@ -185,7 +210,7 @@ def test_query_union_optional():
           duration
         }
         ... on Video {
-          thumbnailUrl
+          thumbnailUrl(size: 100)
         }
       }
     }
@@ -196,16 +221,41 @@ def test_query_union_optional():
     }
 
 
+def test_query_with_inline_fragment_and_fragment_spread():
+    query = """
+    query GetMedia {
+      media {
+        __typename
+        ...AudioFragment
+        ... on Video {
+          id
+          thumbnailUrl(size: 100)
+        }
+      }
+    }
+    
+    fragment AudioFragment on Audio {
+        id
+        duration
+    }
+    """
+    result = execute(GRAPH, read(query))
+    assert result == {
+        'media': {'__typename': 'Audio', 'id': 1, 'duration': '1s'},
+    }
+
+
 def test_validate_query_can_not_contain_shared_fields():
     query = """
     query SearchMedia($text: String) {
       searchMedia(text: $text) {
+        __typename
         id
         ... on Audio {
           duration
         }
         ... on Video {
-          thumbnailUrl
+          thumbnailUrl(size: 100)
         }
       }
     }
@@ -228,7 +278,7 @@ def test_validate_union_type_has_no_field():
           duration
         }
         ... on Video {
-          thumbnailUrl
+          thumbnailUrl(size: 100)
         }
       }
     }
@@ -236,21 +286,20 @@ def test_validate_union_type_has_no_field():
 
     errors = validate(GRAPH, read(query, {'text': 'foo'}))
 
-    # TODO: improv error message, specify which type has no such field
     assert errors == [
-        'Field "invalid_field" is not found in any of the types of union "Media"',
+        'Field "invalid_field" is not implemented in the "Audio" node',
     ]
 
 
-def test_validate_union_type_has_no_option():
+def test_validate_union_type_field_has_no_such_option():
     query = """
     query SearchMedia($text: String) {
       searchMedia(text: $text) {
         ... on Audio {
-          duration
+          duration(size: 100)
         }
         ... on Video {
-          thumbnailUrl(size: "40x40")
+          thumbnailUrl(size: 100)
         }
       }
     }
@@ -259,7 +308,7 @@ def test_validate_union_type_has_no_option():
     errors = validate(GRAPH, read(query, {'text': 'foo'}))
 
     assert errors == [
-        'Unknown options for "Video.thumbnailUrl": size',
+        'Unknown options for "Audio.duration": size',
     ]
 
 
@@ -274,7 +323,7 @@ def test_split_union_into_nodes():
         }
         ... on Video {
           id
-          thumbnailUrl
+          thumbnailUrl(size: 100)
         }
       }
     }
@@ -290,5 +339,11 @@ def test_split_union_into_nodes():
     assert 'Audio' in nodes
     assert 'Video' in nodes
 
-    assert nodes['Audio'].fields_map.keys() == {'id', 'duration'}
-    assert nodes['Video'].fields_map.keys() == {'id', 'thumbnailUrl'}
+    assert nodes['Audio'].fields_map.keys() == {
+        ('Audio', 'id'),
+        ('Audio', 'duration')
+    }
+    assert nodes['Video'].fields_map.keys() == {
+        ('Video', 'id'),
+        ('Video', 'thumbnailUrl')
+    }
