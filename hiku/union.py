@@ -6,7 +6,8 @@ from hiku.query import Node
 
 class SplitUnionByNodes:
     """
-    Split query node into query nodes by union types with keys as graph node names.
+    Split query node into query nodes by union types with keys
+    as graph node names.
 
     Useful when you need to get query nodes for unions
 

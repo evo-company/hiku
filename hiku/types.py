@@ -389,15 +389,6 @@ def get_type(types: Types, typ: T) -> T:
     ...
 
 
-#
-#
-# @t.overload
-# def get_type(
-#     types: Types, typ: t.Optional[GenericMeta]
-# ) -> t.Optional[GenericMeta]:
-#     ...
-
-
 def get_type(types: Types, typ: t.Any) -> t.Any:
     if isinstance(typ, TypeRefMeta):
         return types[typ.__type_name__]

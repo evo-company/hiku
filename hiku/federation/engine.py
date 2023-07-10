@@ -79,7 +79,6 @@ class Engine(BaseEngine):
         if federation_version not in (1, 2):
             raise ValueError("federation_version must be 1 or 2")
         self.federation_version = federation_version
-        self.start_path = ("_service",)
 
     def execute_service(
         self, graph: Graph, mutation_graph: Optional[Graph]
@@ -101,6 +100,7 @@ class Engine(BaseEngine):
     def execute_entities(
         self, graph: Graph, query: Node, ctx: Dict
     ) -> Union[Proxy, Awaitable[Proxy]]:
+        path = ("_entities",)
         representations = query.fields_map["_entities"].options[
             "representations"
         ]
@@ -117,7 +117,7 @@ class Engine(BaseEngine):
             type_representations_map[typename].append(ident)
 
         for typename, ids in type_representations_map.items():
-            query_workflow.process_node(self.start_path, graph.root, query, ids)
+            query_workflow.process_node(path, graph.root, query, ids)
 
         return self.executor.process(queue, query_workflow)
 

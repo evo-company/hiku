@@ -124,5 +124,8 @@ class Graph(_Graph):
         if unions is None:
             unions = []
 
-        unions.append(Union("_Entity", get_entity_types(items)))
+        entity_types = get_entity_types(items)
+        if entity_types:
+            unions.append(Union("_Entity", entity_types))
+
         super().__init__(items, data_types, directives, unions)

@@ -1,12 +1,11 @@
 import textwrap
 
 from hiku.graph import (
-    Graph,
     Node,
     Field,
     Link,
     Option,
-    Root,
+    Root, Union,
 )
 from hiku.types import (
     Record,
@@ -17,6 +16,7 @@ from hiku.types import (
 )
 from hiku.graph import apply
 
+from hiku.federation.graph import FederatedNode, Graph
 from hiku.federation.directive import (
     External,
     Key,
@@ -40,11 +40,11 @@ def execute(graph, query_string):
 
 
 GRAPH = Graph([
-    Node('Order', [
+    FederatedNode('Order', [
         Field('cartId', Integer, field_resolver, directives=[External()]),
         Link('cart', TypeRef['Cart'], link_resolver, requires='cartId')
     ], directives=[Key('cartId'), Extends()]),
-    Node('Cart', [
+    FederatedNode('Cart', [
         Field('id', Integer, field_resolver),
         Field('status', TypeRef['Status'], field_resolver),
     ], directives=[Key('id')]),
@@ -64,7 +64,7 @@ GRAPH = Graph([
         'id': Integer,
         'title': String,
     }],
-})
+}, unions=[Union('Bucket', ['Cart'])])
 
 
 expected = """
@@ -93,6 +93,8 @@ expected = """
     }
     
     scalar Any
+    
+    union Bucket = Cart
     
     union _Entity = Cart | Order
 
