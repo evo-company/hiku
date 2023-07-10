@@ -380,14 +380,13 @@ def test_unions():
             Field('id', Integer, _noop),
             Field('thumbnailUrl', String, _noop),
         ]),
-        Union(
-            'Media', ['Audio', 'Video']
-        ),
         Root([
             Link('mediaList', Sequence[UnionRef['Media']], _noop, requires=None),
             Link('mediaOne', UnionRef['Media'], _noop, requires=None),
             Link('maybeMedia', Optional[UnionRef['Media']], _noop, requires=None),
         ]),
+    ], unions=[
+        Union('Media', ['Audio', 'Video']),
     ])
 
     assert introspect(graph) == _schema([

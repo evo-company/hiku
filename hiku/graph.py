@@ -614,23 +614,19 @@ class Graph(AbstractGraph):
         items: t.List[Node],
         data_types: t.Optional[t.Dict[str, t.Type[Record]]] = None,
         directives: t.Optional[t.Sequence[t.Type[SchemaDirective]]] = None,
+        unions: t.Optional[t.List[Union]] = None,
     ):
         """
         :param items: list of nodes
         """
         from .validate.graph import GraphValidator
 
-        unions: t.List[Union] = []
-        nodes = []
-        for item in items:
-            if isinstance(item, Union):
-                unions.append(item)
-            else:
-                nodes.append(item)
+        if unions is None:
+            unions = []
 
-        GraphValidator.validate(nodes, unions)
+        GraphValidator.validate(items, unions)
 
-        self.items = GraphInit.init(nodes)
+        self.items = GraphInit.init(items)
         self.unions = unions
         self.data_types = data_types or {}
         self.__types__ = GraphTypes.get_types(
@@ -788,11 +784,11 @@ class GraphTransformer(AbstractGraphVisitor):
         return Root([self.visit(f) for f in obj.fields])
 
     def visit_graph(self, obj: Graph) -> Graph:
-        # TODO: here we are loosing Unions
         return Graph(
-            [self.visit(node) for node in obj.items + obj.unions],
+            [self.visit(node) for node in obj.items],
             obj.data_types,
             obj.directives,
+            obj.unions,
         )
 
 

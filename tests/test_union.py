@@ -71,9 +71,6 @@ GRAPH = Graph([
             Option('size', Integer),
         ]),
     ]),
-    Union(
-        'Media', ['Audio', 'Video']
-    ),
     Root([
         Link(
             'searchMedia',
@@ -87,6 +84,8 @@ GRAPH = Graph([
         Link('media', UnionRef['Media'], get_media, requires=None),
         Link('maybeMedia', Optional[UnionRef['Media']], maybe_get_media, requires=None),
     ]),
+], unions=[
+    Union('Media', ['Audio', 'Video']),
 ])
 
 
@@ -101,16 +100,6 @@ def test_validate_graph_union():
                 Field('id', Integer, resolve_video_fields),
                 Field('thumbnailUrl', String, resolve_video_fields),
             ]),
-            Union(
-                'Media', []
-            ),
-            Union(
-                '', ['Audio', 'Video']
-            ),
-
-            Union(
-                'Invalid', ['Unknown']
-            ),
             Root([
                 Link(
                     'searchMedia',
@@ -122,6 +111,10 @@ def test_validate_graph_union():
                     requires=None
                 ),
             ]),
+        ], unions=[
+            Union('Media', []),
+            Union('', ['Audio', 'Video']),
+            Union('Invalid', ['Unknown']),
         ])
 
     assert err.value.errors == [

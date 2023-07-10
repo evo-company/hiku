@@ -116,9 +116,13 @@ class Graph(_Graph):
         items: t.List[t.Union[FederatedNode, Node]],
         data_types: t.Optional[t.Dict[str, t.Type[Record]]] = None,
         directives: t.Optional[t.Sequence[t.Type[SchemaDirective]]] = None,
+        unions: t.Optional[t.List[Union]] = None,
         is_async: bool = False,
     ):
         items = GraphInit.init(items, is_async)
 
-        items.append(Union("_Entity", get_entity_types(items)))  # type: ignore
-        super().__init__(items, data_types, directives)
+        if unions is None:
+            unions = []
+
+        unions.append(Union("_Entity", get_entity_types(items)))
+        super().__init__(items, data_types, directives, unions)

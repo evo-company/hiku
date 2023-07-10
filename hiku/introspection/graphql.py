@@ -891,12 +891,13 @@ class GraphQLIntrospection(GraphTransformer):
     def visit_graph(self, obj: Graph) -> Graph:
         ValidateGraph.validate(obj)
         introspection_graph = self.__introspection_graph__()
-        items = [self.visit(node) for node in obj.items + obj.unions]
+        items = [self.visit(node) for node in obj.items]
         items.extend(introspection_graph.items)
         return Graph(
             items,
             data_types=obj.data_types,
             directives=obj.directives,
+            unions=obj.unions,
         )
 
 

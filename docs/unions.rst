@@ -39,6 +39,10 @@ In `hiku` you can use union types like this:
             (2, TypeRef['Video']),
         ]
 
+    unions = [
+        Union('Media', ['Audio', 'Video']),
+    ]
+
     GRAPH = Graph([
         Node('Audio', [
             Field('id', ID, audio_fields_resolver),
@@ -48,11 +52,10 @@ In `hiku` you can use union types like this:
             Field('id', ID, video_fields_resolver),
             Field('thumbnailUrl', String, video_fields_resolver),
         ]),
-        Union('Media', ['Audio', 'Video']),
         Root([
             Link('search', Sequence(UnionRef['Media']), search_resolver, requires=None),
         ]),
-    ])
+    ], unions=unions)
 
 Lets look at the example above:
 
