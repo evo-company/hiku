@@ -46,9 +46,18 @@ data = {
 
 @listify
 def cart_resolver(fields, ids):
+
+    def get_field(f, cart):
+        if f.name == 'id':
+            return cart['id']
+        if f.name == 'status':
+            return {
+                'id': cart['status'],
+                'title': cart['status'].lower(),
+            }
     for cart_id in ids:
         cart = get_by_id(cart_id, data['carts'])
-        yield [cart[f.name] for f in fields]
+        yield [get_field(f, cart) for f in fields]
 
 
 async def async_cart_resolver(fields, ids):

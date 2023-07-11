@@ -237,7 +237,7 @@ class Exporter(GraphVisitor):
                 else []
             ),
             self.get_any_scalar(),
-            self.get_entity_union(),
+            *self.export_unions(),
             self.get_service_type(),
         ]:
             if node:
@@ -374,21 +374,19 @@ class Exporter(GraphVisitor):
     def get_any_scalar(self) -> ast.ScalarTypeDefinitionNode:
         return ast.ScalarTypeDefinitionNode(name=_name("Any"))
 
-    def get_entity_union(self) -> t.Optional[ast.UnionTypeDefinitionNode]:
-        """Expose _Entity union type if there are any entity types
-        marked with @key directive
-        """
-        types = [
-            ast.NamedTypeNode(name=_name(typ))
-            for typ in self.get_entity_types()
-        ]
-        if not types:
-            return None
-
-        return ast.UnionTypeDefinitionNode(
-            name=_name("_Entity"),
-            types=types,
-        )
+    def export_unions(self) -> t.List[ast.UnionTypeDefinitionNode]:
+        unions = []
+        for union in self.graph.unions:
+            unions.append(
+                ast.UnionTypeDefinitionNode(
+                    name=_name(union.name),
+                    types=[
+                        ast.NamedTypeNode(name=_name(type_))
+                        for type_ in union.types
+                    ],
+                )
+            )
+        return unions
 
     def get_service_type(self) -> ast.ObjectTypeDefinitionNode:
         return ast.ObjectTypeDefinitionNode(

@@ -217,7 +217,7 @@ def test_named_fragments():
                                 Node(
                                     [
                                         Field("flowers"),
-                                        Field("doozie"),
+                                        Field("doozie", parent_type="Makai"),
                                         Field("apres"),
                                         Link(
                                             "pins",
@@ -231,9 +231,11 @@ def test_named_fragments():
                                                                 Field("rusk"),
                                                             ]
                                                         ),
+                                                        parent_type='Torsion'
                                                     ),
                                                 ]
                                             ),
+                                            parent_type='Makai'
                                         ),
                                     ]
                                 ),
@@ -246,6 +248,7 @@ def test_named_fragments():
                                         Field("boree"),
                                     ]
                                 ),
+                                parent_type="Valium",
                             ),
                         ]
                     ),
@@ -329,6 +332,7 @@ def test_variables_in_fragment():
                 Field(
                     "fibbery",
                     options={"baps": None, "bankit": 123, "riuer": 234},
+                    parent_type="Ashlee",
                 )
             ]
         ),
@@ -410,7 +414,7 @@ def test_skip_fragment_spread(skip):
           bar
         }
         """,
-        Node([Field("foo")] + ([] if skip else [Field("bar")])),
+        Node([Field("foo")] + ([] if skip else [Field("bar", parent_type="Thing")])),
         {"cond": skip},
     )
 
@@ -426,7 +430,7 @@ def test_skip_inline_fragment(skip):
           }
         }
         """,
-        Node([Field("foo")] + ([] if skip else [Field("bar")])),
+        Node([Field("foo")] + ([] if skip else [Field("bar", parent_type="Thing")])),
         {"cond": skip},
     )
 
@@ -457,7 +461,7 @@ def test_include_fragment_spread(include):
           bar
         }
         """,
-        Node([Field("foo")] + ([Field("bar")] if include else [])),
+        Node([Field("foo")] + ([Field("bar", parent_type="Thing")] if include else [])),
         {"cond": include},
     )
 
@@ -473,7 +477,7 @@ def test_include_inline_fragment(include):
           }
         }
         """,
-        Node([Field("foo")] + ([Field("bar")] if include else [])),
+        Node([Field("foo")] + ([Field("bar", parent_type="Thing")] if include else [])),
         {"cond": include},
     )
 

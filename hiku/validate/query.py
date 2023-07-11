@@ -18,11 +18,11 @@ from ..types import (
     IntegerMeta,
     FloatMeta,
     MappingMeta,
-    UnionMeta,
 )
 
 from hiku.query import (
     Field as QueryField,
+    FieldBase,
     Node as QueryNode,
     Link as QueryLink,
     QueryVisitor,
@@ -36,6 +36,7 @@ from hiku.graph import (
     Option,
     Nothing,
     Graph,
+    Union,
 )
 from .errors import Errors
 
@@ -73,6 +74,8 @@ class _AssumeRecord(AbstractTypeVisitor):
     visit_float = _false
     visit_mapping = _false
     visit_callable = _false
+    visit_unionref = _false
+    visit_scalar = _false
 
     def visit_optional(self, obj: OptionalMeta) -> t.Optional[t.OrderedDict]:
         if not self._nested:
@@ -90,9 +93,6 @@ class _AssumeRecord(AbstractTypeVisitor):
 
     def visit_typeref(self, obj: TypeRefMeta) -> t.OrderedDict:
         return self.visit(self._data_types[obj.__type_name__])
-
-    def visit_union(self, obj: UnionMeta) -> t.Any:
-        ...
 
 
 class _AssumeField(GraphVisitor):
@@ -241,6 +241,15 @@ class _OptionTypeValidator:
 
 
 class _ValidateOptions(GraphVisitor):
+    """
+    Validate options for fields and links.
+
+    :param data_types: Mapping of data types.
+    :param options: Options to validate.
+    :param for_: Path to the field or link. Used in error messages.
+    :param errors: Errors container.
+    """
+
     def __init__(
         self,
         data_types: t.Dict[str, t.Type[Record]],
@@ -336,13 +345,19 @@ class _RecordFieldsValidator(QueryVisitor):
         raise AssertionError("Node is not expected here")
 
 
-def _field_eq(
-    a: t.Union[QueryField, QueryLink], b: t.Union[QueryField, QueryLink]
-) -> bool:
+def _field_eq(a: FieldBase, b: FieldBase) -> bool:
     return a.name == b.name and a.options == b.options
 
 
 class QueryValidator(QueryVisitor):
+    """
+    Validate query against graph.
+
+    Query must not contain __typename field.
+
+    :param graph: Graph to validate against.
+    """
+
     def __init__(self, graph: Graph):
         self.graph = graph
         self.path = [graph.root]
@@ -390,7 +405,11 @@ class QueryValidator(QueryVisitor):
                 )
 
         elif isinstance(graph_obj, Link):
-            linked_node = self.graph.nodes_map[graph_obj.node]
+            if graph_obj.is_union:
+                linked_node = self.graph.unions_map[graph_obj.node]
+            else:
+                linked_node = self.graph.nodes_map[graph_obj.node]
+
             for_ = (node.name or "root", obj.name)
             _ValidateOptions(
                 self.graph.data_types, obj.options, for_, self.errors
@@ -413,7 +432,30 @@ class QueryValidator(QueryVisitor):
 
     def visit_node(self, obj: QueryNode) -> None:
         fields: t.Dict = {}
+
+        is_union_link = isinstance(self.path[-1], Union)
+
         for field in obj.fields:
+            if field.name == "__typename":
+                continue
+
+            if is_union_link:
+                union = self.path[-1]
+                if field.parent_type is None:
+                    self.errors.report(
+                        "Cannot query field '{}' on type '{}'. "
+                        "Did you mean to use an inline fragment on {}?".format(
+                            field.name,
+                            union.name,
+                            " or ".join(
+                                [f"'{type_name}'" for type_name in union.types]
+                            ),
+                        )
+                    )
+                    continue
+
+                self.path.append(self.graph.nodes_map[field.parent_type])
+
             seen = fields.get(field.result_key)
             if seen is not None:
                 if not _field_eq(field, seen):
@@ -427,6 +469,9 @@ class QueryValidator(QueryVisitor):
             else:
                 fields[field.result_key] = field
             self.visit(field)
+
+            if is_union_link:
+                self.path.pop()
 
 
 def validate(graph: Graph, query: QueryNode) -> t.List[str]:

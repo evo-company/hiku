@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 from flask import Flask, request, jsonify
 
@@ -62,8 +63,18 @@ def handle_graphql():
     return jsonify(result)
 
 
+@app.route('/', methods={'GET'})
+def graphiql():
+    path = Path(__file__).parent / 'graphiql.html'
+    with open(path) as f:
+        return f.read().encode('utf-8')
+
+
 def main():
     logging.basicConfig()
+    log.setLevel(logging.INFO)
+    log.info('GraphiQL is available on http://localhost:5000')
+    log.info('GraphQL endpoint is running on http://localhost:5000/graphql')
     app.run(host='0.0.0.0', port=5000)
 
 

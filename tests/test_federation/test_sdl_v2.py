@@ -2,12 +2,11 @@ import textwrap
 
 from hiku.directives import Location
 from hiku.graph import (
-    Graph,
     Node,
     Field,
     Link,
     Option,
-    Root,
+    Root, Union,
 )
 from hiku.types import (
     Boolean, Record,
@@ -18,6 +17,7 @@ from hiku.types import (
 )
 from hiku.graph import apply
 
+from hiku.federation.graph import FederatedNode, Graph
 from hiku.federation.directive import (
     schema_directive,
     FederationSchemaDirective,
@@ -25,11 +25,8 @@ from hiku.federation.directive import (
     Key,
     Extends,
 )
-from hiku.federation.endpoint import FederatedGraphQLEndpoint
-from hiku.federation.engine import Engine
 from hiku.federation.introspection import FederatedGraphQLIntrospection
 from hiku.federation.sdl import print_sdl
-from hiku.executors.sync import SyncExecutor
 from tests.test_federation.utils import field_resolver, link_resolver
 
 
@@ -43,15 +40,6 @@ class Custom(FederationSchemaDirective):
     ...
 
 
-def execute(graph, query_string):
-    graphql_endpoint = FederatedGraphQLEndpoint(
-        Engine(SyncExecutor()),
-        graph,
-    )
-
-    return graphql_endpoint.dispatch(query_string)
-
-
 SaveOrderResultNode = Node(
     "SaveOrderResult",
     [
@@ -61,11 +49,11 @@ SaveOrderResultNode = Node(
 
 GRAPH = Graph([
     SaveOrderResultNode,
-    Node('Order', [
+    FederatedNode('Order', [
         Field('cartId', Integer, field_resolver, directives=[External()]),
         Link('cart', TypeRef['Cart'], link_resolver, requires='cartId')
     ], directives=[Key('cartId'), Extends()]),
-    Node('Cart', [
+    FederatedNode('Cart', [
         Field('id', Integer, field_resolver),
         Field('status', TypeRef['Status'], field_resolver),
         Field('_secret', String, field_resolver),
@@ -86,7 +74,9 @@ GRAPH = Graph([
         'id': Integer,
         'title': String,
     }],
-}, directives=[Custom])
+}, directives=[Custom], unions=[
+    Union('Bucket', ['Cart'])
+])
 
 
 MUTATION_GRAPH = Graph(
@@ -141,6 +131,8 @@ expected_tmpl = """
     }
     %s
     scalar Any
+    
+    union Bucket = Cart
     
     union _Entity = Cart | Order
 

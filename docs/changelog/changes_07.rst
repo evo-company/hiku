@@ -38,6 +38,7 @@ Changes in 0.7
   - Added support for Apollo Federation v2
   - Added support for custom schema directives :ref:`Check directives documentation <directives-doc>`
   - Added `ID` type.
+  - Added support for unions :ref:`Check unions documentation <unions-doc>`
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

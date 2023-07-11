@@ -27,12 +27,12 @@ from ..graph import (
 from ..graph import GraphVisitor, GraphTransformer
 from ..types import (
     IDMeta,
+    ScalarMeta,
     TypeRef,
     String,
     Sequence,
     Boolean,
     Optional,
-    TypeVisitor,
     AnyMeta,
     MappingMeta,
     CallableMeta,
@@ -43,7 +43,7 @@ from ..types import (
     IntegerMeta,
     FloatMeta,
     BooleanMeta,
-    UnionMeta,
+    UnionRefMeta,
 )
 from ..types import Any, RecordMeta, AbstractTypeVisitor
 from ..utils import (
@@ -56,6 +56,7 @@ from .types import (
     LIST,
     INPUT_OBJECT,
     OBJECT,
+    UNION,
     DIRECTIVE,
     FieldIdent,
     FieldArgIdent,
@@ -73,6 +74,15 @@ _BUILTIN_DIRECTIVES: t.Tuple[
     _IncludeDirective,
     Deprecated,
     Cached,
+)
+
+BUILTIN_SCALARS: t.Tuple[SCALAR, ...] = (  # type: ignore[valid-type]
+    SCALAR("String"),
+    SCALAR("Int"),
+    SCALAR("Boolean"),
+    SCALAR("Float"),
+    SCALAR("Any"),
+    SCALAR("ID"),
 )
 
 
@@ -100,12 +110,27 @@ class SchemaInfo:
         self.data_types = query_graph.data_types
         self.mutation_graph = mutation_graph
         self.directives = directives or ()
+        self.scalars = BUILTIN_SCALARS
+        self.nodes_map = self._nodes_map()
+        self.unions_map = self.query_graph.unions_map
+
+    def _nodes_map(self) -> OrderedDict:
+        nodes = [(n.name, n) for n in self.query_graph.nodes]
+        nodes.append((QUERY_ROOT_NAME, self.query_graph.root))
+        if self.mutation_graph is not None:
+            nodes.append((MUTATION_ROOT_NAME, self.mutation_graph.root))
+        return OrderedDict(nodes)
 
     @cached_property
     def directives_map(self) -> OrderedDict:
         return OrderedDict(
             (d.__directive_info__.name, d) for d in self.directives
         )
+
+    @staticmethod
+    def is_field_hidden(field: Field) -> bool:
+        """Determines if a field should be hidden from introspection."""
+        return field.name.startswith("_")
 
 
 class TypeIdent(AbstractTypeVisitor):
@@ -115,6 +140,9 @@ class TypeIdent(AbstractTypeVisitor):
 
     def visit_any(self, obj: AnyMeta) -> HashedNamedTuple:
         return SCALAR("Any")
+
+    def visit_scalar(self, obj: ScalarMeta) -> HashedNamedTuple:
+        return NON_NULL(SCALAR(obj.__type_name__))
 
     def visit_mapping(self, obj: MappingMeta) -> HashedNamedTuple:
         return SCALAR("Any")
@@ -141,8 +169,8 @@ class TypeIdent(AbstractTypeVisitor):
         else:
             return NON_NULL(OBJECT(obj.__type_name__))
 
-    def visit_union(self, obj: UnionMeta) -> t.Any:
-        ...
+    def visit_unionref(self, obj: UnionRefMeta) -> t.Any:
+        return NON_NULL(UNION(obj.__type_name__, tuple()))
 
     def visit_string(self, obj: StringMeta) -> HashedNamedTuple:
         return NON_NULL(SCALAR("String"))
@@ -158,29 +186,6 @@ class TypeIdent(AbstractTypeVisitor):
 
     def visit_boolean(self, obj: BooleanMeta) -> HashedNamedTuple:
         return NON_NULL(SCALAR("Boolean"))
-
-
-class UnsupportedGraphQLType(TypeError):
-    pass
-
-
-class TypeValidator(TypeVisitor):
-    @classmethod
-    def is_valid(cls, type_: t.Any) -> bool:
-        """TODO: probably not used method"""
-        try:
-            cls().visit(type_)
-        except UnsupportedGraphQLType:
-            return False
-        else:
-            return True
-
-    def visit_any(self, obj: AnyMeta) -> t.NoReturn:
-        raise UnsupportedGraphQLType()
-
-    def visit_record(self, obj: RecordMeta) -> t.NoReturn:
-        # inline Record type can't be directly matched to GraphQL type system
-        raise UnsupportedGraphQLType()
 
 
 def not_implemented(*args: t.Any, **kwargs: t.Any) -> t.NoReturn:
@@ -202,14 +207,6 @@ def na_many(
         return [[] for _ in ids]
 
 
-def _nodes_map(schema: SchemaInfo) -> OrderedDict:
-    nodes = [(n.name, n) for n in schema.query_graph.nodes]
-    nodes.append((QUERY_ROOT_NAME, schema.query_graph.root))
-    if schema.mutation_graph is not None:
-        nodes.append((MUTATION_ROOT_NAME, schema.mutation_graph.root))
-    return OrderedDict(nodes)
-
-
 def schema_link(schema: SchemaInfo) -> None:
     return None
 
@@ -218,26 +215,34 @@ def type_link(
     schema: SchemaInfo, options: t.Dict
 ) -> t.Union[HashedNamedTuple, NothingType]:
     name = options["name"]
-    if name in _nodes_map(schema):
+    if name in schema.nodes_map:
         return OBJECT(name)
+    elif name in schema.unions_map:
+        union = schema.unions_map[name]
+        return UNION(
+            union.name, tuple(OBJECT(type_name) for type_name in union.types)
+        )
     else:
         return Nothing
 
 
 @listify
 def root_schema_types(schema: SchemaInfo) -> t.Iterator[HashedNamedTuple]:
-    yield SCALAR("String")
-    yield SCALAR("Int")
-    yield SCALAR("Boolean")
-    yield SCALAR("Float")
-    yield SCALAR("Any")
+    for scalar in schema.scalars:
+        yield scalar
 
-    for name in _nodes_map(schema):
+    for name in schema.nodes_map:
         yield OBJECT(name)
+
     for name, type_ in schema.data_types.items():
         if isinstance(type_, RecordMeta):
             yield OBJECT(name)
             yield INPUT_OBJECT(name)
+
+    for union in schema.query_graph.unions:
+        yield UNION(
+            union.name, tuple(OBJECT(type_name) for type_name in union.types)
+        )
 
 
 def root_schema_query_type(schema: SchemaInfo) -> HashedNamedTuple:
@@ -264,11 +269,10 @@ def root_schema_directives(schema: SchemaInfo) -> t.List[DIRECTIVE]:  # type: ig
 def type_info(
     schema: SchemaInfo, fields: t.List[Field], ids: t.List
 ) -> t.Iterator[t.List[t.Optional[t.Dict]]]:
-    nodes_map = _nodes_map(schema)
     for ident in ids:
         if isinstance(ident, OBJECT):
-            if ident.name in nodes_map:
-                description = nodes_map[ident.name].description
+            if ident.name in schema.nodes_map:
+                description = schema.nodes_map[ident.name].description
             else:
                 description = None
             info = {
@@ -290,6 +294,15 @@ def type_info(
             info = {"id": ident, "kind": "LIST"}
         elif isinstance(ident, SCALAR):
             info = {"id": ident, "name": ident.name, "kind": "SCALAR"}
+        elif isinstance(ident, UNION):
+            info = {
+                "id": ident,
+                "kind": "UNION",
+                "name": ident.name,
+                "description": schema.query_graph.unions_map[
+                    ident.name
+                ].description,
+            }
         else:
             raise TypeError(repr(ident))
         yield [info.get(f.name) for f in fields]
@@ -299,15 +312,14 @@ def type_info(
 def type_fields_link(
     schema: SchemaInfo, ids: t.List, options: t.List
 ) -> t.Iterator[t.List[HashedNamedTuple]]:
-    nodes_map = _nodes_map(schema)
     for ident in ids:
         if isinstance(ident, OBJECT):
-            if ident.name in nodes_map:
-                node = nodes_map[ident.name]
+            if ident.name in schema.nodes_map:
+                node = schema.nodes_map[ident.name]
                 field_idents = [
                     FieldIdent(ident.name, f.name)
                     for f in node.fields
-                    if not f.name.startswith("_")
+                    if not schema.is_field_hidden(f)
                 ]
             else:
                 type_ = schema.data_types[ident.name]
@@ -338,13 +350,24 @@ def type_of_type_link(
 
 
 @listify
+def possible_types_type_link(schema: SchemaInfo, ids: t.List) -> t.Iterator:
+    if ids is None:
+        yield []
+
+    for ident in ids:
+        if isinstance(ident, UNION):
+            yield ident.possible_types
+        else:
+            yield []
+
+
+@listify
 def field_info(
     schema: SchemaInfo, fields: t.List[Field], ids: t.List
 ) -> t.Iterator[t.List[t.Dict]]:
-    nodes_map = _nodes_map(schema)
     for ident in ids:
-        if ident.node in nodes_map:
-            node = nodes_map[ident.node]
+        if ident.node in schema.nodes_map:
+            node = schema.nodes_map[ident.node]
             field = node.fields_map[ident.name]
             deprecated = None
             if isinstance(field, (Field, Link)):
@@ -372,11 +395,10 @@ def field_info(
 def field_type_link(
     schema: SchemaInfo, ids: t.List
 ) -> t.Iterator[HashedNamedTuple]:
-    nodes_map = _nodes_map(schema)
     type_ident = TypeIdent(schema.query_graph)
     for ident in ids:
-        if ident.node in nodes_map:
-            node = nodes_map[ident.node]
+        if ident.node in schema.nodes_map:
+            node = schema.nodes_map[ident.node]
             field = node.fields_map[ident.name]
             yield type_ident.visit(field.type or Any)
         else:
@@ -389,10 +411,9 @@ def field_type_link(
 def field_args_link(
     schema: SchemaInfo, ids: t.List
 ) -> t.Iterator[t.List[HashedNamedTuple]]:
-    nodes_map = _nodes_map(schema)
     for ident in ids:
-        if ident.node in nodes_map:
-            node = nodes_map[ident.node]
+        if ident.node in schema.nodes_map:
+            node = schema.nodes_map[ident.node]
             field = node.fields_map[ident.name]
             yield [
                 FieldArgIdent(ident.node, field.name, option.name)
@@ -421,10 +442,9 @@ def type_input_object_input_fields_link(
 def input_value_info(
     schema: SchemaInfo, fields: t.List[Field], ids: t.List[HashedNamedTuple]
 ) -> t.Iterator[t.List[t.Dict]]:
-    nodes_map = _nodes_map(schema)
     for ident in ids:
         if isinstance(ident, FieldArgIdent):
-            node = nodes_map[ident.node]
+            node = schema.nodes_map[ident.node]
             field = node.fields_map[ident.field]
             option = field.options_map[ident.name]
             if option.default is Nothing:
@@ -464,11 +484,10 @@ def input_value_info(
 def input_value_type_link(
     schema: SchemaInfo, ids: t.List[HashedNamedTuple]
 ) -> t.Iterator[HashedNamedTuple]:
-    nodes_map = _nodes_map(schema)
     type_ident = TypeIdent(schema.query_graph, input_mode=True)
     for ident in ids:
         if isinstance(ident, FieldArgIdent):
-            node = nodes_map[ident.node]
+            node = schema.nodes_map[ident.node]
             field = node.fields_map[ident.field]
             option = field.options_map[ident.name]
             yield type_ident.visit(option.type)
@@ -543,7 +562,7 @@ GRAPH = Graph(
                 Link(
                     "possibleTypes",
                     Sequence[TypeRef["__Type"]],
-                    na_many,
+                    possible_types_type_link,
                     requires="id",
                 ),
                 # ENUM only
@@ -838,7 +857,7 @@ class GraphQLIntrospection(GraphTransformer):
         :param mutation_graph: graph, where Root node represents Mutation root
             operation type
         """
-        self._schema = SchemaInfo(
+        self.schema = SchemaInfo(
             query_graph,
             mutation_graph,
             self.__directives__ + tuple(query_graph.directives or ()),
@@ -850,7 +869,7 @@ class GraphQLIntrospection(GraphTransformer):
         )
 
     def __introspection_graph__(self) -> Graph:
-        return BindToSchema(self._schema).visit(GRAPH)
+        return BindToSchema(self.schema).visit(GRAPH)
 
     def visit_node(self, obj: Node) -> Node:
         node = super(GraphQLIntrospection, self).visit_node(obj)

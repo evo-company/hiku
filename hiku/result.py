@@ -29,10 +29,11 @@ from .types import (
     get_type,
     GenericMeta,
 )
-from .query import Node, Field, Link
+from .query import Base as QueryBase, FieldBase, Node, Field, Link
 from .graph import (
     Link as GraphLink,
     Field as GraphField,
+    MaybeMany,
     Node as GraphNode,
     Many,
     Maybe,
@@ -82,6 +83,9 @@ class Proxy:
         self.__ref__ = reference
         self.__node__ = node
 
+    def __repr__(self) -> str:
+        return "<Proxy {}>".format(self.__ref__)
+
     def __getitem__(self, item: str) -> t.Any:
         try:
             field: t.Union[Field, Link] = self.__node__.result_map[item]
@@ -111,13 +115,12 @@ class Proxy:
             return value
         elif isinstance(value, Reference):
             return self.__class__(self.__idx__, value, field.node)
-        elif (
-            isinstance(value, list)
-            and value
-            and isinstance(value[0], Reference)
-        ):
+        elif isinstance(value, list) and value:
             return [
-                self.__class__(self.__idx__, ref, field.node) for ref in value
+                self.__class__(self.__idx__, val, field.node)
+                if isinstance(val, Reference)
+                else val
+                for val in value
             ]
         else:
             return value
@@ -130,7 +133,7 @@ class Proxy:
 
 
 def _denormalize_type(
-    type_: GenericMeta, result: t.Any, query_obj: t.Union[Field, Link]
+    type_: GenericMeta, result: t.Any, query_obj: FieldBase
 ) -> t.Any:
     if isinstance(query_obj, Field):
         return result
@@ -162,22 +165,29 @@ def _denormalize(
     graph: Graph,
     graph_obj: t.Union[GraphNode, GraphField, GraphLink],
     result: t.Any,
-    query_obj: t.Union[Field, Link, Node],
+    query_obj: QueryBase,
 ) -> t.Any:
     if isinstance(query_obj, Node):
         assert isinstance(graph_obj, GraphNode)
-        return {
-            f.result_key: _denormalize(
+        r = {}
+        for f in query_obj.fields:
+            r[f.result_key] = _denormalize(
                 graph, graph_obj.fields_map[f.name], result[f.result_key], f
             )
-            for f in query_obj.fields
-        }
+        return r
+        # return {
+        #     f.result_key: _denormalize(
+        #         graph, graph_obj.fields_map[f.name], result[f.result_key], f
+        #     )
+        #     for f in query_obj.fields
+        # }
 
     elif isinstance(query_obj, Field):
         return result
 
     elif isinstance(query_obj, Link):
         if isinstance(graph_obj, GraphField):
+            assert graph_obj.type is not None
             field_type = get_type(graph.data_types, graph_obj.type)
             assert field_type is not None
             return _denormalize_type(field_type, result, query_obj)
@@ -187,6 +197,13 @@ def _denormalize(
             if graph_obj.type_enum is Many:
                 return [
                     _denormalize(graph, graph_node, v, query_obj.node)
+                    for v in result
+                ]
+            elif graph_obj.type_enum is MaybeMany:
+                return [
+                    _denormalize(graph, graph_node, v, query_obj.node)
+                    if v is not None
+                    else None
                     for v in result
                 ]
             elif graph_obj.type_enum is Maybe and result is None:

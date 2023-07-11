@@ -1,8 +1,12 @@
 from unittest.mock import ANY
 
+from hiku.federation.directive import Key
 from hiku.federation.endpoint import FederatedGraphQLEndpoint
 from hiku.federation.engine import Engine
 from hiku.executors.sync import SyncExecutor
+from hiku.federation.graph import FederatedNode, Graph
+from hiku.graph import Field, Root
+from hiku.types import Integer, TypeRef
 from .utils import GRAPH
 from ..utils import INTROSPECTION_QUERY
 
@@ -35,12 +39,8 @@ def _iobj(name):
     return {'kind': 'INPUT_OBJECT', 'name': name, 'ofType': None}
 
 
-def _union(name, possible_types=None):
-    return {
-        'kind': 'UNION',
-        'name': name,
-        'possibleTypes': possible_types
-    }
+def _union(name):
+    return {'kind': 'UNION', 'name': name, 'ofType': None}
 
 
 def _seq_of(_type):
@@ -138,6 +138,7 @@ SCALARS = [
     _type('Boolean', 'SCALAR'),
     _type('Float', 'SCALAR'),
     _type('Any', 'SCALAR'),
+    _type('ID', 'SCALAR'),
 ]
 
 
@@ -169,6 +170,8 @@ def introspect_v2(query_graph):
 
 def test_federated_introspection_v1():
     exp = _schema([
+        _type('_Any', 'SCALAR'),
+        _type('_FieldSet', 'SCALAR'),
         _type('Cart', 'OBJECT', fields=[
             _field('id', _non_null(_INT)),
             _field('status', _non_null(_obj('Status'))),
@@ -184,12 +187,12 @@ def test_federated_introspection_v1():
             _field(
                 '_entities',
                 _seq_of_nullable(
-                    _union('_Entity', [_obj('Cart')])
+                    _union('_Entity')
                 ),
                 args=[
                     _ival(
                         'representations',
-                        _seq_of(_type('_Any', 'SCALAR')),
+                        _seq_of(_scalar('_Any')),
                         defaultValue=ANY
                     ),
                 ]
@@ -199,6 +202,9 @@ def test_federated_introspection_v1():
                 _non_null(_obj('_Service')),
             ),
         ]),
+        _type('_Service', 'OBJECT', fields=[
+            _field('sdl', _non_null(_scalar('String'))),
+        ]),
         _type('Status', 'OBJECT', fields=[
             _field('id', _non_null(_INT)),
             _field('title', _non_null(_STR)),
@@ -207,13 +213,8 @@ def test_federated_introspection_v1():
             _ival('id', _non_null(_INT)),
             _ival('title', _non_null(_STR)),
         ]),
-        _type('_Any', 'SCALAR'),
-        _type('_FieldSet', 'SCALAR'),
         _type('_Entity', 'UNION', possibleTypes=[
             _obj('Cart')
-        ]),
-        _type('_Service', 'OBJECT', fields=[
-            _field('sdl', _type('String', 'SCALAR')),
         ]),
     ])
     got = introspect(GRAPH)
@@ -222,6 +223,8 @@ def test_federated_introspection_v1():
 
 def test_federated_introspection_v2():
     exp = _schema([
+        _type('_Any', 'SCALAR'),
+        _type('_FieldSet', 'SCALAR'),
         _type('Cart', 'OBJECT', fields=[
             _field('id', _non_null(_INT)),
             _field('status', _non_null(_obj('Status'))),
@@ -237,12 +240,12 @@ def test_federated_introspection_v2():
             _field(
                 '_entities',
                 _seq_of_nullable(
-                    _union('_Entity', [_obj('Cart')])
+                    _union('_Entity')
                 ),
                 args=[
                     _ival(
                         'representations',
-                        _seq_of(_type('_Any', 'SCALAR')),
+                        _seq_of(_scalar('_Any')),
                         defaultValue=ANY
                     ),
                 ]
@@ -252,6 +255,9 @@ def test_federated_introspection_v2():
                 _non_null(_obj('_Service')),
             ),
         ]),
+        _type('_Service', 'OBJECT', fields=[
+            _field('sdl', _non_null(_scalar('String'))),
+        ]),
         _type('Status', 'OBJECT', fields=[
             _field('id', _non_null(_INT)),
             _field('title', _non_null(_STR)),
@@ -260,13 +266,8 @@ def test_federated_introspection_v2():
             _ival('id', _non_null(_INT)),
             _ival('title', _non_null(_STR)),
         ]),
-        _type('_Any', 'SCALAR'),
-        _type('_FieldSet', 'SCALAR'),
         _type('_Entity', 'UNION', possibleTypes=[
             _obj('Cart')
-        ]),
-        _type('_Service', 'OBJECT', fields=[
-            _field('sdl', _type('String', 'SCALAR')),
         ]),
     ])
     got = introspect_v2(GRAPH)
@@ -285,5 +286,115 @@ def test_introspection_partial_query():
     assert got['data'] == {
         '__schema': {
             'queryType': {'name': 'Query'}
+        }
+    }
+
+
+def test_entity_type_when_no_type_has_key():
+    query = """
+    query IntrospectionQuery {
+       __type(name: "_Entity") {
+            kind
+            possibleTypes {
+                name
+            }
+        }
+    }
+    """
+
+    graph = Graph([
+        FederatedNode('Cart', [
+            Field('id', Integer, _noop),
+        ]),
+    ])
+    got = execute_v2(graph, {'query': query})
+    assert got['data'] == {
+        '__type': None
+    }
+
+
+def test_entity_type_when_type_has_key():
+    query = """
+    query IntrospectionQuery {
+       __type(name: "_Entity") {
+            kind
+            possibleTypes {
+                name
+            }
+        }
+    }
+    """
+
+    graph = Graph([
+        FederatedNode('Cart', [
+            Field('id', Integer, _noop),
+        ], directives=[Key('id')]),
+    ])
+    got = execute_v2(graph, {'query': query})
+    assert got['data'] == {
+        '__type': {"kind": "UNION", "possibleTypes": [{"name": "Cart"}]}
+    }
+
+
+def test_entities_field_when_no_type_has_key():
+    query = """
+    query IntrospectionQuery {
+       __type(name: "Query") {
+            kind
+            fields { name }
+        }
+    }
+    """
+
+    graph = Graph([
+        FederatedNode('Cart', [
+            Field('id', Integer, _noop),
+        ]),
+        Root([
+            Field('cart', TypeRef['Cart'], _noop),
+        ])
+    ])
+    got = execute_v2(graph, {'query': query})
+    assert got['data'] == {
+        '__type': {
+            "kind": "OBJECT",
+            "fields": [{
+                "name": "cart",
+            }, {
+                "name": "_service",
+            }]
+        }
+    }
+
+
+def test_entities_field_when_type_has_key():
+    query = """
+    query IntrospectionQuery {
+       __type(name: "Query") {
+            kind
+            fields { name }
+        }
+    }
+    """
+
+    graph = Graph([
+        FederatedNode('Cart', [
+            Field('id', Integer, _noop),
+        ], directives=[Key('id')]),
+        Root([
+            Field('cart', TypeRef['Cart'], _noop),
+        ])
+    ])
+    got = execute_v2(graph, {'query': query})
+    assert got['data'] == {
+        '__type': {
+            "kind": "OBJECT",
+            "fields": [{
+                "name": "cart",
+            }, {
+                "name": "_entities",
+            }, {
+                "name": "_service",
+            }]
         }
     }

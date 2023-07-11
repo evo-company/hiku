@@ -13,11 +13,12 @@ from ..graph import (
     Link,
     Option,
     Graph,
+    Union,
 )
 from ..graph import AbstractNode, AbstractField, AbstractLink, AbstractOption
 
 from .errors import Errors
-from ..types import GenericMeta, OptionalMeta, Union
+from ..types import GenericMeta, OptionalMeta
 
 
 class GraphValidationError(TypeError):
@@ -50,20 +51,17 @@ class GraphValidator(GraphVisitor):
     _link_accept_types = (AbstractOption,)
     _field_accept_types = (AbstractOption,)
 
-    def __init__(
-        self, items: t.List[Node], unions: t.Tuple[t.Type[Union], ...]
-    ) -> None:
+    def __init__(self, items: t.List[Node], unions: t.List[Union]) -> None:
         self.items = items
         self.unions = unions
         self.errors = Errors()
         self._ctx: t.List = []
 
     @classmethod
-    def validate(
-        cls, items: t.List[Node], unions: t.Tuple[t.Type[Union], ...]
-    ) -> None:
+    def validate(cls, items: t.List[Node], unions: t.List[Union]) -> None:
         validator = cls(items, unions)
         validator.visit_graph_items(items)
+        validator.visit_graph_unions(unions)
         if validator.errors.list:
             raise GraphValidationError(validator.errors.list)
 
@@ -155,7 +153,7 @@ class GraphValidator(GraphVisitor):
             super(GraphValidator, self).visit_link(obj)
 
         graph_nodes_map = {e.name for e in self.items if e.name is not None}
-        unions_map = {u.__union_name__: u for u in self.unions}
+        unions_map = {u.name: u for u in self.unions}
         if obj.node not in graph_nodes_map:
             if obj.node not in unions_map:
                 self.errors.report(
@@ -209,6 +207,25 @@ class GraphValidator(GraphVisitor):
         if sum((1 for d in obj.directives if isinstance(d, Deprecated))) > 0:
             self.errors.report("Deprecated directive can not be used in Node")
 
+    def visit_union(self, obj: "Union") -> t.Any:
+        if not obj.name:
+            self.errors.report("Union must have a name")
+
+        if not obj.types:
+            self.errors.report("Union must have at least one type")
+
+        nodes_map = {e.name: e for e in self.items if e.name is not None}
+
+        invalid = [type_ for type_ in obj.types if type_ not in nodes_map]
+
+        if invalid:
+            self.errors.report(
+                "Union '{}' types '{}' must point to node or data type".format(
+                    obj.name, invalid
+                )
+            )
+            return
+
     def visit_root(self, obj: Root) -> None:
         self.visit_node(obj)
 
@@ -245,3 +262,7 @@ class GraphValidator(GraphVisitor):
                     self._format_names(duplicates)
                 )
             )
+
+    def visit_graph_unions(self, unions: t.List[Union]) -> None:
+        for union in unions:
+            self.visit(union)

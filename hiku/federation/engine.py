@@ -1,7 +1,5 @@
 from collections import defaultdict
 from typing import (
-    Any,
-    List,
     Optional,
     Dict,
     Awaitable,
@@ -20,8 +18,7 @@ from hiku.federation.utils import representation_to_ident
 from hiku.engine import (
     BaseEngine,
     InitOptions,
-    NodePath,
-    Query as _Query,
+    Query,
     Context,
 )
 from hiku.executors.queue import Queue
@@ -33,7 +30,6 @@ from hiku.graph import (
     Many,
     Maybe,
     One,
-    Node as GraphNode,
 )
 from hiku.result import (
     Proxy,
@@ -43,7 +39,6 @@ from hiku.result import (
 from hiku.query import (
     Node,
     Field,
-    Link as QueryLink,
 )
 
 
@@ -71,31 +66,6 @@ def union_link_to_type(obj: Link, typ: str) -> Link:
     else:
         raise TypeError(repr(link.type_enum))
     return link
-
-
-class Query(_Query):
-    def process_link(
-        self,
-        path: NodePath,
-        node: GraphNode,
-        graph_link: Link,
-        query_link: QueryLink,
-        ids: Any,
-        result: List,
-    ) -> None:
-        if graph_link.name == "_entities":
-            if isinstance(result, tuple):
-                # union type narrowing
-                # TODO: backport this to hiku.engine.Query
-                result, typ = list(result[0]), result[1]
-                graph_link = union_link_to_type(graph_link, typ)
-
-            for representation, id_ in zip(ids, result):
-                self._index["__representations_to_ids__"][representation] = id_
-
-        super(Query, self).process_link(
-            path, node, graph_link, query_link, ids, result
-        )
 
 
 class Engine(BaseEngine):
@@ -146,10 +116,8 @@ class Engine(BaseEngine):
             ident = representation_to_ident(rep)
             type_representations_map[typename].append(ident)
 
-        for typename in type_representations_map:
-            query_workflow.process_node(
-                path, graph.root, query, type_representations_map[typename]
-            )
+        for typename, ids in type_representations_map.items():
+            query_workflow.process_node(path, graph.root, query, ids)
 
         return self.executor.process(queue, query_workflow)
 

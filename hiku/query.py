@@ -54,6 +54,8 @@ from collections import (
 )
 from collections.abc import Sequence
 
+from typing_extensions import TypeAlias
+
 from .directives import Directive
 from .utils import cached_property
 
@@ -109,6 +111,7 @@ class FieldBase(Base):
     name: str
     options: t.Optional[t.Dict[str, t.Any]]
     alias: t.Optional[str]
+    parent_type: t.Optional[str]
 
     @cached_property
     def result_key(self) -> str:
@@ -131,6 +134,10 @@ class FieldBase(Base):
         else:
             return self.name
 
+    @cached_property
+    def full_name(self) -> str:
+        return "{}.{}".format(self.parent_type or "__root__", self.name)
+
 
 class Field(FieldBase):
     """Represents a field of the node
@@ -138,9 +145,11 @@ class Field(FieldBase):
     :param name: name of the field
     :param optional options: field options -- mapping of names to values
     :param optional alias: field's name in result
+    :param parent_type: is set automatically during query parsing, represents
+                        type_condition from inline fragments or fragment spread
     """
 
-    __attrs__ = ("name", "options", "alias", "directives")
+    __attrs__ = ("name", "parent_type", "options", "alias", "directives")
 
     def __init__(
         self,
@@ -148,11 +157,13 @@ class Field(FieldBase):
         options: t.Optional[t.Dict[str, t.Any]] = None,
         alias: t.Optional[str] = None,
         directives: t.Optional[t.Tuple[Directive, ...]] = None,
+        parent_type: t.Optional[str] = None,
     ):
         self.name = name
         self.options = options
         self.alias = alias
         self.directives = directives or ()
+        self.parent_type = parent_type
 
     @cached_property
     def directives_map(self) -> OrderedDict:
@@ -172,9 +183,18 @@ class Link(FieldBase):
                  :py:class:`~hiku.query.Node`
     :param optional options: link options -- mapping of names to values
     :param optional alias: link's name in result
+    :param parent_type: is set automatically during query parsing, represents
+                        type_condition from inline fragments or fragment spread
     """
 
-    __attrs__ = ("name", "node", "options", "alias", "directives")
+    __attrs__ = (
+        "name",
+        "parent_type",
+        "node",
+        "options",
+        "alias",
+        "directives",
+    )
 
     def __init__(
         self,
@@ -183,12 +203,14 @@ class Link(FieldBase):
         options: t.Optional[t.Dict[str, t.Any]] = None,
         alias: t.Optional[str] = None,
         directives: t.Optional[t.Tuple[Directive, ...]] = None,
+        parent_type: t.Optional[str] = None,
     ):
         self.name = name
         self.node = node
         self.options = options
         self.alias = alias
         self.directives = directives or ()
+        self.parent_type = parent_type
 
     @cached_property
     def directives_map(self) -> OrderedDict:
@@ -198,6 +220,9 @@ class Link(FieldBase):
 
     def accept(self, visitor: "QueryVisitor") -> t.Any:
         return visitor.visit_link(self)
+
+
+FieldsMap: TypeAlias = "OrderedDict[t.Union[str, t.Tuple[str, str]], FieldBase]"
 
 
 class Node(Base):
@@ -212,14 +237,23 @@ class Node(Base):
     __attrs__ = ("fields", "ordered")
 
     def __init__(
-        self, fields: t.List[t.Union[Field, Link]], ordered: bool = False
+        self, fields: t.List[FieldBase], ordered: bool = False
     ) -> None:
         self.fields = fields
         self.ordered = ordered
 
     @cached_property
-    def fields_map(self) -> OrderedDict:
-        return OrderedDict((f.name, f) for f in self.fields)
+    def fields_map(
+        self,
+    ) -> FieldsMap:
+        _map: FieldsMap = OrderedDict()
+        for field in self.fields:
+            if field.parent_type is None:
+                _map[field.name] = field
+            else:
+                _map[(field.parent_type, field.name)] = field
+
+        return _map
 
     @cached_property
     def result_map(self) -> OrderedDict:
@@ -229,13 +263,13 @@ class Node(Base):
         return visitor.visit_node(self)
 
 
-def _merge(nodes: t.Iterable[Node]) -> t.Iterator[t.Union[Field, Link]]:
+def _merge(nodes: t.Iterable[Node]) -> t.Iterator[FieldBase]:
     fields = set()
     links = {}
     link_directives: t.DefaultDict[t.Tuple, t.List] = defaultdict(list)
     to_merge = OrderedDict()
     for field in chain.from_iterable(e.fields for e in nodes):
-        key = (field.name, field.options_hash, field.alias)
+        key = (field.full_name, field.options_hash, field.alias)
         if field.__class__ is Link:
             field = t.cast(Link, field)
             if key not in to_merge:

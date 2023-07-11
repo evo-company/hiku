@@ -55,7 +55,7 @@ ENTITIES_QUERY = {
         query($representations:[_Any!]!) {
             _entities(representations:$representations) {
                 ...on Cart {
-                    status
+                    status { id title }
                 }
             }
         }
@@ -88,8 +88,8 @@ def test_execute_sync_executor(executor):
     result = executor(GRAPH, ENTITIES_QUERY)
 
     expect = [
-        {'status': 'NEW'},
-        {'status': 'ORDERED'}
+        {'status': {'id': 'NEW', 'title': 'new'}},
+        {'status': {'id': 'ORDERED', 'title': 'ordered'}}
     ]
     assert expect == result['data']['_entities']
 
@@ -103,7 +103,7 @@ async def test_execute_async_executor(executor):
     result = await executor(ASYNC_GRAPH, ENTITIES_QUERY)
 
     expect = [
-        {'status': 'NEW'},
-        {'status': 'ORDERED'}
+        {'status': {'id': 'NEW', 'title': 'new'}},
+        {'status': {'id': 'ORDERED', 'title': 'ordered'}}
     ]
     assert expect == result['data']['_entities']

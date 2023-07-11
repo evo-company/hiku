@@ -1,21 +1,17 @@
 from typing import (
+    Callable,
     Dict,
     Any,
     List,
     Optional,
 )
 
-from hiku.graph import Graph
-from hiku.query import Node as QueryNode
+from hiku.graph import Field, Graph, Link, Node
+from hiku.introspection.types import SCALAR
 
 from hiku.introspection.graphql import GraphQLIntrospection
 from hiku.introspection.graphql import AsyncGraphQLIntrospection
-
-from hiku.federation.utils import get_keys
-
-
-def is_introspection_query(query: QueryNode) -> bool:
-    return "__schema" in query.fields_map
+from hiku.types import String, TypeRef
 
 
 def _obj(name: str) -> Dict:
@@ -81,44 +77,39 @@ def _type(name: str, kind: str, **kwargs: Any) -> Dict:
     return data
 
 
-def extend_with_federation(graph: Graph, data: dict) -> None:
-    union_types = []
-    for node in graph.nodes:
-        if get_keys(graph, node.name):
-            union_types.append(_obj(node.name))
+def _is_field_hidden_wrapper(func: Callable) -> Callable:
+    def wrapper(field: Field) -> bool:
+        if field.name == "_entities":
+            return False
+        if field.name == "_service":
+            return False
 
-    if "types" in data["__schema"]:
-        data["__schema"]["types"].append(_type("_Any", "SCALAR"))
-        data["__schema"]["types"].append(_type("_FieldSet", "SCALAR"))
-        data["__schema"]["types"].append(
-            _type("_Entity", "UNION", possibleTypes=union_types)
-        )
-        data["__schema"]["types"].append(
-            _type(
-                "_Service",
-                "OBJECT",
-                fields=[_field("sdl", _type("String", "SCALAR"))],
-            )
-        )
+        return func(field)
 
-        entities_field = _field(
-            "_entities",
-            _seq_of_nullable(_union("_Entity", union_types)),
-            args=[_ival("representations", _seq_of(_type("_Any", "SCALAR")))],
-        )
-
-        service_field = _field(
-            "_service",
-            _non_null(_obj("_Service")),
-        )
-        for t in data["__schema"]["types"]:
-            if t["kind"] == "OBJECT" and t["name"] == "Query":
-                t["fields"].append(entities_field)
-                t["fields"].append(service_field)
+    return wrapper
 
 
 class BaseFederatedGraphQLIntrospection(GraphQLIntrospection):
-    ...
+    def __init__(
+        self,
+        query_graph: Graph,
+        mutation_graph: Optional[Graph] = None,
+    ) -> None:
+        super().__init__(query_graph, mutation_graph)
+        self.schema.scalars = self.schema.scalars + (
+            SCALAR("_Any"),
+            SCALAR("_FieldSet"),
+        )
+        self.schema.nodes_map["_Service"] = Node(
+            "_Service", [Field("sdl", String, lambda: None)]  # type: ignore
+        )
+        self.schema.is_field_hidden = _is_field_hidden_wrapper(  # type: ignore
+            self.schema.is_field_hidden
+        )
+        self.schema.nodes_map["Query"] = self.schema.nodes_map["Query"].copy()
+        self.schema.nodes_map["Query"].fields.append(
+            Link("_service", TypeRef["_Service"], lambda: None, requires=None)
+        )
 
 
 class FederatedGraphQLIntrospection(BaseFederatedGraphQLIntrospection):
