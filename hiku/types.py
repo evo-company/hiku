@@ -28,12 +28,20 @@ class GenericMeta(type):
 
 
 class AnyMeta(GenericMeta):
+    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
+        return visitor.visit_any(cls)
+
+
+class Any(metaclass=AnyMeta):
+    pass
+
+
+class ScalarMeta(GenericMeta):
     __final__ = False
-    __default__ = "Any"
-    __type_name__: str = __default__
+    __type_name__: str
 
     def __cls_init__(cls, type_name: t.Optional[str]) -> None:
-        cls.__type_name__: str = type_name or cls.__default__
+        cls.__type_name__: str = type_name
 
     def __cls_repr__(self) -> str:
         return "{}[{!r}]".format(self.__name__, self.__type__)
@@ -47,10 +55,10 @@ class AnyMeta(GenericMeta):
         return type_
 
     def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
-        return visitor.visit_any(cls)
+        return visitor.visit_scalar(cls)
 
 
-class Any(metaclass=AnyMeta):
+class Scalar(metaclass=ScalarMeta):
     pass
 
 
@@ -293,6 +301,10 @@ class AbstractTypeVisitor(ABC):
         pass
 
     @abstractmethod
+    def visit_scalar(self, obj: ScalarMeta) -> t.Any:
+        pass
+
+    @abstractmethod
     def visit_boolean(self, obj: BooleanMeta) -> t.Any:
         pass
 
@@ -343,6 +355,9 @@ class AbstractTypeVisitor(ABC):
 
 class TypeVisitor(AbstractTypeVisitor):
     def visit_any(self, obj: AnyMeta) -> t.Any:
+        pass
+
+    def visit_scalar(self, obj: ScalarMeta) -> t.Any:
         pass
 
     def visit_boolean(self, obj: BooleanMeta) -> t.Any:

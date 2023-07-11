@@ -74,7 +74,8 @@ class _AssumeRecord(AbstractTypeVisitor):
     visit_float = _false
     visit_mapping = _false
     visit_callable = _false
-    visit_unionref = _false  # TODO: maybe we need to support it?
+    visit_unionref = _false
+    visit_scalar = _false
 
     def visit_optional(self, obj: OptionalMeta) -> t.Optional[t.OrderedDict]:
         if not self._nested:

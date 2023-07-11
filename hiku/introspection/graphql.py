@@ -27,6 +27,7 @@ from ..graph import (
 from ..graph import GraphVisitor, GraphTransformer
 from ..types import (
     IDMeta,
+    ScalarMeta,
     TypeRef,
     String,
     Sequence,
@@ -138,9 +139,9 @@ class TypeIdent(AbstractTypeVisitor):
         self._input_mode = input_mode
 
     def visit_any(self, obj: AnyMeta) -> HashedNamedTuple:
-        if obj.__type_name__ == obj.__default__:
-            return SCALAR(obj.__type_name__)
+        return SCALAR("Any")
 
+    def visit_scalar(self, obj: ScalarMeta) -> HashedNamedTuple:
         return NON_NULL(SCALAR(obj.__type_name__))
 
     def visit_mapping(self, obj: MappingMeta) -> HashedNamedTuple:
@@ -185,29 +186,6 @@ class TypeIdent(AbstractTypeVisitor):
 
     def visit_boolean(self, obj: BooleanMeta) -> HashedNamedTuple:
         return NON_NULL(SCALAR("Boolean"))
-
-
-class UnsupportedGraphQLType(TypeError):
-    pass
-
-
-class TypeValidator(TypeVisitor):
-    @classmethod
-    def is_valid(cls, type_: t.Any) -> bool:
-        """TODO: probably not used method"""
-        try:
-            cls().visit(type_)
-        except UnsupportedGraphQLType:
-            return False
-        else:
-            return True
-
-    def visit_any(self, obj: AnyMeta) -> t.NoReturn:
-        raise UnsupportedGraphQLType()
-
-    def visit_record(self, obj: RecordMeta) -> t.NoReturn:
-        # inline Record type can't be directly matched to GraphQL type system
-        raise UnsupportedGraphQLType()
 
 
 def not_implemented(*args: t.Any, **kwargs: t.Any) -> t.NoReturn:
