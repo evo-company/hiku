@@ -37,6 +37,11 @@ jobs:
       run: pdm run fmt --check
     - name: Run unit tests
       run: tox run -- --cov-report=term
+      
+  federation-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
     - name: Install Lets
       uses: lets-cli/lets-action@v1.1
       with:
