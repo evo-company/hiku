@@ -7,7 +7,7 @@ ENV PDM_VERSION=2.6
 ENV PDM_USE_VENV=no
 ENV PYTHONPATH=/work/__pypackages__/3.7/lib
 
-RUN apt-get update && apt-get install -y libpq-dev && \
+RUN apt-get update && apt-get install -y libpq-dev gcc && \
     pip install --upgrade pip==${PIP_VERSION} && pip install pdm==${PDM_VERSION}
 
 # for pyproject.toml to extract version
