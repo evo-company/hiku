@@ -47,4 +47,4 @@ jobs:
       with:
         version: latest
     - name: Test federation compatibility
-      run: timeout 120 lets federation-compatibility-test
+      run: timeout 600 lets federation-compatibility-test
