@@ -30,7 +30,7 @@ RUN pdm sync -G docs
 
 FROM base as tests
 
-RUN pdm sync -G tests
+RUN pdm sync -G test
 RUN python3 -m pip install tox tox-pdm
 
 FROM base as examples
