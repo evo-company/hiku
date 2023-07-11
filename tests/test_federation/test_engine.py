@@ -6,6 +6,7 @@ from hiku.federation.endpoint import denormalize_entities
 from hiku.federation.engine import Engine
 from hiku.federation.validate import validate
 from hiku.executors.sync import SyncExecutor
+from hiku.readers.graphql import read
 
 from tests.test_federation.utils import (
     GRAPH,
@@ -23,20 +24,24 @@ async def execute_async_executor(graph, query_, ctx=None):
     return await engine.execute(graph, query_, ctx=ctx)
 
 
-QUERY = Node(fields=[
-    Link(
-        '_entities',
-        Node(fields=[
-            Field('status', parent_type='Cart'),
-        ]),
-        options={
-            'representations': [
-                {'__typename': 'Cart', 'id': 1},
-                {'__typename': 'Cart', 'id': 2},
-            ]
+ENTITIES_QUERY = {
+    'query': """
+        query($representations:[_Any!]!) {
+            _entities(representations:$representations) {
+                ...on Cart {
+                    status { id title }
+                }
+            }
         }
-    )
-])
+        """,
+    'variables': {
+        'representations': [
+            {'__typename': 'Cart', 'id': 1},
+            {'__typename': 'Cart', 'id': 2},
+        ]
+    }
+}
+QUERY = read(ENTITIES_QUERY['query'], ENTITIES_QUERY['variables'])
 
 
 SDL_QUERY = Node(fields=[
@@ -64,8 +69,8 @@ def test_execute_sync_executor():
     )
 
     expect = [
-        {'status': 'NEW'},
-        {'status': 'ORDERED'}
+        {'status': {'id': 'NEW', 'title': 'new'}},
+        {'status': {'id': 'ORDERED', 'title': 'ordered'}}
     ]
     assert expect == data
 
@@ -80,7 +85,7 @@ async def test_execute_async_executor():
     )
 
     expect = [
-        {'status': 'NEW'},
-        {'status': 'ORDERED'}
+        {'status': {'id': 'NEW', 'title': 'new'}},
+        {'status': {'id': 'ORDERED', 'title': 'ordered'}}
     ]
     assert expect == data

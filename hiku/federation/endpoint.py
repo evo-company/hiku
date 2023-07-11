@@ -21,8 +21,6 @@ from hiku.federation.introspection import (
     BaseFederatedGraphQLIntrospection,
     FederatedGraphQLIntrospection,
     AsyncFederatedGraphQLIntrospection,
-    is_introspection_query,
-    extend_with_federation,
 )
 from hiku.federation.validate import validate
 
@@ -107,8 +105,6 @@ class BaseFederatedGraphEndpoint(ABC):
         type_name = _type_names[op.type]
 
         data = DenormalizeGraphQL(graph, result, type_name).process(op.query)
-        if is_introspection_query(op.query):
-            extend_with_federation(graph, data)
         return data
 
 

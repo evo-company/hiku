@@ -183,6 +183,8 @@ class Link(FieldBase):
                  :py:class:`~hiku.query.Node`
     :param optional options: link options -- mapping of names to values
     :param optional alias: link's name in result
+    :param parent_type: is set automatically during query parsing, represents
+                        type_condition from inline fragments or fragment spread
     """
 
     __attrs__ = (
@@ -201,13 +203,14 @@ class Link(FieldBase):
         options: t.Optional[t.Dict[str, t.Any]] = None,
         alias: t.Optional[str] = None,
         directives: t.Optional[t.Tuple[Directive, ...]] = None,
+        parent_type: t.Optional[str] = None,
     ):
         self.name = name
         self.node = node
         self.options = options
         self.alias = alias
         self.directives = directives or ()
-        self.parent_type = None
+        self.parent_type = parent_type
 
     @cached_property
     def directives_map(self) -> OrderedDict:

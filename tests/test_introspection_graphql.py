@@ -149,6 +149,7 @@ SCALARS = [
     _type('Boolean', 'SCALAR'),
     _type('Float', 'SCALAR'),
     _type('Any', 'SCALAR'),
+    _type('ID', 'SCALAR'),
 ]
 
 

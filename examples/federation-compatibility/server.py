@@ -584,6 +584,15 @@ def handle_graphql():
     return resp
 
 
+@app.route('/', methods={'GET'})
+def graphiql():
+    path = Path(__file__).parent.parent / 'graphiql.html'
+    with open(path) as f:
+        page = f.read()
+        page = page.replace("localhost:5000", "localhost:4001")
+        return page.encode('utf-8')
+
+
 def main():
     logging.basicConfig(level=logging.DEBUG)
 

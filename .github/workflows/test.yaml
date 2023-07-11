@@ -37,3 +37,9 @@ jobs:
       run: pdm run fmt --check
     - name: Run unit tests
       run: tox run -- --cov-report=term
+    - name: Install Lets
+      uses: lets-cli/lets-action@v1.1
+      with:
+        version: latest
+    - name: Test federation compatibility
+      run: timeout 120 lets federation-compatibility-test

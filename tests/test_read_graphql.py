@@ -231,9 +231,11 @@ def test_named_fragments():
                                                                 Field("rusk"),
                                                             ]
                                                         ),
+                                                        parent_type='Torsion'
                                                     ),
                                                 ]
                                             ),
+                                            parent_type='Makai'
                                         ),
                                     ]
                                 ),
@@ -246,6 +248,7 @@ def test_named_fragments():
                                         Field("boree"),
                                     ]
                                 ),
+                                parent_type="Valium",
                             ),
                         ]
                     ),

@@ -333,7 +333,7 @@ class SelectionSetVisitMixin:
         else:
             fragment = self.fragments_map[obj.name.value]  # type: ignore[attr-defined] # noqa: E501
         for i in self.transform_fragment(obj.name.value):
-            if isinstance(i, Field):
+            if isinstance(i, (Field, Link)):
                 i.parent_type = fragment.type_condition.name.value
 
             yield i
@@ -345,7 +345,7 @@ class SelectionSetVisitMixin:
             return
 
         for i in self.visit(obj.selection_set):  # type: ignore[attr-defined]
-            if isinstance(i, Field):
+            if isinstance(i, (Field, Link)):
                 i.parent_type = obj.type_condition.name.value
 
             yield i

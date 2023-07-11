@@ -37,18 +37,31 @@ class FederatedNode(Node):
 class GraphInit(GraphTransformer):
     type_to_resolve_reference_map: t.Dict[str, t.Callable]
     is_async: bool
+    has_entity_types: bool
 
     @classmethod
     def init(
-        cls, items: t.List[t.Union[FederatedNode, Node]], is_async: bool
+        cls,
+        items: t.List[t.Union[FederatedNode, Node]],
+        is_async: bool,
+        has_entity_types: bool = False,
     ) -> t.List[Node]:
         self = cls()
         self.type_to_resolve_reference_map = {}
         self.is_async = is_async
+        self.has_entity_types = has_entity_types
         return [self.visit(i) for i in items]
 
     def visit_root(self, root: Root) -> Root:
-        return Root(root.fields + [self.entities_link()])
+        if not self.has_entity_types:
+            return root
+
+        return Root(
+            root.fields
+            + [
+                self.entities_link(),
+            ]
+        )
 
     def visit_node(self, obj: Node) -> Node:
         if hasattr(obj, "resolve_reference") and obj.name is not None:
@@ -104,7 +117,7 @@ class GraphInit(GraphTransformer):
             Sequence[UnionRef["_Entity"]],
             entities_resolver_async if self.is_async else entities_resolver,
             options=[
-                Option("representations", Sequence[Any]),
+                Option("representations", Sequence[Any["_Any"]]),
             ],
             requires=None,
         )
@@ -119,13 +132,13 @@ class Graph(_Graph):
         unions: t.Optional[t.List[Union]] = None,
         is_async: bool = False,
     ):
-        items = GraphInit.init(items, is_async)
-
         if unions is None:
             unions = []
 
         entity_types = get_entity_types(items)
         if entity_types:
             unions.append(Union("_Entity", entity_types))
+
+        items = GraphInit.init(items, is_async, bool(entity_types))
 
         super().__init__(items, data_types, directives, unions)

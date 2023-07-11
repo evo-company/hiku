@@ -28,6 +28,24 @@ class GenericMeta(type):
 
 
 class AnyMeta(GenericMeta):
+    __final__ = False
+    __default__ = "Any"
+    __type_name__: str = __default__
+
+    def __cls_init__(cls, type_name: t.Optional[str]) -> None:
+        cls.__type_name__: str = type_name or cls.__default__
+
+    def __cls_repr__(self) -> str:
+        return "{}[{!r}]".format(self.__name__, self.__type__)
+
+    def __getitem__(cls: "AnyMeta", parameters: t.Any) -> "AnyMeta":
+        if cls.__final__:
+            raise TypeError("Cannot substitute parameters in {!r}".format(cls))
+        type_ = cls.__class__(cls.__name__, cls.__bases__, dict(cls.__dict__))
+        type_.__cls_init__(parameters)
+        type_.__final__ = True
+        return type_
+
     def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
         return visitor.visit_any(cls)
 

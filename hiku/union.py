@@ -31,6 +31,7 @@ class SplitUnionByNodes:
                 ):
                     fields.append(field)
 
+            # TODO: do we need to add all nodes even if node is empty ?
             nodes[type_.name] = obj.copy(fields=fields)
 
         return nodes
