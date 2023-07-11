@@ -23,9 +23,9 @@ from sqlalchemy.pool import StaticPool
 from hiku import query as q
 from hiku.denormalize.graphql import DenormalizeGraphQL
 from hiku.executors.threads import ThreadsExecutor
-from hiku.graph import Graph, Node, Field, Link, Option, Root
+from hiku.graph import Graph, Node, Field, Link, Nothing, Option, Root
 from hiku.sources.sqlalchemy import FieldsQuery
-from hiku.types import Record, Sequence, Integer, Optional, TypeRef
+from hiku.types import Record, Sequence, Integer, Optional, String, TypeRef
 from hiku.utils import (
     listify,
     ImmutableDict,
@@ -1259,3 +1259,98 @@ def test_falsy_link_result():
     )
     assert denormalize(graph, result) == {"x": {"a": 42}}
     x_fields.assert_called_once_with([q.Field("a")], [0])
+
+
+def test_root_link_with_sequence_to_optional_type_ref():
+    def a_fields(fields, ids):
+        def get_fields(f, id_):
+            assert id_ is not None and id_ is not Nothing
+            if f.name == "a":
+                return 42
+            raise AssertionError("Unexpected field: {}".format(f))
+
+        return [[get_fields(f, id_) for f in fields] for id_ in ids]
+
+    graph = Graph([
+        Node('A', [
+            Field('a', String, a_fields)
+        ]),
+        Root([
+            Link('aa', Sequence[Optional[TypeRef['A']]], lambda: [1, Nothing], requires=None)
+        ])
+    ])
+
+    result = execute(
+        graph,
+        q.Node(
+            [
+                q.Link("aa", q.Node([q.Field("a")])),
+            ]
+        ),
+    )
+    assert denormalize(graph, result) == {"aa": [{"a": 42}, None]}
+
+
+# TODO: test typeref
+def test_non_root_link_with_sequence_to_optional_type_ref():
+    def a_fields(fields, ids):
+        def get_fields(f, id_):
+            assert id_ is not None and id_ is not Nothing
+            if f.name == "a":
+                return 42
+            raise AssertionError("Unexpected field: {}".format(f))
+
+        return [[get_fields(f, id_) for f in fields] for id_ in ids]
+
+    def b_fields(fields, ids):
+        def get_fields(f, id_):
+            assert id_ is not None and id_ is not Nothing
+            if f.name == "b":
+                return 24
+            raise AssertionError("Unexpected field: {}".format(f))
+
+        return [[get_fields(f, id_) for f in fields] for id_ in ids]
+
+    @listify
+    def link_b2(ids):
+        for _ in ids:
+            yield [1, Nothing]
+
+    graph = Graph([
+        Node('A', [
+            Field('a', String, a_fields),
+            Link('b1', Sequence[Optional[TypeRef['B']]], lambda: [1, Nothing], requires=None),
+            # same as 'b' but with requires
+            Link('b2', Sequence[Optional[TypeRef['B']]], link_b2, requires='a'),
+        ]),
+        Node('B', [
+            Field('b', String, b_fields)
+        ]),
+        Root([
+            Link('a_root', TypeRef['A'], lambda: 1, requires=None)
+        ])
+    ])
+
+    result = execute(
+        graph,
+        q.Node(
+            [
+                q.Link("a_root", q.Node([
+                    q.Field("a"),
+                    q.Link("b1", q.Node([
+                        q.Field("b")
+                    ])),
+                    q.Link("b2", q.Node([
+                        q.Field("b")
+                    ])),
+                ])),
+            ]
+        ),
+    )
+    assert denormalize(graph, result) == {
+        "a_root": {
+            "a": 42,
+            "b1": [{"b": 24}, None],
+            "b2": [{"b": 24}, None]
+        }
+    }

@@ -1,11 +1,10 @@
-import abc
 import typing as t
 from inspect import isawaitable
 
 from hiku.directives import SchemaDirective
 from hiku.federation.utils import get_entity_types
 
-from hiku.types import Record, Scalar, Sequence, TypeRef, UnionRef
+from hiku.types import Optional, Record, Scalar, Sequence, TypeRef, UnionRef
 
 from hiku.graph import (
     Field,
@@ -115,7 +114,7 @@ class GraphInit(GraphTransformer):
 
         return Link(
             "_entities",
-            Sequence[UnionRef["_Entity"]],
+            Sequence[Optional[UnionRef["_Entity"]]],
             entities_resolver_async if self.is_async else entities_resolver,
             options=[
                 Option("representations", Sequence[Scalar["_Any"]]),

@@ -40,13 +40,13 @@ class ScalarMeta(GenericMeta):
     __final__ = False
     __type_name__: str
 
-    def __cls_init__(cls, type_name: t.Optional[str]) -> None:
+    def __cls_init__(cls, type_name: str) -> None:
         cls.__type_name__: str = type_name
 
     def __cls_repr__(self) -> str:
-        return "{}[{!r}]".format(self.__name__, self.__type__)
+        return "{}[{!r}]".format(self.__name__, self.__type_name__)
 
-    def __getitem__(cls: "AnyMeta", parameters: t.Any) -> "AnyMeta":
+    def __getitem__(cls: "ScalarMeta", parameters: t.Any) -> "ScalarMeta":
         if cls.__final__:
             raise TypeError("Cannot substitute parameters in {!r}".format(cls))
         type_ = cls.__class__(cls.__name__, cls.__bases__, dict(cls.__dict__))

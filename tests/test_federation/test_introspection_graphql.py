@@ -39,12 +39,8 @@ def _iobj(name):
     return {'kind': 'INPUT_OBJECT', 'name': name, 'ofType': None}
 
 
-def _union(name, possible_types=None):
-    return {
-        'kind': 'UNION',
-        'name': name,
-        'possibleTypes': possible_types
-    }
+def _union(name):
+    return {'kind': 'UNION', 'name': name, 'ofType': None}
 
 
 def _seq_of(_type):
@@ -191,12 +187,12 @@ def test_federated_introspection_v1():
             _field(
                 '_entities',
                 _seq_of_nullable(
-                    _union('_Entity', [_obj('Cart')])
+                    _union('_Entity')
                 ),
                 args=[
                     _ival(
                         'representations',
-                        _seq_of(_non_null(_scalar('_Any'))),
+                        _seq_of(_scalar('_Any')),
                         defaultValue=ANY
                     ),
                 ]
@@ -244,7 +240,7 @@ def test_federated_introspection_v2():
             _field(
                 '_entities',
                 _seq_of_nullable(
-                    _union('_Entity', [_obj('Cart')])
+                    _union('_Entity')
                 ),
                 args=[
                     _ival(

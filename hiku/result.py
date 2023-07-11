@@ -33,6 +33,7 @@ from .query import Base as QueryBase, FieldBase, Node, Field, Link
 from .graph import (
     Link as GraphLink,
     Field as GraphField,
+    MaybeMany,
     Node as GraphNode,
     Many,
     Maybe,
@@ -114,13 +115,12 @@ class Proxy:
             return value
         elif isinstance(value, Reference):
             return self.__class__(self.__idx__, value, field.node)
-        elif (
-            isinstance(value, list)
-            and value
-            and isinstance(value[0], Reference)
-        ):
+        elif isinstance(value, list) and value:
             return [
-                self.__class__(self.__idx__, ref, field.node) for ref in value
+                self.__class__(self.__idx__, val, field.node)
+                if isinstance(val, Reference)
+                else val
+                for val in value
             ]
         else:
             return value
@@ -169,12 +169,18 @@ def _denormalize(
 ) -> t.Any:
     if isinstance(query_obj, Node):
         assert isinstance(graph_obj, GraphNode)
-        return {
-            f.result_key: _denormalize(
+        r = {}
+        for f in query_obj.fields:
+            r[f.result_key] = _denormalize(
                 graph, graph_obj.fields_map[f.name], result[f.result_key], f
             )
-            for f in query_obj.fields
-        }
+        return r
+        # return {
+        #     f.result_key: _denormalize(
+        #         graph, graph_obj.fields_map[f.name], result[f.result_key], f
+        #     )
+        #     for f in query_obj.fields
+        # }
 
     elif isinstance(query_obj, Field):
         return result
@@ -191,6 +197,13 @@ def _denormalize(
             if graph_obj.type_enum is Many:
                 return [
                     _denormalize(graph, graph_node, v, query_obj.node)
+                    for v in result
+                ]
+            elif graph_obj.type_enum is MaybeMany:
+                return [
+                    _denormalize(graph, graph_node, v, query_obj.node)
+                    if v is not None
+                    else None
                     for v in result
                 ]
             elif graph_obj.type_enum is Maybe and result is None:

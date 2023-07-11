@@ -42,6 +42,7 @@ from .query import (
 from .graph import (
     Link,
     Maybe,
+    MaybeMany,
     One,
     Many,
     Nothing,
@@ -376,10 +377,25 @@ def link_ref_many(graph_link: Link, idents: List) -> List[Reference]:
     return [Reference(graph_link.node, i) for i in idents]
 
 
+def link_ref_maybe_many(
+    graph_link: Link, idents: List
+) -> List[Optional[Reference]]:
+    if graph_link.is_union:
+        return [
+            Reference(i[1].__type_name__, i[0]) if i is not Nothing else None
+            for i in idents
+        ]
+    return [
+        Reference(graph_link.node, i) if i is not Nothing else None
+        for i in idents
+    ]
+
+
 _LINK_REF_MAKER: Dict[Any, Callable] = {
     Maybe: link_ref_maybe,
     One: link_ref_one,
     Many: link_ref_many,
+    MaybeMany: link_ref_maybe_many,
 }
 
 
@@ -424,7 +440,7 @@ def _check_store_links(node: Node, link: Link, ids: Any, result: Any) -> None:
                 hint = _hashable_hint(result)
             else:
                 expected = "list (len: {})".format(len(ids))
-        elif link.type_enum is Many:
+        elif link.type_enum is Many or link.type_enum is MaybeMany:
             if (
                 isinstance(result, Sequence)
                 and len(result) == len(ids)
@@ -457,6 +473,14 @@ def _check_store_links(node: Node, link: Link, ids: Any, result: Any) -> None:
                 if all(map(_is_hashable, result)):
                     return
                 expected = "list of hashable objects"
+                hint = _hashable_hint(result)
+            else:
+                expected = "list"
+        elif link.type_enum is MaybeMany:
+            if isinstance(result, Sequence):
+                if all(map(_is_hashable, result)):
+                    return
+                expected = "list of hashable objects and Nothing"
                 hint = _hashable_hint(result)
             else:
                 expected = "list"
@@ -508,7 +532,7 @@ def link_result_to_ids(
                     "{!r}".format(result)
                 )
             return result
-        elif link_type is Many:
+        elif link_type is Many or link_type is MaybeMany:
             return list(chain.from_iterable(result))
     else:
         if link_type is Maybe:
@@ -517,7 +541,7 @@ def link_result_to_ids(
             if result is Nothing:
                 raise TypeError("Non-optional link should not return Nothing")
             return [result]
-        elif link_type is Many:
+        elif link_type is Many or link_type is MaybeMany:
             return result
     raise TypeError(repr([from_list, link_type]))
 
@@ -708,10 +732,13 @@ class Query(Workflow):
                     self._track(path)
 
             else:
+                if graph_link.type_enum is MaybeMany:
+                    to_ids = [id_ for id_ in to_ids if id_ is not Nothing]
                 self.process_node(
                     path,
                     self._graph.nodes_map[graph_link.node],
                     query_link.node,
+                    # TODO: you can not pass [1, Nothing] as ids
                     to_ids,
                 )
         else:

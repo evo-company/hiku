@@ -43,12 +43,14 @@ if t.TYPE_CHECKING:
     from .sources.graph import SubGraph
     from .sources.graph import BoundExpr
 
-
+# TODO enum ???
 Maybe = const("Maybe")
 
 One = const("One")
 
 Many = const("Many")
+
+MaybeMany = const("MaybeMany")
 
 #: Special constant that is used by links with :py:class:`~hiku.types.Optional`
 #: type in order to indicate that there is nothing to link to
@@ -242,6 +244,11 @@ def get_type_enum(type_: TypingMeta) -> t.Tuple[Const, str]:
     elif isinstance(type_, SequenceMeta):
         if isinstance(type_.__item_type__, (TypeRefMeta, UnionRefMeta)):
             return Many, type_.__item_type__.__type_name__
+        elif isinstance(type_.__item_type__, OptionalMeta):
+            if isinstance(
+                type_.__item_type__.__type__, (TypeRefMeta, UnionRefMeta)
+            ):
+                return MaybeMany, type_.__item_type__.__type__.__type_name__
     raise TypeError("Invalid type specified: {!r}".format(type_))
 
 
@@ -249,7 +256,8 @@ def is_union(type_: GenericMeta) -> bool:
     if isinstance(type_, OptionalMeta):
         return isinstance(type_.__type__, UnionRefMeta)
     if isinstance(type_, SequenceMeta):
-        return isinstance(type_.__item_type__, UnionRefMeta)
+        return is_union(type_.__item_type__)
+        # return isinstance(type_.__item_type__, UnionRefMeta)
 
     return isinstance(type_, UnionRefMeta)
 
@@ -556,6 +564,14 @@ class Node(AbstractNode):
 
     def accept(self, visitor: "AbstractGraphVisitor") -> t.Any:
         return visitor.visit_node(self)
+
+    def copy(self) -> "Node":
+        return Node(
+            name=self.name,
+            fields=self.fields[:],
+            description=self.description,
+            directives=self.directives,
+        )
 
 
 class Root(Node):

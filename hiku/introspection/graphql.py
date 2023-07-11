@@ -33,7 +33,6 @@ from ..types import (
     Sequence,
     Boolean,
     Optional,
-    TypeVisitor,
     AnyMeta,
     MappingMeta,
     CallableMeta,
@@ -77,7 +76,7 @@ _BUILTIN_DIRECTIVES: t.Tuple[
     Cached,
 )
 
-BUILTIN_SCALARS = (
+BUILTIN_SCALARS: t.Tuple[SCALAR, ...] = (  # type: ignore[valid-type]
     SCALAR("String"),
     SCALAR("Int"),
     SCALAR("Boolean"),
@@ -128,7 +127,8 @@ class SchemaInfo:
             (d.__directive_info__.name, d) for d in self.directives
         )
 
-    def is_field_hidden(self, field: Field) -> bool:
+    @staticmethod
+    def is_field_hidden(field: Field) -> bool:
         """Determines if a field should be hidden from introspection."""
         return field.name.startswith("_")
 

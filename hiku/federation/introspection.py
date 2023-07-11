@@ -77,8 +77,8 @@ def _type(name: str, kind: str, **kwargs: Any) -> Dict:
     return data
 
 
-def _is_field_hidden_wrapper(func: Callable) -> bool:
-    def wrapper(field: Field):
+def _is_field_hidden_wrapper(func: Callable) -> Callable:
+    def wrapper(field: Field) -> bool:
         if field.name == "_entities":
             return False
         if field.name == "_service":
@@ -101,11 +101,12 @@ class BaseFederatedGraphQLIntrospection(GraphQLIntrospection):
             SCALAR("_FieldSet"),
         )
         self.schema.nodes_map["_Service"] = Node(
-            "_Service", [Field("sdl", String, lambda: None)]
+            "_Service", [Field("sdl", String, lambda: None)]  # type: ignore
         )
-        self.schema.is_field_hidden = _is_field_hidden_wrapper(
+        self.schema.is_field_hidden = _is_field_hidden_wrapper(  # type: ignore
             self.schema.is_field_hidden
         )
+        self.schema.nodes_map["Query"] = self.schema.nodes_map["Query"].copy()
         self.schema.nodes_map["Query"].fields.append(
             Link("_service", TypeRef["_Service"], lambda: None, requires=None)
         )
