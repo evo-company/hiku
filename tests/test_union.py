@@ -18,6 +18,16 @@ def execute(graph, query):
 
 
 @listify
+def resolve_user_fields(fields, ids):
+    def get_field(fname, id_):
+        if fname == 'id':
+            return id_
+
+    for id_ in ids:
+        yield [get_field(f.name, id_) for f in fields]
+
+
+@listify
 def resolve_audio_fields(fields, ids):
     def get_field(fname, id_):
         if fname == 'id':
@@ -39,6 +49,17 @@ def resolve_video_fields(fields, ids):
 
     for id_ in ids:
         yield [get_field(f.name, id_) for f in fields]
+
+
+def link_user_media():
+    return [
+        (1, TypeRef['Audio']),
+        (2, TypeRef['Video']),
+    ]
+
+
+def link_user():
+    return 111
 
 
 def search_media(opts):
@@ -71,6 +92,10 @@ GRAPH = Graph([
             Option('size', Integer),
         ]),
     ]),
+    Node('User', [
+        Field('id', Integer, resolve_user_fields),
+        Link('media', Sequence[UnionRef['Media']], link_user_media, requires=None),
+    ]),
     Root([
         Link(
             'searchMedia',
@@ -83,6 +108,7 @@ GRAPH = Graph([
         ),
         Link('media', UnionRef['Media'], get_media, requires=None),
         Link('maybeMedia', Optional[UnionRef['Media']], maybe_get_media, requires=None),
+        Link('user', Optional[TypeRef['User']], link_user, requires=None),
     ]),
 ], unions=[
     Union('Media', ['Audio', 'Video']),
@@ -145,7 +171,7 @@ def test_option_not_provided_for_field():
         err.match("Required option \"size\" for Field('thumbnailUrl'")
 
 
-def test_query_union_list():
+def test_root_link_to_union_list():
     query = """
     query SearchMedia($text: String) {
       searchMedia(text: $text) {
@@ -172,7 +198,7 @@ def test_query_union_list():
     }
 
 
-def test_query_union_one():
+def test_root_link_to_union_one():
     query = """
     query GetMedia {
       media {
@@ -194,7 +220,7 @@ def test_query_union_one():
     }
 
 
-def test_query_union_optional():
+def test_root_link_to_union_optional():
     query = """
     query MaybeGetMedia {
       maybeMedia {
@@ -211,6 +237,37 @@ def test_query_union_optional():
     result = execute(GRAPH, read(query))
     assert result == {
         'maybeMedia': {'__typename': 'Video', 'thumbnailUrl': '/video/2'},
+    }
+
+
+def test_non_root_link_to_union_list():
+    query = """
+    query GetUserMedia {
+      user {
+        id
+        media {
+            __typename
+            ... on Audio {
+              id
+              duration
+            }
+            ... on Video {
+              id
+              thumbnailUrl(size: 100)
+            }
+        }
+      }
+    }
+    """
+    result = execute(GRAPH, read(query))
+    assert result == {
+        'user': {
+            'id': 111,
+            'media': [
+                {'__typename': 'Audio', 'id': 1, 'duration': '1s'},
+                {'__typename': 'Video', 'id': 2, 'thumbnailUrl': '/video/2'},
+            ]
+        }
     }
 
 
