@@ -3,7 +3,7 @@ Unions
 
 .. _unions-doc:
 
-Union types are special types used to represent a value that could be one of a number of types.
+Union types are special types used to represent a value that could be one of types.
 
 In graphql you can use union types like this:
 
@@ -75,11 +75,12 @@ Now lets look at the query:
     query {
         search(text: "test") {
             __typename
-            id
             ... on Audio {
+                id
                 duration
             }
             ... on Video {
+                id
                 thumbnailUrl
             }
         }
