@@ -83,6 +83,7 @@ examples = [
 importlib-metadata = ">=4.3"
 
 [tool.pdm.scripts]
+bench = "python -m pytest --benchmark-enable {args:tests}"
 test = "python -m pytest {args:tests}"
 test-pg = "python -m pytest {args:tests_pg}"
 test-pg-local = "python -m pytest --pg-host=localhost {args:tests_pg}"
