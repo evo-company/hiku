@@ -1,4 +1,3 @@
-from collections import defaultdict
 from typing import (
     Optional,
     Dict,
@@ -14,7 +13,6 @@ from hiku.cache import CacheInfo, CacheSettings
 from hiku.executors.asyncio import AsyncIOExecutor
 from hiku.executors.base import SyncAsyncExecutor
 from hiku.federation.sdl import print_sdl
-from hiku.federation.utils import representation_to_ident
 from hiku.engine import (
     BaseEngine,
     InitOptions,
@@ -97,30 +95,6 @@ class Engine(BaseEngine):
             return async_result(result)
         return result
 
-    def execute_entities(
-        self, graph: Graph, query: Node, ctx: Dict
-    ) -> Union[Proxy, Awaitable[Proxy]]:
-        path = ("_entities",)
-        representations = query.fields_map["_entities"].options[
-            "representations"
-        ]
-
-        queue = Queue(self.executor)
-        task_set = queue.fork(None)
-        query_workflow = Query(queue, task_set, graph, query, Context(ctx))
-
-        type_representations_map = defaultdict(list)
-
-        for rep in representations:
-            typename = rep["__typename"]
-            ident = representation_to_ident(rep)
-            type_representations_map[typename].append(ident)
-
-        for typename, ids in type_representations_map.items():
-            query_workflow.process_node(path, graph.root, query, ids)
-
-        return self.executor.process(queue, query_workflow)
-
     def execute_query(
         self, graph: Graph, query: Node, ctx: Dict, op: Optional["Operation"]
     ) -> Union[Proxy, Awaitable[Proxy]]:
@@ -153,8 +127,5 @@ class Engine(BaseEngine):
     ) -> Union[Proxy, Awaitable[Proxy]]:
         if ctx is None:
             ctx = {}
-
-        if "_entities" in query.fields_map:
-            return self.execute_entities(graph, query, ctx)
 
         return self.execute_query(graph, query, ctx, op)

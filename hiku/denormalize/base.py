@@ -11,6 +11,7 @@ from ..query import (
 from ..result import Proxy
 from ..types import (
     Record,
+    RecordMeta,
     TypeRefMeta,
     OptionalMeta,
     SequenceMeta,
@@ -40,10 +41,14 @@ class Denormalize(QueryVisitor):
         self._res[-1][obj.result_key] = self._data[-1][obj.result_key]
 
     def visit_link(self, obj: Link) -> None:
-        type_ = t.cast(
-            Record,
-            self._type[-1],
-        ).__field_types__[obj.name]
+        if isinstance(self._type[-1], Union):
+            assert obj.parent_type in self._type[-1].types
+            type_ = self._types[obj.parent_type].__field_types__[obj.name]
+        elif isinstance(self._type[-1], RecordMeta):
+            type_ = self._type[-1].__field_types__[obj.name]
+        else:
+            raise AssertionError(repr(self._type[-1]))
+
         if isinstance(type_, (TypeRefMeta, UnionRefMeta)):
             self._type.append(get_type(self._types, type_))
             self._res.append({})
@@ -53,8 +58,11 @@ class Denormalize(QueryVisitor):
             self._res[-1][obj.result_key] = self._res.pop()
             self._type.pop()
         elif isinstance(type_, SequenceMeta):
-            assert isinstance(type_.__item_type__, (TypeRefMeta, UnionRefMeta))
-            self._type.append(get_type(self._types, type_.__item_type__))
+            type_ref = type_.__item_type__
+            if isinstance(type_.__item_type__, OptionalMeta):
+                type_ref = type_.__item_type__.__type__
+            assert isinstance(type_ref, (TypeRefMeta, UnionRefMeta))
+            self._type.append(get_type(self._types, type_ref))
             items = []
             for item in self._data[-1][obj.result_key]:
                 self._res.append({})

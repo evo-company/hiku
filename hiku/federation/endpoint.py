@@ -99,8 +99,6 @@ class BaseFederatedGraphEndpoint(ABC):
     ) -> Dict:
         if "_service" in op.query.fields_map:
             return {"_service": {"sdl": result["sdl"]}}
-        elif "_entities" in op.query.fields_map:
-            return {"_entities": denormalize_entities(graph, op.query, result)}
 
         type_name = _type_names[op.type]
 
