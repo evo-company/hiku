@@ -1,11 +1,10 @@
-import typing as t
 from collections import deque
 
 from ..graph import Graph, Union
 from ..query import Field, Link
 from ..result import Proxy
 from ..types import (
-    Record,
+    RecordMeta,
     TypeRefMeta,
     SequenceMeta,
     OptionalMeta,
@@ -38,15 +37,21 @@ class DenormalizeGraphQL(Denormalize):
             super().visit_field(obj)
 
     def visit_link(self, obj: Link) -> None:
-        type_ = t.cast(
-            Record,
-            self._type[-1],
-        ).__field_types__[obj.name]
+        if isinstance(self._type[-1], Union):
+            assert obj.parent_type in self._type[-1].types
+            type_ = self._types[obj.parent_type].__field_types__[obj.name]
+        elif isinstance(self._type[-1], RecordMeta):
+            type_ = self._type[-1].__field_types__[obj.name]
+        else:
+            raise AssertionError(repr(self._type[-1]))
+
         type_ref: GenericMeta
         if isinstance(type_, (TypeRefMeta, UnionRefMeta)):
             type_ref = type_
         elif isinstance(type_, SequenceMeta):
             type_ref = type_.__item_type__
+            if isinstance(type_ref, OptionalMeta):
+                type_ref = type_ref.__type__
             assert isinstance(type_ref, (TypeRefMeta, UnionRefMeta)), type_ref
         elif isinstance(type_, OptionalMeta):
             type_ref = type_.__type__
