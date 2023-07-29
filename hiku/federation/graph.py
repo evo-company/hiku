@@ -10,6 +10,7 @@ from hiku.graph import (
     Field,
     Graph as _Graph,
     GraphTransformer,
+    Interface,
     Link,
     Node,
     Option,
@@ -130,6 +131,7 @@ class Graph(_Graph):
         data_types: t.Optional[t.Dict[str, t.Type[Record]]] = None,
         directives: t.Optional[t.Sequence[t.Type[SchemaDirective]]] = None,
         unions: t.Optional[t.List[Union]] = None,
+        interfaces: t.Optional[t.List[Interface]] = None,
         is_async: bool = False,
     ):
         if unions is None:
@@ -141,4 +143,4 @@ class Graph(_Graph):
 
         items = GraphInit.init(items, is_async, bool(entity_types))
 
-        super().__init__(items, data_types, directives, unions)
+        super().__init__(items, data_types, directives, unions, interfaces)

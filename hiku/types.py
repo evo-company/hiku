@@ -5,7 +5,7 @@ from collections import OrderedDict
 from typing import TypeVar
 
 if t.TYPE_CHECKING:
-    from hiku.graph import Union
+    from hiku.graph import Union, Interface
 
 
 class GenericMeta(type):
@@ -278,6 +278,28 @@ class UnionRef(metaclass=UnionRefMeta):
     ...
 
 
+class InterfaceRefMeta(TypingMeta):
+    __type_name__: str
+
+    def __cls_init__(cls, *args: str) -> None:
+        assert len(args) == 1, f"{cls.__name__} takes exactly one argument"
+
+        cls.__type_name__ = args[0]
+
+    def __cls_repr__(self) -> str:
+        return "{}[{!r}]".format(self.__name__, self.__type_name__)
+
+    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
+        return visitor.visit_interfaceref(cls)
+
+
+class InterfaceRef(metaclass=InterfaceRefMeta):
+    ...
+
+
+RefMeta = (TypeRefMeta, UnionRefMeta, InterfaceRefMeta)
+
+
 @t.overload
 def _maybe_typeref(typ: str) -> TypeRefMeta:
     ...
@@ -352,6 +374,10 @@ class AbstractTypeVisitor(ABC):
     def visit_unionref(self, obj: UnionRefMeta) -> t.Any:
         pass
 
+    @abstractmethod
+    def visit_interfaceref(self, obj: InterfaceRefMeta) -> t.Any:
+        pass
+
 
 class TypeVisitor(AbstractTypeVisitor):
     def visit_any(self, obj: AnyMeta) -> t.Any:
@@ -402,7 +428,7 @@ class TypeVisitor(AbstractTypeVisitor):
 
 T = TypeVar("T", bound=GenericMeta)
 
-Types = t.Mapping[str, t.Union[t.Type[Record], "Union"]]
+Types = t.Mapping[str, t.Union[t.Type[Record], "Union", "Interface"]]
 
 
 @t.overload
@@ -418,14 +444,19 @@ def get_type(types: Types, typ: UnionRefMeta) -> "Union":  # type: ignore[misc]
 
 
 @t.overload
+def get_type(  # type: ignore[misc]
+    types: Types, typ: InterfaceRefMeta
+) -> "Interface":
+    ...
+
+
+@t.overload
 def get_type(types: Types, typ: T) -> T:
     ...
 
 
 def get_type(types: Types, typ: t.Any) -> t.Any:
-    if isinstance(typ, TypeRefMeta):
-        return types[typ.__type_name__]
-    if isinstance(typ, UnionRefMeta):
+    if isinstance(typ, RefMeta):
         return types[typ.__type_name__]
     else:
         return typ

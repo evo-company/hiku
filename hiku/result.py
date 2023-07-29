@@ -175,12 +175,6 @@ def _denormalize(
                 graph, graph_obj.fields_map[f.name], result[f.result_key], f
             )
         return r
-        # return {
-        #     f.result_key: _denormalize(
-        #         graph, graph_obj.fields_map[f.name], result[f.result_key], f
-        #     )
-        #     for f in query_obj.fields
-        # }
 
     elif isinstance(query_obj, Field):
         return result

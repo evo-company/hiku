@@ -39,6 +39,7 @@ Changes in 0.7
   - Added support for custom schema directives :ref:`Check directives documentation <directives-doc>`
   - Added `ID` type.
   - Added support for unions :ref:`Check unions documentation <unions-doc>`
+  - Added support for interfaces :ref:`Check interfaces documentation <interfaces-doc>`
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

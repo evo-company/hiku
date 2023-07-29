@@ -1,7 +1,7 @@
 import typing as t
 from collections import deque
 
-from ..graph import Graph, Union
+from ..graph import Graph, Interface, Union
 from ..query import (
     QueryVisitor,
     Link,
@@ -12,10 +12,9 @@ from ..result import Proxy
 from ..types import (
     Record,
     RecordMeta,
-    TypeRefMeta,
+    RefMeta,
     OptionalMeta,
     SequenceMeta,
-    UnionRefMeta,
     get_type,
 )
 
@@ -25,7 +24,7 @@ class Denormalize(QueryVisitor):
         self._types = graph.__types__
         self._unions = graph.unions_map
         self._result = result
-        self._type: t.Deque[t.Union[t.Type[Record], Union]] = deque(
+        self._type: t.Deque[t.Union[t.Type[Record], Union, Interface]] = deque(
             [self._types["__root__"]]
         )
         self._data = deque([result])
@@ -49,7 +48,7 @@ class Denormalize(QueryVisitor):
         else:
             raise AssertionError(repr(self._type[-1]))
 
-        if isinstance(type_, (TypeRefMeta, UnionRefMeta)):
+        if isinstance(type_, RefMeta):
             self._type.append(get_type(self._types, type_))
             self._res.append({})
             self._data.append(self._data[-1][obj.result_key])
@@ -61,7 +60,7 @@ class Denormalize(QueryVisitor):
             type_ref = type_.__item_type__
             if isinstance(type_.__item_type__, OptionalMeta):
                 type_ref = type_.__item_type__.__type__
-            assert isinstance(type_ref, (TypeRefMeta, UnionRefMeta))
+            assert isinstance(type_ref, RefMeta)
             self._type.append(get_type(self._types, type_ref))
             items = []
             for item in self._data[-1][obj.result_key]:
@@ -76,7 +75,7 @@ class Denormalize(QueryVisitor):
             if self._data[-1][obj.result_key] is None:
                 self._res[-1][obj.result_key] = None
             else:
-                assert isinstance(type_.__type__, (TypeRefMeta, UnionRefMeta))
+                assert isinstance(type_.__type__, RefMeta)
                 self._type.append(get_type(self._types, type_.__type__))
                 self._res.append({})
                 self._data.append(self._data[-1][obj.result_key])

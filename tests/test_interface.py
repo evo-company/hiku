@@ -2,11 +2,11 @@ import pytest
 
 from hiku.denormalize.graphql import DenormalizeGraphQL
 from hiku.engine import Engine
-from hiku.union import SplitUnionQueryByNodes
+from hiku.interface import SplitInterfaceQueryByNodes
 from hiku.executors.sync import SyncExecutor
-from hiku.graph import Field, Graph, Link, Node, Option, Root, Union
-from hiku.types import Integer, Optional, Sequence, String, TypeRef, UnionRef
-from hiku.utils import listify
+from hiku.graph import Field, Graph, Interface, Link, Node, Option, Root
+from hiku.types import Integer, InterfaceRef, Optional, Sequence, String, TypeRef
+from hiku.utils import empty_field, listify
 from hiku.readers.graphql import read
 from hiku.validate.graph import GraphValidationError
 from hiku.validate.query import validate
@@ -35,6 +35,8 @@ def resolve_audio_fields(fields, ids):
             return id_
         if fname == 'duration':
             return f'{id_}s'
+        if fname == 'album':
+            return f'album#{id_}'
 
     for id_ in ids:
         yield [get_field(f.name, id_) for f in fields]
@@ -45,6 +47,8 @@ def resolve_video_fields(fields, ids):
     def get_field(fname, id_):
         if fname == 'id':
             return id_
+        if fname == 'duration':
+            return f'{id_}s'
         if fname == 'thumbnailUrl':
             return f'/video/{id_}'
 
@@ -86,51 +90,58 @@ GRAPH = Graph([
     Node('Audio', [
         Field('id', Integer, resolve_audio_fields),
         Field('duration', String, resolve_audio_fields),
-    ]),
+        Field('album', String, resolve_audio_fields),
+    ], implements=['Media']),
     Node('Video', [
         Field('id', Integer, resolve_video_fields),
+        Field('duration', String, resolve_video_fields),
         Field('thumbnailUrl', String, resolve_video_fields, options=[
             Option('size', Integer),
         ]),
-    ]),
+    ], implements=['Media']),
     Node('User', [
         Field('id', Integer, resolve_user_fields),
-        Link('media', Sequence[UnionRef['Media']], link_user_media, requires=None),
+        Link('media', Sequence[InterfaceRef['Media']], link_user_media, requires=None),
     ]),
     Root([
         Link(
             'searchMedia',
-            Sequence[UnionRef['Media']],
+            Sequence[InterfaceRef['Media']],
             search_media,
             options=[
                 Option('text', String),
             ],
             requires=None
         ),
-        Link('media', UnionRef['Media'], get_media, requires=None),
-        Link('maybeMedia', Optional[UnionRef['Media']], maybe_get_media, requires=None),
+        Link('media', InterfaceRef['Media'], get_media, requires=None),
+        Link('maybeMedia', Optional[InterfaceRef['Media']], maybe_get_media, requires=None),
         Link('user', Optional[TypeRef['User']], link_user, requires=None),
     ]),
-], unions=[
-    Union('Media', ['Audio', 'Video']),
+], interfaces=[
+    Interface('Media', [
+        Field('id', Integer, empty_field),
+        Field('duration', String, empty_field),
+    ]),
 ])
 
 
-def test_validate_graph_union():
+def test_validate_graph_with_interface():
     with pytest.raises(GraphValidationError) as err:
         Graph([
             Node('Audio', [
                 Field('id', Integer, resolve_audio_fields),
                 Field('duration', String, resolve_audio_fields),
-            ]),
+                Field('album', String, resolve_audio_fields),
+            ], implements=['WrongInterface']),
             Node('Video', [
                 Field('id', Integer, resolve_video_fields),
+                Field('duration', String, resolve_video_fields),
                 Field('thumbnailUrl', String, resolve_video_fields),
-            ]),
+            ], implements=['Media']),
             Root([
                 Link(
                     'searchMedia',
-                    Sequence[UnionRef['Media']],
+                    Sequence[InterfaceRef['Media']],
                     search_media,
                     options=[
                         Option('text', String),
@@ -138,16 +149,17 @@ def test_validate_graph_union():
                     requires=None
                 ),
             ]),
-        ], unions=[
-            Union('Media', []),
-            Union('', ['Audio', 'Video']),
-            Union('Invalid', ['Unknown']),
+        ], interfaces=[
+            Interface('Media', []),
+            Interface('', [Field('id', Integer, empty_field)]),
+            Interface('Invalid', ['WrongType']),  # type: ignore
         ])
 
     assert err.value.errors == [
-        'Union must have at least one type',
-        'Union must have a name',
-        "Union 'Invalid' types '['Unknown']' must point to node or data type",
+        'Node "Audio" implements missing interface "WrongInterface"',
+        "Interface 'Media' must have at least one field",
+        'Interface must have a name',
+        "Interface 'Invalid' fields must be of type 'Field', found '['WrongType']'",
     ]
 
 
@@ -156,12 +168,12 @@ def test_option_not_provided_for_field():
     query GetMedia {
       media {
         __typename
+        id
+        duration
         ... on Audio {
-          id
-          duration
+          album
         }
         ... on Video {
-          id
           thumbnailUrl
         }
       }
@@ -172,44 +184,45 @@ def test_option_not_provided_for_field():
         err.match("Required option \"size\" for Field('thumbnailUrl'")
 
 
-def test_root_link_to_union_list():
+def test_root_link_to_interface_list():
     query = """
     query SearchMedia($text: String) {
       searchMedia(text: $text) {
         __typename
+        id
+        duration
         ... on Audio {
-          id
-          duration
+          album
         }
         ... on Video {
-          id
           thumbnailUrl(size: 100)
         }
       }
     }
     """
+
     result = execute(GRAPH, read(query, {'text': 'foo'}))
     assert result == {
         'searchMedia': [
-            {'__typename': 'Audio', 'id': 1, 'duration': '1s'},
-            {'__typename': 'Video', 'id': 2, 'thumbnailUrl': '/video/2'},
-            {'__typename': 'Audio', 'id': 3, 'duration': '3s'},
-            {'__typename': 'Video', 'id': 4, 'thumbnailUrl': '/video/4'},
+            {'__typename': 'Audio', 'id': 1, 'duration': '1s', 'album': 'album#1'},
+            {'__typename': 'Video', 'id': 2, 'duration': '2s', 'thumbnailUrl': '/video/2'},
+            {'__typename': 'Audio', 'id': 3, 'duration': '3s', 'album': 'album#3'},
+            {'__typename': 'Video', 'id': 4, 'duration': '4s', 'thumbnailUrl': '/video/4'},
         ]
     }
 
 
-def test_root_link_to_union_one():
+def test_root_link_to_interface_one():
     query = """
     query GetMedia {
       media {
         __typename
+        id
+        duration
         ... on Audio {
-          id
-          duration
+          album
         }
         ... on Video {
-          id
           thumbnailUrl(size: 100)
         }
       }
@@ -217,17 +230,19 @@ def test_root_link_to_union_one():
     """
     result = execute(GRAPH, read(query))
     assert result == {
-        'media': {'__typename': 'Audio', 'id': 1, 'duration': '1s'},
+        'media': {'__typename': 'Audio', 'id': 1, 'duration': '1s', 'album': 'album#1'},
     }
 
 
-def test_root_link_to_union_optional():
+def test_root_link_to_interface_optional():
     query = """
     query MaybeGetMedia {
       maybeMedia {
         __typename
+        id
+        duration
         ... on Audio {
-          duration
+          album
         }
         ... on Video {
           thumbnailUrl(size: 100)
@@ -237,25 +252,25 @@ def test_root_link_to_union_optional():
     """
     result = execute(GRAPH, read(query))
     assert result == {
-        'maybeMedia': {'__typename': 'Video', 'thumbnailUrl': '/video/2'},
+        'maybeMedia': {'__typename': 'Video', 'id': 2, 'duration': '2s', 'thumbnailUrl': '/video/2'},
     }
 
 
-def test_non_root_link_to_union_list():
+def test_non_root_link_to_interface_list():
     query = """
     query GetUserMedia {
       user {
         id
         media {
-            __typename
-            ... on Audio {
-              id
-              duration
-            }
-            ... on Video {
-              id
-              thumbnailUrl(size: 100)
-            }
+          __typename
+          id
+          duration
+          ... on Audio {
+            album
+          }
+          ... on Video {
+            thumbnailUrl(size: 100)
+          }
         }
       }
     }
@@ -265,8 +280,8 @@ def test_non_root_link_to_union_list():
         'user': {
             'id': 111,
             'media': [
-                {'__typename': 'Audio', 'id': 1, 'duration': '1s'},
-                {'__typename': 'Video', 'id': 2, 'thumbnailUrl': '/video/2'},
+                {'__typename': 'Audio', 'id': 1, 'duration': '1s', 'album': 'album#1'},
+                {'__typename': 'Video', 'id': 2, 'duration': '2s', 'thumbnailUrl': '/video/2'},
             ]
         }
     }
@@ -277,50 +292,109 @@ def test_query_with_inline_fragment_and_fragment_spread():
     query GetMedia {
       media {
         __typename
+        id
+        duration
         ...AudioFragment
         ... on Video {
-          id
           thumbnailUrl(size: 100)
         }
       }
     }
     
     fragment AudioFragment on Audio {
-        id
-        duration
+        album
     }
     """
     result = execute(GRAPH, read(query))
     assert result == {
-        'media': {'__typename': 'Audio', 'id': 1, 'duration': '1s'},
+        'media': {'__typename': 'Audio', 'id': 1, 'duration': '1s', 'album': 'album#1'},
     }
 
 
-def test_validate_query_can_not_contain_shared_fields():
+def test_query_can_be_without_shared_fields():
     query = """
-    query SearchMedia($text: String) {
-      searchMedia(text: $text) {
+    query GetMedia {
+      media {
         __typename
-        id
         ... on Audio {
+          id
           duration
+          album
         }
         ... on Video {
+          id
+          duration
           thumbnailUrl(size: 100)
         }
       }
     }
     """
 
-    errors = validate(GRAPH, read(query, {'text': 'foo'}))
+    result = execute(GRAPH, read(query))
+    assert result == {
+        'media': {'__typename': 'Audio', 'id': 1, 'duration': '1s', 'album': 'album#1'},
+    }
+
+
+def test_validate_interface_has_no_implementations():
+    graph = Graph([
+        Root([
+            Link(
+                'media',
+                InterfaceRef['Media'],
+                lambda: None,
+                requires=None
+            ),
+        ]),
+    ], interfaces=[
+        Interface('Media', [
+            Field('id', Integer, empty_field),
+            Field('duration', String, empty_field),
+        ]),
+    ])
+
+    query = """
+    query GetMedia {
+      media {
+        id
+        duration
+      }
+    }
+    """
+
+    errors = validate(graph, read(query))
 
     assert errors == [
-        "Cannot query field 'id' on type 'Media'. "
-        "Did you mean to use an inline fragment on 'Audio' or 'Video'?"
+        "Can not query field 'id' on interface 'Media'. "
+        "Interface 'Media' is not implemented by any type. "
+        "Add at least one type implementing this interface.",
+
+        "Can not query field 'duration' on interface 'Media'. Interface 'Media' "
+        "is not implemented by any type. Add at least one type implementing this "
+        "interface.",
     ]
 
 
-def test_validate_union_type_has_no_field():
+def test_validate_query_implementation_node_field_without_inline_fragment():
+    query = """
+    query GetMedia {
+      media {
+        id
+        duration
+        album
+      }
+    }
+    """
+
+    errors = validate(GRAPH, read(query))
+
+    assert errors == [
+        "Can not query field 'album' on type 'Media'. "
+        "Did you mean to use an inline fragment on 'Audio'?"
+    ]
+
+
+def test_validate_interface_type_has_no_such_field():
     query = """
     query SearchMedia($text: String) {
       searchMedia(text: $text) {
@@ -342,7 +416,7 @@ def test_validate_union_type_has_no_field():
     ]
 
 
-def test_validate_union_type_field_has_no_such_option():
+def test_validate_interface_type_field_has_no_such_option():
     query = """
     query SearchMedia($text: String) {
       searchMedia(text: $text) {
@@ -363,17 +437,17 @@ def test_validate_union_type_field_has_no_such_option():
     ]
 
 
-def test_split_union_into_nodes():
+def test_split_interface_query_into_nodes():
     query_raw = """
     query SearchMedia($text: String) {
       searchMedia(text: $text) {
         __typename
+        id
+        duration
         ... on Audio {
-          id
-          duration
+          album
         }
         ... on Video {
-          id
           thumbnailUrl(size: 100)
         }
       }
@@ -381,7 +455,48 @@ def test_split_union_into_nodes():
     """
     query = read(query_raw, {'text': 'foo'})
 
-    nodes = SplitUnionQueryByNodes(GRAPH, GRAPH.unions_map['Media']).split(
+    nodes = SplitInterfaceQueryByNodes(GRAPH).split(
+        query.fields_map['searchMedia'].node
+    )
+
+    assert len(nodes) == 2
+
+    assert 'Audio' in nodes
+    assert 'Video' in nodes
+
+    assert nodes['Audio'].fields_map.keys() == {
+        'id',
+        'duration',
+        ('Audio', 'album')
+    }
+    assert nodes['Video'].fields_map.keys() == {
+        'id',
+        'duration',
+        ('Video', 'thumbnailUrl')
+    }
+
+
+def test_split_interface_query_into_nodes_if_no_shared_fields_in_query():
+    query_raw = """
+    query SearchMedia($text: String) {
+      searchMedia(text: $text) {
+        __typename
+        ... on Audio {
+          id
+          duration
+          album
+        }
+        ... on Video {
+          id
+          duration
+          thumbnailUrl(size: 100)
+        }
+      }
+    }
+    """
+    query = read(query_raw, {'text': 'foo'})
+
+    nodes = SplitInterfaceQueryByNodes(GRAPH).split(
         query.fields_map['searchMedia'].node
     )
 
@@ -392,9 +507,11 @@ def test_split_union_into_nodes():
 
     assert nodes['Audio'].fields_map.keys() == {
         ('Audio', 'id'),
-        ('Audio', 'duration')
+        ('Audio', 'duration'),
+        ('Audio', 'album')
     }
     assert nodes['Video'].fields_map.keys() == {
         ('Video', 'id'),
+        ('Video', 'duration'),
         ('Video', 'thumbnailUrl')
     }

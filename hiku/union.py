@@ -4,7 +4,7 @@ from hiku.graph import Graph, Union
 from hiku.query import Node
 
 
-class SplitUnionByNodes:
+class SplitUnionQueryByNodes:
     """
     Split query node into query nodes by union types with keys
     as graph node names.

@@ -4,8 +4,8 @@ from unittest.mock import ANY
 import pytest
 
 from hiku.directives import Deprecated, Location, SchemaDirective, schema_directive
-from hiku.graph import Graph, Root, Field, Node, Link, Union, apply, Option
-from hiku.types import String, Integer, Sequence, TypeRef, Boolean, Float, Any, UnionRef
+from hiku.graph import Graph, Interface, Root, Field, Node, Link, Union, apply, Option
+from hiku.types import InterfaceRef, String, Integer, Sequence, TypeRef, Boolean, Float, Any, UnionRef
 from hiku.types import Optional, Record
 from hiku.result import denormalize
 from hiku.engine import Engine
@@ -38,6 +38,14 @@ def _obj(name):
 def _union(name):
     return {
         'kind': 'UNION',
+        'name': name,
+        'ofType': None
+    }
+
+
+def _interface(name):
+    return {
+        'kind': 'INTERFACE',
         'name': name,
         'ofType': None
     }
@@ -407,5 +415,55 @@ def test_unions():
         _type('Media', 'UNION', possibleTypes=[
             _obj('Audio'),
             _obj('Video'),
+        ]),
+    ])
+
+
+def test_interfaces():
+    graph = Graph([
+        Node('Audio', [
+            Field('id', Integer, _noop),
+            Field('duration', String, _noop),
+            Field('album', String, _noop),
+        ], implements=['Media']),
+        Node('Video', [
+            Field('id', Integer, _noop),
+            Field('duration', String, _noop),
+            Field('thumbnailUrl', String, _noop),
+        ], implements=['Media']),
+        Root([
+            Link('media', InterfaceRef['Media'], _noop, requires=None),
+            Link('mediaList', Sequence[InterfaceRef['Media']], _noop, requires=None),
+            Link('maybeMedia', Optional[InterfaceRef['Media']], _noop, requires=None),
+        ]),
+    ], interfaces=[
+        Interface('Media', [
+            Field('id', Integer, _noop),
+            Field('duration', String, _noop),
+        ]),
+    ])
+
+    assert introspect(graph) == _schema([
+        _type('Audio', 'OBJECT', fields=[
+            _field('id', _non_null(_INT)),
+            _field('duration', _non_null(_STR)),
+            _field('album', _non_null(_STR)),
+        ], interfaces=[_interface('Media')]),
+        _type('Video', 'OBJECT', fields=[
+            _field('id', _non_null(_INT)),
+            _field('duration', _non_null(_STR)),
+            _field('thumbnailUrl', _non_null(_STR)),
+        ], interfaces=[_interface('Media')]),
+        _type('Query', 'OBJECT', fields=[
+            _field('media', _non_null(_interface('Media'))),
+            _field('mediaList', _seq_of(_interface('Media'))),
+            _field('maybeMedia', _interface('Media')),
+        ]),
+        _type('Media', 'INTERFACE', possibleTypes=[
+            _obj('Audio'),
+            _obj('Video'),
+        ], fields=[
+            _field('id', _non_null(_INT)),
+            _field('duration', _non_null(_STR)),
         ]),
     ])

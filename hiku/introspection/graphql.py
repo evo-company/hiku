@@ -27,6 +27,7 @@ from ..graph import (
 from ..graph import GraphVisitor, GraphTransformer
 from ..types import (
     IDMeta,
+    InterfaceRefMeta,
     ScalarMeta,
     TypeRef,
     String,
@@ -51,6 +52,7 @@ from ..utils import (
     cached_property,
 )
 from .types import (
+    INTERFACE,
     SCALAR,
     NON_NULL,
     LIST,
@@ -172,6 +174,9 @@ class TypeIdent(AbstractTypeVisitor):
     def visit_unionref(self, obj: UnionRefMeta) -> t.Any:
         return NON_NULL(UNION(obj.__type_name__, tuple()))
 
+    def visit_interfaceref(self, obj: InterfaceRefMeta) -> t.Any:
+        return NON_NULL(INTERFACE(obj.__type_name__, tuple()))
+
     def visit_string(self, obj: StringMeta) -> HashedNamedTuple:
         return NON_NULL(SCALAR("String"))
 
@@ -222,6 +227,13 @@ def type_link(
         return UNION(
             union.name, tuple(OBJECT(type_name) for type_name in union.types)
         )
+    elif name in schema.query_graph.interfaces_map:
+        interface = schema.query_graph.interfaces_map[name]
+        possible_types = schema.query_graph.interfaces_types[name]
+        return INTERFACE(
+            interface.name,
+            tuple(OBJECT(type_name) for type_name in possible_types),
+        )
     else:
         return Nothing
 
@@ -242,6 +254,17 @@ def root_schema_types(schema: SchemaInfo) -> t.Iterator[HashedNamedTuple]:
     for union in schema.query_graph.unions:
         yield UNION(
             union.name, tuple(OBJECT(type_name) for type_name in union.types)
+        )
+
+    for interface in schema.query_graph.interfaces:
+        yield INTERFACE(
+            interface.name,
+            tuple(
+                OBJECT(type_name)
+                for type_name in schema.query_graph.interfaces_types[
+                    interface.name
+                ]
+            ),
         )
 
 
@@ -303,6 +326,15 @@ def type_info(
                     ident.name
                 ].description,
             }
+        elif isinstance(ident, INTERFACE):
+            info = {
+                "id": ident,
+                "kind": "INTERFACE",
+                "name": ident.name,
+                "description": schema.query_graph.interfaces_map[
+                    ident.name
+                ].description,
+            }
         else:
             raise TypeError(repr(ident))
         yield [info.get(f.name) for f in fields]
@@ -334,6 +366,13 @@ def type_fields_link(
                     "to define schema type".format(ident.name)
                 )
             yield field_idents
+        elif isinstance(ident, INTERFACE):
+            interface = schema.query_graph.interfaces_map[ident.name]
+            yield [
+                FieldIdent(ident.name, f.name)
+                for f in interface.fields
+                if not schema.is_field_hidden(f)
+            ]
         else:
             yield []
 
@@ -355,8 +394,23 @@ def possible_types_type_link(schema: SchemaInfo, ids: t.List) -> t.Iterator:
         yield []
 
     for ident in ids:
-        if isinstance(ident, UNION):
+        if isinstance(ident, (UNION, INTERFACE)):
             yield ident.possible_types
+        else:
+            yield []
+
+
+@listify
+def interfaces_type_link(schema: SchemaInfo, ids: t.List) -> t.Iterator:
+    if ids is None:
+        yield []
+
+    for ident in ids:
+        if isinstance(ident, OBJECT) and ident.name in schema.nodes_map:
+            node = schema.nodes_map[ident.name]
+            yield [
+                INTERFACE(interface, tuple()) for interface in node.implements
+            ]
         else:
             yield []
 
@@ -400,6 +454,10 @@ def field_type_link(
         if ident.node in schema.nodes_map:
             node = schema.nodes_map[ident.node]
             field = node.fields_map[ident.name]
+            yield type_ident.visit(field.type or Any)
+        elif ident.node in schema.query_graph.interfaces_map:
+            interface = schema.query_graph.interfaces_map[ident.node]
+            field = interface.fields_map[ident.name]
             yield type_ident.visit(field.type or Any)
         else:
             data_type = schema.data_types[ident.node]
@@ -555,7 +613,7 @@ GRAPH = Graph(
                 Link(
                     "interfaces",
                     Sequence[TypeRef["__Type"]],
-                    na_many,
+                    interfaces_type_link,
                     requires="id",
                 ),
                 # INTERFACE and UNION only
@@ -891,6 +949,7 @@ class GraphQLIntrospection(GraphTransformer):
             data_types=obj.data_types,
             directives=obj.directives,
             unions=obj.unions,
+            interfaces=obj.interfaces,
         )
 
 

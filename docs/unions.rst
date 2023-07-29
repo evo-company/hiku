@@ -5,6 +5,8 @@ Unions
 
 Union types are special types used to represent a value that could be one of types.
 
+.. note:: Unlike interfaces, unions do not define any common fields between types.
+
 In graphql you can use union types like this:
 
 .. code-block::
