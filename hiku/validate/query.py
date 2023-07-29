@@ -28,6 +28,7 @@ from hiku.query import (
     QueryVisitor,
 )
 from hiku.graph import (
+    Interface,
     Node,
     Field,
     Link,
@@ -75,6 +76,7 @@ class _AssumeRecord(AbstractTypeVisitor):
     visit_mapping = _false
     visit_callable = _false
     visit_unionref = _false
+    visit_interfaceref = _false
     visit_scalar = _false
 
     def visit_optional(self, obj: OptionalMeta) -> t.Optional[t.OrderedDict]:
@@ -407,6 +409,8 @@ class QueryValidator(QueryVisitor):
         elif isinstance(graph_obj, Link):
             if graph_obj.is_union:
                 linked_node = self.graph.unions_map[graph_obj.node]
+            elif graph_obj.is_interface:
+                linked_node = self.graph.interfaces_map[graph_obj.node]
             else:
                 linked_node = self.graph.nodes_map[graph_obj.node]
 
@@ -434,6 +438,7 @@ class QueryValidator(QueryVisitor):
         fields: t.Dict = {}
 
         is_union_link = isinstance(self.path[-1], Union)
+        is_interface_link = isinstance(self.path[-1], Interface)
 
         for field in obj.fields:
             if field.name == "__typename":
@@ -455,6 +460,41 @@ class QueryValidator(QueryVisitor):
                     continue
 
                 self.path.append(self.graph.nodes_map[field.parent_type])
+            elif is_interface_link:
+                interface = self.path[-1]
+                if field.parent_type is not None:
+                    self.path.append(self.graph.nodes_map[field.parent_type])
+                else:
+                    interface_types = self.graph.interfaces_types[
+                        interface.name
+                    ]
+                    if not interface_types:
+                        self.errors.report(
+                            "Can not query field '{0}' on interface '{1}'. "
+                            "Interface '{1}' is not implemented by any type. "
+                            "Add at least one type implementing this interface.".format(  # noqa: E501
+                                field.name, interface.name
+                            )
+                        )
+                        continue
+
+                    if field.name not in interface.fields_map:
+                        implementation = None
+                        for impl in interface_types:
+                            if (
+                                field.name
+                                in self.graph.nodes_map[impl].fields_map
+                            ):
+                                implementation = impl
+                                break
+
+                        self.errors.report(
+                            "Can not query field '{}' on type '{}'. "
+                            "Did you mean to use an inline fragment on '{}'?".format(  # noqa: E501
+                                field.name, interface.name, implementation
+                            )
+                        )
+                        continue
 
             seen = fields.get(field.result_key)
             if seen is not None:

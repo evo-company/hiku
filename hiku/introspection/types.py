@@ -33,6 +33,7 @@ def _namedtuple(typename: str, field_names: str) -> Type:
 SCALAR = _namedtuple("SCALAR", "name")
 OBJECT = _namedtuple("OBJECT", "name")
 UNION = _namedtuple("UNION", "name possible_types")
+INTERFACE = _namedtuple("INTERFACE", "name possible_types")
 DIRECTIVE = _namedtuple("DIRECTIVE", "name")
 INPUT_OBJECT = _namedtuple("INPUT_OBJECT", "name")
 LIST = _namedtuple("LIST", "of_type")

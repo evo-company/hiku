@@ -11,16 +11,18 @@ import typing as t
 from abc import ABC, abstractmethod
 from itertools import chain
 from functools import reduce
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from typing import List
 
 from .types import (
+    InterfaceRef,
+    InterfaceRefMeta,
     Optional,
     OptionalMeta,
+    RefMeta,
     Sequence,
     SequenceMeta,
     TypeRef,
-    TypeRefMeta,
     Record,
     Any,
     GenericMeta,
@@ -236,18 +238,16 @@ LinkType = t.Union[t.Type[TypeRef], t.Type[Optional], t.Type[Sequence]]
 
 
 def get_type_enum(type_: TypingMeta) -> t.Tuple[Const, str]:
-    if isinstance(type_, (TypeRefMeta, UnionRefMeta)):
+    if isinstance(type_, RefMeta):
         return One, type_.__type_name__
     elif isinstance(type_, OptionalMeta):
-        if isinstance(type_.__type__, (TypeRefMeta, UnionRefMeta)):
+        if isinstance(type_.__type__, RefMeta):
             return Maybe, type_.__type__.__type_name__
     elif isinstance(type_, SequenceMeta):
-        if isinstance(type_.__item_type__, (TypeRefMeta, UnionRefMeta)):
+        if isinstance(type_.__item_type__, RefMeta):
             return Many, type_.__item_type__.__type_name__
         elif isinstance(type_.__item_type__, OptionalMeta):
-            if isinstance(
-                type_.__item_type__.__type__, (TypeRefMeta, UnionRefMeta)
-            ):
+            if isinstance(type_.__item_type__.__type__, RefMeta):
                 return MaybeMany, type_.__item_type__.__type__.__type_name__
     raise TypeError("Invalid type specified: {!r}".format(type_))
 
@@ -257,9 +257,33 @@ def is_union(type_: GenericMeta) -> bool:
         return isinstance(type_.__type__, UnionRefMeta)
     if isinstance(type_, SequenceMeta):
         return is_union(type_.__item_type__)
-        # return isinstance(type_.__item_type__, UnionRefMeta)
 
     return isinstance(type_, UnionRefMeta)
+
+
+def is_interface(type_: GenericMeta) -> bool:
+    if isinstance(type_, OptionalMeta):
+        return isinstance(type_.__type__, InterfaceRefMeta)
+    if isinstance(type_, SequenceMeta):
+        return is_interface(type_.__item_type__)
+
+    return isinstance(type_, InterfaceRefMeta)
+
+
+def collect_interfaces_types(
+    items: t.List["Node"], interfaces: t.List["Interface"]
+) -> t.Dict[str, t.List[str]]:
+    interfaces_types = defaultdict(list)
+    for item in items:
+        if item.name is not None and item.implements:
+            for impl in item.implements:
+                interfaces_types[impl].append(item.name)
+
+    for i in interfaces:
+        if i.name not in interfaces_types:
+            interfaces_types[i.name] = []
+
+    return dict(interfaces_types)
 
 
 LT = t.TypeVar("LT", bound=t.Hashable)
@@ -408,7 +432,7 @@ class Link(AbstractLink):
     def __init__(
         self,
         name: str,
-        type_: t.Type[UnionRef],
+        type_: t.Type[t.Union[UnionRef, InterfaceRef]],
         func: LinkOneFunc,
         *,
         requires: t.Optional[t.Union[str, t.List[str]]],
@@ -479,6 +503,7 @@ class Link(AbstractLink):
         self.description = description
         self.directives = directives or ()
         self.is_union = is_union(type_)
+        self.is_interface = is_interface(type_)
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r}, ...)".format(
@@ -518,6 +543,31 @@ class Union(AbstractBase):
         return visitor.visit_union(self)
 
 
+class Interface(AbstractBase):
+    def __init__(
+        self,
+        name: str,
+        fields: t.List["Field"],
+        *,
+        description: t.Optional[str] = None,
+    ):
+        self.name = name
+        self.fields = fields
+        self.description = description
+
+    def __repr__(self) -> str:
+        return "{}({!r}, {!r}, ...)".format(
+            self.__class__.__name__, self.name, self.fields
+        )
+
+    @cached_property
+    def fields_map(self) -> OrderedDict:
+        return OrderedDict((f.name, f) for f in self.fields)
+
+    def accept(self, visitor: "AbstractGraphVisitor") -> t.Any:
+        return visitor.visit_interface(self)
+
+
 class Node(AbstractNode):
     """Collection of the fields and links, which describes some entity and
     relations with other entities
@@ -542,16 +592,20 @@ class Node(AbstractNode):
         *,
         description: t.Optional[str] = None,
         directives: t.Optional[t.Sequence[SchemaDirective]] = None,
+        implements: t.Optional[t.Sequence[str]] = None,
     ):
         """
         :param name: name of the node
         :param fields: list of fields and links
         :param description: description of the node
+        :param directives: list of directives for the node
+        :param implements: list of interfaces implemented by the node
         """
         self.name = name
         self.fields = fields
         self.description = description
         self.directives: t.Tuple[SchemaDirective, ...] = tuple(directives or ())
+        self.implements = tuple(implements or [])
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, ...)".format(
@@ -571,6 +625,7 @@ class Node(AbstractNode):
             fields=self.fields[:],
             description=self.description,
             directives=self.directives,
+            implements=self.implements,
         )
 
 
@@ -631,6 +686,7 @@ class Graph(AbstractGraph):
         data_types: t.Optional[t.Dict[str, t.Type[Record]]] = None,
         directives: t.Optional[t.Sequence[t.Type[SchemaDirective]]] = None,
         unions: t.Optional[t.List[Union]] = None,
+        interfaces: t.Optional[t.List[Interface]] = None,
     ):
         """
         :param items: list of nodes
@@ -640,13 +696,18 @@ class Graph(AbstractGraph):
         if unions is None:
             unions = []
 
-        GraphValidator.validate(items, unions)
+        if interfaces is None:
+            interfaces = []
+
+        GraphValidator.validate(items, unions, interfaces)
 
         self.items = GraphInit.init(items)
         self.unions = unions
+        self.interfaces = interfaces
+        self.interfaces_types = collect_interfaces_types(self.items, interfaces)
         self.data_types = data_types or {}
         self.__types__ = GraphTypes.get_types(
-            self.items, self.unions, self.data_types
+            self.items, self.unions, self.interfaces, self.data_types
         )
         self.directives: t.Tuple[t.Type[SchemaDirective], ...] = tuple(
             directives or ()
@@ -682,6 +743,10 @@ class Graph(AbstractGraph):
     def unions_map(self) -> OrderedDict:
         return OrderedDict((u.name, u) for u in self.unions)
 
+    @cached_property
+    def interfaces_map(self) -> OrderedDict:
+        return OrderedDict((i.name, i) for i in self.interfaces)
+
     def accept(self, visitor: "AbstractGraphVisitor") -> t.Any:
         return visitor.visit_graph(self)
 
@@ -712,6 +777,10 @@ class AbstractGraphVisitor(ABC):
         pass
 
     @abstractmethod
+    def visit_interface(self, obj: Interface) -> t.Any:
+        pass
+
+    @abstractmethod
     def visit_root(self, obj: Root) -> t.Any:
         pass
 
@@ -725,6 +794,9 @@ class GraphVisitor(AbstractGraphVisitor):
         return obj.accept(self)
 
     def visit_union(self, obj: "Union") -> t.Any:
+        pass
+
+    def visit_interface(self, obj: "Interface") -> t.Any:
         pass
 
     def visit_option(self, obj: "Option") -> t.Any:
@@ -787,12 +859,20 @@ class GraphTransformer(AbstractGraphVisitor):
             [self.visit(f) for f in obj.fields],
             description=obj.description,
             directives=obj.directives,
+            implements=obj.implements,
         )
 
     def visit_union(self, obj: Union) -> Union:
         return Union(
             obj.name,
             obj.types,
+            description=obj.description,
+        )
+
+    def visit_interface(self, obj: Interface) -> Interface:
+        return Interface(
+            obj.name,
+            obj.fields,
             description=obj.description,
         )
 
@@ -805,6 +885,7 @@ class GraphTransformer(AbstractGraphVisitor):
             obj.data_types,
             obj.directives,
             obj.unions,
+            obj.interfaces,
         )
 
 
@@ -847,6 +928,7 @@ class GraphTypes(GraphVisitor):
         self,
         items: t.List[Node],
         unions: t.List[Union],
+        interfaces: t.List[Interface],
         data_types: t.Dict[str, t.Type[Record]],
     ) -> t.Dict[str, t.Type[Record]]:
         types = OrderedDict(data_types)
@@ -860,6 +942,9 @@ class GraphTypes(GraphVisitor):
         for union in unions:
             types[union.name] = self.visit(union)
 
+        for interface in interfaces:
+            types[interface.name] = self.visit(interface)
+
         types["__root__"] = Record[
             chain.from_iterable(r.__field_types__.items() for r in roots)
         ]
@@ -870,12 +955,15 @@ class GraphTypes(GraphVisitor):
         cls,
         items: t.List[Node],
         unions: t.List[Union],
+        interfaces: t.List[Interface],
         data_types: t.Dict[str, t.Type[Record]],
     ) -> t.Dict[str, t.Type[Record]]:
-        return cls()._visit_graph(items, unions, data_types)
+        return cls()._visit_graph(items, unions, interfaces, data_types)
 
     def visit_graph(self, obj: Graph) -> t.Dict[str, t.Type[Record]]:
-        return self._visit_graph(obj.items, obj.unions, obj.data_types)
+        return self._visit_graph(
+            obj.items, obj.unions, obj.interfaces, obj.data_types
+        )
 
     def visit_node(self, obj: Node) -> t.Type[Record]:
         return Record[[(f.name, self.visit(f)) for f in obj.fields]]
@@ -890,4 +978,7 @@ class GraphTypes(GraphVisitor):
         return obj.type or Any
 
     def visit_union(self, obj: Union) -> Union:
+        return obj
+
+    def visit_interface(self, obj: Interface) -> Interface:
         return obj

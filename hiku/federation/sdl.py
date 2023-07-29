@@ -498,6 +498,7 @@ class _StripGraph(GraphTransformer):
             obj.data_types,
             obj.directives,
             obj.unions,
+            obj.interfaces,
         )
 
     def visit_node(self, obj: Node) -> Node:
@@ -509,6 +510,7 @@ class _StripGraph(GraphTransformer):
             fields=[self.visit(f) for f in obj.fields if not skip(f)],
             description=obj.description,
             directives=obj.directives,
+            implements=obj.implements,
         )
 
 

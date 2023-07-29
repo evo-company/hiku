@@ -7,6 +7,7 @@ from collections import Counter
 from ..directives import Deprecated
 from ..graph import (
     GraphVisitor,
+    Interface,
     Root,
     Field,
     Node,
@@ -51,17 +52,31 @@ class GraphValidator(GraphVisitor):
     _link_accept_types = (AbstractOption,)
     _field_accept_types = (AbstractOption,)
 
-    def __init__(self, items: t.List[Node], unions: t.List[Union]) -> None:
+    def __init__(
+        self,
+        items: t.List[Node],
+        unions: t.List[Union],
+        interfaces: t.List[Interface],
+    ) -> None:
         self.items = items
         self.unions = unions
+        self.unions_map = {u.name: u for u in unions}
+        self.interfaces = interfaces
+        self.interfaces_map = {i.name: i for i in interfaces}
         self.errors = Errors()
         self._ctx: t.List = []
 
     @classmethod
-    def validate(cls, items: t.List[Node], unions: t.List[Union]) -> None:
-        validator = cls(items, unions)
+    def validate(
+        cls,
+        items: t.List[Node],
+        unions: t.List[Union],
+        interfaces: t.List[Interface],
+    ) -> None:
+        validator = cls(items, unions, interfaces)
         validator.visit_graph_items(items)
         validator.visit_graph_unions(unions)
+        validator.visit_graph_interfaces(interfaces)
         if validator.errors.list:
             raise GraphValidationError(validator.errors.list)
 
@@ -152,15 +167,15 @@ class GraphValidator(GraphVisitor):
         with self.push_ctx(obj):
             super(GraphValidator, self).visit_link(obj)
 
-        graph_nodes_map = {e.name for e in self.items if e.name is not None}
-        unions_map = {u.name: u for u in self.unions}
-        if obj.node not in graph_nodes_map:
-            if obj.node not in unions_map:
-                self.errors.report(
-                    'Link "{}" points to the missing node "{}"'.format(
-                        self._format_path(obj), obj.node
-                    )
+        graph_nodes = {e.name for e in self.items if e.name is not None}
+        if obj.node not in (
+            graph_nodes | self.unions_map.keys() | self.interfaces_map.keys()
+        ):
+            self.errors.report(
+                'Link "{}" points to the missing node "{}"'.format(
+                    self._format_path(obj), obj.node
                 )
+            )
 
         if obj.requires is not None:
             requires = (
@@ -207,6 +222,15 @@ class GraphValidator(GraphVisitor):
         if sum((1 for d in obj.directives if isinstance(d, Deprecated))) > 0:
             self.errors.report("Deprecated directive can not be used in Node")
 
+        if obj.implements:
+            for i in obj.implements:
+                if i not in self.interfaces_map:
+                    self.errors.report(
+                        'Node "{}" implements missing interface "{}"'.format(
+                            node_name, i
+                        )
+                    )
+
     def visit_union(self, obj: "Union") -> t.Any:
         if not obj.name:
             self.errors.report("Union must have a name")
@@ -221,6 +245,29 @@ class GraphValidator(GraphVisitor):
         if invalid:
             self.errors.report(
                 "Union '{}' types '{}' must point to node or data type".format(
+                    obj.name, invalid
+                )
+            )
+            return
+
+    def visit_interface(self, obj: "Interface") -> t.Any:
+        if not obj.name:
+            self.errors.report("Interface must have a name")
+
+        if not obj.fields:
+            self.errors.report(
+                "Interface '{}' must have at least one field".format(obj.name)
+            )
+
+        invalid = [
+            type_
+            for type_ in obj.fields
+            if not isinstance(type_, AbstractField)
+        ]
+
+        if invalid:
+            self.errors.report(
+                "Interface '{}' fields must be of type 'Field', found '{}'".format(  # noqa: E501
                     obj.name, invalid
                 )
             )
@@ -266,3 +313,7 @@ class GraphValidator(GraphVisitor):
     def visit_graph_unions(self, unions: t.List[Union]) -> None:
         for union in unions:
             self.visit(union)
+
+    def visit_graph_interfaces(self, interfaces: t.List[Interface]) -> None:
+        for interface in interfaces:
+            self.visit(interface)
