@@ -12,6 +12,7 @@ User's Guide
   asyncio
   graphql
   protobuf
+  interfaces
   unions
   directives
   federation
