@@ -1,4 +1,6 @@
 import sys
+
+from enum import EnumMeta
 from typing import Any, Type, Union
 
 from hiku.introspection import types as int_types
@@ -57,10 +59,10 @@ def builtin_to_introspection_type(typ: Any) -> Any:
             return int_types.LIST(convert(typ_.__args__[0]))
         elif hasattr(typ_, "__scalar_info__"):
             return int_types.SCALAR(typ_.__scalar_info__.name)
-        elif hasattr(typ_, "__enum_info__"):
+        elif isinstance(typ_, EnumMeta):
             return int_types.ENUM(
-                typ_.__enum_info__.name,
-                [v.value for v in typ_.__enum_info__.values],
+                typ_.__name__,
+                [v for v in typ_.__members__],
             )
         else:
             raise TypeError(f"Unknown type: {typ_}")

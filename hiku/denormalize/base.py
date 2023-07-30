@@ -1,6 +1,7 @@
 import typing as t
 from collections import deque
 
+from ..enum import BaseEnum
 from ..graph import Graph, Interface, Union
 from ..query import (
     QueryVisitor,
@@ -24,9 +25,9 @@ class Denormalize(QueryVisitor):
         self._types = graph.__types__
         self._unions = graph.unions_map
         self._result = result
-        self._type: t.Deque[t.Union[t.Type[Record], Union, Interface]] = deque(
-            [self._types["__root__"]]
-        )
+        self._type: t.Deque[
+            t.Union[t.Type[Record], Union, Interface, BaseEnum]
+        ] = deque([self._types["__root__"]])
         self._data = deque([result])
         self._res: t.Deque = deque()
 

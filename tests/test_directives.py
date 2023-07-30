@@ -1,19 +1,17 @@
 from enum import Enum
 from typing import List
 
-from hiku.directives import Directive, DirectiveField, SchemaDirectiveField, Location, SchemaDirective, directive, \
+from hiku.directives import (
+    Directive, Location, SchemaDirective, directive,
     directive_field, schema_directive, schema_directive_field
-from hiku.enum import enum
+)
 from hiku.graph import Field, Graph, Link, Node, Root, apply
 from hiku.introspection.graphql import GraphQLIntrospection
 from hiku.introspection.types import ENUM, LIST, NON_NULL, SCALAR
 from hiku.types import Integer, TypeRef
 
 
-@enum(name='Custom_Options')
-class Options(Enum):
-    A = 'a'
-    B = 'b'
+Options = Enum('Custom_Options', ['A', 'B'])
 
 
 def test_directive_has_info():
@@ -45,7 +43,7 @@ def test_directive_has_info():
 
     assert custom.__directive_info__.args[1].name == 'options'
     assert custom.__directive_info__.args[1].field_name == 'options'
-    assert custom.__directive_info__.args[1].type_ident == NON_NULL(LIST(ENUM('Custom_Options', ['a', 'b'])))
+    assert custom.__directive_info__.args[1].type_ident == NON_NULL(LIST(ENUM('Custom_Options', ['A', 'B'])))
 
 
 def test_schema_directive_has_info():

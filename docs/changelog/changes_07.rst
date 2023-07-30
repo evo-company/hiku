@@ -40,6 +40,7 @@ Changes in 0.7
   - Added `ID` type.
   - Added support for unions :ref:`Check unions documentation <unions-doc>`
   - Added support for interfaces :ref:`Check interfaces documentation <interfaces-doc>`
+  - Added support for enums :ref:`Check enums documentation <enums-doc>`
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1,11 +1,14 @@
+import enum
+
 from typing import Dict, List
 from unittest.mock import ANY
 
 import pytest
+from hiku.enum import Enum
 
 from hiku.directives import Deprecated, Location, SchemaDirective, schema_directive
 from hiku.graph import Graph, Interface, Root, Field, Node, Link, Union, apply, Option
-from hiku.types import InterfaceRef, String, Integer, Sequence, TypeRef, Boolean, Float, Any, UnionRef
+from hiku.types import EnumRef, InterfaceRef, String, Integer, Sequence, TypeRef, Boolean, Float, Any, UnionRef
 from hiku.types import Optional, Record
 from hiku.result import denormalize
 from hiku.engine import Engine
@@ -51,6 +54,14 @@ def _interface(name):
     }
 
 
+def _enum(name):
+    return {
+        'kind': 'ENUM',
+        'name': name,
+        'ofType': None
+    }
+
+
 def _iobj(name):
     return {'kind': 'INPUT_OBJECT', 'name': name, 'ofType': None}
 
@@ -70,6 +81,17 @@ def _field(name, type_, **kwargs):
         'isDeprecated': False,
         'name': name,
         'type': type_
+    }
+    data.update(kwargs)
+    return data
+
+
+def _enum_value(name, **kwargs):
+    data = {
+        'deprecationReason': None,
+        'description': None,
+        'isDeprecated': False,
+        'name': name,
     }
     data.update(kwargs)
     return data
@@ -161,18 +183,22 @@ SCALARS = [
 ]
 
 
-def introspect(query_graph, mutation_graph=None):
+def execute(query_str, query_graph, mutation_graph=None):
     engine = Engine(SyncExecutor())
     query_graph = apply(query_graph, [
         GraphQLIntrospection(query_graph, mutation_graph),
     ])
 
-    query = read(INTROSPECTION_QUERY)
+    query = read(query_str)
     errors = validate(query_graph, query)
     assert not errors
 
     norm_result = engine.execute(query_graph, query)
     return denormalize(query_graph, norm_result)
+
+
+def introspect(query_graph, mutation_graph=None):
+    return execute(INTROSPECTION_QUERY, query_graph, mutation_graph)
 
 
 def test_introspection_query():
@@ -467,3 +493,73 @@ def test_interfaces():
             _field('duration', _non_null(_STR)),
         ]),
     ])
+
+
+def test_enum():
+    class Status(enum.Enum):
+        ACTIVE = 'ACTIVE'
+        DELETED = 'DELETED'
+
+    graph = Graph([
+        Node('User', [
+            Field('id', Integer, _noop),
+            Field('status', EnumRef['UserStatus'], _noop),
+        ]),
+        Root([
+            Link(
+                'user',
+                Optional[TypeRef['User']],
+                _noop,
+                requires=None,
+                options=[
+                    Option('status', EnumRef['UserStatus'], default=Status.ACTIVE)
+                ]
+            ),
+        ]),
+    ], enums=[Enum.from_builtin(Status, 'UserStatus')])
+
+    assert introspect(graph) == _schema([
+        _type('User', 'OBJECT', fields=[
+            _field('id', _non_null(_INT)),
+            _field('status', _non_null(_enum('UserStatus'))),
+        ]),
+        _type('Query', 'OBJECT', fields=[
+            _field('user', _obj('User'), args=[
+                _ival('status', _non_null(_enum('UserStatus')), defaultValue='ACTIVE'),
+            ]),
+        ]),
+        _type('UserStatus', 'ENUM', enumValues=[
+            _enum_value('ACTIVE'),
+            _enum_value('DELETED'),
+        ]),
+    ])
+
+
+@pytest.mark.parametrize('enum_name, expected', [
+    ('Status', {'kind': 'ENUM', "enumValues": [{"name": "ACTIVE"}, {"name": "DELETED"}]}),
+    ('XXX', None),
+])
+def test_query_enum_as_single_type(enum_name, expected):
+    query = """
+    query IntrospectionQuery {
+        __type(name: "%s") {
+            kind
+            enumValues {
+                name
+            }
+       }
+    }
+    """ % enum_name
+
+    class Status(enum.Enum):
+        ACTIVE = 'ACTIVE'
+        DELETED = 'DELETED'
+
+    graph = Graph([
+        Root([
+            Field('status', EnumRef['Status'], _noop),
+        ]),
+    ], enums=[Enum.from_builtin(Status)])
+
+    got = execute(query, graph)
+    assert got['__type'] == expected
