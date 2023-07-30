@@ -5,6 +5,7 @@ from typing import Any, List, Optional, TypeVar
 EnumType = TypeVar("EnumType", bound=EnumMeta)
 
 
+# TODO: the problem with this approach is that we do not have accept method
 @dataclasses.dataclass
 class EnumValue:
     name: str

@@ -314,6 +314,7 @@ class SelectionSetVisitMixin:
         return obj.value
 
     def visit_enum_value(self, obj: ast.EnumValueNode) -> str:
+        # TODO: check that enum value is valid
         return obj.value
 
     def visit_list_value(self, obj: ast.ListValueNode) -> List:

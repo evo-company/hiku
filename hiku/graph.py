@@ -9,12 +9,16 @@
 import typing as t
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from itertools import chain
 from functools import reduce
 from collections import OrderedDict, defaultdict
 from typing import List
 
+from hiku.enum import EnumInfo
+
 from .types import (
+    EnumRefMeta,
     InterfaceRef,
     InterfaceRefMeta,
     Optional,
@@ -107,6 +111,7 @@ class Option(AbstractOption):
         self.type = type_
         self.default = default
         self.description = description
+        self.enum_name = get_enum_name(type_) if type_ is not None else None
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, ...)".format(
@@ -216,6 +221,7 @@ class Field(AbstractField):
         self.options = options or ()
         self.description = description
         self.directives = directives or ()
+        self.enum_name = get_enum_name(type_) if type_ is not None else None
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r})".format(
@@ -270,6 +276,20 @@ def is_interface(type_: GenericMeta) -> bool:
     return isinstance(type_, InterfaceRefMeta)
 
 
+def get_enum_name(type_: GenericMeta) -> t.Optional[str]:
+    if isinstance(type_, OptionalMeta):
+        if isinstance(type_.__type__, EnumRefMeta):
+            return type_.__type__.__type_name__
+        return None
+    if isinstance(type_, SequenceMeta):
+        return get_enum_name(type_.__item_type__)
+
+    if isinstance(type_, EnumRefMeta):
+        return type_.__type_name__
+
+    return None
+
+
 def collect_interfaces_types(
     items: t.List["Node"], interfaces: t.List["Interface"]
 ) -> t.Dict[str, t.List[str]]:
@@ -307,7 +327,7 @@ LinkT = t.Union[
     # (ctx, ids) -> []
     t.Callable[[t.Any, List[LT]], SyncAsync[LR]],
     # (ctx, ids, opts) -> []
-    t.Callable[[t.Any, List[LT], List], SyncAsync[LR]],
+    t.Callable[[t.Any, List[LT], t.Dict], SyncAsync[LR]],
 ]
 
 RootLinkOne = RootLinkT[LR]
@@ -504,6 +524,7 @@ class Link(AbstractLink):
         self.directives = directives or ()
         self.is_union = is_union(type_)
         self.is_interface = is_interface(type_)
+        self.enum_name = get_enum_name(type_)
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r}, ...)".format(
@@ -687,6 +708,7 @@ class Graph(AbstractGraph):
         directives: t.Optional[t.Sequence[t.Type[SchemaDirective]]] = None,
         unions: t.Optional[t.List[Union]] = None,
         interfaces: t.Optional[t.List[Interface]] = None,
+        enums: t.Optional[t.List[t.Type[Enum]]] = None,
     ):
         """
         :param items: list of nodes
@@ -699,12 +721,18 @@ class Graph(AbstractGraph):
         if interfaces is None:
             interfaces = []
 
-        GraphValidator.validate(items, unions, interfaces)
+        if enums is None:
+            enums = []
+
+        GraphValidator.validate(items, unions, interfaces, enums)
 
         self.items = GraphInit.init(items)
         self.unions = unions
         self.interfaces = interfaces
         self.interfaces_types = collect_interfaces_types(self.items, interfaces)
+        self.enums: t.List[EnumInfo] = [
+            e.__enum_info__ for e in enums  # type: ignore[attr-defined]
+        ]
         self.data_types = data_types or {}
         self.__types__ = GraphTypes.get_types(
             self.items, self.unions, self.interfaces, self.data_types
@@ -746,6 +774,10 @@ class Graph(AbstractGraph):
     @cached_property
     def interfaces_map(self) -> OrderedDict:
         return OrderedDict((i.name, i) for i in self.interfaces)
+
+    @cached_property
+    def enums_map(self) -> "OrderedDict[str, EnumInfo]":
+        return OrderedDict((e.name, e) for e in self.enums)
 
     def accept(self, visitor: "AbstractGraphVisitor") -> t.Any:
         return visitor.visit_graph(self)

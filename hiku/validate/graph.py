@@ -1,4 +1,5 @@
 import typing as t
+from enum import Enum
 
 from itertools import chain
 from contextlib import contextmanager
@@ -72,11 +73,13 @@ class GraphValidator(GraphVisitor):
         items: t.List[Node],
         unions: t.List[Union],
         interfaces: t.List[Interface],
+        enums: t.List[t.Type[Enum]],
     ) -> None:
         validator = cls(items, unions, interfaces)
         validator.visit_graph_items(items)
         validator.visit_graph_unions(unions)
         validator.visit_graph_interfaces(interfaces)
+        validator.visit_graph_enums(enums)
         if validator.errors.list:
             raise GraphValidationError(validator.errors.list)
 
@@ -273,6 +276,15 @@ class GraphValidator(GraphVisitor):
             )
             return
 
+    def visit_enum(self, obj: t.Type[Enum]) -> t.Any:
+        if not hasattr(obj, "__enum_info__"):
+            self.errors.report("Enum must be wrapped with @enum decorator")
+            return
+
+        if not obj.__enum_info__.values:
+            self.errors.report("Enum must have at least one value")
+            return
+
     def visit_root(self, obj: Root) -> None:
         self.visit_node(obj)
 
@@ -317,3 +329,7 @@ class GraphValidator(GraphVisitor):
     def visit_graph_interfaces(self, interfaces: t.List[Interface]) -> None:
         for interface in interfaces:
             self.visit(interface)
+
+    def visit_graph_enums(self, enums: t.List[t.Type[Enum]]) -> None:
+        for enum in enums:
+            self.visit_enum(enum)

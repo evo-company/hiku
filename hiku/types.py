@@ -297,7 +297,26 @@ class InterfaceRef(metaclass=InterfaceRefMeta):
     ...
 
 
-RefMeta = (TypeRefMeta, UnionRefMeta, InterfaceRefMeta)
+class EnumRefMeta(TypingMeta):
+    __type_name__: str
+
+    def __cls_init__(cls, *args: str) -> None:
+        assert len(args) == 1, f"{cls.__name__} takes exactly one argument"
+
+        cls.__type_name__ = args[0]
+
+    def __cls_repr__(self) -> str:
+        return "{}[{!r}]".format(self.__name__, self.__type_name__)
+
+    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
+        return visitor.visit_enumref(cls)
+
+
+class EnumRef(metaclass=EnumRefMeta):
+    ...
+
+
+RefMeta = (TypeRefMeta, UnionRefMeta, InterfaceRefMeta, EnumRefMeta)
 
 
 @t.overload
@@ -378,6 +397,10 @@ class AbstractTypeVisitor(ABC):
     def visit_interfaceref(self, obj: InterfaceRefMeta) -> t.Any:
         pass
 
+    @abstractmethod
+    def visit_enumref(self, obj: EnumRefMeta) -> t.Any:
+        pass
+
 
 class TypeVisitor(AbstractTypeVisitor):
     def visit_any(self, obj: AnyMeta) -> t.Any:
@@ -405,6 +428,9 @@ class TypeVisitor(AbstractTypeVisitor):
         pass
 
     def visit_unionref(self, obj: UnionRefMeta) -> t.Any:
+        pass
+
+    def visit_enumref(self, obj: EnumRefMeta) -> t.Any:
         pass
 
     def visit_optional(self, obj: OptionalMeta) -> t.Any:

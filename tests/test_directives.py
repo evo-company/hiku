@@ -1,8 +1,10 @@
 from enum import Enum
 from typing import List
 
-from hiku.directives import Directive, DirectiveField, SchemaDirectiveField, Location, SchemaDirective, directive, \
+from hiku.directives import (
+    Directive, Location, SchemaDirective, directive,
     directive_field, schema_directive, schema_directive_field
+)
 from hiku.enum import enum
 from hiku.graph import Field, Graph, Link, Node, Root, apply
 from hiku.introspection.graphql import GraphQLIntrospection

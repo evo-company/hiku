@@ -3,6 +3,7 @@ import contextlib
 import inspect
 import warnings
 import dataclasses
+from enum import Enum
 
 from typing import (
     Any,
@@ -24,6 +25,8 @@ from functools import partial
 from itertools import chain, repeat
 from collections import defaultdict
 from collections.abc import Sequence, Mapping, Hashable
+
+from hiku.types import OptionalMeta, SequenceMeta
 
 from .cache import (
     CacheVisitor,
@@ -76,7 +79,9 @@ NodePath = Tuple[Optional[str], ...]
 
 
 def _yield_options(
-    graph_obj: Union[Link, Field], query_obj: Union[QueryField, QueryLink]
+    graph: Graph,
+    graph_obj: Union[Link, Field],
+    query_obj: Union[QueryField, QueryLink],
 ) -> Iterator[Tuple[str, Any]]:
     options = query_obj.options or {}
     for option in graph_obj.options:
@@ -87,14 +92,27 @@ def _yield_options(
                     option.name, graph_obj
                 )
             )
+        elif option.enum_name is not None:
+            enum_info = graph.enums_map[option.enum_name]
+            try:
+                yield option.name, enum_info.wrapped_cls(value)
+            except (ValueError, TypeError):
+                raise TypeError(
+                    "Value '{}' does not exist in '{}' enum".format(
+                        value,
+                        enum_info.name,
+                    )
+                )
         else:
             yield option.name, value
 
 
 def _get_options(
-    graph_obj: Union[Link, Field], query_obj: Union[QueryField, QueryLink]
+    graph: Graph,
+    graph_obj: Union[Link, Field],
+    query_obj: Union[QueryField, QueryLink],
 ) -> Dict:
-    return dict(_yield_options(graph_obj, query_obj))
+    return dict(_yield_options(graph, graph_obj, query_obj))
 
 
 class InitOptions(QueryTransformer):
@@ -138,7 +156,7 @@ class InitOptions(QueryTransformer):
     def visit_field(self, obj: QueryField) -> QueryField:
         graph_obj = self._path[-1].fields_map[obj.name]
         if graph_obj.options:
-            return obj.copy(options=_get_options(graph_obj, obj))
+            return obj.copy(options=_get_options(self._graph, graph_obj, obj))
         else:
             return obj
 
@@ -160,7 +178,11 @@ class InitOptions(QueryTransformer):
             assert isinstance(graph_obj, Field), type(graph_obj)
             node = obj.node
 
-        options = _get_options(graph_obj, obj) if graph_obj.options else None
+        options = (
+            _get_options(self._graph, graph_obj, obj)
+            if graph_obj.options
+            else None
+        )
         return obj.copy(node=node, options=options)
 
 
@@ -295,6 +317,36 @@ def _is_hashable(obj: Any) -> bool:
     return True
 
 
+def convert_value(graph: Graph, field: Union[Field, Link], value: Any) -> Any:
+    if field.enum_name is None:
+        return value
+
+    enum_info = graph.enums_map[field.enum_name]
+
+    def _check(v: Any) -> None:
+        if (
+            not isinstance(v, enum_info.wrapped_cls)
+            or v not in enum_info.wrapped_cls
+        ):
+            raise TypeError(
+                "Enum '{}' can not represent value: {!r}".format(
+                    enum_info.name, v
+                )
+            )
+
+    def _convert(v: Enum) -> str:
+        _check(v)
+        return v.name
+
+    if isinstance(field.type, SequenceMeta):
+        return [_convert(v) for v in value]
+    elif isinstance(field.type, OptionalMeta):
+        if value is None:
+            return None
+
+    return _convert(value)
+
+
 def update_index(
     index: Index,
     node: Node,
@@ -312,9 +364,11 @@ def update_index(
 
 
 def store_fields(
+    graph: Graph,
     index: Index,
     node: Node,
     query_fields: List[Union[QueryField, QueryLink]],
+    graph_fields: Sequence[Union[Field, Link]],
     ids: Optional[Any],
     query_result: Any,
 ) -> None:
@@ -332,7 +386,8 @@ def store_fields(
         assert ids is not None
         node_idx = index[node.name]
         for i, row in zip(ids, query_result):
-            node_idx[i].update(zip(names, row))
+            for field, name, value in zip(graph_fields, names, row):
+                node_idx[i][name] = convert_value(graph, field, value)
     else:
         assert ids is None
         index.root.update(zip(names, query_result))
@@ -785,6 +840,7 @@ class Query(Workflow):
         ids: Optional[Any],
     ) -> Union[SubmitRes, TaskSet]:
         query_fields = [qf for _, qf in fields]
+        graph_fields = [gf for gf, _ in fields]
 
         dep: Union[TaskSet, SubmitRes]
         if hasattr(func, "__subquery__"):
@@ -799,7 +855,15 @@ class Query(Workflow):
             proc = dep.result
 
         def callback() -> None:
-            store_fields(self._index, node, query_fields, ids, proc())
+            store_fields(
+                self._graph,
+                self._index,
+                node,
+                query_fields,
+                graph_fields,
+                ids,
+                proc(),
+            )
             self._untrack(path)
 
         self._queue.add_callback(dep, callback)
