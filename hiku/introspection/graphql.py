@@ -25,11 +25,11 @@ from ..graph import (
     NothingType,
 )
 from ..graph import GraphVisitor, GraphTransformer
+from ..scalar import Scalar
 from ..types import (
     EnumRefMeta,
     IDMeta,
     InterfaceRefMeta,
-    ScalarMeta,
     TypeRef,
     String,
     Sequence,
@@ -146,8 +146,8 @@ class TypeIdent(AbstractTypeVisitor):
     def visit_any(self, obj: AnyMeta) -> HashedNamedTuple:
         return SCALAR("Any")
 
-    def visit_scalar(self, obj: ScalarMeta) -> HashedNamedTuple:
-        return NON_NULL(SCALAR(obj.__type_name__))
+    def visit_scalar(self, obj: t.Type[Scalar]) -> HashedNamedTuple:
+        return NON_NULL(SCALAR(obj.__scalar_name__))
 
     def visit_mapping(self, obj: MappingMeta) -> HashedNamedTuple:
         return SCALAR("Any")
@@ -236,6 +236,8 @@ def type_link(
             enum.name,
             tuple(OBJECT(value.name) for value in enum.values),
         )
+    elif name in schema.query_graph.scalars_map:
+        return SCALAR(name)
     else:
         return Nothing
 
@@ -274,6 +276,10 @@ def root_schema_types(schema: SchemaInfo) -> t.Iterator[HashedNamedTuple]:
             enum.name,
             tuple(OBJECT(value.name) for value in enum.values),
         )
+
+    # custom scalars
+    for scalar in schema.query_graph.scalars.values():
+        yield SCALAR(scalar.__scalar_name__)
 
 
 def root_schema_query_type(schema: SchemaInfo) -> HashedNamedTuple:
@@ -1005,6 +1011,8 @@ class GraphQLIntrospection(GraphTransformer):
             directives=obj.directives,
             unions=obj.unions,
             interfaces=obj.interfaces,
+            enums=obj.enums,
+            scalars=obj.scalars,
         )
 
 

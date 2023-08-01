@@ -3,8 +3,9 @@ from inspect import isawaitable
 
 from hiku.directives import SchemaDirective
 from hiku.federation.utils import get_entity_types
+from hiku.scalar import Scalar
 
-from hiku.types import Optional, Record, Scalar, Sequence, TypeRef, UnionRef
+from hiku.types import Optional, Record, Sequence, TypeRef, UnionRef
 
 from hiku.graph import (
     Field,
@@ -17,6 +18,10 @@ from hiku.graph import (
     Root,
     Union,
 )
+
+
+class _Any(Scalar):
+    pass
 
 
 class FederatedNode(Node):
@@ -118,7 +123,7 @@ class GraphInit(GraphTransformer):
             Sequence[Optional[UnionRef["_Entity"]]],
             entities_resolver_async if self.is_async else entities_resolver,
             options=[
-                Option("representations", Sequence[Scalar["_Any"]]),
+                Option("representations", Sequence[_Any]),
             ],
             requires=None,
         )

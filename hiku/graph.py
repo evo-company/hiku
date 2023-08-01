@@ -15,6 +15,7 @@ from collections import OrderedDict, defaultdict
 from typing import List
 
 from hiku.enum import BaseEnum
+from .scalar import Scalar, _BUILTIN_CUSTOM_SCALARS
 
 from .types import (
     EnumRefMeta,
@@ -708,6 +709,7 @@ class Graph(AbstractGraph):
         unions: t.Optional[t.List[Union]] = None,
         interfaces: t.Optional[t.List[Interface]] = None,
         enums: t.Optional[t.List[BaseEnum]] = None,
+        scalars: t.Optional[t.Dict[t.Any, t.Type[Scalar]]] = None,
     ):
         """
         :param items: list of nodes
@@ -723,13 +725,23 @@ class Graph(AbstractGraph):
         if enums is None:
             enums = []
 
-        GraphValidator.validate(items, unions, interfaces, enums)
+        scalars_registry: t.Dict[t.Any, t.Type[Scalar]] = OrderedDict(
+            _BUILTIN_CUSTOM_SCALARS
+        )
+
+        if scalars is not None:
+            scalars_registry.update(scalars)
+
+        GraphValidator.validate(
+            items, unions, interfaces, enums, scalars_registry
+        )
 
         self.items = GraphInit.init(items)
         self.unions = unions
         self.interfaces = interfaces
         self.interfaces_types = collect_interfaces_types(self.items, interfaces)
         self.enums: t.List[BaseEnum] = enums
+        self.scalars = scalars_registry
         self.data_types = data_types or {}
         self.__types__ = GraphTypes.get_types(
             self.items,
@@ -780,6 +792,12 @@ class Graph(AbstractGraph):
     def enums_map(self) -> "OrderedDict[str, BaseEnum]":
         return OrderedDict((e.name, e) for e in self.enums)
 
+    @cached_property
+    def scalars_map(self) -> "OrderedDict[str, t.Type[Scalar]]":
+        return OrderedDict(
+            (s.__scalar_name__, s) for s in self.scalars.values()
+        )
+
     def accept(self, visitor: "AbstractGraphVisitor") -> t.Any:
         return visitor.visit_graph(self)
 
@@ -818,6 +836,10 @@ class AbstractGraphVisitor(ABC):
         pass
 
     @abstractmethod
+    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Any:
+        pass
+
+    @abstractmethod
     def visit_root(self, obj: Root) -> t.Any:
         pass
 
@@ -837,6 +859,9 @@ class GraphVisitor(AbstractGraphVisitor):
         pass
 
     def visit_enum(self, obj: "BaseEnum") -> t.Any:
+        pass
+
+    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Any:
         pass
 
     def visit_option(self, obj: "Option") -> t.Any:
@@ -919,6 +944,9 @@ class GraphTransformer(AbstractGraphVisitor):
     def visit_enum(self, obj: BaseEnum) -> BaseEnum:
         return obj
 
+    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Type[Scalar]:
+        return obj
+
     def visit_root(self, obj: Root) -> Root:
         return Root([self.visit(f) for f in obj.fields])
 
@@ -929,6 +957,8 @@ class GraphTransformer(AbstractGraphVisitor):
             obj.directives,
             obj.unions,
             obj.interfaces,
+            obj.enums,
+            obj.scalars,
         )
 
 
@@ -1032,4 +1062,7 @@ class GraphTypes(GraphVisitor):
         return obj
 
     def visit_interface(self, obj: Interface) -> Interface:
+        return obj
+
+    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Type[Scalar]:
         return obj

@@ -8,6 +8,7 @@ from hiku.enum import Enum
 
 from hiku.directives import Deprecated, Location, SchemaDirective, schema_directive
 from hiku.graph import Graph, Interface, Root, Field, Node, Link, Union, apply, Option
+from hiku.scalar import Scalar
 from hiku.types import EnumRef, InterfaceRef, String, Integer, Sequence, TypeRef, Boolean, Float, Any, UnionRef
 from hiku.types import Optional, Record
 from hiku.result import denormalize
@@ -57,6 +58,14 @@ def _interface(name):
 def _enum(name):
     return {
         'kind': 'ENUM',
+        'name': name,
+        'ofType': None
+    }
+
+
+def _scalar(name):
+    return {
+        'kind': 'SCALAR',
         'name': name,
         'ofType': None
     }
@@ -130,9 +139,10 @@ def _field_enum_directive(name, args):
     }
 
 
-def _schema(types, directives: Optional[List[Dict]] = None, with_mutation=False):
+def _schema(types, directives: Optional[List[Dict]] = None, with_mutation=False, custom_scalars=None):
     names = [t['name'] for t in types]
     assert 'Query' in names, names
+    custom_scalars = custom_scalars or []
     return {
         '__schema': {
             'directives': [
@@ -157,7 +167,7 @@ def _schema(types, directives: Optional[List[Dict]] = None, with_mutation=False)
             ] + (directives or []),
             'mutationType': {'name': 'Mutation'} if with_mutation else None,
             'queryType': {'name': 'Query'},
-            'types': SCALARS + types,
+            'types': SCALARS + types + CUSTOM_SCALARS + custom_scalars,
         }
     }
 
@@ -180,6 +190,12 @@ SCALARS = [
     _type('Float', 'SCALAR'),
     _type('Any', 'SCALAR'),
     _type('ID', 'SCALAR'),
+]
+
+CUSTOM_SCALARS = [
+    _type('DateTime', 'SCALAR'),
+    _type('Date', 'SCALAR'),
+    _type('UUID', 'SCALAR'),
 ]
 
 
@@ -560,6 +576,80 @@ def test_query_enum_as_single_type(enum_name, expected):
             Field('status', EnumRef['Status'], _noop),
         ]),
     ], enums=[Enum.from_builtin(Status)])
+
+    got = execute(query, graph)
+    assert got['__type'] == expected
+
+
+def test_custom_scalar():
+    class YesNo(Scalar):
+        @classmethod
+        def parse(cls, value: str) -> bool:
+            return value == 'yes'
+
+        @classmethod
+        def serialize(cls, value: bool) -> str:
+            return 'yes' if value else 'no'
+
+    graph = Graph([
+        Node('User', [
+            Field('id', Integer, _noop),
+            # TODO: this will not work
+            Field('active', YesNo, _noop),
+        ]),
+        Root([
+            Link(
+                'user',
+                Optional[TypeRef['User']],
+                _noop,
+                requires=None,
+            ),
+        ]),
+    ], scalars={
+        YesNo: YesNo,
+    })
+
+    assert introspect(graph) == _schema([
+        _type('User', 'OBJECT', fields=[
+            _field('id', _non_null(_INT)),
+            _field('active', _non_null(_scalar('YesNo'))),
+        ]),
+        _type('Query', 'OBJECT', fields=[
+            _field('user', _obj('User')),
+        ]),
+    ], custom_scalars=[
+        _type('YesNo', 'SCALAR'),
+    ])
+
+@pytest.mark.parametrize('name, expected', [
+    ('YesNo', {'kind': 'SCALAR'}),
+    ('XXX', None),
+])
+def test_query_scalar_as_single_type(name, expected):
+    query = """
+    query IntrospectionQuery {
+        __type(name: "%s") {
+            kind
+       }
+    }
+    """ % name
+
+    class YesNo(Scalar):
+        @classmethod
+        def parse(cls, value: str) -> bool:
+            return value == 'yes'
+
+        @classmethod
+        def serialize(cls, value: bool) -> str:
+            return 'yes' if value else 'no'
+
+    graph = Graph([
+        Root([
+            Field('status', YesNo, _noop),
+        ]),
+    ], scalars={
+        YesNo: YesNo,
+    })
 
     got = execute(query, graph)
     assert got['__type'] == expected

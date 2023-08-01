@@ -499,6 +499,8 @@ class _StripGraph(GraphTransformer):
             obj.directives,
             obj.unions,
             obj.interfaces,
+            obj.enums,
+            obj.scalars,
         )
 
     def visit_node(self, obj: Node) -> Node:

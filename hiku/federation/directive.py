@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar
 from typing_extensions import dataclass_transform
 
-from hiku.custom_scalar import scalar
+from hiku.scalar import Scalar, scalar
 from hiku.directives import (
     SchemaDirectiveInfo,
     Location,
@@ -19,13 +19,25 @@ T = TypeVar("T", bound="FederationSchemaDirective")
 
 
 @scalar(name="_FieldSet")
-class FieldSet:
-    ...
+class FieldSet(Scalar):
+    @classmethod
+    def parse(cls, value: str) -> Any:
+        return value
+
+    @classmethod
+    def serialize(cls, value: str) -> Any:
+        return value
 
 
-@scalar(name="link_Import")
-class LinkImport:
-    ...
+@scalar(name="link__Import")
+class LinkImport(Scalar):
+    @classmethod
+    def parse(cls, value: str) -> Any:
+        return value
+
+    @classmethod
+    def serialize(cls, value: str) -> Any:
+        return value
 
 
 LinkPurpose = Enum("link__Purpose", ["SECURITY", "EXECUTION"])

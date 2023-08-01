@@ -4,6 +4,7 @@ from enum import EnumMeta
 from typing import Any, Type, Union
 
 from hiku.introspection import types as int_types
+from hiku.scalar import Scalar
 
 
 def is_union(annotation: object) -> bool:
@@ -57,8 +58,8 @@ def builtin_to_introspection_type(typ: Any) -> Any:
             return convert(typ_.__args__[0])
         elif is_list(typ_):
             return int_types.LIST(convert(typ_.__args__[0]))
-        elif hasattr(typ_, "__scalar_info__"):
-            return int_types.SCALAR(typ_.__scalar_info__.name)
+        elif issubclass(typ_, Scalar):
+            return int_types.SCALAR(typ_.__scalar_name__)
         elif isinstance(typ_, EnumMeta):
             return int_types.ENUM(
                 typ_.__name__,

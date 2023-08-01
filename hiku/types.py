@@ -37,32 +37,6 @@ class Any(metaclass=AnyMeta):
     pass
 
 
-class ScalarMeta(GenericMeta):
-    __final__ = False
-    __type_name__: str
-
-    def __cls_init__(cls, type_name: str) -> None:
-        cls.__type_name__: str = type_name
-
-    def __cls_repr__(self) -> str:
-        return "{}[{!r}]".format(self.__name__, self.__type_name__)
-
-    def __getitem__(cls: "ScalarMeta", parameters: t.Any) -> "ScalarMeta":
-        if cls.__final__:
-            raise TypeError("Cannot substitute parameters in {!r}".format(cls))
-        type_ = cls.__class__(cls.__name__, cls.__bases__, dict(cls.__dict__))
-        type_.__cls_init__(parameters)
-        type_.__final__ = True
-        return type_
-
-    def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
-        return visitor.visit_scalar(cls)
-
-
-class Scalar(metaclass=ScalarMeta):
-    pass
-
-
 class BooleanMeta(GenericMeta):
     def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
         return visitor.visit_boolean(cls)
@@ -343,10 +317,6 @@ class AbstractTypeVisitor(ABC):
         pass
 
     @abstractmethod
-    def visit_scalar(self, obj: ScalarMeta) -> t.Any:
-        pass
-
-    @abstractmethod
     def visit_boolean(self, obj: BooleanMeta) -> t.Any:
         pass
 
@@ -405,9 +375,6 @@ class AbstractTypeVisitor(ABC):
 
 class TypeVisitor(AbstractTypeVisitor):
     def visit_any(self, obj: AnyMeta) -> t.Any:
-        pass
-
-    def visit_scalar(self, obj: ScalarMeta) -> t.Any:
         pass
 
     def visit_boolean(self, obj: BooleanMeta) -> t.Any:

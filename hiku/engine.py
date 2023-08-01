@@ -18,15 +18,12 @@ from typing import (
     Optional,
     DefaultDict,
     Awaitable,
-    Sequence as SequenceT,
     TYPE_CHECKING,
 )
 from functools import partial
 from itertools import chain, repeat
 from collections import defaultdict
 from collections.abc import Sequence, Mapping, Hashable
-
-from hiku.types import OptionalMeta, SequenceMeta
 
 from .cache import (
     CacheVisitor,
@@ -309,21 +306,6 @@ def _is_hashable(obj: Any) -> bool:
     return True
 
 
-def convert_value(graph: Graph, field: Union[Field, Link], value: Any) -> Any:
-    if field.enum_name is None:
-        return value
-
-    enum = graph.enums_map[field.enum_name]
-
-    if isinstance(field.type, SequenceMeta):
-        return [enum.serialize(v) for v in value]
-    elif isinstance(field.type, OptionalMeta):
-        if value is None:
-            return None
-
-    return enum.serialize(value)
-
-
 def update_index(
     index: Index,
     node: Node,
@@ -341,11 +323,9 @@ def update_index(
 
 
 def store_fields(
-    graph: Graph,
     index: Index,
     node: Node,
     query_fields: List[Union[QueryField, QueryLink]],
-    graph_fields: SequenceT[Union[Field, Link]],
     ids: Optional[Any],
     query_result: Any,
 ) -> None:
@@ -363,12 +343,10 @@ def store_fields(
         assert ids is not None
         node_idx = index[node.name]
         for i, row in zip(ids, query_result):
-            for field, name, value in zip(graph_fields, names, row):
-                node_idx[i][name] = convert_value(graph, field, value)
+            node_idx[i].update(zip(names, row))
     else:
         assert ids is None
-        for field, name, value in zip(graph_fields, names, query_result):
-            index.root[name] = convert_value(graph, field, value)
+        index.root.update(zip(names, query_result))
 
     return None
 
@@ -818,7 +796,6 @@ class Query(Workflow):
         ids: Optional[Any],
     ) -> Union[SubmitRes, TaskSet]:
         query_fields = [qf for _, qf in fields]
-        graph_fields = [gf for gf, _ in fields]
 
         dep: Union[TaskSet, SubmitRes]
         if hasattr(func, "__subquery__"):
@@ -834,11 +811,9 @@ class Query(Workflow):
 
         def callback() -> None:
             store_fields(
-                self._graph,
                 self._index,
                 node,
                 query_fields,
-                graph_fields,
                 ids,
                 proc(),
             )
