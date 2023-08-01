@@ -14,7 +14,10 @@ from functools import reduce
 from collections import OrderedDict, defaultdict
 from typing import List
 
+from hiku.enum import BaseEnum
+
 from .types import (
+    EnumRefMeta,
     InterfaceRef,
     InterfaceRefMeta,
     Optional,
@@ -107,6 +110,7 @@ class Option(AbstractOption):
         self.type = type_
         self.default = default
         self.description = description
+        self.enum_name = get_enum_name(type_) if type_ is not None else None
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, ...)".format(
@@ -216,6 +220,7 @@ class Field(AbstractField):
         self.options = options or ()
         self.description = description
         self.directives = directives or ()
+        self.enum_name = get_enum_name(type_) if type_ is not None else None
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r})".format(
@@ -270,6 +275,20 @@ def is_interface(type_: GenericMeta) -> bool:
     return isinstance(type_, InterfaceRefMeta)
 
 
+def get_enum_name(type_: GenericMeta) -> t.Optional[str]:
+    if isinstance(type_, OptionalMeta):
+        if isinstance(type_.__type__, EnumRefMeta):
+            return type_.__type__.__type_name__
+        return None
+    if isinstance(type_, SequenceMeta):
+        return get_enum_name(type_.__item_type__)
+
+    if isinstance(type_, EnumRefMeta):
+        return type_.__type_name__
+
+    return None
+
+
 def collect_interfaces_types(
     items: t.List["Node"], interfaces: t.List["Interface"]
 ) -> t.Dict[str, t.List[str]]:
@@ -307,7 +326,7 @@ LinkT = t.Union[
     # (ctx, ids) -> []
     t.Callable[[t.Any, List[LT]], SyncAsync[LR]],
     # (ctx, ids, opts) -> []
-    t.Callable[[t.Any, List[LT], List], SyncAsync[LR]],
+    t.Callable[[t.Any, List[LT], t.Dict], SyncAsync[LR]],
 ]
 
 RootLinkOne = RootLinkT[LR]
@@ -504,6 +523,7 @@ class Link(AbstractLink):
         self.directives = directives or ()
         self.is_union = is_union(type_)
         self.is_interface = is_interface(type_)
+        self.enum_name = get_enum_name(type_)
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r}, ...)".format(
@@ -687,6 +707,7 @@ class Graph(AbstractGraph):
         directives: t.Optional[t.Sequence[t.Type[SchemaDirective]]] = None,
         unions: t.Optional[t.List[Union]] = None,
         interfaces: t.Optional[t.List[Interface]] = None,
+        enums: t.Optional[t.List[BaseEnum]] = None,
     ):
         """
         :param items: list of nodes
@@ -699,15 +720,23 @@ class Graph(AbstractGraph):
         if interfaces is None:
             interfaces = []
 
-        GraphValidator.validate(items, unions, interfaces)
+        if enums is None:
+            enums = []
+
+        GraphValidator.validate(items, unions, interfaces, enums)
 
         self.items = GraphInit.init(items)
         self.unions = unions
         self.interfaces = interfaces
         self.interfaces_types = collect_interfaces_types(self.items, interfaces)
+        self.enums: t.List[BaseEnum] = enums
         self.data_types = data_types or {}
         self.__types__ = GraphTypes.get_types(
-            self.items, self.unions, self.interfaces, self.data_types
+            self.items,
+            self.unions,
+            self.interfaces,
+            self.enums,
+            self.data_types,
         )
         self.directives: t.Tuple[t.Type[SchemaDirective], ...] = tuple(
             directives or ()
@@ -747,6 +776,10 @@ class Graph(AbstractGraph):
     def interfaces_map(self) -> OrderedDict:
         return OrderedDict((i.name, i) for i in self.interfaces)
 
+    @cached_property
+    def enums_map(self) -> "OrderedDict[str, BaseEnum]":
+        return OrderedDict((e.name, e) for e in self.enums)
+
     def accept(self, visitor: "AbstractGraphVisitor") -> t.Any:
         return visitor.visit_graph(self)
 
@@ -781,6 +814,10 @@ class AbstractGraphVisitor(ABC):
         pass
 
     @abstractmethod
+    def visit_enum(self, obj: BaseEnum) -> t.Any:
+        pass
+
+    @abstractmethod
     def visit_root(self, obj: Root) -> t.Any:
         pass
 
@@ -797,6 +834,9 @@ class GraphVisitor(AbstractGraphVisitor):
         pass
 
     def visit_interface(self, obj: "Interface") -> t.Any:
+        pass
+
+    def visit_enum(self, obj: "BaseEnum") -> t.Any:
         pass
 
     def visit_option(self, obj: "Option") -> t.Any:
@@ -876,6 +916,9 @@ class GraphTransformer(AbstractGraphVisitor):
             description=obj.description,
         )
 
+    def visit_enum(self, obj: BaseEnum) -> BaseEnum:
+        return obj
+
     def visit_root(self, obj: Root) -> Root:
         return Root([self.visit(f) for f in obj.fields])
 
@@ -929,6 +972,7 @@ class GraphTypes(GraphVisitor):
         items: t.List[Node],
         unions: t.List[Union],
         interfaces: t.List[Interface],
+        enums: t.List[BaseEnum],
         data_types: t.Dict[str, t.Type[Record]],
     ) -> t.Dict[str, t.Type[Record]]:
         types = OrderedDict(data_types)
@@ -945,6 +989,9 @@ class GraphTypes(GraphVisitor):
         for interface in interfaces:
             types[interface.name] = self.visit(interface)
 
+        for enum in enums:
+            types[enum.name] = self.visit(enum)
+
         types["__root__"] = Record[
             chain.from_iterable(r.__field_types__.items() for r in roots)
         ]
@@ -956,13 +1003,14 @@ class GraphTypes(GraphVisitor):
         items: t.List[Node],
         unions: t.List[Union],
         interfaces: t.List[Interface],
+        enums: t.List[BaseEnum],
         data_types: t.Dict[str, t.Type[Record]],
     ) -> t.Dict[str, t.Type[Record]]:
-        return cls()._visit_graph(items, unions, interfaces, data_types)
+        return cls()._visit_graph(items, unions, interfaces, enums, data_types)
 
     def visit_graph(self, obj: Graph) -> t.Dict[str, t.Type[Record]]:
         return self._visit_graph(
-            obj.items, obj.unions, obj.interfaces, obj.data_types
+            obj.items, obj.unions, obj.interfaces, obj.enums, obj.data_types
         )
 
     def visit_node(self, obj: Node) -> t.Type[Record]:
@@ -978,6 +1026,9 @@ class GraphTypes(GraphVisitor):
         return obj.type or Any
 
     def visit_union(self, obj: Union) -> Union:
+        return obj
+
+    def visit_enum(self, obj: BaseEnum) -> BaseEnum:
         return obj
 
     def visit_interface(self, obj: Interface) -> Interface:

@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from collections import Counter
 
 from ..directives import Deprecated
+from ..enum import BaseEnum
 from ..graph import (
     GraphVisitor,
     Interface,
@@ -72,11 +73,13 @@ class GraphValidator(GraphVisitor):
         items: t.List[Node],
         unions: t.List[Union],
         interfaces: t.List[Interface],
+        enums: t.List[BaseEnum],
     ) -> None:
         validator = cls(items, unions, interfaces)
         validator.visit_graph_items(items)
         validator.visit_graph_unions(unions)
         validator.visit_graph_interfaces(interfaces)
+        validator.visit_graph_enums(enums)
         if validator.errors.list:
             raise GraphValidationError(validator.errors.list)
 
@@ -273,6 +276,15 @@ class GraphValidator(GraphVisitor):
             )
             return
 
+    def visit_enum(self, obj: BaseEnum) -> t.Any:
+        if not obj.name:
+            self.errors.report("Enum must have a name")
+            return
+
+        if not obj.values:
+            self.errors.report("Enum must have at least one value")
+            return
+
     def visit_root(self, obj: Root) -> None:
         self.visit_node(obj)
 
@@ -317,3 +329,7 @@ class GraphValidator(GraphVisitor):
     def visit_graph_interfaces(self, interfaces: t.List[Interface]) -> None:
         for interface in interfaces:
             self.visit(interface)
+
+    def visit_graph_enums(self, enums: t.List[BaseEnum]) -> None:
+        for enum in enums:
+            self.visit(enum)

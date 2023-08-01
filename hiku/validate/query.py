@@ -77,6 +77,7 @@ class _AssumeRecord(AbstractTypeVisitor):
     visit_callable = _false
     visit_unionref = _false
     visit_interfaceref = _false
+    visit_enumref = _false
     visit_scalar = _false
 
     def visit_optional(self, obj: OptionalMeta) -> t.Optional[t.OrderedDict]:

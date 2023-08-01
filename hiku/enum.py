@@ -1,59 +1,113 @@
+import abc
 import dataclasses
-from enum import EnumMeta
-from typing import Any, List, Optional, TypeVar
+import enum
 
-EnumType = TypeVar("EnumType", bound=EnumMeta)
+from typing import (
+    Any,
+    Generic,
+    Optional,
+    Sequence,
+    TYPE_CHECKING,
+    TypeVar,
+    Union,
+)
+
+if TYPE_CHECKING:
+    from hiku.graph import AbstractGraphVisitor
 
 
 @dataclasses.dataclass
 class EnumValue:
     name: str
-    value: Any
+    description: Optional[str] = None
+    deprecation_reason: Optional[str] = None
 
 
-@dataclasses.dataclass
-class EnumInfo:
-    wrapped_cls: EnumMeta
-    name: str
-    values: List[EnumValue]
+class BaseEnum(abc.ABC):
+    def __init__(
+        self,
+        name: str,
+        values: Sequence[Union[str, EnumValue]],
+        description: Optional[str] = None,
+    ):
+        self.name = name
+        self.description = description
+        self.values = [
+            EnumValue(v) if isinstance(v, str) else v for v in values
+        ]
+        self.values_map = {v.name: v for v in self.values}
+
+    @abc.abstractmethod
+    def parse(self, value: Any) -> Any:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def serialize(self, value: Any) -> str:
+        raise NotImplementedError
+
+    def __contains__(self, item: str) -> bool:
+        return item in self.values_map
+
+    def accept(self, visitor: "AbstractGraphVisitor") -> Any:
+        return visitor.visit_enum(self)
 
 
-def _process_enum(
-    cls: EnumType,
-    name: Optional[str] = None,
-) -> EnumType:
-    if not isinstance(cls, EnumMeta):
-        raise TypeError(f"{cls} is not an Enum")
-
-    if not name:
-        name = cls.__name__
-
-    values = []
-    for item in cls:  # type: ignore
-        value = EnumValue(
-            item.name,
-            item.value,
-        )
-        values.append(value)
-
-    cls.__enum_info__ = EnumInfo(  # type: ignore
-        wrapped_cls=cls,
-        name=name,
-        values=values,
-    )
-
-    return cls
+EM = TypeVar("EM", bound=enum.EnumMeta)
+E = TypeVar("E", bound=enum.Enum)
 
 
-def enum(
-    _cls: Optional[EnumType] = None,
-    *,
-    name: Optional[str] = None,
-) -> Any:
-    def wrap(cls: EnumType) -> EnumType:
-        return _process_enum(cls, name)
+class Enum(BaseEnum):
+    def parse(self, value: Any) -> str:
+        if value not in self:
+            raise TypeError(
+                "Enum '{}' can not represent value: {!r}".format(
+                    self.name, value
+                )
+            )
+        return value
 
-    if not _cls:
-        return wrap
+    def serialize(self, value: str) -> str:
+        if value not in self:
+            raise TypeError(
+                "Enum '{}' can not represent value: {!r}".format(
+                    self.name, value
+                )
+            )
+        return value
 
-    return wrap(_cls)
+    @classmethod
+    def from_builtin(
+        cls,
+        enum_cls: EM,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> "EnumFromBuiltin":
+        return EnumFromBuiltin(enum_cls, name or enum_cls.__name__, description)
+
+
+class EnumFromBuiltin(BaseEnum, Generic[E]):
+    def __init__(
+        self, enum_cls: EM, name: str, description: Optional[str] = None
+    ):
+        super().__init__(name, [v for v in enum_cls.__members__], description)
+        self.enum_cls = enum_cls
+
+    def parse(self, value: Any) -> E:
+        try:
+            return self.enum_cls(value)
+        except ValueError:
+            raise TypeError(
+                "Enum '{}' can not represent value: {!r}".format(
+                    self.name, value
+                )
+            )
+
+    def serialize(self, value: Any) -> str:
+        if not isinstance(value, self.enum_cls):
+            raise TypeError(
+                "Enum '{}' can not represent value: {!r}".format(
+                    self.name, value
+                )
+            )
+
+        return value.name

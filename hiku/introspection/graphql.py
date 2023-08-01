@@ -26,6 +26,7 @@ from ..graph import (
 )
 from ..graph import GraphVisitor, GraphTransformer
 from ..types import (
+    EnumRefMeta,
     IDMeta,
     InterfaceRefMeta,
     ScalarMeta,
@@ -52,6 +53,8 @@ from ..utils import (
     cached_property,
 )
 from .types import (
+    ENUM,
+    EnumValueIdent,
     INTERFACE,
     SCALAR,
     NON_NULL,
@@ -177,6 +180,14 @@ class TypeIdent(AbstractTypeVisitor):
     def visit_interfaceref(self, obj: InterfaceRefMeta) -> t.Any:
         return NON_NULL(INTERFACE(obj.__type_name__, tuple()))
 
+    def visit_enumref(self, obj: EnumRefMeta) -> t.Any:
+        return NON_NULL(
+            ENUM(
+                obj.__type_name__,
+                tuple(),
+            )
+        )
+
     def visit_string(self, obj: StringMeta) -> HashedNamedTuple:
         return NON_NULL(SCALAR("String"))
 
@@ -193,23 +204,8 @@ class TypeIdent(AbstractTypeVisitor):
         return NON_NULL(SCALAR("Boolean"))
 
 
-def not_implemented(*args: t.Any, **kwargs: t.Any) -> t.NoReturn:
-    raise NotImplementedError(args, kwargs)
-
-
 def na_maybe(schema: SchemaInfo) -> NothingType:
     return Nothing
-
-
-def na_many(
-    schema: SchemaInfo,
-    ids: t.Optional[t.List] = None,
-    options: t.Optional[t.Any] = None,
-) -> t.List[t.List]:
-    if ids is None:
-        return []
-    else:
-        return [[] for _ in ids]
 
 
 def schema_link(schema: SchemaInfo) -> None:
@@ -233,6 +229,12 @@ def type_link(
         return INTERFACE(
             interface.name,
             tuple(OBJECT(type_name) for type_name in possible_types),
+        )
+    elif name in schema.query_graph.enums_map:
+        enum = schema.query_graph.enums_map[name]
+        return ENUM(
+            enum.name,
+            tuple(OBJECT(value.name) for value in enum.values),
         )
     else:
         return Nothing
@@ -265,6 +267,12 @@ def root_schema_types(schema: SchemaInfo) -> t.Iterator[HashedNamedTuple]:
                     interface.name
                 ]
             ),
+        )
+
+    for enum in schema.query_graph.enums:
+        yield ENUM(
+            enum.name,
+            tuple(OBJECT(value.name) for value in enum.values),
         )
 
 
@@ -335,6 +343,15 @@ def type_info(
                     ident.name
                 ].description,
             }
+        elif isinstance(ident, ENUM):
+            info = {
+                "id": ident,
+                "kind": "ENUM",
+                "name": ident.name,
+                "description": schema.query_graph.enums_map[
+                    ident.name
+                ].description,
+            }
         else:
             raise TypeError(repr(ident))
         yield [info.get(f.name) for f in fields]
@@ -342,7 +359,7 @@ def type_info(
 
 @listify
 def type_fields_link(
-    schema: SchemaInfo, ids: t.List, options: t.List
+    schema: SchemaInfo, ids: t.List, options: t.Dict
 ) -> t.Iterator[t.List[HashedNamedTuple]]:
     for ident in ids:
         if isinstance(ident, OBJECT):
@@ -396,6 +413,23 @@ def possible_types_type_link(schema: SchemaInfo, ids: t.List) -> t.Iterator:
     for ident in ids:
         if isinstance(ident, (UNION, INTERFACE)):
             yield ident.possible_types
+        else:
+            yield []
+
+
+@listify
+def enum_values_type_link(
+    schema: SchemaInfo, ids: t.List, opts: t.Dict
+) -> t.Iterator:
+    if ids is None:
+        yield []
+
+    for ident in ids:
+        if isinstance(ident, ENUM):
+            yield [
+                EnumValueIdent(ident.name, value.name)
+                for value in ident.of_types
+            ]
         else:
             yield []
 
@@ -508,7 +542,11 @@ def input_value_info(
             if option.default is Nothing:
                 default = None
             else:
-                default = json.dumps(option.default)
+                if option.enum_name is not None:
+                    enum = schema.query_graph.enums_map[option.enum_name]
+                    default = enum.serialize(option.default)
+                else:
+                    default = json.dumps(option.default)
             info = {
                 "id": ident,
                 "name": option.name,
@@ -590,6 +628,24 @@ def directive_args_link(
     return links
 
 
+@listify
+def enum_value_info(
+    schema: SchemaInfo,
+    fields: t.List[Field],
+    ids: t.List[EnumValueIdent],  # type: ignore[valid-type]
+) -> t.Iterator[t.List[Any]]:
+    for ident in ids:
+        enum = schema.query_graph.enums_map[ident.enum_name]  # type: ignore[attr-defined]  # noqa: E501
+        value = enum.values_map[ident.value_name]  # type: ignore[attr-defined]
+        data = {
+            "name": value.name,
+            "description": value.description,
+            "isDeprecated": bool(value.deprecation_reason),
+            "deprecationReason": value.deprecation_reason,
+        }
+        yield [data[f.name] for f in fields]
+
+
 GRAPH = Graph(
     [
         Node(
@@ -627,8 +683,7 @@ GRAPH = Graph(
                 Link(
                     "enumValues",
                     Sequence[TypeRef["__EnumValue"]],
-                    # TODO: add enums handling
-                    na_many,
+                    enum_values_type_link,
                     requires="id",
                     options=[
                         Option("includeDeprecated", Boolean, default=False)
@@ -699,10 +754,10 @@ GRAPH = Graph(
         Node(
             "__EnumValue",
             [
-                Field("name", String, not_implemented),
-                Field("description", String, not_implemented),
-                Field("isDeprecated", Boolean, not_implemented),
-                Field("deprecationReason", String, not_implemented),
+                Field("name", String, enum_value_info),
+                Field("description", String, enum_value_info),
+                Field("isDeprecated", Boolean, enum_value_info),
+                Field("deprecationReason", String, enum_value_info),
             ],
         ),
         Node(

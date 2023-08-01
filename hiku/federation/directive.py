@@ -13,7 +13,6 @@ from hiku.directives import (
     get_fields,
     wrap_dataclass,
 )
-from hiku.enum import enum
 from hiku.utils.typing import builtin_to_introspection_type
 
 T = TypeVar("T", bound="FederationSchemaDirective")
@@ -29,10 +28,7 @@ class LinkImport:
     ...
 
 
-@enum(name="link__Purpose")
-class LinkPurpose(Enum):
-    SECURITY = "SECURITY"
-    EXECUTION = "EXECUTION"
+LinkPurpose = Enum("link__Purpose", ["SECURITY", "EXECUTION"])
 
 
 @dataclass
