@@ -558,6 +558,14 @@ def input_value_info(
                     ]
                     default = enum.serialize(option.default)
                 # TODO: support custom scalars
+                elif (
+                    option.type_info
+                    and option.type_info.type_enum is FieldType.SCALAR
+                ):
+                    scalar = schema.query_graph.scalars_map[
+                        option.type_info.type_name
+                    ]
+                    default = scalar.serialize(option.default)
                 else:
                     default = json.dumps(option.default)
             info = {

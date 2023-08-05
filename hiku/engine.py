@@ -94,7 +94,11 @@ def _yield_options(
         elif option.type_info and option.type_info.type_enum is FieldType.ENUM:
             enum = graph.enums_map[option.type_info.type_name]
             yield option.name, enum.parse(value)
-        # TODO: add scalar type check
+        elif (
+            option.type_info and option.type_info.type_enum is FieldType.SCALAR
+        ):
+            scalar = graph.scalars_map[option.type_info.type_name]
+            yield option.name, scalar.parse(value)
         else:
             yield option.name, value
 

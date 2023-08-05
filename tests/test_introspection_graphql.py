@@ -575,19 +575,19 @@ def test_query_enum_as_single_type(enum_name, expected):
 
 
 def test_custom_scalar():
-    class YesNo(Scalar):
+    class UserId(Scalar):
         @classmethod
-        def parse(cls, value: str) -> bool:
-            return value == 'yes'
+        def parse(cls, value: str) -> int:
+            return int(value[3:])
 
         @classmethod
-        def serialize(cls, value: bool) -> str:
-            return 'yes' if value else 'no'
+        def serialize(cls, value: int) -> str:
+            return 'uid%d' % value
 
     graph = Graph([
         Node('User', [
             Field('id', Integer, _noop),
-            Field('active', YesNo, _noop),
+            Field('uid', UserId, _noop),
         ]),
         Root([
             Link(
@@ -595,20 +595,30 @@ def test_custom_scalar():
                 Optional[TypeRef['User']],
                 _noop,
                 requires=None,
+                options=[
+                    Option('uid', Optional[UserId], default=1)
+                ]
             ),
         ]),
-    ], scalars=[YesNo])
+    ], scalars=[UserId])
 
-    assert introspect(graph) == _schema([
-        _type('User', 'OBJECT', fields=[
-            _field('id', _non_null(_INT)),
-            _field('active', _non_null(_scalar('YesNo'))),
-        ]),
+    assert _schema([
+        _type(
+            'User',
+            'OBJECT',
+            fields=[
+                _field('id', _non_null(_INT)),
+                _field('uid', _non_null(_scalar('UserId'))),
+            ],
+
+        ),
         _type('Query', 'OBJECT', fields=[
-            _field('user', _obj('User')),
-        ]),
-        _type('YesNo', 'SCALAR'),
-    ])
+            _field('user', _obj('User'), args=[
+                _ival('uid', _scalar('UserId'), defaultValue='uid1')
+            ]),
+        ], ),
+        _type('UserId', 'SCALAR'),
+    ]) == introspect(graph)
 
 @pytest.mark.parametrize('name, expected', [
     ('YesNo', {'kind': 'SCALAR'}),

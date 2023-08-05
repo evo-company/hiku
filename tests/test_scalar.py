@@ -5,7 +5,7 @@ import pytest
 from hiku.denormalize.graphql import DenormalizeGraphQL
 from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
-from hiku.graph import Field, Graph, Link, Node, Option, Root
+from hiku.graph import Field, Graph, Link, Node, Nothing, Option, Root
 from hiku.scalar import DateTime, Scalar
 from hiku.types import Integer, Optional, Sequence, TypeRef
 from hiku.utils import listify
@@ -106,4 +106,56 @@ def test_serialize_scalar_field_correct():
     }
 
 
-# TODO: test parse scalar argument value
+
+def test_parse_scalar_input_correct():
+    @listify
+    def resolve_user_fields(fields, ids):
+        def get_field(fname, id_):
+            if fname == 'id':
+                return id_
+            elif fname == 'dateCreated':
+                return DATE_CREATED
+
+        for id_ in ids:
+            yield [get_field(f.name, id_) for f in fields]
+
+    def link_user(opts):
+        if opts['dateCreated'] == DATE_CREATED:
+            return 1
+
+        return Nothing
+
+    graph = Graph([
+        Node('User', [
+            Field('id', Integer, resolve_user_fields),
+            Field('dateCreated', DateTime, resolve_user_fields),
+        ]),
+        Root([
+            Link(
+                'user',
+                Optional[TypeRef['User']],
+                link_user,
+                requires=None,
+                options=[
+                    Option('dateCreated', DateTime),
+                ]
+            ),
+        ]),
+    ], scalars=[DateTime])
+
+    query = """
+    query GetUser {
+      user(dateCreated: "%s") {
+        id
+        dateCreated
+      }
+    }
+    """ % DATE_CREATED_STR
+
+    result = execute(graph, read(query))
+    assert result == {
+        'user': {
+            'id': 1,
+            'dateCreated': DATE_CREATED_STR,
+        }
+    }
