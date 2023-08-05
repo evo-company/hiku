@@ -70,7 +70,7 @@ from .types import (
     DirectiveArgIdent,
     HashedNamedTuple,
 )
-
+from ..utils.serialize import serialize
 
 _BUILTIN_DIRECTIVES: t.Tuple[
     t.Union[t.Type[Directive], t.Type[SchemaDirective]], ...
@@ -552,15 +552,19 @@ def input_value_info(
                     enum = schema.query_graph.enums_map[
                         option.type_info.type_name
                     ]
-                    default = enum.serialize(option.default)
+                    default = serialize(
+                        option.type, option.default, enum.serialize
+                    )
                 elif (
                     option.type_info
-                    and option.type_info.type_enum is FieldType.SCALAR
+                    and option.type_info.type_enum is FieldType.CUSTOM_SCALAR
                 ):
                     scalar = schema.query_graph.scalars_map[
                         option.type_info.type_name
                     ]
-                    default = scalar.serialize(option.default)
+                    default = serialize(
+                        option.type, option.default, scalar.serialize
+                    )
                 else:
                     default = json.dumps(option.default)
             info = {

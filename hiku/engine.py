@@ -69,6 +69,7 @@ from .executors.queue import (
 )
 from .union import SplitUnionQueryByNodes
 from .utils import ImmutableDict
+from .utils.serialize import serialize
 
 if TYPE_CHECKING:
     from .readers.graphql import Operation
@@ -93,12 +94,13 @@ def _yield_options(
             )
         elif option.type_info and option.type_info.type_enum is FieldType.ENUM:
             enum = graph.enums_map[option.type_info.type_name]
-            yield option.name, enum.parse(value)
+            yield option.name, serialize(option.type, value, enum.parse)
         elif (
-            option.type_info and option.type_info.type_enum is FieldType.SCALAR
+            option.type_info
+            and option.type_info.type_enum is FieldType.CUSTOM_SCALAR
         ):
             scalar = graph.scalars_map[option.type_info.type_name]
-            yield option.name, scalar.parse(value)
+            yield option.name, serialize(option.type, value, scalar.parse)
         else:
             yield option.name, value
 

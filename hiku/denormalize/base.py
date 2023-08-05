@@ -24,30 +24,25 @@ from ..types import (
     SequenceMeta,
     get_type,
 )
+from ..utils.serialize import serialize
 
 
 def serialize_value(graph: Graph, field: GraphField, value: t.Any) -> t.Any:
+    """Serializes value according to the field type."""
     if not field.type_info:
         return value
 
     field_type = field.type_info.type_enum
     type_name = field.type_info.type_name
 
-    if field_type is FieldType.SIMPLE:
+    if field_type in (FieldType.SCALAR, FieldType.RECORD):
         return value
     elif field_type is FieldType.ENUM:
         enum = graph.enums_map[type_name]
-
-        if isinstance(field.type, SequenceMeta):
-            return [enum.serialize(v) for v in value]
-        elif isinstance(field.type, OptionalMeta):
-            if value is None:
-                return None
-
-        return enum.serialize(value)
-    elif field_type is FieldType.SCALAR:
+        return serialize(field.type, value, enum.serialize)
+    elif field_type is FieldType.CUSTOM_SCALAR:
         scalar = graph.scalars_map[type_name]
-        return scalar.serialize(value)
+        return serialize(field.type, value, scalar.serialize)
     else:
         raise TypeError(
             'Unknown field "{}" type "{!r}"'.format(field.name, field.type)

@@ -73,6 +73,14 @@ def test_serialize_scalar_field_correct():
                 return id_
             elif fname == 'dateCreated':
                 return DATE_CREATED
+            elif fname == 'dateCreatedMany':
+                return [DATE_CREATED]
+            elif fname == 'dateCreatedManyOptional':
+                return [DATE_CREATED, None]
+            elif fname == 'dateCreatedMaybe':
+                return None
+            elif fname == 'dateCreatedMaybeSequence':
+                return []
 
         for id_ in ids:
             yield [get_field(f.name, id_) for f in fields]
@@ -81,6 +89,10 @@ def test_serialize_scalar_field_correct():
         Node('User', [
             Field('id', Integer, resolve_user_fields),
             Field('dateCreated', DateTime, resolve_user_fields),
+            Field('dateCreatedMany', Sequence[DateTime], resolve_user_fields),
+            Field('dateCreatedManyOptional', Sequence[Optional[DateTime]], resolve_user_fields),
+            Field('dateCreatedMaybe', Optional[DateTime], resolve_user_fields),
+            Field('dateCreatedMaybeSequence', Optional[Sequence[DateTime]], resolve_user_fields),
         ]),
         Root([
             Link('user', Optional[TypeRef['User']], lambda: 1, requires=None),
@@ -92,6 +104,10 @@ def test_serialize_scalar_field_correct():
       user {
         id
         dateCreated
+        dateCreatedMany
+        dateCreatedManyOptional
+        dateCreatedMaybe
+        dateCreatedMaybeSequence
       }
     }
     """
@@ -100,9 +116,12 @@ def test_serialize_scalar_field_correct():
         'user': {
             'id': 1,
             'dateCreated': DATE_CREATED_STR,
+            'dateCreatedMany': [DATE_CREATED_STR],
+            'dateCreatedManyOptional': [DATE_CREATED_STR, None],
+            'dateCreatedMaybe': None,
+            'dateCreatedMaybeSequence': [],
         }
     }
-
 
 
 def test_parse_scalar_input_correct():
@@ -136,6 +155,8 @@ def test_parse_scalar_input_correct():
                 requires=None,
                 options=[
                     Option('dateCreated', DateTime),
+                    Option('dateCreatedMany', Sequence[DateTime]),
+                    Option('dateCreatedMaybe', Optional[DateTime]),
                 ]
             ),
         ]),
@@ -143,12 +164,12 @@ def test_parse_scalar_input_correct():
 
     query = """
     query GetUser {
-      user(dateCreated: "%s") {
+      user(dateCreated: "%s", dateCreatedMany: ["%s"], dateCreatedMaybe: null) {
         id
         dateCreated
       }
     }
-    """ % DATE_CREATED_STR
+    """ % (DATE_CREATED_STR, DATE_CREATED_STR)
 
     result = execute(graph, read(query))
     assert result == {

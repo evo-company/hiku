@@ -596,7 +596,9 @@ def test_custom_scalar():
                 _noop,
                 requires=None,
                 options=[
-                    Option('uid', Optional[UserId], default=1)
+                    Option('uid', UserId, default=1),
+                    Option('uidMany', Sequence[UserId], default=[1]),
+                    Option('uidMaybe', Optional[UserId], default=None)
                 ]
             ),
         ]),
@@ -614,7 +616,9 @@ def test_custom_scalar():
         ),
         _type('Query', 'OBJECT', fields=[
             _field('user', _obj('User'), args=[
-                _ival('uid', _scalar('UserId'), defaultValue='uid1')
+                _ival('uid', _non_null(_scalar('UserId')), defaultValue='uid1'),
+                _ival('uidMany', _seq_of(_scalar('UserId')), defaultValue=['uid1']),
+                _ival('uidMaybe', _scalar('UserId'), defaultValue=None),
             ]),
         ], ),
         _type('UserId', 'SCALAR'),

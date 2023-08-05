@@ -163,7 +163,7 @@ class GraphValidator(GraphVisitor):
         with self.push_ctx(obj):
             super(GraphValidator, self).visit_field(obj)
 
-        if obj.type_info and obj.type_info.type_enum is FieldType.SCALAR:
+        if obj.type_info and obj.type_info.type_enum is FieldType.CUSTOM_SCALAR:
             if obj.type_info.type_name not in self.scalars_map:
                 self.errors.report(
                     'Field "{}" has type "{!r}" but no scalar is '

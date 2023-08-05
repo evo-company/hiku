@@ -114,7 +114,7 @@ class Option(AbstractOption):
         self.type = type_
         self.default = default
         self.description = description
-        self.type_info = get_field_type(type_) if type_ is not None else None
+        self.type_info = get_field_type(type_)
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, ...)".format(
@@ -224,7 +224,7 @@ class Field(AbstractField):
         self.options = options or ()
         self.description = description
         self.directives = directives or ()
-        self.type_info = get_field_type(type_) if type_ is not None else None
+        self.type_info = get_field_type(type_)
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r})".format(
@@ -259,9 +259,14 @@ def get_link_type_enum(type_: TypingMeta) -> t.Tuple[Const, str]:
 
 
 class FieldType(Enum):
-    SIMPLE = "SIMPLE"
+    # When Field is a TypeRef to Record
+    RECORD = "RECORD"
+    # When Field is a EnumRef to Enum
     ENUM = "ENUM"
+    # When Field is a builtin scalar (such as String, Integer, etc)
     SCALAR = "SCALAR"
+    # When Field is a custom scalar (such as DateTime, etc)
+    CUSTOM_SCALAR = "CUSTOM_SCALAR"
 
 
 @dataclasses.dataclass
@@ -271,23 +276,30 @@ class FieldTypeInfo:
 
 
 def get_field_type(
-    type_: t.Union[GenericMeta, ScalarMeta]
+    type_: t.Optional[t.Union[GenericMeta, ScalarMeta]]
 ) -> t.Optional[FieldTypeInfo]:
+    if not type_:
+        return None
+
     if isinstance(type_, OptionalMeta):
-        return get_field_type(type_.__type__)
+        return get_field_type(getattr(type_, "__type__", None))
 
     if isinstance(type_, SequenceMeta):
-        return get_field_type(type_.__item_type__)
+        # if type not passed to Sequence[]
+        return get_field_type(getattr(type_, "__item_type__", None))
 
     if isinstance(type_, TypeRefMeta):
         return FieldTypeInfo(
             type_.__type_name__,
-            FieldType.SIMPLE,
+            FieldType.RECORD,
         )
     elif isinstance(type_, EnumRefMeta):
         return FieldTypeInfo(type_.__type_name__, FieldType.ENUM)
     elif isinstance(type_, ScalarMeta):
-        return FieldTypeInfo(type_.__type_name__, FieldType.SCALAR)
+        return FieldTypeInfo(type_.__type_name__, FieldType.CUSTOM_SCALAR)
+
+    if isinstance(type_, GenericMeta):
+        return FieldTypeInfo(type_.__name__, FieldType.SCALAR)
 
     return None
 
