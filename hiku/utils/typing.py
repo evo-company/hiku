@@ -59,7 +59,7 @@ def builtin_to_introspection_type(typ: Any) -> Any:
         elif is_list(typ_):
             return int_types.LIST(convert(typ_.__args__[0]))
         elif issubclass(typ_, Scalar):
-            return int_types.SCALAR(typ_.__scalar_name__)
+            return int_types.SCALAR(typ_.__type_name__)
         elif isinstance(typ_, EnumMeta):
             return int_types.ENUM(
                 typ_.__name__,

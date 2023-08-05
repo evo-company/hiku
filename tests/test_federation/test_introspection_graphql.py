@@ -104,10 +104,9 @@ def _ival(name, type_, **kwargs):
     return data
 
 
-def _schema(types, with_mutation=False, custom_scalars=None) -> dict:
+def _schema(types, with_mutation=False) -> dict:
     names = [t['name'] for t in types]
     assert 'Query' in names, names
-    custom_scalars = custom_scalars or []
     return {
         '__schema': {
             'directives': [
@@ -128,7 +127,7 @@ def _schema(types, with_mutation=False, custom_scalars=None) -> dict:
             ],
             'mutationType': {'name': 'Mutation'} if with_mutation else None,
             'queryType': {'name': 'Query'},
-            'types': SCALARS + types + CUSTOM_SCALARS + custom_scalars,
+            'types': SCALARS + types
         }
     }
 
@@ -140,12 +139,6 @@ SCALARS = [
     _type('Float', 'SCALAR'),
     _type('Any', 'SCALAR'),
     _type('ID', 'SCALAR'),
-]
-
-CUSTOM_SCALARS = [
-    _type('DateTime', 'SCALAR'),
-    _type('Date', 'SCALAR'),
-    _type('UUID', 'SCALAR'),
 ]
 
 

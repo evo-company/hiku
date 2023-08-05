@@ -22,6 +22,7 @@ import typing as t
 
 from collections import defaultdict
 
+from .scalar import ScalarMeta
 from .types import (
     RecordMeta,
     OptionalMeta,
@@ -133,7 +134,7 @@ class Proxy:
 
 
 def _denormalize_type(
-    type_: GenericMeta, result: t.Any, query_obj: FieldBase
+    type_: t.Union[GenericMeta, ScalarMeta], result: t.Any, query_obj: FieldBase
 ) -> t.Any:
     if isinstance(query_obj, Field):
         return result

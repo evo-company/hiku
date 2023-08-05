@@ -41,8 +41,10 @@ from .query import (
     QueryVisitor,
 )
 from .graph import (
+    FieldType,
     Interface,
     Link,
+    LinkType,
     Maybe,
     MaybeMany,
     One,
@@ -89,9 +91,10 @@ def _yield_options(
                     option.name, graph_obj
                 )
             )
-        elif option.enum_name is not None:
-            enum = graph.enums_map[option.enum_name]
+        elif option.type_info and option.type_info.type_enum is FieldType.ENUM:
+            enum = graph.enums_map[option.type_info.type_name]
             yield option.name, enum.parse(value)
+        # TODO: add scalar type check
         else:
             yield option.name, value
 
@@ -153,9 +156,9 @@ class InitOptions(QueryTransformer):
         graph_obj = self._path[-1].fields_map[obj.name]
 
         if isinstance(graph_obj, Link):
-            if graph_obj.is_union:
+            if graph_obj.type_info.type_enum is LinkType.UNION:
                 self._path.append(self._graph.unions_map[graph_obj.node])
-            elif graph_obj.is_interface:
+            elif graph_obj.type_info.type_enum is LinkType.INTERFACE:
                 self._path.append(self._graph.interfaces_map[graph_obj.node])
             else:
                 self._path.append(self._graph.nodes_map[graph_obj.node])
@@ -381,7 +384,10 @@ def link_ref_maybe(graph_link: Link, ident: Any) -> Optional[Reference]:
     if ident is Nothing:
         return None
     else:
-        if graph_link.is_union or graph_link.is_interface:
+        if graph_link.type_info.type_enum in (
+            LinkType.UNION,
+            LinkType.INTERFACE,
+        ):
             return Reference(ident[1].__type_name__, ident[0])
         return Reference(graph_link.node, ident)
 
@@ -389,13 +395,13 @@ def link_ref_maybe(graph_link: Link, ident: Any) -> Optional[Reference]:
 def link_ref_one(graph_link: Link, ident: Any) -> Reference:
     assert ident is not Nothing
 
-    if graph_link.is_union or graph_link.is_interface:
+    if graph_link.type_info.type_enum in (LinkType.UNION, LinkType.INTERFACE):
         return Reference(ident[1].__type_name__, ident[0])
     return Reference(graph_link.node, ident)
 
 
 def link_ref_many(graph_link: Link, idents: List) -> List[Reference]:
-    if graph_link.is_union or graph_link.is_interface:
+    if graph_link.type_info.type_enum in (LinkType.UNION, LinkType.INTERFACE):
         return [Reference(i[1].__type_name__, i[0]) for i in idents]
     return [Reference(graph_link.node, i) for i in idents]
 
@@ -403,7 +409,7 @@ def link_ref_many(graph_link: Link, idents: List) -> List[Reference]:
 def link_ref_maybe_many(
     graph_link: Link, idents: List
 ) -> List[Optional[Reference]]:
-    if graph_link.is_union or graph_link.is_interface:
+    if graph_link.type_info.type_enum in (LinkType.UNION, LinkType.INTERFACE):
         return [
             Reference(i[1].__type_name__, i[0]) if i is not Nothing else None
             for i in idents
@@ -733,7 +739,9 @@ class Query(Workflow):
         from_list = ids is not None and graph_link.requires is not None
         to_ids = link_result_to_ids(from_list, graph_link.type_enum, result)
         if to_ids:
-            if graph_link.is_union and isinstance(to_ids, list):
+            if graph_link.type_info.type_enum is LinkType.UNION and isinstance(
+                to_ids, list
+            ):
                 grouped_ids = defaultdict(list)
                 for id_, type_ref in to_ids:
                     grouped_ids[type_ref.__type_name__].append(id_)
@@ -753,7 +761,10 @@ class Query(Workflow):
                     )
                 for _ in range(track_times):
                     self._track(path)
-            elif graph_link.is_interface and isinstance(to_ids, list):
+            elif (
+                graph_link.type_info.type_enum is LinkType.INTERFACE
+                and isinstance(to_ids, list)
+            ):
                 grouped_ids = defaultdict(list)
                 for id_, type_ref in to_ids:
                     grouped_ids[type_ref.__type_name__].append(id_)

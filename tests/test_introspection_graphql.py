@@ -139,10 +139,9 @@ def _field_enum_directive(name, args):
     }
 
 
-def _schema(types, directives: Optional[List[Dict]] = None, with_mutation=False, custom_scalars=None):
+def _schema(types, directives: Optional[List[Dict]] = None, with_mutation=False):
     names = [t['name'] for t in types]
     assert 'Query' in names, names
-    custom_scalars = custom_scalars or []
     return {
         '__schema': {
             'directives': [
@@ -167,7 +166,7 @@ def _schema(types, directives: Optional[List[Dict]] = None, with_mutation=False,
             ] + (directives or []),
             'mutationType': {'name': 'Mutation'} if with_mutation else None,
             'queryType': {'name': 'Query'},
-            'types': SCALARS + types + CUSTOM_SCALARS + custom_scalars,
+            'types': SCALARS + types
         }
     }
 
@@ -190,12 +189,6 @@ SCALARS = [
     _type('Float', 'SCALAR'),
     _type('Any', 'SCALAR'),
     _type('ID', 'SCALAR'),
-]
-
-CUSTOM_SCALARS = [
-    _type('DateTime', 'SCALAR'),
-    _type('Date', 'SCALAR'),
-    _type('UUID', 'SCALAR'),
 ]
 
 
@@ -594,7 +587,6 @@ def test_custom_scalar():
     graph = Graph([
         Node('User', [
             Field('id', Integer, _noop),
-            # TODO: this will not work
             Field('active', YesNo, _noop),
         ]),
         Root([
@@ -605,9 +597,7 @@ def test_custom_scalar():
                 requires=None,
             ),
         ]),
-    ], scalars={
-        YesNo: YesNo,
-    })
+    ], scalars=[YesNo])
 
     assert introspect(graph) == _schema([
         _type('User', 'OBJECT', fields=[
@@ -617,7 +607,6 @@ def test_custom_scalar():
         _type('Query', 'OBJECT', fields=[
             _field('user', _obj('User')),
         ]),
-    ], custom_scalars=[
         _type('YesNo', 'SCALAR'),
     ])
 
@@ -647,9 +636,7 @@ def test_query_scalar_as_single_type(name, expected):
         Root([
             Field('status', YesNo, _noop),
         ]),
-    ], scalars={
-        YesNo: YesNo,
-    })
+    ], scalars=[YesNo])
 
     got = execute(query, graph)
     assert got['__type'] == expected

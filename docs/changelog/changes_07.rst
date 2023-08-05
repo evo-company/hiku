@@ -41,6 +41,7 @@ Changes in 0.7
   - Added support for unions :ref:`Check unions documentation <unions-doc>`
   - Added support for interfaces :ref:`Check interfaces documentation <interfaces-doc>`
   - Added support for enums :ref:`Check enums documentation <enums-doc>`
+  - Added support for custom scalars :ref:`Check custom scalars documentation <scalars-doc>`
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -15,6 +15,7 @@ from ..directives import (
     get_deprecated,
 )
 from ..graph import (
+    FieldType,
     Graph,
     Root,
     Node,
@@ -147,7 +148,7 @@ class TypeIdent(AbstractTypeVisitor):
         return SCALAR("Any")
 
     def visit_scalar(self, obj: t.Type[Scalar]) -> HashedNamedTuple:
-        return NON_NULL(SCALAR(obj.__scalar_name__))
+        return NON_NULL(SCALAR(obj.__type_name__))
 
     def visit_mapping(self, obj: MappingMeta) -> HashedNamedTuple:
         return SCALAR("Any")
@@ -278,8 +279,8 @@ def root_schema_types(schema: SchemaInfo) -> t.Iterator[HashedNamedTuple]:
         )
 
     # custom scalars
-    for scalar in schema.query_graph.scalars.values():
-        yield SCALAR(scalar.__scalar_name__)
+    for scalar in schema.query_graph.scalars:
+        yield SCALAR(scalar.__type_name__)
 
 
 def root_schema_query_type(schema: SchemaInfo) -> HashedNamedTuple:
@@ -548,9 +549,15 @@ def input_value_info(
             if option.default is Nothing:
                 default = None
             else:
-                if option.enum_name is not None:
-                    enum = schema.query_graph.enums_map[option.enum_name]
+                if (
+                    option.type_info
+                    and option.type_info.type_enum is FieldType.ENUM
+                ):
+                    enum = schema.query_graph.enums_map[
+                        option.type_info.type_name
+                    ]
                     default = enum.serialize(option.default)
+                # TODO: support custom scalars
                 else:
                     default = json.dumps(option.default)
             info = {

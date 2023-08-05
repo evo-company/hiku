@@ -1,14 +1,13 @@
 import typing as t
 from collections import deque
-from enum import Enum
 
 from ..enum import BaseEnum
 from ..graph import (
+    FieldType,
     Graph,
     Interface,
     Union,
     Field as GraphField,
-    Link as GraphLink,
 )
 from ..query import (
     QueryVisitor,
@@ -18,7 +17,6 @@ from ..query import (
 )
 from ..result import Proxy
 from ..types import (
-    GenericMeta,
     Record,
     RecordMeta,
     RefMeta,
@@ -28,31 +26,17 @@ from ..types import (
 )
 
 
-class FieldType(Enum):
-    PLAIN = "plain"
-    ENUM = "enum"
-    SCALAR = "scalar"
-
-
-def get_field_type(
-    graph: Graph, field: t.Union[GraphField, GraphLink]
-) -> FieldType:
-    if field.enum_name is not None:
-        return FieldType.ENUM
-
-    if not isinstance(field.type, GenericMeta) and field.type in graph.scalars:
-        return FieldType.SCALAR
-
-    return FieldType.PLAIN
-
-
 def serialize_value(graph: Graph, field: GraphField, value: t.Any) -> t.Any:
-    field_type = get_field_type(graph, field)
+    if not field.type_info:
+        return value
 
-    if field_type is FieldType.PLAIN:
+    field_type = field.type_info.type_enum
+    type_name = field.type_info.type_name
+
+    if field_type is FieldType.SIMPLE:
         return value
     elif field_type is FieldType.ENUM:
-        enum = graph.enums_map[field.enum_name]
+        enum = graph.enums_map[type_name]
 
         if isinstance(field.type, SequenceMeta):
             return [enum.serialize(v) for v in value]
@@ -62,7 +46,7 @@ def serialize_value(graph: Graph, field: GraphField, value: t.Any) -> t.Any:
 
         return enum.serialize(value)
     elif field_type is FieldType.SCALAR:
-        scalar = graph.scalars[field.type]
+        scalar = graph.scalars_map[type_name]
         return scalar.serialize(value)
     else:
         raise TypeError(
@@ -75,7 +59,6 @@ class Denormalize(QueryVisitor):
         self._graph = graph
         self._types = graph.__types__
         self._unions = graph.unions_map
-        self._scalars = graph.scalars
         self._enums = graph.enums_map
         self._result = result
         self._type: t.Deque[

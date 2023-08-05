@@ -1,7 +1,7 @@
 import uuid
 
 from datetime import date, datetime
-from typing import Any, Callable, Dict, Optional, TYPE_CHECKING, Type
+from typing import Any, Callable, Optional, TYPE_CHECKING, Type
 
 if TYPE_CHECKING:
     from hiku.graph import AbstractGraphVisitor
@@ -19,8 +19,8 @@ def scalar(
     """
 
     def _scalar(cls: Type["Scalar"]) -> Type["Scalar"]:
-        cls.__scalar_name__ = name or cls.__name__
-        cls.__scalar_description__ = description
+        cls.__type_name__ = name or cls.__name__
+        cls.__description__ = description
         return cls
 
     return _scalar
@@ -28,15 +28,15 @@ def scalar(
 
 class ScalarMeta(type):
     """Metaclass for scalar types.
-    Handles `__scalar_name__` attribute.
+    Handles `__type_name__` attribute.
     """
 
-    __scalar_name__: str
-    __scalar_description__: Optional[str]
+    __type_name__: str
+    __description__: Optional[str]
 
     def __new__(cls, *args: Any, **kwargs: Any):  # type: ignore[no-untyped-def]
         instance = super().__new__(cls, *args, **kwargs)
-        instance.__scalar_name__ = instance.__name__
+        instance.__type_name__ = instance.__name__
         return instance
 
 
@@ -47,9 +47,13 @@ class Scalar(metaclass=ScalarMeta):
     To implement custom scalar type, subclass this class and
     implement `parse` and `serialize` class methods.
 
-    ScalarMeta metaclass sets `__scalar_name__` attribute during class creation.
+    ScalarMeta metaclass sets `__type_name__` attribute during class creation.
     """
 
+    # TODO: graphql specification defines three methods:
+    # - parse_literal
+    # - parse_value
+    # - serialize
     @classmethod
     def parse(cls, value: Any) -> Any:
         return value
@@ -96,10 +100,3 @@ class UUID(Scalar):
     @classmethod
     def serialize(cls, value: uuid.UUID) -> str:
         return str(value)
-
-
-_BUILTIN_CUSTOM_SCALARS: Dict[Any, Type[Scalar]] = {
-    datetime: DateTime,
-    date: Date,
-    uuid.UUID: UUID,
-}

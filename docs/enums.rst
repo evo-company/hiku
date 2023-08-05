@@ -42,9 +42,9 @@ In `hiku` you can define enum type like this:
     def user_fields_resolver(fields, ids):
         def get_field(field, user):
             if field.name == 'id':
-                return user.id
+                return user['id']
             elif field.name == 'status':
-                return user.status
+                return user['status']
 
         return [[get_field(field, users[id]) for field in fields] for id in ids]
 

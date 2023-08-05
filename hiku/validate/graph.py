@@ -7,6 +7,7 @@ from collections import Counter
 from ..directives import Deprecated
 from ..enum import BaseEnum
 from ..graph import (
+    FieldType,
     GraphVisitor,
     Interface,
     Root,
@@ -49,7 +50,7 @@ class GraphValidator(GraphVisitor):
             return ":{}".format(obj.name)
 
         def visit_scalar(self, obj: t.Type[Scalar]) -> str:
-            return obj.__scalar_name__
+            return obj.__type_name__
 
     _name_formatter = _NameFormatter()
     _graph_accept_types = (AbstractNode,)
@@ -63,7 +64,7 @@ class GraphValidator(GraphVisitor):
         unions: t.List[Union],
         interfaces: t.List[Interface],
         enums: t.List[BaseEnum],
-        scalars: t.Dict[t.Any, t.Type[Scalar]],
+        scalars: t.List[t.Type[Scalar]],
     ) -> None:
         self.items = items
         self.unions = unions
@@ -72,6 +73,7 @@ class GraphValidator(GraphVisitor):
         self.interfaces_map = {i.name: i for i in interfaces}
         self.enums = enums
         self.scalars = scalars
+        self.scalars_map = {s.__type_name__: s for s in scalars}
         self.errors = Errors()
         self._ctx: t.List = []
 
@@ -82,7 +84,7 @@ class GraphValidator(GraphVisitor):
         unions: t.List[Union],
         interfaces: t.List[Interface],
         enums: t.List[BaseEnum],
-        scalars: t.Dict[t.Any, t.Type[Scalar]],
+        scalars: t.List[t.Type[Scalar]],
     ) -> None:
         validator = cls(items, unions, interfaces, enums, scalars)
         validator.visit_graph_items(items)
@@ -161,13 +163,28 @@ class GraphValidator(GraphVisitor):
         with self.push_ctx(obj):
             super(GraphValidator, self).visit_field(obj)
 
-        if obj.type is not None and not isinstance(obj.type, GenericMeta):
-            if obj.type not in self.scalars:
+        if obj.type_info and obj.type_info.type_enum is FieldType.SCALAR:
+            if obj.type_info.type_name not in self.scalars_map:
                 self.errors.report(
                     'Field "{}" has type "{!r}" but no scalar is '
-                    "defined for it".format(self._format_path(obj), obj.type)
+                    "defined for it. "
+                    "Maybe you forgot to add new scalar to Graph(..., scalars)?".format(  # noqa: E501
+                        self._format_path(obj), obj.type
+                    )
                 )
                 return
+
+        if (
+            obj.type is not None
+            and not isinstance(obj.type, GenericMeta)
+            and not obj.type_info
+        ):
+            self.errors.report(
+                'Field "{}" has type "{!r}" but Hiku does not support it.'.format(  # noqa: E501
+                    self._format_path(obj), obj.type
+                )
+            )
+            return
 
         self._validate_deprecated_duplicates(obj)
 
@@ -355,8 +372,6 @@ class GraphValidator(GraphVisitor):
         for enum in enums:
             self.visit(enum)
 
-    def visit_graph_scalars(
-        self, scalars: t.Dict[t.Any, t.Type[Scalar]]
-    ) -> None:
-        for scalar in scalars.values():
+    def visit_graph_scalars(self, scalars: t.List[t.Type[Scalar]]) -> None:
+        for scalar in scalars:
             self.visit(scalar)

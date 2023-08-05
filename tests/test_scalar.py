@@ -6,7 +6,7 @@ from hiku.denormalize.graphql import DenormalizeGraphQL
 from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import Field, Graph, Link, Node, Option, Root
-from hiku.scalar import DateTime
+from hiku.scalar import DateTime, Scalar
 from hiku.types import Integer, Optional, Sequence, TypeRef
 from hiku.utils import listify
 from hiku.readers.graphql import read
@@ -22,12 +22,12 @@ def execute(graph, query):
 class SomeType:
     ...
 
-def test_validate_graph_scalars():
+def test_validate_graph_invalid_scalars():
     with pytest.raises(GraphValidationError) as err:
         Graph([
             Node('User', [
                 Field('id', Integer, lambda: None),
-                Field('dateCreated', SomeType , lambda: None),
+                Field('dateCreated', SomeType, lambda: None),
             ]),
             Root([
                 Link('user', Optional[TypeRef['User']], lambda: None, requires=None),
@@ -35,7 +35,29 @@ def test_validate_graph_scalars():
         ])
 
     assert err.value.errors == [
-        'Field "User.dateCreated" has type "<class \'tests.test_scalar.SomeType\'>" but no scalar is defined for it',
+        'Field "User.dateCreated" has type "<class \'tests.test_scalar.SomeType\'>" but Hiku does not support it.',
+    ]
+
+
+def test_validate_graph_not_defined_scalars():
+
+    class SomeType(Scalar):
+        ...
+
+    with pytest.raises(GraphValidationError) as err:
+        Graph([
+            Node('User', [
+                Field('id', Integer, lambda: None),
+                Field('dateCreated', SomeType, lambda: None),
+            ]),
+            Root([
+                Link('user', Optional[TypeRef['User']], lambda: None, requires=None),
+            ]),
+        ])
+
+    assert err.value.errors == [
+        'Field "User.dateCreated" has type "<class \'tests.test_scalar.test_validate_graph_not_defined_scalars.<locals>.SomeType\'>" but no scalar is defined for it. '
+        'Maybe you forgot to add new scalar to Graph(..., scalars)?',
     ]
 
 
@@ -58,14 +80,14 @@ def test_serialize_scalar_field_correct():
     graph = Graph([
         Node('User', [
             Field('id', Integer, resolve_user_fields),
-            Field('dateCreated', datetime, resolve_user_fields),
+            # TODO: test Optional[DateTime]
+            # TODO: test Sequence[DateTime]
+            Field('dateCreated', DateTime, resolve_user_fields),
         ]),
         Root([
             Link('user', Optional[TypeRef['User']], lambda: 1, requires=None),
         ]),
-    ], scalars={
-        datetime: DateTime
-    })
+    ], scalars=[DateTime])
 
     query = """
     query GetUser {
@@ -82,3 +104,6 @@ def test_serialize_scalar_field_correct():
             'dateCreated': DATE_CREATED_STR,
         }
     }
+
+
+# TODO: test parse scalar argument value
