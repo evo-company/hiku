@@ -80,8 +80,6 @@ def test_serialize_scalar_field_correct():
     graph = Graph([
         Node('User', [
             Field('id', Integer, resolve_user_fields),
-            # TODO: test Optional[DateTime]
-            # TODO: test Sequence[DateTime]
             Field('dateCreated', DateTime, resolve_user_fields),
         ]),
         Root([

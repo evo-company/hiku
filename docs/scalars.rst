@@ -1,5 +1,5 @@
 Scalars
-=====
+=======
 
 .. _scalars-doc:
 
@@ -14,7 +14,7 @@ Hiku has a few built-in scalars according to the GraphQL specification:
 - ``Boolean`` - a boolean value: ``true`` or ``false``.
 - ``Any`` - any value.
 
-Although these scalar types is sufficient to represent the majority of data types returned from graph,
+Although these scalar types are sufficient to represent the majority of data types returned from graph,
 it is sometimes necessary to define custom scalar types.
 
 ``Hiku`` has a few additional custom scalars:
@@ -36,6 +36,38 @@ If builtin scalars do not cover your specific needs, you can define custom scala
 
 .. code-block:: python
 
+    from hiku.scalar import Scalar
+
+    class YMDDate(Scalar):
+        """Format datetime info %Y-%m-%d"""
+        @classmethod
+        def parse(cls, value: str) -> datetime:
+            return datetime.strptime(value, '%Y-%m-%d')
+
+        @classmethod
+        def serialize(cls, value: datetime) -> str:
+            return value.strftime('%Y-%m-%d')
+
+.. note::
+
+    By default scalar name will be the name of a class.
+
+    If you want to specify a custom name for scalar or add description,
+    you can use ``@scalar()`` decorator:
+
+    .. code-block:: python
+
+
+        from hiku.scalar import Scalar, scalar
+
+        @scalar('YearMonthDayDate', 'Format datetime info %Y-%m-%d')
+        class YMDDate(Scalar):
+            ...
+
+Now, lets look at the full example:
+
+.. code-block:: python
+
     from datetime import datetime
 
     from hiku.graph import Field, Graph, Link, Node, Root
@@ -49,11 +81,11 @@ If builtin scalars do not cover your specific needs, you can define custom scala
     class YMDDate(Scalar):
         """Format datetime info %Y-%m-%d"""
         @classmethod
-        def parse(cls, value):
-            return datetime.strptime(value, '%Y-%m-%d').date()
+        def parse(cls, value: str) -> datetime:
+            return datetime.strptime(value, '%Y-%m-%d')
 
         @classmethod
-        def serialize(cls, value):
+        def serialize(cls, value: datetime) -> str:
             return value.strftime('%Y-%m-%d')
 
     def user_fields_resolver(fields, ids):
@@ -66,7 +98,10 @@ If builtin scalars do not cover your specific needs, you can define custom scala
         return [[get_field(field, users[id]) for field in fields] for id in ids]
 
     def get_user(opts):
-        return 1
+        if opts['olderThen'] <= datetime(2023, 6, 15):
+            return 1
+
+        return Nothing
 
     scalars = [YMDDate]
 
@@ -76,29 +111,39 @@ If builtin scalars do not cover your specific needs, you can define custom scala
             Field('dateCreated', YMDDate, user_fields_resolver),
         ]),
         Root([
-            Link('user', TypeRef['User'], get_user, requires=None),
+            Link(
+                'user',
+                TypeRef['User'],
+                get_user,
+                requires=None,
+                options=[
+                    Option('olderThen', Optional[YMDDate]),
+                ]
+            ),
         ]),
     ], scalars=scalars)
 
-Lets look at the example above:
+Lets decode the example above:
 
 - ``YMDDate`` type is subclassing ``Scalar` and implements ``parse`` and ``serialize`` methods.
 - ``User.dateCreated`` field has type ``YMDDate`` which is a custom scalar.
 - ``dateCreated`` field returns ``user.dateCreated`` which is a ``datetime`` instance.
-- ``YMDDate.parse`` method will be called to parse ``datetime`` instance into ``%Y-%m-%`` formated string.
+- ``YMDDate.parse`` method will be called to parse ``datetime`` instance into ``%Y-%m-%`` formatted string.
+- ``user`` field has input argument ``olderThen`` which has scalar type ``YMDDate``.
+  ``YMDDate.serialize`` method will be called to serialize input argument string into ``datetime`` instance.
 
-Now lets look at the query:
+If we run this query:
 
-.. code-block:: python
+.. code-block::
 
     query {
-        user {
+        user(olderThen: "2023-06-15") {
             id
             dateCreated
         }
     }
 
-The result will be:
+We will get this result:
 
 .. code-block::
 
@@ -107,16 +152,3 @@ The result will be:
         'dateCreated': '2023-06-15',
     }
 
-
-.. note::
-
-    By default scalar name will be the name of a class.
-
-    If you want to specify a custom name for scalar or add description,
-    you can use ``@scalar()`` decorator:
-
-    .. code-block:: python
-
-        @scalar('YearMonthDayDate', 'Format datetime info %Y-%m-%d')
-        class YMDDate(Scalar):
-            ...

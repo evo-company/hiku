@@ -49,6 +49,7 @@ class Scalar(metaclass=ScalarMeta):
 
     ScalarMeta metaclass sets `__type_name__` attribute during class creation.
     """
+
     @classmethod
     def parse(cls, value: Any) -> Any:
         return value
