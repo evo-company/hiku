@@ -72,7 +72,6 @@ from .types import (
 )
 
 
-# TODO(mkind): expose as public API
 _BUILTIN_DIRECTIVES: t.Tuple[
     t.Union[t.Type[Directive], t.Type[SchemaDirective]], ...
 ] = (
@@ -108,17 +107,14 @@ class SchemaInfo:
         self,
         query_graph: Graph,
         mutation_graph: t.Optional[Graph],
-        directives: t.Tuple[
-            t.Union[t.Type[Directive], t.Type[SchemaDirective]], ...
-        ],
     ):
         self.query_graph = query_graph
         self.data_types = query_graph.data_types
         self.mutation_graph = mutation_graph
-        self.directives = directives or ()
-        self.scalars = BUILTIN_SCALARS
+        self.directives = _BUILTIN_DIRECTIVES + tuple(
+            query_graph.directives or ()
+        )
         self.nodes_map = self._nodes_map()
-        self.unions_map = self.query_graph.unions_map
 
     def _nodes_map(self) -> OrderedDict:
         nodes = [(n.name, n) for n in self.query_graph.nodes]
@@ -219,8 +215,8 @@ def type_link(
     name = options["name"]
     if name in schema.nodes_map:
         return OBJECT(name)
-    elif name in schema.unions_map:
-        union = schema.unions_map[name]
+    elif name in schema.query_graph.unions_map:
+        union = schema.query_graph.unions_map[name]
         return UNION(
             union.name, tuple(OBJECT(type_name) for type_name in union.types)
         )
@@ -245,7 +241,7 @@ def type_link(
 
 @listify
 def root_schema_types(schema: SchemaInfo) -> t.Iterator[HashedNamedTuple]:
-    for scalar in schema.scalars:
+    for scalar in BUILTIN_SCALARS:
         yield scalar
 
     for name in schema.nodes_map:
@@ -557,7 +553,6 @@ def input_value_info(
                         option.type_info.type_name
                     ]
                     default = enum.serialize(option.default)
-                # TODO: support custom scalars
                 elif (
                     option.type_info
                     and option.type_info.type_enum is FieldType.SCALAR
@@ -976,10 +971,6 @@ class GraphQLIntrospection(GraphTransformer):
 
     """
 
-    __directives__: t.Tuple[
-        t.Union[t.Type[Directive], t.Type[SchemaDirective]], ...
-    ] = _BUILTIN_DIRECTIVES
-
     def __init__(
         self,
         query_graph: Graph,
@@ -994,7 +985,6 @@ class GraphQLIntrospection(GraphTransformer):
         self.schema = SchemaInfo(
             query_graph,
             mutation_graph,
-            self.__directives__ + tuple(query_graph.directives or ()),
         )
 
     def __type_name__(self, node_name: t.Optional[str]) -> Field:

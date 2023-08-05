@@ -49,11 +49,6 @@ class Scalar(metaclass=ScalarMeta):
 
     ScalarMeta metaclass sets `__type_name__` attribute during class creation.
     """
-
-    # TODO: graphql specification defines three methods:
-    # - parse_literal
-    # - parse_value
-    # - serialize
     @classmethod
     def parse(cls, value: Any) -> Any:
         return value

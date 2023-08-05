@@ -44,8 +44,6 @@ class FederatedGraphQLIntrospection(BaseFederatedGraphQLIntrospection):
     https://www.apollographql.com/docs/federation/federation-spec/#federation-schema-specification
     """
 
-    __directives__ = GraphQLIntrospection.__directives__
-
 
 class AsyncFederatedGraphQLIntrospection(
     FederatedGraphQLIntrospection, AsyncGraphQLIntrospection
