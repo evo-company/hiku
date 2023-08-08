@@ -2,7 +2,13 @@ import typing as t
 from collections import deque
 
 from ..enum import BaseEnum
-from ..graph import Graph, Interface, Union
+from ..graph import (
+    FieldType,
+    Graph,
+    Interface,
+    Union,
+    Field as GraphField,
+)
 from ..query import (
     QueryVisitor,
     Link,
@@ -18,12 +24,37 @@ from ..types import (
     SequenceMeta,
     get_type,
 )
+from ..utils.serialize import serialize
+
+
+def serialize_value(graph: Graph, field: GraphField, value: t.Any) -> t.Any:
+    """Serializes value according to the field type."""
+    if not field.type_info:
+        return value
+
+    field_type = field.type_info.type_enum
+    type_name = field.type_info.type_name
+
+    if field_type in (FieldType.SCALAR, FieldType.RECORD):
+        return value
+    elif field_type is FieldType.ENUM:
+        enum = graph.enums_map[type_name]
+        return serialize(field.type, value, enum.serialize)
+    elif field_type is FieldType.CUSTOM_SCALAR:
+        scalar = graph.scalars_map[type_name]
+        return serialize(field.type, value, scalar.serialize)
+    else:
+        raise TypeError(
+            'Unknown field "{}" type "{!r}"'.format(field.name, field.type)
+        )
 
 
 class Denormalize(QueryVisitor):
     def __init__(self, graph: Graph, result: Proxy) -> None:
+        self._graph = graph
         self._types = graph.__types__
         self._unions = graph.unions_map
+        self._enums = graph.enums_map
         self._result = result
         self._type: t.Deque[
             t.Union[t.Type[Record], Union, Interface, BaseEnum]
@@ -38,7 +69,21 @@ class Denormalize(QueryVisitor):
         return self._res.pop()
 
     def visit_field(self, obj: Field) -> None:
-        self._res[-1][obj.result_key] = self._data[-1][obj.result_key]
+        if isinstance(self._data[-1], Proxy):
+            type_name = self._data[-1].__ref__.node
+            if type_name == "__root__":
+                node = self._graph.root
+            else:
+                node = self._graph.nodes_map[type_name]
+            graph_field = node.fields_map[obj.name]
+
+            self._res[-1][obj.result_key] = serialize_value(
+                self._graph, graph_field, self._data[-1][obj.result_key]
+            )
+        else:
+            # Record type itself does not have custom serialization
+            # TODO: support Scalar/Enum types in Record
+            self._res[-1][obj.result_key] = self._data[-1][obj.result_key]
 
     def visit_link(self, obj: Link) -> None:
         if isinstance(self._type[-1], Union):

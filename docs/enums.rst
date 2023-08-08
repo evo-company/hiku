@@ -27,7 +27,72 @@ In graphql you can use enum type like this:
 Enum from string
 ----------------
 
-In `hiku` you can define enum type like this:
+The simplest way to create enum in `hiku` from a list of strings:
+
+.. code-block:: python
+
+    from hiku.enum import Enum
+
+    Enum('Status', ['ACTIVE', 'DELETED'])
+
+Enum from python Enum
+---------------------
+
+You can also create enum from builtin python ``Enum`` type:
+
+.. code-block:: python
+
+    from enum import Enum as PyEnum
+    from hiku.enum import Enum
+
+    class Status(PyEnum):
+        ACTIVE = 'active'
+        DELETED = 'deleted'
+
+    Enum.from_builtin(Status)
+
+In this example:
+
+- ``EnumFromBuiltin`` will use ``Enum.__name__`` as a enum name.
+- ``EnumFromBuiltin`` will use ``Enum.__members__`` to get a list of possible values.
+- ``EnumFromBuiltin`` will use ``member.name`` to get a value name:
+
+So this python enum:
+
+.. code-block:: python
+
+    class Status(PyEnum):
+        ACTIVE = 1
+        DELETED = 2
+
+is equivalent to this enum in graphql:
+
+.. code-block:: python
+
+    enum Status { ACTIVE, DELETED }
+
+If you want to specify different name you can pass ``name`` argument to ``Enum.from_builtin`` method:
+
+.. code-block:: python
+
+    Enum.from_builtin(Status, name='User_Status')
+
+.. note::
+
+    If you use builtin python ``Enum``, then you MUST return enum value from the resolver function, otherwise ``hiku`` will raise an error.
+
+    .. code-block:: python
+
+        def user_fields_resolver(fields, ids):
+            def get_field(field, user):
+                if field.name == 'id':
+                    return user.id
+                elif field.name == 'status':
+                    return Status(user.status)
+
+            return [[get_field(field, users[id]) for field in fields] for id in ids]
+
+Lets look at the full example on how to use enum type in `hiku`:
 
 .. code-block:: python
 
@@ -42,9 +107,9 @@ In `hiku` you can define enum type like this:
     def user_fields_resolver(fields, ids):
         def get_field(field, user):
             if field.name == 'id':
-                return user.id
+                return user['id']
             elif field.name == 'status':
-                return user.status
+                return user['status']
 
         return [[get_field(field, users[id]) for field in fields] for id in ids]
 
@@ -65,17 +130,13 @@ In `hiku` you can define enum type like this:
         ]),
     ], enums=enums)
 
-Lets look at the example above:
+Lets decode the example above:
 
 - ``Enum`` type is defined with a name and a list of possible values.
 - ``User.status`` field has type ``EnumRef['Status']`` which is a reference to the ``Status`` enum type.
 - ``status`` field returns ``user.status`` which is plain string.
 
-.. note::
-
-    You can not return a value that is not in the enum list of possible values. Hiku will raise an error if you try to do so.
-
-Now lets look at the query:
+If we run this query:
 
 .. code-block:: python
 
@@ -86,7 +147,7 @@ Now lets look at the query:
         }
     }
 
-The result will be:
+We will get the following result:
 
 .. code-block::
 
@@ -95,69 +156,6 @@ The result will be:
         'status': 'ACTIVE',
     }
 
-
-Enum from builtin Enum type
-----------------------------------
-
-You can also use python builtin ``Enum`` type to define an enum type in ``hiku``:
-
-.. code-block:: python
-
-    from enum import Enum as PyEnum
-    from hiku.enum import Enum
-
-    class Status(PyEnum):
-        ACTIVE = 'active'
-        DELETED = 'deleted'
-
-    Graph(..., enums=[Enum.from_builtin(Status)])
-
-``Enum.from_builtin`` will create ``hiku.enum.EnumFromBuiltin``:
-
-- ``EnumFromBuiltin`` will use ``Enum.__name__`` as a enum name.
-- ``EnumFromBuiltin`` will use ``Enum.__members__`` to get a list of possible values.
-- ``EnumFromBuiltin`` will use ``member.name`` to get a value name:
-
-  .. code-block:: python
-
-    class Status(PyEnum):
-        ACTIVE = 1
-        DELETED = 2
-
-  is equivalent to:
-
-  .. code-block:: python
-
-    enum Status { ACTIVE, DELETED }
-
-If you use builtin python ``Enum``, then you MUST return enum value from the resolver function, otherwise ``hiku`` will raise an error.
-
-.. code-block:: python
-
-    def user_fields_resolver(fields, ids):
-        def get_field(field, user):
-            if field.name == 'id':
-                return user.id
-            elif field.name == 'status':
-                return Status(user.status)
-
-        return [[get_field(field, users[id]) for field in fields] for id in ids]
-
-By default ``Enum.from_builtin`` will use ``Enum.__name__`` as a name for the enum type.
-
-.. note::
-
-    You can create enum using ``Enum`` class directly if you want custom name (for example non-pep8 compliant):
-
-    .. code-block:: python
-
-        Status = Enum('User_Status', ['ACTIVE', 'DELETED'])
-
-If you want to specify different name you can pass ``name`` argument to ``Enum.from_builtin`` method.
-
-.. code-block:: python
-
-    Graph(..., enums=[Enum.from_builtin(Status, name='User_Status')])
 
 Custom Enum type
 ----------------
@@ -184,25 +182,23 @@ You can also create custom enum type by subclassing ``hiku.enum.BaseEnum`` class
 Enum serialization
 ------------------
 
-``Enum`` serializes values into strings. If value is not in the list of possible values, then ``hiku`` will raise an error.
-
-``EnumFromBuiltin`` serializes values which are instances of ``Enum`` class into strings by calling `.name` on enum value. If value is not an instance of ``Enum`` class, then ``hiku`` will raise an error.
+- ``Enum`` values are serialized into strings. If value is not in the list of possible values, then ``hiku`` will raise an error.
+- ``EnumFromBuiltin`` values which are instances of ``Enum`` class are serialized into strings by calling **.name** on enum value. If value is not an instance of ``Enum`` class, then ``hiku`` will raise an error.
 
 You can also define custom serialization for your enum type by subclassing ``hiku.enum.BaseEnum`` class.
 
 Enum parsing
 ------------
 
-``Enum`` parses values into strings. If value is not in the list of possible values, then ``hiku`` will raise an error.
-
-``EnumFromBuiltin`` parses values into enum values by calling ``Enum(value)``. If value is not in the list of possible values, then ``hiku`` will raise an error.
+- ``Enum`` parses values into strings. If value is not in the list of possible values, then ``hiku`` will raise an error.
+- ``EnumFromBuiltin`` parses values into enum values by calling **Enum(value)**. If value is not in the list of possible values, then ``hiku`` will raise an error.
 
 You can also define custom parsing for your enum type by subclassing ``hiku.enum.BaseEnum`` class.
 
-Enum as a field argument
-------------------------
+Enum as an input argument
+-------------------------
 
-You can use enum as a field argument:
+You can use enum as an field input argument:
 
 .. code-block:: python
 
@@ -268,12 +264,3 @@ The result will be:
         "id": "2",
         "status": "DELETED",
     }]
-
-
-.. note::
-
-    Input value will be parsed using ``.parse`` method of ``Enum`` type.
-
-    For ``Enum`` input value will be parsed into ``str``.
-
-    For ``EnumFromBuiltin`` input value will be parsed into python Enum instance.

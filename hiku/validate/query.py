@@ -29,6 +29,7 @@ from hiku.query import (
 )
 from hiku.graph import (
     Interface,
+    LinkType,
     Node,
     Field,
     Link,
@@ -408,9 +409,9 @@ class QueryValidator(QueryVisitor):
                 )
 
         elif isinstance(graph_obj, Link):
-            if graph_obj.is_union:
+            if graph_obj.type_info.type_enum is LinkType.UNION:
                 linked_node = self.graph.unions_map[graph_obj.node]
-            elif graph_obj.is_interface:
+            elif graph_obj.type_info.type_enum is LinkType.INTERFACE:
                 linked_node = self.graph.interfaces_map[graph_obj.node]
             else:
                 linked_node = self.graph.nodes_map[graph_obj.node]

@@ -6,15 +6,18 @@
     are used to fetch any data from any data source.
 
 """
+import dataclasses
 import typing as t
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from itertools import chain
 from functools import reduce
 from collections import OrderedDict, defaultdict
 from typing import List
 
 from hiku.enum import BaseEnum
+from .scalar import Scalar, ScalarMeta
 
 from .types import (
     EnumRefMeta,
@@ -29,6 +32,7 @@ from .types import (
     Record,
     Any,
     GenericMeta,
+    TypeRefMeta,
     TypingMeta,
     AnyMeta,
     UnionRef,
@@ -110,7 +114,7 @@ class Option(AbstractOption):
         self.type = type_
         self.default = default
         self.description = description
-        self.enum_name = get_enum_name(type_) if type_ is not None else None
+        self.type_info = get_field_type(type_)
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, ...)".format(
@@ -141,7 +145,7 @@ NotRootFieldFuncCtx = t.Callable[
 ]
 
 
-FieldType = t.Optional[GenericMeta]
+FieldT = t.Optional[t.Union[GenericMeta, ScalarMeta]]
 FieldFunc = t.Union[
     RootFieldFunc,
     NotRootFieldFunc,
@@ -199,7 +203,7 @@ class Field(AbstractField):
     def __init__(
         self,
         name: str,
-        type_: FieldType,
+        type_: FieldT,
         func: FieldFunc,
         *,
         options: t.Optional[t.Sequence[Option]] = None,
@@ -220,7 +224,7 @@ class Field(AbstractField):
         self.options = options or ()
         self.description = description
         self.directives = directives or ()
-        self.enum_name = get_enum_name(type_) if type_ is not None else None
+        self.type_info = get_field_type(type_)
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r})".format(
@@ -239,10 +243,7 @@ class AbstractLink(AbstractBase, ABC):
     pass
 
 
-LinkType = t.Union[t.Type[TypeRef], t.Type[Optional], t.Type[Sequence]]
-
-
-def get_type_enum(type_: TypingMeta) -> t.Tuple[Const, str]:
+def get_link_type_enum(type_: TypingMeta) -> t.Tuple[Const, str]:
     if isinstance(type_, RefMeta):
         return One, type_.__type_name__
     elif isinstance(type_, OptionalMeta):
@@ -257,36 +258,82 @@ def get_type_enum(type_: TypingMeta) -> t.Tuple[Const, str]:
     raise TypeError("Invalid type specified: {!r}".format(type_))
 
 
-def is_union(type_: GenericMeta) -> bool:
-    if isinstance(type_, OptionalMeta):
-        return isinstance(type_.__type__, UnionRefMeta)
-    if isinstance(type_, SequenceMeta):
-        return is_union(type_.__item_type__)
-
-    return isinstance(type_, UnionRefMeta)
-
-
-def is_interface(type_: GenericMeta) -> bool:
-    if isinstance(type_, OptionalMeta):
-        return isinstance(type_.__type__, InterfaceRefMeta)
-    if isinstance(type_, SequenceMeta):
-        return is_interface(type_.__item_type__)
-
-    return isinstance(type_, InterfaceRefMeta)
+class FieldType(Enum):
+    # When Field is a TypeRef to Record
+    RECORD = "RECORD"
+    # When Field is a EnumRef to Enum
+    ENUM = "ENUM"
+    # When Field is a builtin scalar (such as String, Integer, etc)
+    SCALAR = "SCALAR"
+    # When Field is a custom scalar (such as DateTime, etc)
+    CUSTOM_SCALAR = "CUSTOM_SCALAR"
 
 
-def get_enum_name(type_: GenericMeta) -> t.Optional[str]:
-    if isinstance(type_, OptionalMeta):
-        if isinstance(type_.__type__, EnumRefMeta):
-            return type_.__type__.__type_name__
+@dataclasses.dataclass
+class FieldTypeInfo:
+    type_name: str
+    type_enum: FieldType
+
+
+def get_field_type(
+    type_: t.Optional[t.Union[GenericMeta, ScalarMeta]]
+) -> t.Optional[FieldTypeInfo]:
+    if not type_:
         return None
-    if isinstance(type_, SequenceMeta):
-        return get_enum_name(type_.__item_type__)
 
-    if isinstance(type_, EnumRefMeta):
-        return type_.__type_name__
+    if isinstance(type_, OptionalMeta):
+        return get_field_type(getattr(type_, "__type__", None))
+
+    if isinstance(type_, SequenceMeta):
+        # if type not passed to Sequence[]
+        return get_field_type(getattr(type_, "__item_type__", None))
+
+    if isinstance(type_, TypeRefMeta):
+        return FieldTypeInfo(
+            type_.__type_name__,
+            FieldType.RECORD,
+        )
+    elif isinstance(type_, EnumRefMeta):
+        return FieldTypeInfo(type_.__type_name__, FieldType.ENUM)
+    elif isinstance(type_, ScalarMeta):
+        return FieldTypeInfo(type_.__type_name__, FieldType.CUSTOM_SCALAR)
+
+    if isinstance(type_, GenericMeta):
+        return FieldTypeInfo(type_.__name__, FieldType.SCALAR)
 
     return None
+
+
+class LinkType(Enum):
+    NODE = "NODE"
+    INTERFACE = "INTERFACE"
+    UNION = "UNION"
+
+
+@dataclasses.dataclass
+class LinkTypeInfo:
+    type_name: str
+    type_enum: LinkType
+
+
+def get_link_type(type_: GenericMeta) -> LinkTypeInfo:
+    if isinstance(type_, OptionalMeta):
+        return get_link_type(type_.__type__)
+
+    if isinstance(type_, SequenceMeta):
+        return get_link_type(type_.__item_type__)
+
+    if isinstance(type_, TypeRefMeta):
+        return LinkTypeInfo(
+            type_.__type_name__,
+            LinkType.NODE,
+        )
+    elif isinstance(type_, UnionRefMeta):
+        return LinkTypeInfo(type_.__type_name__, LinkType.UNION)
+    elif isinstance(type_, InterfaceRefMeta):
+        return LinkTypeInfo(type_.__type_name__, LinkType.INTERFACE)
+
+    raise TypeError("Invalid link type specified: {!r}".format(type_))
 
 
 def collect_interfaces_types(
@@ -510,7 +557,7 @@ class Link(AbstractLink):
         :param description: description of the link
         :param directives: list of directives for the link
         """
-        type_enum, node = get_type_enum(type_)
+        type_enum, node = get_link_type_enum(type_)
 
         self.name = name
         self.type = type_
@@ -521,9 +568,7 @@ class Link(AbstractLink):
         self.options = options or ()
         self.description = description
         self.directives = directives or ()
-        self.is_union = is_union(type_)
-        self.is_interface = is_interface(type_)
-        self.enum_name = get_enum_name(type_)
+        self.type_info = get_link_type(type_)
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r}, ...)".format(
@@ -708,6 +753,7 @@ class Graph(AbstractGraph):
         unions: t.Optional[t.List[Union]] = None,
         interfaces: t.Optional[t.List[Interface]] = None,
         enums: t.Optional[t.List[BaseEnum]] = None,
+        scalars: t.Optional[t.List[t.Type[Scalar]]] = None,
     ):
         """
         :param items: list of nodes
@@ -723,13 +769,17 @@ class Graph(AbstractGraph):
         if enums is None:
             enums = []
 
-        GraphValidator.validate(items, unions, interfaces, enums)
+        if scalars is None:
+            scalars = []
+
+        GraphValidator.validate(items, unions, interfaces, enums, scalars)
 
         self.items = GraphInit.init(items)
         self.unions = unions
         self.interfaces = interfaces
         self.interfaces_types = collect_interfaces_types(self.items, interfaces)
         self.enums: t.List[BaseEnum] = enums
+        self.scalars = scalars
         self.data_types = data_types or {}
         self.__types__ = GraphTypes.get_types(
             self.items,
@@ -780,6 +830,10 @@ class Graph(AbstractGraph):
     def enums_map(self) -> "OrderedDict[str, BaseEnum]":
         return OrderedDict((e.name, e) for e in self.enums)
 
+    @cached_property
+    def scalars_map(self) -> "OrderedDict[str, t.Type[Scalar]]":
+        return OrderedDict((s.__type_name__, s) for s in self.scalars)
+
     def accept(self, visitor: "AbstractGraphVisitor") -> t.Any:
         return visitor.visit_graph(self)
 
@@ -818,6 +872,10 @@ class AbstractGraphVisitor(ABC):
         pass
 
     @abstractmethod
+    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Any:
+        pass
+
+    @abstractmethod
     def visit_root(self, obj: Root) -> t.Any:
         pass
 
@@ -837,6 +895,9 @@ class GraphVisitor(AbstractGraphVisitor):
         pass
 
     def visit_enum(self, obj: "BaseEnum") -> t.Any:
+        pass
+
+    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Any:
         pass
 
     def visit_option(self, obj: "Option") -> t.Any:
@@ -919,6 +980,9 @@ class GraphTransformer(AbstractGraphVisitor):
     def visit_enum(self, obj: BaseEnum) -> BaseEnum:
         return obj
 
+    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Type[Scalar]:
+        return obj
+
     def visit_root(self, obj: Root) -> Root:
         return Root([self.visit(f) for f in obj.fields])
 
@@ -929,6 +993,8 @@ class GraphTransformer(AbstractGraphVisitor):
             obj.directives,
             obj.unions,
             obj.interfaces,
+            obj.enums,
+            obj.scalars,
         )
 
 
@@ -1019,10 +1085,12 @@ class GraphTypes(GraphVisitor):
     def visit_root(self, obj: Root) -> t.Type[Record]:
         return Record[[(f.name, self.visit(f)) for f in obj.fields]]
 
-    def visit_link(self, obj: Link) -> LinkType:
+    def visit_link(
+        self, obj: Link
+    ) -> t.Union[t.Type[TypeRef], t.Type[Optional], t.Type[Sequence]]:
         return obj.type
 
-    def visit_field(self, obj: Field) -> t.Union[FieldType, AnyMeta]:
+    def visit_field(self, obj: Field) -> t.Union[FieldT, AnyMeta]:
         return obj.type or Any
 
     def visit_union(self, obj: Union) -> Union:
@@ -1032,4 +1100,7 @@ class GraphTypes(GraphVisitor):
         return obj
 
     def visit_interface(self, obj: Interface) -> Interface:
+        return obj
+
+    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Type[Scalar]:
         return obj

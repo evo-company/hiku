@@ -7,6 +7,7 @@ from collections import Counter
 from ..directives import Deprecated
 from ..enum import BaseEnum
 from ..graph import (
+    FieldType,
     GraphVisitor,
     Interface,
     Root,
@@ -20,6 +21,7 @@ from ..graph import (
 from ..graph import AbstractNode, AbstractField, AbstractLink, AbstractOption
 
 from .errors import Errors
+from ..scalar import Scalar
 from ..types import GenericMeta, OptionalMeta
 
 
@@ -47,6 +49,9 @@ class GraphValidator(GraphVisitor):
         def visit_option(self, obj: Option) -> str:
             return ":{}".format(obj.name)
 
+        def visit_scalar(self, obj: t.Type[Scalar]) -> str:
+            return obj.__type_name__
+
     _name_formatter = _NameFormatter()
     _graph_accept_types = (AbstractNode,)
     _node_accept_types = (AbstractField, AbstractLink)
@@ -58,12 +63,17 @@ class GraphValidator(GraphVisitor):
         items: t.List[Node],
         unions: t.List[Union],
         interfaces: t.List[Interface],
+        enums: t.List[BaseEnum],
+        scalars: t.List[t.Type[Scalar]],
     ) -> None:
         self.items = items
         self.unions = unions
         self.unions_map = {u.name: u for u in unions}
         self.interfaces = interfaces
         self.interfaces_map = {i.name: i for i in interfaces}
+        self.enums = enums
+        self.scalars = scalars
+        self.scalars_map = {s.__type_name__: s for s in scalars}
         self.errors = Errors()
         self._ctx: t.List = []
 
@@ -74,12 +84,14 @@ class GraphValidator(GraphVisitor):
         unions: t.List[Union],
         interfaces: t.List[Interface],
         enums: t.List[BaseEnum],
+        scalars: t.List[t.Type[Scalar]],
     ) -> None:
-        validator = cls(items, unions, interfaces)
+        validator = cls(items, unions, interfaces, enums, scalars)
         validator.visit_graph_items(items)
         validator.visit_graph_unions(unions)
         validator.visit_graph_interfaces(interfaces)
         validator.visit_graph_enums(enums)
+        validator.visit_graph_scalars(scalars)
         if validator.errors.list:
             raise GraphValidationError(validator.errors.list)
 
@@ -150,6 +162,29 @@ class GraphValidator(GraphVisitor):
 
         with self.push_ctx(obj):
             super(GraphValidator, self).visit_field(obj)
+
+        if obj.type_info and obj.type_info.type_enum is FieldType.CUSTOM_SCALAR:
+            if obj.type_info.type_name not in self.scalars_map:
+                self.errors.report(
+                    'Field "{}" has type "{!r}" but no scalar is '
+                    "defined for it. "
+                    "Maybe you forgot to add new scalar to Graph(..., scalars)?".format(  # noqa: E501
+                        self._format_path(obj), obj.type
+                    )
+                )
+                return
+
+        if (
+            obj.type is not None
+            and not isinstance(obj.type, GenericMeta)
+            and not obj.type_info
+        ):
+            self.errors.report(
+                'Field "{}" has type "{!r}" but Hiku does not support it.'.format(  # noqa: E501
+                    self._format_path(obj), obj.type
+                )
+            )
+            return
 
         self._validate_deprecated_duplicates(obj)
 
@@ -285,6 +320,9 @@ class GraphValidator(GraphVisitor):
             self.errors.report("Enum must have at least one value")
             return
 
+    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Any:
+        ...
+
     def visit_root(self, obj: Root) -> None:
         self.visit_node(obj)
 
@@ -333,3 +371,7 @@ class GraphValidator(GraphVisitor):
     def visit_graph_enums(self, enums: t.List[BaseEnum]) -> None:
         for enum in enums:
             self.visit(enum)
+
+    def visit_graph_scalars(self, scalars: t.List[t.Type[Scalar]]) -> None:
+        for scalar in scalars:
+            self.visit(scalar)

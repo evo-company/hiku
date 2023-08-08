@@ -8,6 +8,7 @@ from hiku.federation.graph import FederatedNode, Graph
 from hiku.graph import Field, Root
 from hiku.types import Integer, TypeRef
 from .utils import GRAPH
+from ..test_introspection_graphql import SCALARS
 from ..utils import INTROSPECTION_QUERY
 
 
@@ -110,14 +111,16 @@ def _schema(types, with_mutation=False) -> dict:
     return {
         '__schema': {
             'directives': [
-                _directive('skip',
-                           ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'] ,
-                           [_ival('if', _non_null(_BOOL), description=ANY)]
-                           ),
-                _directive('include',
-                           ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'], [
-                               _ival('if', _non_null(_BOOL), description=ANY),
-                           ]),
+                _directive(
+                    'skip',
+                    ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'] ,
+                    [_ival('if', _non_null(_BOOL), description=ANY)]
+                ),
+                _directive(
+                    'include',
+                    ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'], [
+                        _ival('if', _non_null(_BOOL), description=ANY),
+                    ]),
                 _directive('deprecated', ['FIELD_DEFINITION', 'ENUM_VALUE'], [
                     _ival('reason', _STR, description=ANY)
                 ]),
@@ -127,19 +130,9 @@ def _schema(types, with_mutation=False) -> dict:
             ],
             'mutationType': {'name': 'Mutation'} if with_mutation else None,
             'queryType': {'name': 'Query'},
-            'types': SCALARS + types,
+            'types': SCALARS + types
         }
     }
-
-
-SCALARS = [
-    _type('String', 'SCALAR'),
-    _type('Int', 'SCALAR'),
-    _type('Boolean', 'SCALAR'),
-    _type('Float', 'SCALAR'),
-    _type('Any', 'SCALAR'),
-    _type('ID', 'SCALAR'),
-]
 
 
 def execute(graph, query_string):
@@ -170,8 +163,6 @@ def introspect_v2(query_graph):
 
 def test_federated_introspection_v1():
     exp = _schema([
-        _type('_Any', 'SCALAR'),
-        _type('_FieldSet', 'SCALAR'),
         _type('Cart', 'OBJECT', fields=[
             _field('id', _non_null(_INT)),
             _field('status', _non_null(_obj('Status'))),
@@ -216,6 +207,9 @@ def test_federated_introspection_v1():
         _type('_Entity', 'UNION', possibleTypes=[
             _obj('Cart')
         ]),
+        _type('_Any', 'SCALAR'),
+        _type('_FieldSet', 'SCALAR'),
+        _type('link__Import', 'SCALAR'),
     ])
     got = introspect(GRAPH)
     assert exp == got['data']
@@ -223,8 +217,6 @@ def test_federated_introspection_v1():
 
 def test_federated_introspection_v2():
     exp = _schema([
-        _type('_Any', 'SCALAR'),
-        _type('_FieldSet', 'SCALAR'),
         _type('Cart', 'OBJECT', fields=[
             _field('id', _non_null(_INT)),
             _field('status', _non_null(_obj('Status'))),
@@ -269,6 +261,9 @@ def test_federated_introspection_v2():
         _type('_Entity', 'UNION', possibleTypes=[
             _obj('Cart')
         ]),
+        _type('_Any', 'SCALAR'),
+        _type('_FieldSet', 'SCALAR'),
+        _type('link__Import', 'SCALAR'),
     ])
     got = introspect_v2(GRAPH)
     assert exp == got['data']

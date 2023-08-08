@@ -15,6 +15,7 @@ from ..directives import (
     get_deprecated,
 )
 from ..graph import (
+    FieldType,
     Graph,
     Root,
     Node,
@@ -25,11 +26,11 @@ from ..graph import (
     NothingType,
 )
 from ..graph import GraphVisitor, GraphTransformer
+from ..scalar import Scalar
 from ..types import (
     EnumRefMeta,
     IDMeta,
     InterfaceRefMeta,
-    ScalarMeta,
     TypeRef,
     String,
     Sequence,
@@ -69,9 +70,8 @@ from .types import (
     DirectiveArgIdent,
     HashedNamedTuple,
 )
+from ..utils.serialize import serialize
 
-
-# TODO(mkind): expose as public API
 _BUILTIN_DIRECTIVES: t.Tuple[
     t.Union[t.Type[Directive], t.Type[SchemaDirective]], ...
 ] = (
@@ -107,17 +107,14 @@ class SchemaInfo:
         self,
         query_graph: Graph,
         mutation_graph: t.Optional[Graph],
-        directives: t.Tuple[
-            t.Union[t.Type[Directive], t.Type[SchemaDirective]], ...
-        ],
     ):
         self.query_graph = query_graph
         self.data_types = query_graph.data_types
         self.mutation_graph = mutation_graph
-        self.directives = directives or ()
-        self.scalars = BUILTIN_SCALARS
+        self.directives = _BUILTIN_DIRECTIVES + tuple(
+            query_graph.directives or ()
+        )
         self.nodes_map = self._nodes_map()
-        self.unions_map = self.query_graph.unions_map
 
     def _nodes_map(self) -> OrderedDict:
         nodes = [(n.name, n) for n in self.query_graph.nodes]
@@ -146,7 +143,7 @@ class TypeIdent(AbstractTypeVisitor):
     def visit_any(self, obj: AnyMeta) -> HashedNamedTuple:
         return SCALAR("Any")
 
-    def visit_scalar(self, obj: ScalarMeta) -> HashedNamedTuple:
+    def visit_scalar(self, obj: t.Type[Scalar]) -> HashedNamedTuple:
         return NON_NULL(SCALAR(obj.__type_name__))
 
     def visit_mapping(self, obj: MappingMeta) -> HashedNamedTuple:
@@ -218,8 +215,8 @@ def type_link(
     name = options["name"]
     if name in schema.nodes_map:
         return OBJECT(name)
-    elif name in schema.unions_map:
-        union = schema.unions_map[name]
+    elif name in schema.query_graph.unions_map:
+        union = schema.query_graph.unions_map[name]
         return UNION(
             union.name, tuple(OBJECT(type_name) for type_name in union.types)
         )
@@ -236,13 +233,15 @@ def type_link(
             enum.name,
             tuple(OBJECT(value.name) for value in enum.values),
         )
+    elif name in schema.query_graph.scalars_map:
+        return SCALAR(name)
     else:
         return Nothing
 
 
 @listify
 def root_schema_types(schema: SchemaInfo) -> t.Iterator[HashedNamedTuple]:
-    for scalar in schema.scalars:
+    for scalar in BUILTIN_SCALARS:
         yield scalar
 
     for name in schema.nodes_map:
@@ -274,6 +273,10 @@ def root_schema_types(schema: SchemaInfo) -> t.Iterator[HashedNamedTuple]:
             enum.name,
             tuple(OBJECT(value.name) for value in enum.values),
         )
+
+    # custom scalars
+    for scalar in schema.query_graph.scalars:
+        yield SCALAR(scalar.__type_name__)
 
 
 def root_schema_query_type(schema: SchemaInfo) -> HashedNamedTuple:
@@ -542,9 +545,26 @@ def input_value_info(
             if option.default is Nothing:
                 default = None
             else:
-                if option.enum_name is not None:
-                    enum = schema.query_graph.enums_map[option.enum_name]
-                    default = enum.serialize(option.default)
+                if (
+                    option.type_info
+                    and option.type_info.type_enum is FieldType.ENUM
+                ):
+                    enum = schema.query_graph.enums_map[
+                        option.type_info.type_name
+                    ]
+                    default = serialize(
+                        option.type, option.default, enum.serialize
+                    )
+                elif (
+                    option.type_info
+                    and option.type_info.type_enum is FieldType.CUSTOM_SCALAR
+                ):
+                    scalar = schema.query_graph.scalars_map[
+                        option.type_info.type_name
+                    ]
+                    default = serialize(
+                        option.type, option.default, scalar.serialize
+                    )
                 else:
                     default = json.dumps(option.default)
             info = {
@@ -955,10 +975,6 @@ class GraphQLIntrospection(GraphTransformer):
 
     """
 
-    __directives__: t.Tuple[
-        t.Union[t.Type[Directive], t.Type[SchemaDirective]], ...
-    ] = _BUILTIN_DIRECTIVES
-
     def __init__(
         self,
         query_graph: Graph,
@@ -973,7 +989,6 @@ class GraphQLIntrospection(GraphTransformer):
         self.schema = SchemaInfo(
             query_graph,
             mutation_graph,
-            self.__directives__ + tuple(query_graph.directives or ()),
         )
 
     def __type_name__(self, node_name: t.Optional[str]) -> Field:
@@ -1005,6 +1020,8 @@ class GraphQLIntrospection(GraphTransformer):
             directives=obj.directives,
             unions=obj.unions,
             interfaces=obj.interfaces,
+            enums=obj.enums,
+            scalars=obj.scalars,
         )
 
 

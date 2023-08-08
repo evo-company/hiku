@@ -32,6 +32,14 @@ In `hiku` you can use union types like this:
 
 .. code-block:: python
 
+    from hiku.graph import Union
+
+    Union('Media', ['Audio', 'Video'])
+
+Lets look at the full example on how to use unions in `hiku`:
+
+.. code-block:: python
+
     from hiku.graph import Field, Graph, Link, Node, Root, Union
     from hiku.types import ID, Integer, String, TypeRef, Sequence, Optional, UnionRef
 
@@ -61,13 +69,13 @@ In `hiku` you can use union types like this:
 
 Lets look at the example above:
 
-- `Union` type is defined with a list of types that are part of the union - `Union('Media', ['Audio', 'Video'])`
-- `Link` type is defined with a return type of `Sequence[UnionRef['Media']]`
-- `search_resolver` returns a list of tuples with an id as a first tuple element and type as a second tuple element
+- ``Union`` type is defined with a list of types that are part of the union - ``Union('Media', ['Audio', 'Video'])``
+- ``Link`` type is defined with a return type of ``Sequence[UnionRef['Media']]``
+- ``search_resolver`` returns a list of tuples with an id as a first tuple element and type as a second tuple element
 
 .. note::
 
-    `UnionRef` is a special type that is used to reference union types. It is used in the example above to define
+    ``UnionRef`` is a special type that is used to reference union types. It is used in the example above to define
     the return type of the `search` link.
 
 Now lets look at the query:
@@ -110,5 +118,5 @@ Type narrowing
 --------------
 
 Unlike other graphql implementations `hiku` supports type narrowing without
-`__resolveType` function. It is possible because `hiku` knows all possible types
+``__resolveType`` function. It is possible because `hiku` knows all possible types
 at the link resolution time.

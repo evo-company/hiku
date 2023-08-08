@@ -2,9 +2,12 @@ import typing as t
 from inspect import isawaitable
 
 from hiku.directives import SchemaDirective
+from hiku.enum import BaseEnum
 from hiku.federation.utils import get_entity_types
+from hiku.scalar import Scalar
+from hiku.federation.scalars import _Any, FieldSet, LinkImport
 
-from hiku.types import Optional, Record, Scalar, Sequence, TypeRef, UnionRef
+from hiku.types import Optional, Record, Sequence, TypeRef, UnionRef
 
 from hiku.graph import (
     Field,
@@ -118,7 +121,7 @@ class GraphInit(GraphTransformer):
             Sequence[Optional[UnionRef["_Entity"]]],
             entities_resolver_async if self.is_async else entities_resolver,
             options=[
-                Option("representations", Sequence[Scalar["_Any"]]),
+                Option("representations", Sequence[_Any]),
             ],
             requires=None,
         )
@@ -132,6 +135,8 @@ class Graph(_Graph):
         directives: t.Optional[t.Sequence[t.Type[SchemaDirective]]] = None,
         unions: t.Optional[t.List[Union]] = None,
         interfaces: t.Optional[t.List[Interface]] = None,
+        enums: t.Optional[t.List[BaseEnum]] = None,
+        scalars: t.Optional[t.List[t.Type[Scalar]]] = None,
         is_async: bool = False,
     ):
         if unions is None:
@@ -141,6 +146,13 @@ class Graph(_Graph):
         if entity_types:
             unions.append(Union("_Entity", entity_types))
 
+        if scalars is None:
+            scalars = []
+
+        scalars.extend([_Any, FieldSet, LinkImport])
+
         items = GraphInit.init(items, is_async, bool(entity_types))
 
-        super().__init__(items, data_types, directives, unions, interfaces)
+        super().__init__(
+            items, data_types, directives, unions, interfaces, enums, scalars
+        )

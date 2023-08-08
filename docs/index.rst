@@ -12,6 +12,7 @@ User's Guide
   asyncio
   graphql
   protobuf
+  scalars
   enums
   interfaces
   unions
