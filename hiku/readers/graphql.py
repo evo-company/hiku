@@ -1,9 +1,11 @@
 import enum
+from collections import defaultdict
 
 from typing import (
     Optional,
     Dict,
     Iterator,
+    Tuple,
     Union,
     List,
     cast,
@@ -20,7 +22,7 @@ from ..directives import (
     Cached,
     Directive,
 )
-from ..query import Node, Field, Link, merge
+from ..query import FieldBase, Fragment, Node, Field, Link, merge
 from ..telemetry.prometheus import (
     QUERY_CACHE_HITS,
     QUERY_CACHE_MISSES,
@@ -256,6 +258,50 @@ class SelectionSetVisitMixin:
 
         return Cached(ttl=ttl)
 
+    def _collect_fields(
+        self, obj: ast.FieldNode
+    ) -> Tuple[List[FieldBase], List[Fragment]]:
+        """Collect fields from AST node.
+
+        We collect shared fields and type-specific fragments separately.
+        Fragments for same type are merged.
+        Resulting list of fragments contains only type-specific fragments.
+        """
+        assert obj.selection_set is not None
+
+        if isinstance(self, FragmentsTransformer):
+            fragments_map = self.fragments_map
+        else:
+            fragments_map = self.fragments_transformer.fragments_map  # type: ignore[attr-defined] # noqa: E501
+
+        shared_fields = []
+        type_fields = defaultdict(list)
+
+        for item in obj.selection_set.selections:
+            type_name = None
+            selection_set = None
+
+            if isinstance(item, ast.InlineFragmentNode):
+                type_name = item.type_condition.name.value
+                selection_set = item.selection_set
+            elif isinstance(item, ast.FragmentSpreadNode):
+                fragment = fragments_map[item.name.value]
+                type_name = fragment.type_condition.name.value
+                selection_set = fragment.selection_set
+            else:
+                shared_fields.extend(list(self.visit(item)))  # type: ignore[attr-defined] # noqa: E501
+
+            if type_name and selection_set:
+                type_fields[type_name].extend(
+                    list(self.visit(selection_set))  # type: ignore[attr-defined] # noqa: E501
+                )
+
+        node_fragments = []
+        for type_name, fields in type_fields.items():
+            node_fragments.append(Fragment(type_name, fields))
+
+        return shared_fields, node_fragments
+
     def visit_field(self, obj: ast.FieldNode) -> Iterator[Union[Field, Link]]:
         if self._should_skip(obj):
             return
@@ -286,14 +332,43 @@ class SelectionSetVisitMixin:
                 directives=tuple(directives),
             )
         else:
-            node = Node(list(self.visit(obj.selection_set)))  # type: ignore[attr-defined] # noqa: E501
-            yield Link(
-                obj.name.value,
-                node,
-                options=options,
-                alias=alias,
-                directives=tuple(directives),
-            )
+            shared_fields, fragments = self._collect_fields(obj)
+
+            if not fragments:
+                yield Link(
+                    obj.name.value,
+                    Node(shared_fields),
+                    options=options,
+                    alias=alias,
+                    directives=tuple(directives),
+                )
+            elif len(fragments) == 1:
+                # If there is only one type-specific fragment, we can merge
+                # it with the shared fields, and retain the fragment type name
+                # for unions/interfaces.
+                fragment = fragments[0]
+                node = Node(shared_fields + fragment.node.fields)
+
+                yield Link(
+                    obj.name.value,
+                    node,
+                    options=options,
+                    alias=alias,
+                    directives=tuple(directives),
+                    fragment_type=fragment.type_name,
+                )
+            else:
+                # If there are more than one type-specific fragments,
+                # we need to retain them as separate nodes, as it will be
+                # used by unions/interfaces.
+                node = Node([*shared_fields, *fragments])
+                yield Link(
+                    obj.name.value,
+                    node,
+                    options=options,
+                    alias=alias,
+                    directives=tuple(directives),
+                )
 
     def visit_variable(self, obj: ast.VariableNode) -> Any:
         return self.lookup_variable(obj.name.value)
@@ -328,14 +403,7 @@ class SelectionSetVisitMixin:
         if self._should_skip(obj):
             return
 
-        if hasattr(self, "fragments_transformer"):
-            fragment = self.fragments_transformer.fragments_map[obj.name.value]
-        else:
-            fragment = self.fragments_map[obj.name.value]  # type: ignore[attr-defined] # noqa: E501
         for i in self.transform_fragment(obj.name.value):
-            if isinstance(i, (Field, Link)):
-                i.parent_type = fragment.type_condition.name.value
-
             yield i
 
     def visit_inline_fragment(
@@ -345,9 +413,6 @@ class SelectionSetVisitMixin:
             return
 
         for i in self.visit(obj.selection_set):  # type: ignore[attr-defined]
-            if isinstance(i, (Field, Link)):
-                i.parent_type = obj.type_condition.name.value
-
             yield i
 
 

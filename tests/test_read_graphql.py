@@ -3,7 +3,7 @@ import pytest
 from graphql.language import ast
 from graphql.language.parser import parse
 
-from hiku.query import Node, Field, Link
+from hiku.query import Fragment, Node, Field, Link
 from hiku.readers.graphql import read, OperationGetter
 from hiku.readers.graphql import read_operation, OperationType
 
@@ -217,8 +217,8 @@ def test_named_fragments():
                                 Node(
                                     [
                                         Field("flowers"),
-                                        Field("doozie", parent_type="Makai"),
                                         Field("apres"),
+                                        Field("doozie"),
                                         Link(
                                             "pins",
                                             Node(
@@ -231,15 +231,15 @@ def test_named_fragments():
                                                                 Field("rusk"),
                                                             ]
                                                         ),
-                                                        parent_type='Torsion'
                                                     ),
                                                 ]
                                             ),
-                                            parent_type='Makai'
+                                            fragment_type="Torsion",
                                         ),
                                     ]
                                 ),
                                 options={"gire": "noatak"},
+                                fragment_type="Makai",
                             ),
                             Link(
                                 "movies",
@@ -248,10 +248,10 @@ def test_named_fragments():
                                         Field("boree"),
                                     ]
                                 ),
-                                parent_type="Valium",
                             ),
                         ]
                     ),
+                    fragment_type="Valium",
                 ),
             ]
         ),
@@ -332,7 +332,6 @@ def test_variables_in_fragment():
                 Field(
                     "fibbery",
                     options={"baps": None, "bankit": 123, "riuer": 234},
-                    parent_type="Ashlee",
                 )
             ]
         ),
@@ -414,7 +413,7 @@ def test_skip_fragment_spread(skip):
           bar
         }
         """,
-        Node([Field("foo")] + ([] if skip else [Field("bar", parent_type="Thing")])),
+        Node([Field("foo")] + ([] if skip else [Field("bar")])),
         {"cond": skip},
     )
 
@@ -430,7 +429,7 @@ def test_skip_inline_fragment(skip):
           }
         }
         """,
-        Node([Field("foo")] + ([] if skip else [Field("bar", parent_type="Thing")])),
+        Node([Field("foo")] + ([] if skip else [Field("bar")])),
         {"cond": skip},
     )
 
@@ -461,7 +460,7 @@ def test_include_fragment_spread(include):
           bar
         }
         """,
-        Node([Field("foo")] + ([Field("bar", parent_type="Thing")] if include else [])),
+        Node([Field("foo")] + ([Field("bar")] if include else [])),
         {"cond": include},
     )
 
@@ -477,7 +476,7 @@ def test_include_inline_fragment(include):
           }
         }
         """,
-        Node([Field("foo")] + ([Field("bar", parent_type="Thing")] if include else [])),
+        Node([Field("foo")] + ([Field("bar")] if include else [])),
         {"cond": include},
     )
 
@@ -536,3 +535,179 @@ def test_read_operation_subscription():
     op = read_operation("subscription { ping }")
     assert op.type is OperationType.SUBSCRIPTION
     assert op.query == Node([Field("ping")])
+
+
+def test_parse_union_with_two_fragments():
+    check_read(
+        """
+        query GetMedia {
+          media {
+            __typename
+            ... on Audio {
+              id
+              duration
+            }
+            ...VideoId
+            ... on Video {
+              thumbnailUrl
+            }
+          }
+        }
+        
+        fragment VideoId on Video {
+          id
+        }
+        """,
+        Node(
+            [
+                Link(
+                    "media",
+                    Node([
+                        Field("__typename"),
+                        Fragment('Audio', [
+                            Field("id"),
+                            Field("duration"),
+                        ]),
+                        Fragment('Video', [
+                            Field("id"),
+                            Field("thumbnailUrl"),
+                        ]),
+                    ]),
+                ),
+            ]
+        ),
+    )
+
+
+def test_parse_union_with_one_fragment():
+    check_read(
+        """
+        query GetMedia {
+          media {
+            __typename
+            ... on Audio {
+              id
+              duration
+            }
+          }
+        }
+        """,
+        Node(
+            [
+                Link(
+                    "media",
+                    Node([
+                        Field("__typename"),
+                        Field("id"),
+                        Field("duration"),
+                    ]),
+                    fragment_type='Audio',
+                ),
+            ]
+        ),
+    )
+
+
+def test_parse_interface_with_two_fragments():
+    check_read(
+        """
+        query GetMedia {
+          media {
+            __typename
+            id
+            duration
+            ... on Audio {
+              album
+            }
+            ... on Video {
+              thumbnailUrl
+            }
+          }
+        }
+        """,
+        Node(
+            [
+                Link(
+                    "media",
+                    Node([
+                        Field("__typename"),
+                        Field("id"),
+                        Field("duration"),
+                        Fragment('Audio', [
+                            Field("album"),
+                        ]),
+                        Fragment('Video', [
+                            Field("thumbnailUrl"),
+                        ]),
+                    ])
+                )
+            ]
+        ),
+    )
+
+
+def test_parse_interface_with_one_fragment():
+    check_read(
+        """
+        query GetMedia {
+          media {
+            __typename
+            id
+            duration
+            ... on Audio {
+              album
+            }
+          }
+        }
+        """,
+        Node(
+            [
+                Link(
+                    "media",
+                    Node([
+                        Field("__typename"),
+                        Field("id"),
+                        Field("duration"),
+                        Field("album"),
+                    ]),
+                    fragment_type='Audio',
+                )
+            ]
+        ),
+    )
+
+
+def test_merge_node_with_fragment_on_node():
+    check_read(
+        """
+        query GetContext {
+          context {
+            user {
+                id
+                name
+            }
+            ...UserFragment
+          }
+        }
+
+        fragment UserFragment on Context {
+            user { id }
+        }
+        """,
+
+        Node(
+            [
+                Link(
+                    "context",
+                    Node([
+                        Link("user", Node([
+                            Field("id"),
+                            Field("name"),
+                        ])),
+                    ]),
+                    fragment_type='Context',
+                )
+            ]
+        ),
+    )
+

@@ -32,8 +32,8 @@ from .cache import (
 )
 from .compat import Concatenate, ParamSpec
 from .executors.base import SyncAsyncExecutor
-from .interface import SplitInterfaceQueryByNodes
 from .query import (
+    Fragment,
     Node as QueryNode,
     Field as QueryField,
     Link as QueryLink,
@@ -42,7 +42,6 @@ from .query import (
 )
 from .graph import (
     FieldType,
-    Interface,
     Link,
     LinkType,
     Maybe,
@@ -53,7 +52,6 @@ from .graph import (
     Field,
     Graph,
     Node,
-    Union as GraphUnion,
 )
 from .result import (
     Proxy,
@@ -67,7 +65,6 @@ from .executors.queue import (
     TaskSet,
     SubmitRes,
 )
-from .union import SplitUnionQueryByNodes
 from .utils import ImmutableDict
 from .utils.serialize import serialize
 
@@ -130,8 +127,6 @@ class InitOptions(QueryTransformer):
 
     def visit_node(self, obj: QueryNode) -> QueryNode:
         fields = []
-        is_union = isinstance(self._path[-1], GraphUnion)
-        is_interface = isinstance(self._path[-1], Interface)
 
         for f in obj.fields:
             if f.name == "__typename":
@@ -139,12 +134,8 @@ class InitOptions(QueryTransformer):
                 continue
 
             type_ = None
-
-            if is_union:
-                type_ = self._graph.nodes_map[f.parent_type]
-            elif is_interface:
-                if f.parent_type is not None:
-                    type_ = self._graph.nodes_map[f.parent_type]
+            if isinstance(f, Fragment):
+                type_ = self._graph.nodes_map[f.name]
 
             with self.enter_path(type_):
                 fields.append(self.visit(f))
@@ -163,9 +154,15 @@ class InitOptions(QueryTransformer):
 
         if isinstance(graph_obj, Link):
             if graph_obj.type_info.type_enum is LinkType.UNION:
-                self._path.append(self._graph.unions_map[graph_obj.node])
+                if obj.fragment_type:
+                    self._path.append(self._graph.nodes_map[obj.fragment_type])
             elif graph_obj.type_info.type_enum is LinkType.INTERFACE:
-                self._path.append(self._graph.interfaces_map[graph_obj.node])
+                if obj.fragment_type:
+                    self._path.append(self._graph.nodes_map[obj.fragment_type])
+                else:
+                    self._path.append(
+                        self._graph.interfaces_map[graph_obj.node]
+                    )
             else:
                 self._path.append(self._graph.nodes_map[graph_obj.node])
             try:
@@ -191,6 +188,10 @@ LinkGroup = Tuple[Link, QueryLink]
 
 
 class SplitQuery(QueryVisitor):
+    """Splits query into two groups: fields and links.
+    This is needed because we execute fields and links separately.
+    """
+
     def __init__(self, graph_node: Node) -> None:
         self._node = graph_node
         self._fields: List[CallableFieldGroup] = []
@@ -203,8 +204,9 @@ class SplitQuery(QueryVisitor):
             self.visit(item)
         return self._fields, self._links
 
-    def visit_node(self, obj: QueryNode) -> NoReturn:
-        raise ValueError("Unexpected value: {!r}".format(obj))
+    def visit_node(self, obj: QueryNode) -> None:
+        for item in obj.fields:
+            self.visit(item)
 
     def visit_field(self, obj: QueryField) -> None:
         graph_obj = self._node.fields_map[obj.name]
@@ -220,6 +222,7 @@ class SplitQuery(QueryVisitor):
                         self.visit(QueryField(r))
                 else:
                     self.visit(QueryField(graph_obj.requires))
+
             self._links.append((graph_obj, obj))
         else:
             assert isinstance(graph_obj, Field), type(graph_obj)
@@ -754,15 +757,24 @@ class Query(Workflow):
 
                 # FIXME: call track len(ids) - 1 times because first track was
                 #  already called by process_node for this link
+
+                fragments_map: Dict[str, Fragment] = {}
+                for f in query_link.node.fields:
+                    if isinstance(f, Fragment):
+                        fragments_map[f.name] = f
+
                 track_times = len(grouped_ids) - 1
-                union_nodes = SplitUnionQueryByNodes(
-                    self._graph, self._graph.unions_map[graph_link.node]
-                ).split(query_link.node)
+
                 for type_name, type_ids in grouped_ids.items():
+                    query_node = query_link.node
+
+                    if type_name in fragments_map:
+                        query_node = fragments_map[type_name].node
+
                     self.process_node(
                         path,
                         self._graph.nodes_map[type_name],
-                        union_nodes[type_name],
+                        query_node,
                         list(type_ids),
                     )
                 for _ in range(track_times):
@@ -775,18 +787,28 @@ class Query(Workflow):
                 for id_, type_ref in to_ids:
                     grouped_ids[type_ref.__type_name__].append(id_)
 
+                fragments_map = {}
+                for f in query_link.node.fields:
+                    if isinstance(f, Fragment):
+                        fragments_map[f.name] = f
+
                 track_times = len(grouped_ids) - 1
 
-                interface_nodes = SplitInterfaceQueryByNodes(self._graph).split(
-                    query_link.node
-                )
                 for type_name, type_ids in grouped_ids.items():
+                    query_node = query_link.node
+
+                    if type_name in fragments_map:
+                        query_node = fragments_map[type_name].result_node(
+                            query_link.node
+                        )
+
                     self.process_node(
                         path,
                         self._graph.nodes_map[type_name],
-                        interface_nodes[type_name],
+                        query_node,
                         list(type_ids),
                     )
+
                 for _ in range(track_times):
                     self._track(path)
             else:

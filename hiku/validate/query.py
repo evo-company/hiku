@@ -23,6 +23,7 @@ from ..types import (
 from hiku.query import (
     Field as QueryField,
     FieldBase,
+    Fragment,
     Node as QueryNode,
     Link as QueryLink,
     QueryVisitor,
@@ -436,6 +437,16 @@ class QueryValidator(QueryVisitor):
         else:
             raise TypeError(repr(graph_obj))
 
+    def visit_fragment(self, obj: Fragment) -> t.Any:
+        graph_node = self.graph.nodes_map[obj.type_name]
+        self.path.append(graph_node)
+        for field in obj.node.fields:
+            if field.name == "__typename":
+                continue
+            self.visit(field)
+
+        self.path.pop()
+
     def visit_node(self, obj: QueryNode) -> None:
         fields: t.Dict = {}
 
@@ -448,7 +459,7 @@ class QueryValidator(QueryVisitor):
 
             if is_union_link:
                 union = self.path[-1]
-                if field.parent_type is None:
+                if not isinstance(field, Fragment):
                     self.errors.report(
                         "Cannot query field '{}' on type '{}'. "
                         "Did you mean to use an inline fragment on {}?".format(
@@ -461,42 +472,44 @@ class QueryValidator(QueryVisitor):
                     )
                     continue
 
-                self.path.append(self.graph.nodes_map[field.parent_type])
+                self.visit(field)
+                continue
             elif is_interface_link:
+                if isinstance(field, Fragment):
+                    self.visit(field)
+                    continue
+
                 interface = self.path[-1]
-                if field.parent_type is not None:
-                    self.path.append(self.graph.nodes_map[field.parent_type])
-                else:
-                    interface_types = self.graph.interfaces_types[
-                        interface.name
-                    ]
-                    if not interface_types:
-                        self.errors.report(
-                            "Can not query field '{0}' on interface '{1}'. "
-                            "Interface '{1}' is not implemented by any type. "
-                            "Add at least one type implementing this interface.".format(  # noqa: E501
-                                field.name, interface.name
-                            )
-                        )
-                        continue
 
-                    if field.name not in interface.fields_map:
-                        implementation = None
-                        for impl in interface_types:
-                            if (
-                                field.name
-                                in self.graph.nodes_map[impl].fields_map
-                            ):
-                                implementation = impl
-                                break
-
-                        self.errors.report(
-                            "Can not query field '{}' on type '{}'. "
-                            "Did you mean to use an inline fragment on '{}'?".format(  # noqa: E501
-                                field.name, interface.name, implementation
-                            )
+                interface_types = self.graph.interfaces_types[interface.name]
+                if not interface_types:
+                    self.errors.report(
+                        "Can not query field '{0}' on interface '{1}'. "
+                        "Interface '{1}' is not implemented by any type. "
+                        "Add at least one type implementing this interface.".format(  # noqa: E501
+                            field.name, interface.name
                         )
-                        continue
+                    )
+                    continue
+
+                if field.name not in interface.fields_map:
+                    implementation = None
+                    for impl in interface_types:
+                        if field.name in self.graph.nodes_map[impl].fields_map:
+                            implementation = impl
+                            break
+
+                    self.errors.report(
+                        "Can not query field '{}' on type '{}'. "
+                        "Did you mean to use an inline fragment on '{}'?".format(  # noqa: E501
+                            field.name, interface.name, implementation
+                        )
+                    )
+                    continue
+            else:
+                if isinstance(field, Fragment):
+                    self.visit(field)
+                    continue
 
             seen = fields.get(field.result_key)
             if seen is not None:

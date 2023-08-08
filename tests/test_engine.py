@@ -21,6 +21,7 @@ from sqlalchemy import (
 from sqlalchemy.pool import StaticPool
 
 from hiku import query as q
+from hiku.readers.graphql import read
 from hiku.denormalize.graphql import DenormalizeGraphQL
 from hiku.executors.threads import ThreadsExecutor
 from hiku.graph import Graph, Node, Field, Link, Nothing, Option, Root
@@ -1352,5 +1353,56 @@ def test_non_root_link_with_sequence_to_optional_type_ref():
             "a": 42,
             "b1": [{"b": 24}, None],
             "b2": [{"b": 24}, None]
+        }
+    }
+
+
+def test_overlapped_query_node_with_fragment():
+    def resolve_user(fields, ids):
+        def get_field(f, id_):
+            if f.name == "name":
+                return "John"
+            elif f.name == "id":
+                return id_
+
+        return [[get_field(f, id_) for f in fields] for id_ in ids]
+
+    graph = Graph([
+        Node('User', [
+            Field('id', String, resolve_user),
+            Field('name', String, resolve_user),
+        ]),
+        Node('Context', [
+            Link('user', TypeRef['User'], lambda: 1, requires=None)
+        ]),
+        Root([
+            Link('context', TypeRef['Context'], lambda: 1, requires=None)
+        ])
+    ])
+
+    query = """
+    query GetUser {
+        context {
+            user {
+                id
+                name
+            }
+            ... on Context {
+                user {
+                    id
+                }
+            }
+        }
+    }
+    """
+
+    result = execute(graph, read(query))
+
+    assert denormalize(graph, result) == {
+        "context": {
+            "user": {
+                "id": 1,
+                "name": "John"
+            }
         }
     }
