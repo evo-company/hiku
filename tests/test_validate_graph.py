@@ -239,6 +239,27 @@ def test_field_uses_more_than_one_deprecated_directive():
         ['Deprecated directive must be used only once for "bar.id", found 2'],
     )
 
+def test_deprecated_directive_with_deprecated_argument():
+    check_errors(
+        [
+            Node(
+                "bar",
+                [
+                    Field(
+                        "id",
+                        None,
+                        _fields_func,
+                        directives=[
+                            Deprecated("do not use"),
+                        ],
+                        deprecated="do not use 2",
+                    ),
+                ],
+            ),
+        ],
+        ['Deprecated directive must be used only once for "bar.id", found 2'],
+    )
+
 
 def test_link_uses_more_than_one_deprecated_directive():
     check_errors(
