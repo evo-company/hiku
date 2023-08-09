@@ -37,8 +37,9 @@ class DenormalizeGraphQL(Denormalize):
 
     def visit_link(self, obj: Link) -> None:
         if isinstance(self._type[-1], Union):
-            assert obj.parent_type in self._type[-1].types
-            type_ = self._types[obj.parent_type].__field_types__[obj.name]
+            type_ = self._types[self._data[-1].__ref__.node].__field_types__[
+                obj.name
+            ]
         elif isinstance(self._type[-1], RecordMeta):
             type_ = self._type[-1].__field_types__[obj.name]
         else:

@@ -1,8 +1,8 @@
 import pytest
 
+from hiku.endpoint.graphql import _StripQuery
 from hiku.denormalize.graphql import DenormalizeGraphQL
 from hiku.engine import Engine
-from hiku.interface import SplitInterfaceQueryByNodes
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import Field, Graph, Interface, Link, Node, Option, Root
 from hiku.types import Integer, InterfaceRef, Optional, Sequence, String, TypeRef
@@ -14,7 +14,7 @@ from hiku.validate.query import validate
 
 def execute(graph, query):
     engine = Engine(SyncExecutor())
-    result = engine.execute(graph, query, {})
+    result = engine.execute(graph, _StripQuery().visit(query), {})
     return DenormalizeGraphQL(graph, result, "query").process(query)
 
 
@@ -336,6 +336,43 @@ def test_query_can_be_without_shared_fields():
     }
 
 
+def test_query_only_one_interface_type():
+    query = """
+    query GetMedia {
+      media {
+        __typename
+        id
+        duration
+        ... on Audio {
+          album
+        }
+      }
+    }
+    """
+
+    result = execute(GRAPH, read(query))
+    assert result == {
+        'media': {'__typename': 'Audio', 'id': 1, 'duration': '1s', 'album': 'album#1'},
+    }
+
+
+def test_query_only_shared_fields():
+    query = """
+    query GetMedia {
+      media {
+        __typename
+        id
+        duration
+      }
+    }
+    """
+
+    result = execute(GRAPH, read(query))
+    assert result == {
+        'media': {'__typename': 'Audio', 'id': 1, 'duration': '1s'},
+    }
+
+
 def test_validate_interface_has_no_implementations():
     graph = Graph([
         Root([
@@ -435,83 +472,3 @@ def test_validate_interface_type_field_has_no_such_option():
     assert errors == [
         'Unknown options for "Audio.duration": size',
     ]
-
-
-def test_split_interface_query_into_nodes():
-    query_raw = """
-    query SearchMedia($text: String) {
-      searchMedia(text: $text) {
-        __typename
-        id
-        duration
-        ... on Audio {
-          album
-        }
-        ... on Video {
-          thumbnailUrl(size: 100)
-        }
-      }
-    }
-    """
-    query = read(query_raw, {'text': 'foo'})
-
-    nodes = SplitInterfaceQueryByNodes(GRAPH).split(
-        query.fields_map['searchMedia'].node
-    )
-
-    assert len(nodes) == 2
-
-    assert 'Audio' in nodes
-    assert 'Video' in nodes
-
-    assert nodes['Audio'].fields_map.keys() == {
-        'id',
-        'duration',
-        ('Audio', 'album')
-    }
-    assert nodes['Video'].fields_map.keys() == {
-        'id',
-        'duration',
-        ('Video', 'thumbnailUrl')
-    }
-
-
-def test_split_interface_query_into_nodes_if_no_shared_fields_in_query():
-    query_raw = """
-    query SearchMedia($text: String) {
-      searchMedia(text: $text) {
-        __typename
-        ... on Audio {
-          id
-          duration
-          album
-        }
-        ... on Video {
-          id
-          duration
-          thumbnailUrl(size: 100)
-        }
-      }
-    }
-    """
-    query = read(query_raw, {'text': 'foo'})
-
-    nodes = SplitInterfaceQueryByNodes(GRAPH).split(
-        query.fields_map['searchMedia'].node
-    )
-
-    assert len(nodes) == 2
-
-    assert 'Audio' in nodes
-    assert 'Video' in nodes
-
-    assert nodes['Audio'].fields_map.keys() == {
-        ('Audio', 'id'),
-        ('Audio', 'duration'),
-        ('Audio', 'album')
-    }
-    assert nodes['Video'].fields_map.keys() == {
-        ('Video', 'id'),
-        ('Video', 'duration'),
-        ('Video', 'thumbnailUrl')
-    }

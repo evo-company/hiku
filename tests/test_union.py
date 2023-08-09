@@ -1,8 +1,8 @@
 import pytest
+from hiku.endpoint.graphql import _StripQuery
 
 from hiku.denormalize.graphql import DenormalizeGraphQL
 from hiku.engine import Engine
-from hiku.union import SplitUnionQueryByNodes
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import Field, Graph, Link, Node, Option, Root, Union
 from hiku.types import Integer, Optional, Sequence, String, TypeRef, UnionRef
@@ -14,7 +14,7 @@ from hiku.validate.query import validate
 
 def execute(graph, query):
     engine = Engine(SyncExecutor())
-    result = engine.execute(graph, query, {})
+    result = engine.execute(graph, _StripQuery().visit(query), {})
     return DenormalizeGraphQL(graph, result, "query").process(query)
 
 
@@ -296,6 +296,40 @@ def test_query_with_inline_fragment_and_fragment_spread():
     }
 
 
+def test_query_only_one_union_type():
+    query = """
+    query GetMedia {
+      media {
+        __typename
+        ... on Audio {
+            id
+            duration
+        }
+      }
+    }
+
+    """
+    result = execute(GRAPH, read(query))
+    assert result == {
+        'media': {'__typename': 'Audio', 'id': 1, 'duration': '1s'},
+    }
+
+
+def test_query_only_typename():
+    query = """
+    query GetMedia {
+      media {
+        __typename
+      }
+    }
+
+    """
+    result = execute(GRAPH, read(query))
+    assert result == {
+        'media': {'__typename': 'Audio'},
+    }
+
+
 def test_validate_query_can_not_contain_shared_fields():
     query = """
     query SearchMedia($text: String) {
@@ -361,40 +395,3 @@ def test_validate_union_type_field_has_no_such_option():
     assert errors == [
         'Unknown options for "Audio.duration": size',
     ]
-
-
-def test_split_union_into_nodes():
-    query_raw = """
-    query SearchMedia($text: String) {
-      searchMedia(text: $text) {
-        __typename
-        ... on Audio {
-          id
-          duration
-        }
-        ... on Video {
-          id
-          thumbnailUrl(size: 100)
-        }
-      }
-    }
-    """
-    query = read(query_raw, {'text': 'foo'})
-
-    nodes = SplitUnionQueryByNodes(GRAPH, GRAPH.unions_map['Media']).split(
-        query.fields_map['searchMedia'].node
-    )
-
-    assert len(nodes) == 2
-
-    assert 'Audio' in nodes
-    assert 'Video' in nodes
-
-    assert nodes['Audio'].fields_map.keys() == {
-        ('Audio', 'id'),
-        ('Audio', 'duration')
-    }
-    assert nodes['Video'].fields_map.keys() == {
-        ('Video', 'id'),
-        ('Video', 'thumbnailUrl')
-    }

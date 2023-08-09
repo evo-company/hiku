@@ -10,6 +10,7 @@ from ..graph import (
     Graph,
 )
 from ..query import (
+    Fragment,
     QueryTransformer,
     Node,
 )
@@ -44,6 +45,9 @@ class _StripQuery(QueryTransformer):
         return obj.copy(
             fields=[self.visit(f) for f in obj.fields if f.name != "__typename"]
         )
+
+    def visit_fragment(self, obj: Fragment) -> Fragment:
+        return obj.copy(node=self.visit(obj.node))
 
 
 def _switch_graph(
