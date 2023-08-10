@@ -26,16 +26,31 @@ Changes in 0.7
                         directives=[Deprecated('use another field')]),
               ]),
           ])
+
+    Or you can use ``deprecated`` argument to :py:class:`hiku.graph.Field`: or :py:class:`hiku.graph.Link`:
+
+    .. code-block:: python
+
+          from hiku.directives import Deprecated
+
+          graph = Graph([
+              Root([
+                  Field('lorem-ipsum', String, func,
+                        options=[Option('words', Integer, default=50)],
+                        deprecated='use another field'),
+              ]),
+          ])
+
   - Added mypy and typings to codebase
-  - Added checks for unhashable link results and extend errors. This must improve developer experience.
+  - Added checks for link results that can not be hashed and extend errors. This must improve developer experience.
   - Added caching for parsing graphql query. It is optional and can be enabled by calling :py:func:`hiku.readers.graphql.setup_query_cache`.
   - Added result cache - it is possible now to specify ``@cached`` directive to cache parts of the query. :ref:`Check cache documentation <caching-doc>`
   - ``Link(requires=['a', 'b'])`` can be specified as a list of strings. It is useful when you want to require multiple fields at once. It will pass a list of dicts to the resolver.
   - Added support for Python 3.11
-  - Added hints when failing on unhashable return values
+  - Added hints when failing on return values that are not hashable
   - Migrated to ``pdm`` package manager
   - Reformat code with ``black``
-  - Added support for Apollo Federation v2
+  - Added support for Apollo Federation v2 (v2 is default now)
   - Added support for custom schema directives :ref:`Check directives documentation <directives-doc>`
   - Added `ID` type.
   - Added support for unions :ref:`Check unions documentation <unions-doc>`

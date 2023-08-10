@@ -43,7 +43,7 @@ from .utils import (
     const,
     Const,
 )
-from .directives import SchemaDirective
+from .directives import Deprecated, SchemaDirective
 
 from .compat import TypeAlias
 
@@ -208,7 +208,8 @@ class Field(AbstractField):
         *,
         options: t.Optional[t.Sequence[Option]] = None,
         description: t.Optional[str] = None,
-        directives: t.Optional[t.Sequence[SchemaDirective]] = None,
+        directives: t.Optional[t.List[SchemaDirective]] = None,
+        deprecated: t.Optional[str] = None,
     ):
         """
         :param str name: name of the field
@@ -217,13 +218,20 @@ class Field(AbstractField):
         :param options: list of acceptable options
         :param description: description of the field
         :param directives: list of directives for the field
+        :param deprecated: deprecation reason
         """
+        if directives is None:
+            directives = []
+
+        if deprecated is not None:
+            directives.append(Deprecated(deprecated))
+
         self.name = name
         self.type = type_
         self.func = func
         self.options = options or ()
         self.description = description
-        self.directives = directives or ()
+        self.directives = directives
         self.type_info = get_field_type(type_)
 
     def __repr__(self) -> str:
@@ -490,7 +498,8 @@ class Link(AbstractLink):
         requires: t.Optional[t.Union[str, t.List[str]]],
         options: t.Optional[t.Sequence[Option]] = None,
         description: t.Optional[str] = None,
-        directives: t.Optional[t.Sequence[SchemaDirective]] = None,
+        directives: t.Optional[t.List[SchemaDirective]] = None,
+        deprecated: t.Optional[str] = None,
     ):
         ...
 
@@ -504,7 +513,8 @@ class Link(AbstractLink):
         requires: t.Optional[t.Union[str, t.List[str]]],
         options: t.Optional[t.Sequence[Option]] = None,
         description: t.Optional[str] = None,
-        directives: t.Optional[t.Sequence[SchemaDirective]] = None,
+        directives: t.Optional[t.List[SchemaDirective]] = None,
+        deprecated: t.Optional[str] = None,
     ):
         ...
 
@@ -518,7 +528,8 @@ class Link(AbstractLink):
         requires: t.Optional[t.Union[str, t.List[str]]],
         options: t.Optional[t.Sequence[Option]] = None,
         description: t.Optional[str] = None,
-        directives: t.Optional[t.Sequence[SchemaDirective]] = None,
+        directives: t.Optional[t.List[SchemaDirective]] = None,
+        deprecated: t.Optional[str] = None,
     ):
         ...
 
@@ -532,7 +543,8 @@ class Link(AbstractLink):
         requires: t.Optional[t.Union[str, t.List[str]]],
         options: t.Optional[t.Sequence[Option]] = None,
         description: t.Optional[str] = None,
-        directives: t.Optional[t.Sequence[SchemaDirective]] = None,
+        directives: t.Optional[t.List[SchemaDirective]] = None,
+        deprecated: t.Optional[str] = None,
     ):
         ...
 
@@ -546,6 +558,7 @@ class Link(AbstractLink):
         options=None,
         description=None,
         directives=None,
+        deprecated=None,
     ):
         """
         :param name: name of the link
@@ -556,8 +569,15 @@ class Link(AbstractLink):
         :param options: list of acceptable options
         :param description: description of the link
         :param directives: list of directives for the link
+        :param deprecated: deprecation reason for the link
         """
         type_enum, node = get_link_type_enum(type_)
+
+        if directives is None:
+            directives = []
+
+        if deprecated is not None:
+            directives.append(Deprecated(deprecated))
 
         self.name = name
         self.type = type_
@@ -567,7 +587,7 @@ class Link(AbstractLink):
         self.requires = requires
         self.options = options or ()
         self.description = description
-        self.directives = directives or ()
+        self.directives = directives
         self.type_info = get_link_type(type_)
 
     def __repr__(self) -> str:
