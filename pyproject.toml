@@ -98,11 +98,15 @@ example = "python examples/{args:graphql_flask}.py"
 [tool.pdm.scripts.release]
 shell = """
 set -e
+USAGE="Usage: VERSION=<> MESSAGE=<> pdm run release"
+
 if [ -z "${VERSION}" ]; then
+    echo $USAGE
     echo "VERSION is not set"
     exit 1
 fi
 if [ -z "${MESSAGE}" ]; then
+    echo $USAGE
     echo "MESSAGE is not set"
     exit 1
 fi
