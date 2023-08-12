@@ -4,7 +4,7 @@ from hiku import query as q
 from hiku.graph import Graph, Node, Field, Link, Option, Root
 from hiku.types import Integer, Record, Sequence, Optional, TypeRef, Boolean
 from hiku.types import String, Mapping, Any
-from hiku.validate.query import validate
+from hiku.validate.query import QueryComplexityValidator, QueryDepthValidator, validate
 
 
 def _():
@@ -796,3 +796,38 @@ def test_any_in_option():
         'Invalid value for option "root.get:foo", '
         '"str" instead of Mapping[String, Any]'
     ]
+
+
+# TODO test complex field
+# TODO test with options
+# TODO: test with records
+# TODO: test with fragments
+# TODO: research about query complexity techniques
+def test_query_complexity_validator():
+    validator = QueryComplexityValidator()
+
+    query = q.Node([
+        q.Field("a"),
+        q.Field("b"),
+        q.Link("c", q.Node([
+            q.Field("d"),
+            q.Field("e"),
+        ])),
+    ])
+
+    assert validator.validate(query) == 5
+
+
+def test_query_depth_validator():
+    validator = QueryDepthValidator()
+
+    query = q.Node([
+        q.Field("a"),
+        q.Field("b"),
+        q.Link("c", q.Node([
+            q.Field("d"),
+            q.Field("e"),
+        ])),
+    ])
+
+    assert validator.validate(query) == 3

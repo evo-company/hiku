@@ -533,3 +533,53 @@ def validate(graph: Graph, query: QueryNode) -> t.List[str]:
     query_validator = QueryValidator(graph)
     query_validator.visit(query)
     return query_validator.errors.list
+
+
+# TODO: add tests
+class QueryComplexityValidator(QueryVisitor):
+    def __init__(self):
+        self.complexity = 0
+
+    def validate(self, obj: QueryNode) -> int:
+        self.visit(obj)
+        # TODO: should we return complexity or accept max_complexity in init and raise/return error ?
+        return self.complexity
+
+    def visit_field(self, obj: QueryField) -> None:
+        # TODO: consider options presece
+        self.complexity += 1
+
+    def visit_link(self, obj: QueryLink) -> None:
+        # TODO do we need to inclide link ? What if complex field - what complexity for records ?
+        self.complexity += 1
+        super().visit_link(obj)
+
+
+# TODO: add tests
+class QueryDepthValidator(QueryVisitor):
+    def __init__(self):
+        self.current_depth = 0
+        self.max_depth = 0
+
+    def validate(self, obj: QueryNode) -> int:
+        self.visit(obj)
+        # TODO: should we return complexity or accept max_complexity in init and raise/return error ?
+        return self.max_depth
+
+    def visit_field(self, obj: QueryField) -> None:
+        pass  # Do nothing for individual fields.
+
+    def visit_link(self, obj: QueryLink) -> None:
+        # TODO: either calculate query depth in Link or in Node, but not in both
+        self.current_depth += 1
+        super().visit_link(obj)
+        self.current_depth -= 1
+
+    def visit_node(self, obj: QueryNode) -> None:
+        self.current_depth += 1
+        self.max_depth = max(self.max_depth, self.current_depth)
+        super().visit_node(obj)
+        self.current_depth -= 1
+
+    def visit_fragment(self, obj: Fragment) -> None:
+        super().visit_fragment(obj)
