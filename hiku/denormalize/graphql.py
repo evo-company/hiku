@@ -28,15 +28,10 @@ class DenormalizeGraphQL(Denormalize):
                 type_name = self._data[-1].__ref__.node
             self._res[-1][obj.result_key] = type_name
         else:
-            if isinstance(self._type[-1], (Union, Interface)):
-                type_name = self._data[-1].__ref__.node
-
-                if obj.name not in self._types[type_name].__field_types__:
-                    return
             super().visit_field(obj)
 
     def visit_link(self, obj: Link) -> None:
-        if isinstance(self._type[-1], Union):
+        if isinstance(self._type[-1], (Union, Interface)):
             type_ = self._types[self._data[-1].__ref__.node].__field_types__[
                 obj.name
             ]

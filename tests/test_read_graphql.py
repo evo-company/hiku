@@ -218,40 +218,47 @@ def test_named_fragments():
                                     [
                                         Field("flowers"),
                                         Field("apres"),
-                                        Field("doozie"),
-                                        Link(
-                                            "pins",
-                                            Node(
-                                                [
-                                                    Field("gunya"),
-                                                    Link(
-                                                        "kilned",
-                                                        Node(
-                                                            [
-                                                                Field("rusk"),
-                                                            ]
-                                                        ),
-                                                    ),
-                                                ]
+                                    ], [
+                                        Fragment('Makai', [
+                                            Field("doozie"),
+                                            Link(
+                                                "pins",
+                                                Node(
+                                                    [
+                                                        Field("gunya"),
+                                                    ], [
+                                                        Fragment('Torsion', [
+                                                            Link(
+                                                                "kilned",
+                                                                Node(
+                                                                    [
+                                                                        Field("rusk"),
+                                                                    ]
+                                                                ),
+                                                            ),
+                                                        ]),
+                                                    ],
+                                                ),
                                             ),
-                                            fragment_type="Torsion",
-                                        ),
+                                        ]),
                                     ]
                                 ),
                                 options={"gire": "noatak"},
-                                fragment_type="Makai",
                             ),
-                            Link(
-                                "movies",
-                                Node(
-                                    [
-                                        Field("boree"),
-                                    ]
+                        ],
+                        [
+                            Fragment('Valium', [
+                                Link(
+                                    "movies",
+                                    Node(
+                                        [
+                                            Field("boree"),
+                                        ]
+                                    ),
                                 ),
-                            ),
+                            ]),
                         ]
                     ),
-                    fragment_type="Valium",
                 ),
             ]
         ),
@@ -564,6 +571,7 @@ def test_parse_union_with_two_fragments():
                     "media",
                     Node([
                         Field("__typename"),
+                        ], [
                         Fragment('Audio', [
                             Field("id"),
                             Field("duration"),
@@ -598,10 +606,13 @@ def test_parse_union_with_one_fragment():
                     "media",
                     Node([
                         Field("__typename"),
-                        Field("id"),
-                        Field("duration"),
-                    ]),
-                    fragment_type='Audio',
+                    ], [
+                        Fragment('Audio', [
+                            Field("id"),
+                            Field("duration"),
+                        ]),
+                        ]
+                    )
                 ),
             ]
         ),
@@ -633,6 +644,7 @@ def test_parse_interface_with_two_fragments():
                         Field("__typename"),
                         Field("id"),
                         Field("duration"),
+                        ], [
                         Fragment('Audio', [
                             Field("album"),
                         ]),
@@ -668,9 +680,11 @@ def test_parse_interface_with_one_fragment():
                         Field("__typename"),
                         Field("id"),
                         Field("duration"),
-                        Field("album"),
+                    ], [
+                        Fragment('Audio', [
+                            Field("album"),
+                        ]),
                     ]),
-                    fragment_type='Audio',
                 )
             ]
         ),
@@ -704,8 +718,13 @@ def test_merge_node_with_fragment_on_node():
                             Field("id"),
                             Field("name"),
                         ])),
+                    ], [
+                        Fragment('Context', [
+                            Link("user", Node([
+                                Field("id"),
+                            ])),
+                        ]),
                     ]),
-                    fragment_type='Context',
                 )
             ]
         ),

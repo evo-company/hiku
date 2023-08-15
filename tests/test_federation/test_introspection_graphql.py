@@ -193,9 +193,6 @@ def test_federated_introspection_v1():
                 _non_null(_obj('_Service')),
             ),
         ]),
-        _type('_Service', 'OBJECT', fields=[
-            _field('sdl', _non_null(_scalar('String'))),
-        ]),
         _type('Status', 'OBJECT', fields=[
             _field('id', _non_null(_INT)),
             _field('title', _non_null(_STR)),
@@ -203,6 +200,9 @@ def test_federated_introspection_v1():
         _type('IOStatus', 'INPUT_OBJECT', inputFields=[
             _ival('id', _non_null(_INT)),
             _ival('title', _non_null(_STR)),
+        ]),
+        _type('_Service', 'OBJECT', fields=[
+            _field('sdl', _non_null(_scalar('String'))),
         ]),
         _type('_Entity', 'UNION', possibleTypes=[
             _obj('Cart')
@@ -247,9 +247,6 @@ def test_federated_introspection_v2():
                 _non_null(_obj('_Service')),
             ),
         ]),
-        _type('_Service', 'OBJECT', fields=[
-            _field('sdl', _non_null(_scalar('String'))),
-        ]),
         _type('Status', 'OBJECT', fields=[
             _field('id', _non_null(_INT)),
             _field('title', _non_null(_STR)),
@@ -257,6 +254,9 @@ def test_federated_introspection_v2():
         _type('IOStatus', 'INPUT_OBJECT', inputFields=[
             _ival('id', _non_null(_INT)),
             _ival('title', _non_null(_STR)),
+        ]),
+        _type('_Service', 'OBJECT', fields=[
+            _field('sdl', _non_null(_scalar('String'))),
         ]),
         _type('_Entity', 'UNION', possibleTypes=[
             _obj('Cart')
@@ -355,8 +355,6 @@ def test_entities_field_when_no_type_has_key():
             "kind": "OBJECT",
             "fields": [{
                 "name": "cart",
-            }, {
-                "name": "_service",
             }]
         }
     }

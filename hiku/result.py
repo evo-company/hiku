@@ -91,9 +91,19 @@ class Proxy:
         try:
             field: t.Union[Field, Link] = self.__node__.result_map[item]
         except KeyError:
-            raise KeyError(
-                "Field {!r} wasn't requested in the query".format(item)
-            )
+            if self.__ref__.node not in self.__node__.fragments_map:
+                raise KeyError(
+                    "Field {!r} wasn't requested in the query".format(item)
+                )
+
+            try:
+                field = self.__node__.fragments_map[
+                    self.__ref__.node
+                ].node.result_map[item]
+            except KeyError:
+                raise KeyError(
+                    "Field {!r} wasn't requested in the query".format(item)
+                )
 
         try:
             obj: t.Dict = self.__idx__[self.__ref__.node][self.__ref__.ident]
@@ -115,20 +125,12 @@ class Proxy:
         if isinstance(field, Field):
             return value
         elif isinstance(value, Reference):
-            node = field.node
-            if value.node in node.fields_map:
-                # extract node from fragment
-                node = node.fields_map[value.node].result_node(field.node)
-            return self.__class__(self.__idx__, value, node)
+            return self.__class__(self.__idx__, value, field.node)
         elif isinstance(value, list) and value:
             values = []
             for val in value:
                 if isinstance(val, Reference):
-                    node = field.node
-                    if val.node in node.fields_map:
-                        # extract node from fragment
-                        node = node.fields_map[val.node].result_node(field.node)
-                    values.append(self.__class__(self.__idx__, val, node))
+                    values.append(self.__class__(self.__idx__, val, field.node))
                 else:
                     values.append(val)
 
@@ -184,14 +186,16 @@ def _denormalize(
         assert isinstance(graph_obj, GraphNode)
         r = {}
         for f in query_obj.fields:
-            if isinstance(f, Fragment):
-                return _denormalize(
-                    graph, graph.nodes_map[f.type_name], result, f.node
+            r[f.result_key] = _denormalize(
+                graph, graph_obj.fields_map[f.name], result[f.result_key], f
+            )
+        for fr in query_obj.fragments:
+            r.update(
+                _denormalize(
+                    graph, graph.nodes_map[fr.type_name], result, fr.node
                 )
-            else:
-                r[f.result_key] = _denormalize(
-                    graph, graph_obj.fields_map[f.name], result[f.result_key], f
-                )
+            )
+
         return r
 
     elif isinstance(query_obj, Field):

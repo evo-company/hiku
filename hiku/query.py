@@ -182,7 +182,6 @@ class Link(FieldBase):
         "options",
         "alias",
         "directives",
-        "fragment_type",
     )
 
     def __init__(
@@ -192,14 +191,12 @@ class Link(FieldBase):
         options: t.Optional[t.Dict[str, t.Any]] = None,
         alias: t.Optional[str] = None,
         directives: t.Optional[t.Tuple[Directive, ...]] = None,
-        fragment_type: t.Optional[str] = None,
     ):
         self.name = name
         self.node = node
         self.options = options
         self.alias = alias
         self.directives = directives or ()
-        self.fragment_type = fragment_type
 
     @cached_property
     def directives_map(self) -> OrderedDict:
@@ -211,28 +208,31 @@ class Link(FieldBase):
         return visitor.visit_link(self)
 
 
-FieldsMap: TypeAlias = (
-    "OrderedDict[t.Union[str, t.Tuple[str, str]], t.Union[FieldBase, Fragment]]"
-)
+FieldOrLink = t.Union[Field, Link]
+FieldsMap: TypeAlias = "OrderedDict[str, FieldBase]"
+FragmentMap: TypeAlias = "OrderedDict[str, Fragment]"
 
 
 class Node(Base):
-    """Represents collection of fields and links
+    """Represents collection of fields, links and fragments
 
     :param fields: list of :py:class:`~hiku.query.Field`,
         :py:class:`~hiku.query.Link`, :py:class:`~hiku.query.Fragment`
+    :param fragments: list of :py:class:`~hiku.query.Fragment`
     :param ordered: whether to compute fields of this node sequentially
         in order or not
     """
 
-    __attrs__ = ("fields", "ordered")
+    __attrs__ = ("fields", "fragments", "ordered")
 
     def __init__(
         self,
-        fields: t.Sequence[t.Union[FieldBase, "Fragment"]],
+        fields: t.Sequence[FieldOrLink],
+        fragments: t.Optional[t.Sequence["Fragment"]] = None,
         ordered: bool = False,
     ) -> None:
         self.fields = list(fields)
+        self.fragments = list(fragments or [])
         self.ordered = ordered
 
     @cached_property
@@ -242,12 +242,12 @@ class Node(Base):
         return OrderedDict((f.name, f) for f in self.fields)
 
     @cached_property
+    def fragments_map(self) -> FragmentMap:
+        return OrderedDict((f.type_name, f) for f in self.fragments)
+
+    @cached_property
     def result_map(self) -> OrderedDict:
-        return OrderedDict(
-            (f.result_key, f)
-            for f in self.fields
-            if not isinstance(f, Fragment)
-        )
+        return OrderedDict((f.result_key, f) for f in self.fields)
 
     def accept(self, visitor: "QueryVisitor") -> t.Any:
         return visitor.visit_node(self)
@@ -256,26 +256,9 @@ class Node(Base):
 class Fragment(Base):
     __attrs__ = ("type_name", "node")
 
-    def __init__(self, type_name: str, fields: t.List[FieldBase]) -> None:
+    def __init__(self, type_name: str, fields: t.List[FieldOrLink]) -> None:
         self.type_name = type_name
         self.node = Node(fields)
-
-    def result_node(self, node: Node) -> Node:
-        """Merge fields from argument node with fields from fragment node
-        Use when resolving interfaces.
-        """
-        fields = []
-        for f in node.fields:
-            if not isinstance(f, Fragment):
-                fields.append(f)
-
-        fields += self.node.fields  # type: ignore[arg-type]
-        return self.node.copy(fields=fields)
-
-    @cached_property
-    def name(self) -> str:
-        """For compatibility with :py:class:`~hiku.query.Field`"""
-        return self.type_name
 
     def accept(self, visitor: "QueryVisitor") -> t.Any:
         return visitor.visit_fragment(self)
@@ -284,18 +267,37 @@ class Fragment(Base):
 KeyT = t.Tuple[str, t.Optional[str], t.Optional[str]]
 
 
-def _merge(nodes: t.Iterable[Node]) -> t.Iterator[t.Union[FieldBase, Fragment]]:
-    fields = set()
+def _merge(
+    nodes: t.Iterable[Node],
+) -> t.Iterator[t.Union[FieldOrLink, Fragment]]:
+    for field in _merge_fields(chain.from_iterable(e.fields for e in nodes)):
+        yield field
+
+    for fr in _merge_fragments(chain.from_iterable(e.fragments for e in nodes)):
+        yield fr
+
+
+def _merge_fragments(fragments: t.Iterable[Fragment]) -> t.Iterator[Fragment]:
+    to_merge_fragments = OrderedDict()
+
+    for fr in fragments:
+        key = (fr.type_name, None, None)
+        if key not in to_merge_fragments:
+            to_merge_fragments[key] = [fr.node]
+        else:
+            to_merge_fragments[key].append(fr.node)
+
+    for key, values in to_merge_fragments.items():
+        yield Fragment(key[0], list(_merge(values)))  # type: ignore[arg-type]
+
+
+def _merge_fields(fields_: t.Iterable[FieldOrLink]) -> t.Iterator[FieldOrLink]:
+    visited_fields = set()
     links = {}
     link_directives: t.DefaultDict[t.Tuple, t.List] = defaultdict(list)
     to_merge = OrderedDict()
-    for field in chain.from_iterable(e.fields for e in nodes):
-        key: KeyT
-
-        if isinstance(field, Fragment):
-            key = (field.type_name, None, None)
-        else:
-            key = (field.name, field.options_hash, field.alias)
+    for field in fields_:
+        key = (field.name, field.options_hash, field.alias)
 
         if field.__class__ is Link:
             field = t.cast(Link, field)
@@ -306,9 +308,10 @@ def _merge(nodes: t.Iterable[Node]) -> t.Iterator[t.Union[FieldBase, Fragment]]:
                 to_merge[key].append(field.node)
             link_directives[key].extend(field.directives)
         else:
-            if key not in fields:
-                fields.add(key)
+            if key not in visited_fields:
+                visited_fields.add(key)
                 yield field
+
     for key, values in to_merge.items():
         link = links[key]
         directives = link_directives[key]
@@ -323,7 +326,15 @@ def merge(nodes: t.Iterable[Node]) -> Node:
     """
     assert isinstance(nodes, Sequence), type(nodes)
     ordered = any(n.ordered for n in nodes)
-    return Node(list(_merge(nodes)), ordered=ordered)
+    fields = []
+    fragments = []
+    for item in _merge(nodes):
+        if isinstance(item, Fragment):
+            fragments.append(item)
+        else:
+            fields.append(item)
+
+    return Node(fields=fields, fragments=fragments, ordered=ordered)
 
 
 class QueryVisitor:

@@ -114,7 +114,7 @@ class Option(AbstractOption):
         self.type = type_
         self.default = default
         self.description = description
-        self.type_info = get_field_type(type_)
+        self.type_info = get_field_info(type_)
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, ...)".format(
@@ -232,7 +232,7 @@ class Field(AbstractField):
         self.options = options or ()
         self.description = description
         self.directives = directives
-        self.type_info = get_field_type(type_)
+        self.type_info = get_field_info(type_)
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r})".format(
@@ -283,18 +283,18 @@ class FieldTypeInfo:
     type_enum: FieldType
 
 
-def get_field_type(
+def get_field_info(
     type_: t.Optional[t.Union[GenericMeta, ScalarMeta]]
 ) -> t.Optional[FieldTypeInfo]:
     if not type_:
         return None
 
     if isinstance(type_, OptionalMeta):
-        return get_field_type(getattr(type_, "__type__", None))
+        return get_field_info(getattr(type_, "__type__", None))
 
     if isinstance(type_, SequenceMeta):
         # if type not passed to Sequence[]
-        return get_field_type(getattr(type_, "__item_type__", None))
+        return get_field_info(getattr(type_, "__item_type__", None))
 
     if isinstance(type_, TypeRefMeta):
         return FieldTypeInfo(
@@ -632,7 +632,7 @@ class Interface(AbstractBase):
     def __init__(
         self,
         name: str,
-        fields: t.List["Field"],
+        fields: t.Sequence[t.Union["Field", "Link"]],
         *,
         description: t.Optional[str] = None,
     ):
@@ -1018,7 +1018,10 @@ class GraphTransformer(AbstractGraphVisitor):
         )
 
 
-def apply(graph: Graph, transformers: List[GraphTransformer]) -> Graph:
+G = t.TypeVar("G", bound=Graph)
+
+
+def apply(graph: G, transformers: List[GraphTransformer]) -> G:
     """Helper function to apply graph transformations
 
     Example:
