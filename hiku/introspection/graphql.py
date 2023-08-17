@@ -134,6 +134,10 @@ class SchemaInfo:
         """Determines if a field should be hidden from introspection."""
         return field.name.startswith("_")
 
+    @staticmethod
+    def is_data_type_as_input(name: str) -> bool:
+        return True
+
 
 class TypeIdent(AbstractTypeVisitor):
     def __init__(self, graph: Graph, input_mode: bool = False) -> None:
@@ -250,7 +254,8 @@ def root_schema_types(schema: SchemaInfo) -> t.Iterator[HashedNamedTuple]:
     for name, type_ in schema.data_types.items():
         if isinstance(type_, RecordMeta):
             yield OBJECT(name)
-            yield INPUT_OBJECT(name)
+            if schema.is_data_type_as_input(name):
+                yield INPUT_OBJECT(name)
 
     for union in schema.query_graph.unions:
         yield UNION(

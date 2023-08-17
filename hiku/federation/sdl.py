@@ -481,7 +481,7 @@ def get_ast(
 class _StripGraph(GraphTransformer):
     def visit_root(self, obj: Root) -> Root:
         def skip(field: t.Union[Field, Link]) -> bool:
-            return field.name in ["__typename", "_entities"]
+            return field.name in ["__typename", "_entities", "_service"]
 
         return Root([self.visit(f) for f in obj.fields if not skip(f)])
 
@@ -493,9 +493,14 @@ class _StripGraph(GraphTransformer):
 
             return node.name.startswith("__")
 
+        data_types = {
+            name: type_
+            for name, type_ in obj.data_types.items()
+            if not name.startswith("_Service")
+        }
         return Graph(
             [self.visit(node) for node in obj.items if not skip(node)],
-            obj.data_types,
+            data_types,
             obj.directives,
             obj.unions,
             obj.interfaces,

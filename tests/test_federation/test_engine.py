@@ -54,12 +54,6 @@ def test_validate_entities_query():
     assert errors == []
 
 
-def test_execute_sdl():
-    engine = Engine(SyncExecutor())
-    result = engine.execute_service(GRAPH, None)
-    assert result['sdl'] is not None
-
-
 def test_execute_sync_executor():
     result = execute(GRAPH, QUERY, {})
     data = denormalize_entities(

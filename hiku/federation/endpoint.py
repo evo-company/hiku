@@ -16,6 +16,9 @@ from typing import (
     Type,
 )
 
+from hiku.federation.sdl import print_sdl
+
+from hiku.federation.graph import Graph
 from hiku.federation.engine import Engine
 from hiku.federation.introspection import (
     BaseFederatedGraphQLIntrospection,
@@ -32,10 +35,7 @@ from hiku.endpoint.graphql import (
     GraphQLError,
     _StripQuery,
 )
-from hiku.graph import (
-    Graph,
-    apply,
-)
+from hiku.graph import apply
 from hiku.query import Node
 from hiku.result import Proxy
 from hiku.readers.graphql import Operation
@@ -94,17 +94,6 @@ class BaseFederatedGraphEndpoint(ABC):
     def context(self, op: Operation) -> Iterator[Dict]:
         yield {}
 
-    def postprocess_result(
-        self, result: Proxy, graph: Graph, op: Operation
-    ) -> Dict:
-        if "_service" in op.query.fields_map:
-            return {"_service": {"sdl": result["sdl"]}}
-
-        type_name = _type_names[op.type]
-
-        data = DenormalizeGraphQL(graph, result, type_name).process(op.query)
-        return data
-
 
 class BaseSyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
     @abstractmethod
@@ -138,14 +127,21 @@ class FederatedGraphQLEndpoint(BaseSyncFederatedGraphQLEndpoint):
         return FederatedGraphQLIntrospection
 
     def execute(self, graph: Graph, op: Operation, ctx: Optional[Dict]) -> Dict:
+        if ctx is None:
+            ctx = {}
+
         stripped_query = _process_query(graph, op.query)
         if "_service" in stripped_query.fields_map:
-            result = self.engine.execute_service(graph, self.mutation_graph)
-        else:
-            result = self.engine.execute(graph, stripped_query, ctx or {}, op)
+            ctx["__sdl__"] = print_sdl(
+                self.query_graph,
+                self.mutation_graph,
+                federation_version=self.engine.federation_version,
+            )
 
+        result = self.engine.execute(graph, stripped_query, ctx, op)
         assert isinstance(result, Proxy)
-        return self.postprocess_result(result, graph, op)
+        type_name = _type_names[op.type]
+        return DenormalizeGraphQL(graph, result, type_name).process(op.query)
 
     def dispatch(self, data: Dict) -> Dict:
         try:
@@ -169,15 +165,24 @@ class AsyncFederatedGraphQLEndpoint(BaseAsyncFederatedGraphQLEndpoint):
     async def execute(
         self, graph: Graph, op: Operation, ctx: Optional[Dict]
     ) -> Dict:
+        if ctx is None:
+            ctx = {}
+
         stripped_query = _process_query(graph, op.query)
+
         if "_service" in stripped_query.fields_map:
-            coro = self.engine.execute_service(graph, self.mutation_graph)
-        else:
-            coro = self.engine.execute(graph, stripped_query, ctx)
+            ctx["__sdl__"] = print_sdl(
+                self.query_graph,
+                self.mutation_graph,
+                federation_version=self.engine.federation_version,
+            )
+
+        coro = self.engine.execute(graph, stripped_query, ctx)
 
         assert isawaitable(coro)
         result = await coro
-        return self.postprocess_result(result, graph, op)
+        type_name = _type_names[op.type]
+        return DenormalizeGraphQL(graph, result, type_name).process(op.query)
 
     async def dispatch(self, data: Dict) -> Dict:
         try:

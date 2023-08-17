@@ -8,6 +8,9 @@ from typing import (
 )
 
 import pytest
+from hiku.readers.graphql import read
+
+from hiku.endpoint.graphql import GraphQLEndpoint
 
 from sqlalchemy import (
     MetaData,
@@ -21,12 +24,11 @@ from sqlalchemy import (
 from sqlalchemy.pool import StaticPool
 
 from hiku import query as q
-from hiku.readers.graphql import read
 from hiku.denormalize.graphql import DenormalizeGraphQL
 from hiku.executors.threads import ThreadsExecutor
-from hiku.graph import Graph, Node, Field, Link, Nothing, Option, Root
+from hiku.graph import Graph, Interface, Node, Field, Link, Nothing, Option, Root, Union
 from hiku.sources.sqlalchemy import FieldsQuery
-from hiku.types import Record, Sequence, Integer, Optional, String, TypeRef
+from hiku.types import InterfaceRef, Record, Sequence, Integer, Optional, String, TypeRef, UnionRef
 from hiku.utils import (
     listify,
     ImmutableDict,
@@ -58,6 +60,11 @@ OPTION_BEHAVIOUR = [
 def execute(graph, query_, ctx=None):
     engine = Engine(SyncExecutor())
     return engine.execute(graph, query_, ctx=ctx)
+
+
+def execute_endpoint(graph, query):
+    endpoint = GraphQLEndpoint(Engine(SyncExecutor()), graph)
+    return endpoint.dispatch({"query": query})
 
 
 def test_context():
@@ -1358,14 +1365,27 @@ def test_non_root_link_with_sequence_to_optional_type_ref():
 
 
 def test_overlapped_query_node_with_fragment():
+    num_link_user = 0
+    num_resolve_id = 0
+    num_resolve_name = 0
+
     def resolve_user(fields, ids):
         def get_field(f, id_):
             if f.name == "name":
+                nonlocal num_resolve_name
+                num_resolve_name += 1
                 return "John"
             elif f.name == "id":
+                nonlocal num_resolve_id
+                num_resolve_id += 1
                 return id_
 
         return [[get_field(f, id_) for f in fields] for id_ in ids]
+
+    def link_user():
+        nonlocal num_link_user
+        num_link_user += 1
+        return 1
 
     graph = Graph([
         Node('User', [
@@ -1373,7 +1393,7 @@ def test_overlapped_query_node_with_fragment():
             Field('name', String, resolve_user),
         ]),
         Node('Context', [
-            Link('user', TypeRef['User'], lambda: 1, requires=None)
+            Link('user', TypeRef['User'], link_user, requires=None)
         ]),
         Root([
             Link('context', TypeRef['Context'], lambda: 1, requires=None)
@@ -1383,26 +1403,184 @@ def test_overlapped_query_node_with_fragment():
     query = """
     query GetUser {
         context {
-            user {
-                id
-                name
-            }
+            user { id }
             ... on Context {
-                user {
-                    id
-                }
+                user { ... on User { id name } }
             }
         }
     }
     """
 
-    result = execute(graph, read(query))
+    data = execute_endpoint(graph, query)['data']
 
-    assert denormalize(graph, result) == {
+    assert num_link_user == 1
+    assert num_resolve_id == 1
+    assert num_resolve_name == 1
+    assert data == {
         "context": {
             "user": {
                 "id": 1,
                 "name": "John"
             }
         }
+    }
+
+
+def test_overlapped_query_node_with_fragment_interface():
+    num_link_user = 0
+    num_resolve_id = 0
+    num_resolve_name = 0
+
+    def resolve_user(fields, ids):
+        def get_field(f, id_):
+            if f.name == "name":
+                nonlocal num_resolve_name
+                num_resolve_name += 1
+                return "John"
+            elif f.name == "id":
+                nonlocal num_resolve_id
+                num_resolve_id += 1
+                return id_
+
+        return [[get_field(f, id_) for f in fields] for id_ in ids]
+
+    def link_user():
+        nonlocal num_link_user
+        num_link_user += 1
+        return 1
+
+    graph = Graph([
+        Node('User', [
+            Field('id', String, resolve_user),
+            Field('name', String, resolve_user),
+        ]),
+        Node('MyContext', [
+            Link('user', TypeRef['User'], link_user, requires=None),
+            Field('balance', Integer, lambda fields, ids: [[100]])
+        ], implements=['Context']),
+        Node('BaseContext', [
+            Link('user', TypeRef['User'], link_user, requires=None),
+        ], implements=['Context']),
+        Root([
+            Link('context', InterfaceRef['Context'], lambda: (1, TypeRef['MyContext']), requires=None)
+        ])
+    ], interfaces=[
+        Interface('Context', [
+            Link('user', TypeRef['User'], lambda x: x, requires=None)
+        ])
+    ])
+
+    query = """
+    query GetUser2 {
+        context {
+            user {
+                id
+            }
+            ... on BaseContext {
+                user { name } 
+            }
+            ... on MyContext { 
+                user { name }
+                balance
+            }
+        }
+    }
+    """
+
+    data = execute_endpoint(graph, query)['data']
+
+    assert num_link_user == 1
+    assert num_resolve_id == 1
+    assert num_resolve_name == 1
+    assert data == {
+        "context": {
+            "user": {
+                "id": 1,
+                "name": "John"
+            },
+            'balance': 100
+        }
+    }
+
+
+def test_overlapped_query_node_with_fragment_union():
+    num_link_user = 0
+    num_resolve_id = 0
+    num_resolve_name = 0
+
+    def resolve_user(fields, ids):
+        def get_field(f, id_):
+            if f.name == "name":
+                nonlocal num_resolve_name
+                num_resolve_name += 1
+                return "John" + str(id_)
+            elif f.name == "id":
+                nonlocal num_resolve_id
+                num_resolve_id += 1
+                return id_
+
+        return [[get_field(f, id_) for f in fields] for id_ in ids]
+
+    def link_user(ids):
+        nonlocal num_link_user
+        num_link_user += 1
+        return ids
+
+    graph = Graph([
+        Node('User', [
+            Field('id', String, resolve_user),
+            Field('name', String, resolve_user),
+        ]),
+        Node('MyContext', [
+            Field('user_id', Integer, lambda fields, ids: [ids]),
+            Link('user', TypeRef['User'], link_user, requires='user_id'),
+            Field('balance', Integer, lambda fields, ids: [[100]])
+        ]),
+        Node('BaseContext', [
+            Field('user_id', Integer, lambda fields, ids: [ids]),
+            Link('user', TypeRef['User'], link_user, requires='user_id'),
+        ]),
+        Root([
+            Link('contexts', Sequence[UnionRef['Context']], lambda: [(1, TypeRef['MyContext']), (2, TypeRef['BaseContext'])], requires=None)
+        ])
+    ], unions=[
+        Union('Context', [
+            'BaseContext', 'MyContext'
+        ])
+    ])
+
+    query = """
+    query GetUser2 {
+        contexts {
+            ... on BaseContext {
+                user { name } 
+            }
+            ... on MyContext { 
+                user { id name }
+                balance
+            }
+        }
+    }
+    """
+
+    data = execute_endpoint(graph, query)['data']
+
+    assert num_link_user == 2
+    assert num_resolve_id == 1
+    assert num_resolve_name == 2
+    assert data == {
+        "contexts": [
+            {
+                "user": {
+                    "id": 1,
+                    "name": "John1"
+                },
+                'balance': 100
+            },
+            {
+                "user": {
+                    "name": "John2"
+                },
+            }
+        ]
     }

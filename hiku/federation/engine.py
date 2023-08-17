@@ -8,11 +8,8 @@ from typing import (
 )
 
 from hiku.types import Sequence, TypeRef, Optional as HikuOptional
-
 from hiku.cache import CacheInfo, CacheSettings
-from hiku.executors.asyncio import AsyncIOExecutor
 from hiku.executors.base import SyncAsyncExecutor
-from hiku.federation.sdl import print_sdl
 from hiku.engine import (
     BaseEngine,
     InitOptions,
@@ -29,15 +26,8 @@ from hiku.graph import (
     Maybe,
     One,
 )
-from hiku.result import (
-    Proxy,
-    Index,
-    ROOT,
-)
-from hiku.query import (
-    Node,
-    Field,
-)
+from hiku.result import Proxy
+from hiku.query import Node
 
 
 if TYPE_CHECKING:
@@ -78,26 +68,16 @@ class Engine(BaseEngine):
             raise ValueError("federation_version must be 1 or 2")
         self.federation_version = federation_version
 
-    def execute_service(
-        self, graph: Graph, mutation_graph: Optional[Graph]
+    def execute(
+        self,
+        graph: Graph,
+        query: Node,
+        ctx: Optional[Dict] = None,
+        op: Optional["Operation"] = None,
     ) -> Union[Proxy, Awaitable[Proxy]]:
-        idx = Index()
-        idx[ROOT.node] = Index()
-        idx[ROOT.node][ROOT.ident] = {
-            "sdl": print_sdl(
-                graph,
-                mutation_graph,
-                federation_version=self.federation_version,
-            )
-        }
-        result = Proxy(idx, ROOT, Node(fields=[Field("sdl")]))
-        if isinstance(self.executor, AsyncIOExecutor):
-            return async_result(result)
-        return result
+        if not ctx:
+            ctx = {}
 
-    def execute_query(
-        self, graph: Graph, query: Node, ctx: Dict, op: Optional["Operation"]
-    ) -> Union[Proxy, Awaitable[Proxy]]:
         query = InitOptions(graph).visit(query)
         queue = Queue(self.executor)
         task_set = queue.fork(None)
@@ -117,15 +97,3 @@ class Engine(BaseEngine):
 
         query_workflow.start()
         return self.executor.process(queue, query_workflow)
-
-    def execute(
-        self,
-        graph: Graph,
-        query: Node,
-        ctx: Optional[Dict] = None,
-        op: Optional["Operation"] = None,
-    ) -> Union[Proxy, Awaitable[Proxy]]:
-        if ctx is None:
-            ctx = {}
-
-        return self.execute_query(graph, query, ctx, op)

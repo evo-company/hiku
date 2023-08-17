@@ -43,16 +43,22 @@ class _StripQuery(QueryTransformer):
 
     def visit_node(self, obj: Node) -> Node:
         return obj.copy(
-            fields=[self.visit(f) for f in obj.fields if f.name != "__typename"]
+            fields=[
+                self.visit(f) for f in obj.fields if f.name != "__typename"
+            ],
+            fragments=[self.visit(f) for f in obj.fragments],
         )
 
     def visit_fragment(self, obj: Fragment) -> Fragment:
         return obj.copy(node=self.visit(obj.node))
 
 
+G = t.TypeVar("G", bound=Graph)
+
+
 def _switch_graph(
-    data: t.Dict, query_graph: Graph, mutation_graph: t.Optional[Graph] = None
-) -> t.Tuple[Graph, Operation]:
+    data: t.Dict, query_graph: G, mutation_graph: t.Optional[G] = None
+) -> t.Tuple[G, Operation]:
     try:
         op = read_operation(
             data["query"],
@@ -75,6 +81,7 @@ def _switch_graph(
                 "Unsupported operation type: {!r}".format(op.type),
             ]
         )
+
     return graph, op
 
 

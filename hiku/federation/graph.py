@@ -1,13 +1,15 @@
 import typing as t
 from inspect import isawaitable
 
+from hiku.engine import pass_context
+
 from hiku.directives import SchemaDirective
 from hiku.enum import BaseEnum
 from hiku.federation.utils import get_entity_types
 from hiku.scalar import Scalar
 from hiku.federation.scalars import _Any, FieldSet, LinkImport
 
-from hiku.types import Optional, Record, Sequence, TypeRef, UnionRef
+from hiku.types import Optional, Record, Sequence, String, TypeRef, UnionRef
 
 from hiku.graph import (
     Field,
@@ -64,6 +66,7 @@ class GraphInit(GraphTransformer):
             root.fields
             + [
                 self.entities_link(),
+                self.service_field(),
             ]
         )
 
@@ -93,37 +96,47 @@ class GraphInit(GraphTransformer):
                 (r, TypeRef[typ]) for r in resolve_reference(representations)
             ]
 
-        async def entities_resolver_async(
-            options: t.Dict,
-        ) -> t.List[t.Tuple[t.Any, t.Type[TypeRef]]]:
-            representations = options["representations"]
-            if not representations:
-                return []
+        def _asyncify(func: t.Callable) -> t.Callable:
+            async def wrapper(*args: t.Any, **kwargs: t.Any) -> t.List[t.Tuple]:
+                result = []
+                for item in func(*args, **kwargs):
+                    if isawaitable(item[0]):
+                        item[0] = await item[0]
+                    result.append(item)
+                return result
 
-            typ = representations[0]["__typename"]
-
-            if typ not in self.type_to_resolve_reference_map:
-                raise TypeError(
-                    'Type "{}" must have "resolve_reference" function'.format(
-                        typ
-                    )
-                )
-
-            resolve_reference = self.type_to_resolve_reference_map[typ]
-            coro = resolve_reference(representations)
-            if isawaitable(coro):
-                return [(r, TypeRef[typ]) for r in await coro]
-
-            return [(r, TypeRef[typ]) for r in coro]
+            return wrapper
 
         return Link(
             "_entities",
             Sequence[Optional[UnionRef["_Entity"]]],
-            entities_resolver_async if self.is_async else entities_resolver,
+            _asyncify(entities_resolver)
+            if self.is_async
+            else entities_resolver,
             options=[
                 Option("representations", Sequence[_Any]),
             ],
             requires=None,
+        )
+
+    def service_field(self) -> Field:
+        @pass_context
+        def service_resolver(
+            ctx: t.Dict,
+            fields: t.List,
+        ) -> t.List:
+            return [{"sdl": ctx["__sdl__"]}]
+
+        def _async(func: t.Callable) -> t.Callable:
+            async def wrapper(*args: t.Any, **kwargs: t.Any) -> t.List[t.Dict]:
+                return func(*args, **kwargs)
+
+            return wrapper
+
+        return Field(
+            "_service",
+            TypeRef["_Service"],
+            _async(service_resolver) if self.is_async else service_resolver,  # type: ignore[arg-type]  # noqa: E501
         )
 
 
@@ -150,6 +163,10 @@ class Graph(_Graph):
             scalars = []
 
         scalars.extend([_Any, FieldSet, LinkImport])
+        if data_types is None:
+            data_types = {}
+
+        data_types["_Service"] = Record[{"sdl": String}]
 
         items = GraphInit.init(items, is_async, bool(entity_types))
 

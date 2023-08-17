@@ -22,7 +22,7 @@ from ..directives import (
     Cached,
     Directive,
 )
-from ..query import FieldBase, Fragment, Node, Field, Link, merge
+from ..query import FieldOrLink, Fragment, Node, Field, Link, merge
 from ..telemetry.prometheus import (
     QUERY_CACHE_HITS,
     QUERY_CACHE_MISSES,
@@ -260,7 +260,7 @@ class SelectionSetVisitMixin:
 
     def _collect_fields(
         self, obj: ast.FieldNode
-    ) -> Tuple[List[FieldBase], List[Fragment]]:
+    ) -> Tuple[List[FieldOrLink], List[Fragment]]:
         """Collect fields from AST node.
 
         We collect shared fields and type-specific fragments separately.
@@ -332,43 +332,15 @@ class SelectionSetVisitMixin:
                 directives=tuple(directives),
             )
         else:
-            shared_fields, fragments = self._collect_fields(obj)
+            fields, fragments = self._collect_fields(obj)
 
-            if not fragments:
-                yield Link(
-                    obj.name.value,
-                    Node(shared_fields),
-                    options=options,
-                    alias=alias,
-                    directives=tuple(directives),
-                )
-            elif len(fragments) == 1:
-                # If there is only one type-specific fragment, we can merge
-                # it with the shared fields, and retain the fragment type name
-                # for unions/interfaces.
-                fragment = fragments[0]
-                node = Node(shared_fields + fragment.node.fields)
-
-                yield Link(
-                    obj.name.value,
-                    node,
-                    options=options,
-                    alias=alias,
-                    directives=tuple(directives),
-                    fragment_type=fragment.type_name,
-                )
-            else:
-                # If there are more than one type-specific fragments,
-                # we need to retain them as separate nodes, as it will be
-                # used by unions/interfaces.
-                node = Node([*shared_fields, *fragments])
-                yield Link(
-                    obj.name.value,
-                    node,
-                    options=options,
-                    alias=alias,
-                    directives=tuple(directives),
-                )
+            yield Link(
+                obj.name.value,
+                Node(fields, fragments),
+                options=options,
+                alias=alias,
+                directives=tuple(directives),
+            )
 
     def visit_variable(self, obj: ast.VariableNode) -> Any:
         return self.lookup_variable(obj.name.value)

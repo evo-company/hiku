@@ -506,10 +506,6 @@ class QueryValidator(QueryVisitor):
                         )
                     )
                     continue
-            else:
-                if isinstance(field, Fragment):
-                    self.visit(field)
-                    continue
 
             seen = fields.get(field.result_key)
             if seen is not None:
@@ -527,6 +523,9 @@ class QueryValidator(QueryVisitor):
 
             if is_union_link:
                 self.path.pop()
+
+        for fr in obj.fragments:
+            self.visit(fr)
 
 
 def validate(graph: Graph, query: QueryNode) -> t.List[str]:

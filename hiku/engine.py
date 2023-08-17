@@ -33,7 +33,6 @@ from .cache import (
 from .compat import Concatenate, ParamSpec
 from .executors.base import SyncAsyncExecutor
 from .query import (
-    Fragment,
     Node as QueryNode,
     Field as QueryField,
     Link as QueryLink,
@@ -127,20 +126,19 @@ class InitOptions(QueryTransformer):
 
     def visit_node(self, obj: QueryNode) -> QueryNode:
         fields = []
+        fragments = []
 
         for f in obj.fields:
             if f.name == "__typename":
                 fields.append(f)
-                continue
-
-            type_ = None
-            if isinstance(f, Fragment):
-                type_ = self._graph.nodes_map[f.name]
-
-            with self.enter_path(type_):
+            else:
                 fields.append(self.visit(f))
 
-        return obj.copy(fields=fields)
+        for fr in obj.fragments:
+            with self.enter_path(self._graph.nodes_map[fr.type_name]):
+                fragments.append(self.visit(fr))
+
+        return obj.copy(fields=fields, fragments=fragments)
 
     def visit_field(self, obj: QueryField) -> QueryField:
         graph_obj = self._path[-1].fields_map[obj.name]
@@ -154,15 +152,9 @@ class InitOptions(QueryTransformer):
 
         if isinstance(graph_obj, Link):
             if graph_obj.type_info.type_enum is LinkType.UNION:
-                if obj.fragment_type:
-                    self._path.append(self._graph.nodes_map[obj.fragment_type])
+                self._path.append(self._graph.unions_map[graph_obj.node])
             elif graph_obj.type_info.type_enum is LinkType.INTERFACE:
-                if obj.fragment_type:
-                    self._path.append(self._graph.nodes_map[obj.fragment_type])
-                else:
-                    self._path.append(
-                        self._graph.interfaces_map[graph_obj.node]
-                    )
+                self._path.append(self._graph.interfaces_map[graph_obj.node])
             else:
                 self._path.append(self._graph.nodes_map[graph_obj.node])
             try:
@@ -202,6 +194,12 @@ class SplitQuery(QueryVisitor):
     ) -> Tuple[List[CallableFieldGroup], List[LinkGroup]]:
         for item in query_node.fields:
             self.visit(item)
+
+        for fr in query_node.fragments:
+            if fr.type_name != self._node.name:
+                continue
+            self.visit(fr)
+
         return self._fields, self._links
 
     def visit_node(self, obj: QueryNode) -> None:
@@ -222,7 +220,6 @@ class SplitQuery(QueryVisitor):
                         self.visit(QueryField(r))
                 else:
                     self.visit(QueryField(graph_obj.requires))
-
             self._links.append((graph_obj, obj))
         else:
             assert isinstance(graph_obj, Field), type(graph_obj)
@@ -748,72 +745,30 @@ class Query(Workflow):
         from_list = ids is not None and graph_link.requires is not None
         to_ids = link_result_to_ids(from_list, graph_link.type_enum, result)
         if to_ids:
-            if graph_link.type_info.type_enum is LinkType.UNION and isinstance(
-                to_ids, list
-            ):
+            if graph_link.type_info.type_enum in (
+                LinkType.UNION,
+                LinkType.INTERFACE,
+            ) and isinstance(to_ids, list):
                 grouped_ids = defaultdict(list)
                 for id_, type_ref in to_ids:
                     grouped_ids[type_ref.__type_name__].append(id_)
+
+                for type_name, type_ids in grouped_ids.items():
+                    self.process_node(
+                        path,
+                        self._graph.nodes_map[type_name],
+                        query_link.node,
+                        list(type_ids),
+                    )
 
                 # FIXME: call track len(ids) - 1 times because first track was
                 #  already called by process_node for this link
-
-                fragments_map: Dict[str, Fragment] = {}
-                for f in query_link.node.fields:
-                    if isinstance(f, Fragment):
-                        fragments_map[f.name] = f
-
-                track_times = len(grouped_ids) - 1
-
-                for type_name, type_ids in grouped_ids.items():
-                    query_node = query_link.node
-
-                    if type_name in fragments_map:
-                        query_node = fragments_map[type_name].node
-
-                    self.process_node(
-                        path,
-                        self._graph.nodes_map[type_name],
-                        query_node,
-                        list(type_ids),
-                    )
-                for _ in range(track_times):
-                    self._track(path)
-            elif (
-                graph_link.type_info.type_enum is LinkType.INTERFACE
-                and isinstance(to_ids, list)
-            ):
-                grouped_ids = defaultdict(list)
-                for id_, type_ref in to_ids:
-                    grouped_ids[type_ref.__type_name__].append(id_)
-
-                fragments_map = {}
-                for f in query_link.node.fields:
-                    if isinstance(f, Fragment):
-                        fragments_map[f.name] = f
-
-                track_times = len(grouped_ids) - 1
-
-                for type_name, type_ids in grouped_ids.items():
-                    query_node = query_link.node
-
-                    if type_name in fragments_map:
-                        query_node = fragments_map[type_name].result_node(
-                            query_link.node
-                        )
-
-                    self.process_node(
-                        path,
-                        self._graph.nodes_map[type_name],
-                        query_node,
-                        list(type_ids),
-                    )
-
-                for _ in range(track_times):
+                for _ in range(len(grouped_ids) - 1):
                     self._track(path)
             else:
                 if graph_link.type_enum is MaybeMany:
                     to_ids = [id_ for id_ in to_ids if id_ is not Nothing]
+
                 self.process_node(
                     path,
                     self._graph.nodes_map[graph_link.node],

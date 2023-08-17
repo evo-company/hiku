@@ -300,7 +300,7 @@ class GraphValidator(GraphVisitor):
         invalid = [
             type_
             for type_ in obj.fields
-            if not isinstance(type_, AbstractField)
+            if not isinstance(type_, (Field, Link))
         ]
 
         if invalid:

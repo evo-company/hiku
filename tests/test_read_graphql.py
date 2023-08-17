@@ -218,12 +218,12 @@ def test_named_fragments():
                                     [
                                         Field("flowers"),
                                         Field("apres"),
-                                        Field("doozie"),
                                         Link(
                                             "pins",
                                             Node(
                                                 [
                                                     Field("gunya"),
+
                                                     Link(
                                                         "kilned",
                                                         Node(
@@ -232,15 +232,19 @@ def test_named_fragments():
                                                             ]
                                                         ),
                                                     ),
-                                                ]
+                                                ], [],
                                             ),
-                                            fragment_type="Torsion",
                                         ),
+
+                                    ], [
+                                        Fragment('Makai', [
+                                            Field("doozie"),
+                                        ]),
                                     ]
                                 ),
                                 options={"gire": "noatak"},
-                                fragment_type="Makai",
                             ),
+
                             Link(
                                 "movies",
                                 Node(
@@ -249,9 +253,9 @@ def test_named_fragments():
                                     ]
                                 ),
                             ),
-                        ]
+                        ],
+                        []
                     ),
-                    fragment_type="Valium",
                 ),
             ]
         ),
@@ -564,6 +568,7 @@ def test_parse_union_with_two_fragments():
                     "media",
                     Node([
                         Field("__typename"),
+                        ], [
                         Fragment('Audio', [
                             Field("id"),
                             Field("duration"),
@@ -598,10 +603,13 @@ def test_parse_union_with_one_fragment():
                     "media",
                     Node([
                         Field("__typename"),
-                        Field("id"),
-                        Field("duration"),
-                    ]),
-                    fragment_type='Audio',
+                    ], [
+                        Fragment('Audio', [
+                            Field("id"),
+                            Field("duration"),
+                        ]),
+                        ]
+                    )
                 ),
             ]
         ),
@@ -633,6 +641,7 @@ def test_parse_interface_with_two_fragments():
                         Field("__typename"),
                         Field("id"),
                         Field("duration"),
+                        ], [
                         Fragment('Audio', [
                             Field("album"),
                         ]),
@@ -668,9 +677,11 @@ def test_parse_interface_with_one_fragment():
                         Field("__typename"),
                         Field("id"),
                         Field("duration"),
-                        Field("album"),
+                    ], [
+                        Fragment('Audio', [
+                            Field("album"),
+                        ]),
                     ]),
-                    fragment_type='Audio',
                 )
             ]
         ),
@@ -681,17 +692,24 @@ def test_merge_node_with_fragment_on_node():
     check_read(
         """
         query GetContext {
-          context {
-            user {
-                id
-                name
+            context {
+                user {
+                    id
+                    name
+                    ... on User {
+                        id
+                        email
+                    }
+                }
+                ... on Context {
+                    user {
+                        ... on User {
+                            id
+                            email
+                        }
+                    }
+                }
             }
-            ...UserFragment
-          }
-        }
-
-        fragment UserFragment on Context {
-            user { id }
         }
         """,
 
@@ -703,11 +721,13 @@ def test_merge_node_with_fragment_on_node():
                         Link("user", Node([
                             Field("id"),
                             Field("name"),
+                        ], [
+                            Fragment('User', [
+                                Field("email"),
+                            ]),
                         ])),
-                    ]),
-                    fragment_type='Context',
+                    ], []),
                 )
             ]
         ),
     )
-

@@ -1,6 +1,6 @@
 import pytest
 
-from hiku.graph import Field, FieldType, FieldTypeInfo, Graph, Link, Node, Root, get_field_type
+from hiku.graph import Field, FieldType, FieldTypeInfo, Graph, Link, Node, Root, get_field_info
 from hiku.scalar import DateTime
 from hiku.types import Any, EnumRef, Float, ID, Integer, Mapping, Optional, Sequence, String, TypeRef
 
@@ -67,5 +67,5 @@ def test_link_with_sequence_to_optional_type_ref():
     (Sequence[DateTime], FieldTypeInfo('DateTime', FieldType.CUSTOM_SCALAR)),
 ])
 def test_field_type(field_type, type_info):
-    info = get_field_type(field_type)
+    info = get_field_info(field_type)
     assert info == type_info

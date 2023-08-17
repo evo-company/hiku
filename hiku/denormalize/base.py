@@ -68,6 +68,21 @@ class Denormalize(QueryVisitor):
         self.visit(query)
         return self._res.pop()
 
+    def visit_node(self, obj: Node) -> t.Any:
+        for item in obj.fields:
+            self.visit(item)
+
+        type_name = None
+        if isinstance(self._data[-1], Proxy):
+            type_name = self._data[-1].__ref__.node
+
+        for fr in obj.fragments:
+            if type_name is not None and type_name != fr.type_name:
+                # do not visit fragment if type specified and not match
+                continue
+
+            self.visit(fr)
+
     def visit_field(self, obj: Field) -> None:
         if isinstance(self._data[-1], Proxy):
             type_name = self._data[-1].__ref__.node
@@ -86,7 +101,7 @@ class Denormalize(QueryVisitor):
             self._res[-1][obj.result_key] = self._data[-1][obj.result_key]
 
     def visit_link(self, obj: Link) -> None:
-        if isinstance(self._type[-1], Union):
+        if isinstance(self._type[-1], (Union, Interface)):
             type_ = self._types[self._data[-1].__ref__.node].__field_types__[
                 obj.name
             ]
