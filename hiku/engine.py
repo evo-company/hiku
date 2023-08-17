@@ -33,19 +33,14 @@ from .cache import (
 from .compat import Concatenate, ParamSpec
 from .executors.base import SyncAsyncExecutor
 from .query import (
-    Fragment,
     Node as QueryNode,
     Field as QueryField,
     Link as QueryLink,
     QueryTransformer,
     QueryVisitor,
-    _merge,
-    _merge_fields,
 )
 from .graph import (
     FieldType,
-    Interface,
-    Union as GraphUnion,
     Link,
     LinkType,
     Maybe,
@@ -112,73 +107,6 @@ def _get_options(
     query_obj: Union[QueryField, QueryLink],
 ) -> Dict:
     return dict(_yield_options(graph, graph_obj, query_obj))
-
-
-class QueryPlanBuilder(QueryTransformer):
-    """Extract fields from fragments into node fields
-    and merge fields to avoid duplicate fields.
-    """
-
-    def __init__(self, graph: Graph):
-        self._graph = graph
-        self._path = [graph.root]
-
-    def visit_node(self, node: QueryNode) -> QueryNode:
-        is_interface = isinstance(self._path[-1], Interface)
-        is_union = isinstance(self._path[-1], GraphUnion)
-
-        if not is_interface and not is_union and len(node.fragments) == 1:
-            fields = []
-            for item in _merge([node, node.fragments[0].node]):
-                if not isinstance(item, Fragment):
-                    fields.append(self.visit(item))
-
-            return node.copy(fields=fields, fragments=[])
-        elif is_interface:
-            # merge fields which are same in interface and all implementations
-            # other specific fields leave
-            fields = []
-            fragments = []
-
-            for f in node.fields:
-                fields.append(f)
-
-            for fr in node.fragments:
-                fr_fields = []
-                interface = self._path[-1]
-                for f in fr.node.fields:
-                    if f.name in interface.fields_map:
-                        fields.append(f)
-                    else:
-                        fr_fields.append(self.visit(f))
-
-                fragments.append(Fragment(fr.type_name, fr_fields))
-
-            return node.copy(
-                fields=[self.visit(f) for f in _merge_fields(fields)],
-                fragments=fragments,
-            )
-
-        return super().visit_node(node)
-
-    def visit_link(self, obj: QueryLink) -> QueryLink:
-        graph_obj = self._path[-1].fields_map[obj.name]
-
-        if isinstance(graph_obj, Link):
-            if graph_obj.type_info.type_enum is LinkType.UNION:
-                self._path.append(self._graph.unions_map[graph_obj.node])
-            elif graph_obj.type_info.type_enum is LinkType.INTERFACE:
-                self._path.append(self._graph.interfaces_map[graph_obj.node])
-            else:
-                self._path.append(self._graph.nodes_map[graph_obj.node])
-            try:
-                node = self.visit(obj.node)
-            finally:
-                self._path.pop()
-        else:
-            node = obj.node
-
-        return obj.copy(node=node)
 
 
 class InitOptions(QueryTransformer):
@@ -825,10 +753,6 @@ class Query(Workflow):
                 for id_, type_ref in to_ids:
                     grouped_ids[type_ref.__type_name__].append(id_)
 
-                # FIXME: call track len(ids) - 1 times because first track was
-                #  already called by process_node for this link
-                track_times = len(grouped_ids) - 1
-
                 for type_name, type_ids in grouped_ids.items():
                     self.process_node(
                         path,
@@ -836,7 +760,10 @@ class Query(Workflow):
                         query_link.node,
                         list(type_ids),
                     )
-                for _ in range(track_times):
+
+                # FIXME: call track len(ids) - 1 times because first track was
+                #  already called by process_node for this link
+                for _ in range(len(grouped_ids) - 1):
                     self._track(path)
             else:
                 if graph_link.type_enum is MaybeMany:

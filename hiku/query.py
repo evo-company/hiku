@@ -267,37 +267,23 @@ class Fragment(Base):
 KeyT = t.Tuple[str, t.Optional[str], t.Optional[str]]
 
 
+def field_key(field: FieldOrLink) -> KeyT:
+    return (field.name, field.options_hash, field.alias)
+
+
 def _merge(
     nodes: t.Iterable[Node],
 ) -> t.Iterator[t.Union[FieldOrLink, Fragment]]:
-    for field in _merge_fields(chain.from_iterable(e.fields for e in nodes)):
-        yield field
-
-    for fr in _merge_fragments(chain.from_iterable(e.fragments for e in nodes)):
-        yield fr
-
-
-def _merge_fragments(fragments: t.Iterable[Fragment]) -> t.Iterator[Fragment]:
-    to_merge_fragments = OrderedDict()
-
-    for fr in fragments:
-        key = (fr.type_name, None, None)
-        if key not in to_merge_fragments:
-            to_merge_fragments[key] = [fr.node]
-        else:
-            to_merge_fragments[key].append(fr.node)
-
-    for key, values in to_merge_fragments.items():
-        yield Fragment(key[0], list(_merge(values)))  # type: ignore[arg-type]
-
-
-def _merge_fields(fields_: t.Iterable[FieldOrLink]) -> t.Iterator[FieldOrLink]:
     visited_fields = set()
+    visited_fragments = set()
     links = {}
     link_directives: t.DefaultDict[t.Tuple, t.List] = defaultdict(list)
     to_merge = OrderedDict()
-    for field in fields_:
-        key = (field.name, field.options_hash, field.alias)
+    fields_iter = chain.from_iterable(e.fields for e in nodes)
+    fragments_iter = chain.from_iterable(e.fragments for e in nodes)
+
+    for field in fields_iter:
+        key = field_key(field)
 
         if field.__class__ is Link:
             field = t.cast(Link, field)
@@ -311,6 +297,33 @@ def _merge_fields(fields_: t.Iterable[FieldOrLink]) -> t.Iterator[FieldOrLink]:
             if key not in visited_fields:
                 visited_fields.add(key)
                 yield field
+
+    if not visited_fields and not to_merge:
+        for fr in fragments_iter:
+            yield fr
+    else:
+        for fr in fragments_iter:
+            fr_fields = []
+            for field in fr.node.fields:
+                key = (field.name, field.options_hash, field.alias)
+
+                if field.__class__ is Link:
+                    field = t.cast(Link, field)
+                    if key not in to_merge:
+                        to_merge[key] = [field.node]
+                        links[key] = field
+                    else:
+                        to_merge[key].append(field.node)
+                    link_directives[key].extend(field.directives)
+                else:
+                    if key not in visited_fields:
+                        fr_fields.append(field)
+
+            fr_key = (fr.type_name, tuple(field_key(f) for f in fr_fields))
+            if fr_key not in visited_fragments:
+                visited_fragments.add(fr_key)
+                if fr_fields:
+                    yield Fragment(fr.type_name, fr_fields)
 
     for key, values in to_merge.items():
         link = links[key]

@@ -218,46 +218,43 @@ def test_named_fragments():
                                     [
                                         Field("flowers"),
                                         Field("apres"),
+                                        Link(
+                                            "pins",
+                                            Node(
+                                                [
+                                                    Field("gunya"),
+
+                                                    Link(
+                                                        "kilned",
+                                                        Node(
+                                                            [
+                                                                Field("rusk"),
+                                                            ]
+                                                        ),
+                                                    ),
+                                                ], [],
+                                            ),
+                                        ),
+
                                     ], [
                                         Fragment('Makai', [
                                             Field("doozie"),
-                                            Link(
-                                                "pins",
-                                                Node(
-                                                    [
-                                                        Field("gunya"),
-                                                    ], [
-                                                        Fragment('Torsion', [
-                                                            Link(
-                                                                "kilned",
-                                                                Node(
-                                                                    [
-                                                                        Field("rusk"),
-                                                                    ]
-                                                                ),
-                                                            ),
-                                                        ]),
-                                                    ],
-                                                ),
-                                            ),
                                         ]),
                                     ]
                                 ),
                                 options={"gire": "noatak"},
                             ),
-                        ],
-                        [
-                            Fragment('Valium', [
-                                Link(
-                                    "movies",
-                                    Node(
-                                        [
-                                            Field("boree"),
-                                        ]
-                                    ),
+
+                            Link(
+                                "movies",
+                                Node(
+                                    [
+                                        Field("boree"),
+                                    ]
                                 ),
-                            ]),
-                        ]
+                            ),
+                        ],
+                        []
                     ),
                 ),
             ]
@@ -695,17 +692,24 @@ def test_merge_node_with_fragment_on_node():
     check_read(
         """
         query GetContext {
-          context {
-            user {
-                id
-                name
+            context {
+                user {
+                    id
+                    name
+                    ... on User {
+                        id
+                        email
+                    }
+                }
+                ... on Context {
+                    user {
+                        ... on User {
+                            id
+                            email
+                        }
+                    }
+                }
             }
-            ...UserFragment
-          }
-        }
-
-        fragment UserFragment on Context {
-            user { id }
         }
         """,
 
@@ -717,16 +721,13 @@ def test_merge_node_with_fragment_on_node():
                         Link("user", Node([
                             Field("id"),
                             Field("name"),
+                        ], [
+                            Fragment('User', [
+                                Field("email"),
+                            ]),
                         ])),
-                    ], [
-                        Fragment('Context', [
-                            Link("user", Node([
-                                Field("id"),
-                            ])),
-                        ]),
-                    ]),
+                    ], []),
                 )
             ]
         ),
     )
-

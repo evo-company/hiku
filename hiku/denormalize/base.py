@@ -69,10 +69,8 @@ class Denormalize(QueryVisitor):
         return self._res.pop()
 
     def visit_node(self, obj: Node) -> t.Any:
-        visited_fields = set()
         for item in obj.fields:
             self.visit(item)
-            visited_fields.add(item.name)
 
         type_name = None
         if isinstance(self._data[-1], Proxy):

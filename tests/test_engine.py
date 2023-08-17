@@ -8,6 +8,8 @@ from typing import (
 )
 
 import pytest
+from hiku.readers.graphql import read
+
 from hiku.endpoint.graphql import GraphQLEndpoint
 
 from sqlalchemy import (
@@ -1401,9 +1403,7 @@ def test_overlapped_query_node_with_fragment():
     query = """
     query GetUser {
         context {
-            user {
-                id
-            }
+            user { id }
             ... on Context {
                 user { ... on User { id name } }
             }
@@ -1513,7 +1513,7 @@ def test_overlapped_query_node_with_fragment_union():
             if f.name == "name":
                 nonlocal num_resolve_name
                 num_resolve_name += 1
-                return "John"
+                return "John" + str(id_)
             elif f.name == "id":
                 nonlocal num_resolve_id
                 num_resolve_id += 1
@@ -1521,10 +1521,10 @@ def test_overlapped_query_node_with_fragment_union():
 
         return [[get_field(f, id_) for f in fields] for id_ in ids]
 
-    def link_user():
+    def link_user(ids):
         nonlocal num_link_user
         num_link_user += 1
-        return 1
+        return ids
 
     graph = Graph([
         Node('User', [
@@ -1532,14 +1532,16 @@ def test_overlapped_query_node_with_fragment_union():
             Field('name', String, resolve_user),
         ]),
         Node('MyContext', [
-            Link('user', TypeRef['User'], link_user, requires=None),
+            Field('user_id', Integer, lambda fields, ids: [ids]),
+            Link('user', TypeRef['User'], link_user, requires='user_id'),
             Field('balance', Integer, lambda fields, ids: [[100]])
         ]),
         Node('BaseContext', [
-            Link('user', TypeRef['User'], link_user, requires=None),
+            Field('user_id', Integer, lambda fields, ids: [ids]),
+            Link('user', TypeRef['User'], link_user, requires='user_id'),
         ]),
         Root([
-            Link('context', UnionRef['Context'], lambda: (1, TypeRef['MyContext']), requires=None)
+            Link('contexts', Sequence[UnionRef['Context']], lambda: [(1, TypeRef['MyContext']), (2, TypeRef['BaseContext'])], requires=None)
         ])
     ], unions=[
         Union('Context', [
@@ -1549,7 +1551,7 @@ def test_overlapped_query_node_with_fragment_union():
 
     query = """
     query GetUser2 {
-        context {
+        contexts {
             ... on BaseContext {
                 user { name } 
             }
@@ -1563,15 +1565,22 @@ def test_overlapped_query_node_with_fragment_union():
 
     data = execute_endpoint(graph, query)['data']
 
-    assert num_link_user == 1
+    assert num_link_user == 2
     assert num_resolve_id == 1
-    assert num_resolve_name == 1
+    assert num_resolve_name == 2
     assert data == {
-        "context": {
-            "user": {
-                "id": 1,
-                "name": "John"
+        "contexts": [
+            {
+                "user": {
+                    "id": 1,
+                    "name": "John1"
+                },
+                'balance': 100
             },
-            'balance': 100
-        }
+            {
+                "user": {
+                    "name": "John2"
+                },
+            }
+        ]
     }

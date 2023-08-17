@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from asyncio import gather
 from inspect import isawaitable
 
-from ..engine import Engine, QueryPlanBuilder
+from ..engine import Engine
 from ..graph import (
     apply,
     Graph,
@@ -82,7 +82,6 @@ def _switch_graph(
             ]
         )
 
-    op.query = QueryPlanBuilder(graph).visit(op.query)
     return graph, op
 
 
