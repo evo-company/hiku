@@ -55,7 +55,7 @@ test = [
     "pytest-cov>=4.0.0",
     "pytest-asyncio",
     "faker",
-    "pytest-benchmark",
+    "pytest-benchmark[histogram]>=4.0.0",
     "asyncpg",  # for tests_pg
     "greenlet",  # for tests_pg
 ]

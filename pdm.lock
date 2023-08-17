@@ -365,6 +365,16 @@ requires_python = ">=3.6"
 summary = "passive checker of Python programs"
 
 [[package]]
+name = "pygal"
+version = "3.0.0"
+summary = "A Python svg graph plotting library"
+
+[[package]]
+name = "pygaljs"
+version = "1.0.2"
+summary = "Python package providing assets from https://github.com/Kozea/pygal.js"
+
+[[package]]
 name = "pygments"
 version = "2.15.1"
 requires_python = ">=3.7"
@@ -403,6 +413,18 @@ summary = "A ``pytest`` fixture for benchmarking code. It will group the tests i
 dependencies = [
     "py-cpuinfo",
     "pytest>=3.8",
+]
+
+[[package]]
+name = "pytest-benchmark"
+version = "4.0.0"
+extras = ["histogram"]
+requires_python = ">=3.7"
+summary = "A ``pytest`` fixture for benchmarking code. It will group the tests into rounds that are calibrated to the chosen timer."
+dependencies = [
+    "pygal",
+    "pygaljs",
+    "pytest-benchmark==4.0.0",
 ]
 
 [[package]]
@@ -587,7 +609,7 @@ summary = "Backport of pathlib-compatible object wrapper for zip files"
 lock_version = "4.2"
 cross_platform = true
 groups = ["default", "dev", "docs", "examples", "test"]
-content_hash = "sha256:80a6717ce2cd882fbfbfd23afb1a4f086ce4c041336c9366fd71afacec2794ff"
+content_hash = "sha256:dd45ba42bc8e144af1da6581838928a067ae39229dacc87eeb573f98ce0cf748"
 
 [metadata.files]
 "aiohttp 3.8.4" = [
@@ -1400,6 +1422,14 @@ content_hash = "sha256:80a6717ce2cd882fbfbfd23afb1a4f086ce4c041336c9366fd71aface
 "pyflakes 2.5.0" = [
     {url = "https://files.pythonhosted.org/packages/07/92/f0cb5381f752e89a598dd2850941e7f570ac3cb8ea4a344854de486db152/pyflakes-2.5.0.tar.gz", hash = "sha256:491feb020dca48ccc562a8c0cbe8df07ee13078df59813b83959cbdada312ea3"},
     {url = "https://files.pythonhosted.org/packages/dc/13/63178f59f74e53acc2165aee4b002619a3cfa7eeaeac989a9eb41edf364e/pyflakes-2.5.0-py2.py3-none-any.whl", hash = "sha256:4579f67d887f804e67edb544428f264b7b24f435b263c4614f384135cea553d2"},
+]
+"pygal 3.0.0" = [
+    {url = "https://files.pythonhosted.org/packages/a8/db/021ea4fc623cbef831333bfb896374d2931be26c899d18c075579e955886/pygal-3.0.0.tar.gz", hash = "sha256:2923f95d2e515930aa5a997219dccefbf3d92b7eaf5fc1c9febb95b09935fdb2"},
+    {url = "https://files.pythonhosted.org/packages/e2/34/aa8cafcdf57058c080f64e5205eaed2ed523aec0d6519a92aec250189079/pygal-3.0.0-py2.py3-none-any.whl", hash = "sha256:9ae06e32dec1422f9cd0d606fe2728f78e0b5d644551137480d8d5806e2426f0"},
+]
+"pygaljs 1.0.2" = [
+    {url = "https://files.pythonhosted.org/packages/49/6f/07dab31ca496feda35cf3455b9e9380c43b5c685bb54ad890831c790da38/pygaljs-1.0.2-py2.py3-none-any.whl", hash = "sha256:d75e18cb21cc2cda40c45c3ee690771e5e3d4652bf57206f20137cf475c0dbe8"},
+    {url = "https://files.pythonhosted.org/packages/75/19/3a53f34232a9e6ddad665e71c83693c5db9a31f71785105905c5bc9fbbba/pygaljs-1.0.2.tar.gz", hash = "sha256:0b71ee32495dcba5fbb4a0476ddbba07658ad65f5675e4ad409baf154dec5111"},
 ]
 "pygments 2.15.1" = [
     {url = "https://files.pythonhosted.org/packages/34/a7/37c8d68532ba71549db4212cb036dbd6161b40e463aba336770e80c72f84/Pygments-2.15.1-py3-none-any.whl", hash = "sha256:db2db3deb4b4179f399a09054b023b6a586b76499d36965813c71aa8ed7b5fd1"},
