@@ -32,7 +32,7 @@ from tests.test_federation.utils import field_resolver, link_resolver
 
 def execute(graph, query_string):
     graphql_endpoint = FederatedGraphQLEndpoint(
-        Engine(SyncExecutor(), federation_version=1),
+        Engine(SyncExecutor()),
         graph,
     )
 
@@ -48,6 +48,9 @@ GRAPH = Graph([
         Field('id', Integer, field_resolver),
         Field('status', TypeRef['Status'], field_resolver),
     ], directives=[Key('id')]),
+    FederatedNode('CartItem', [
+        Field('id', Integer, field_resolver),
+    ], directives=[Key('id', resolvable=False)]),
     Root([
         Link(
             'order',
@@ -64,7 +67,7 @@ GRAPH = Graph([
         'id': Integer,
         'title': String,
     }],
-}, unions=[Union('Bucket', ['Cart'])])
+}, unions=[Union('Bucket', ['Cart'])],)
 
 
 expected = """
@@ -87,6 +90,10 @@ expected = """
       id: Int!
       status: Status!
     }
+    
+    type CartItem @key(fields: "id") {
+      id: Int!
+    }
 
     extend type Query {
       order(id: Int!): Order
@@ -96,7 +103,7 @@ expected = """
     
     union Bucket = Cart
     
-    union _Entity = Cart | Order
+    union _Entity = Cart | CartItem | Order
 
     type _Service {
       sdl: String!

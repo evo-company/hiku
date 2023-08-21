@@ -11,7 +11,11 @@ from graphql.language.printer import print_ast
 from graphql.language import ast
 from graphql.pyutils import inspect
 
+from hiku.federation.utils import get_entity_types
+from hiku.federation.version import DEFAULT_FEDERATION_VERSION
+
 from hiku.directives import SchemaDirective
+from hiku.federation.graph import Graph as FederationGraph
 from hiku.federation.directive import (
     ComposeDirective,
     Extends,
@@ -19,7 +23,6 @@ from hiku.federation.directive import (
     Key,
     Link as LinkDirective,
 )
-from hiku.federation.version import DEFAULT_FEDERATION_VERSION
 from hiku.introspection.graphql import _BUILTIN_DIRECTIVES
 from hiku.graph import (
     Link,
@@ -29,9 +32,11 @@ from hiku.graph import (
     Node,
     Root,
     GraphTransformer,
-    Graph,
     Option,
+    Graph,
+    Union,
 )
+from hiku.scalar import ScalarMeta
 from hiku.types import (
     IDMeta,
     IntegerMeta,
@@ -89,6 +94,8 @@ def _encode_type(
         elif isinstance(val, TypeRefMeta):
             if input_type:
                 return f"IO{val.__type_name__}"
+            return val.__type_name__
+        elif isinstance(val, ScalarMeta):
             return val.__type_name__
         elif isinstance(val, IntegerMeta):
             return "Int"
@@ -186,15 +193,6 @@ class Exporter(GraphVisitor):
         self.graph = graph
         self.mutation_graph = mutation_graph
         self.federation_version = federation_version
-
-    def get_entity_types(self) -> t.List[str]:
-        entity_nodes = set()
-        for node in self.graph.nodes:
-            for directive in node.directives:
-                if isinstance(directive, Key):
-                    entity_nodes.add(node.name)
-
-        return list(sorted(entity_nodes))
 
     def export_data_types(
         self,
@@ -466,11 +464,13 @@ class Exporter(GraphVisitor):
 
 
 def get_ast(
-    graph: Graph, mutation_graph: Optional[Graph], federation_version: int
+    graph: t.Union[Graph, FederationGraph],
+    mutation_graph: Optional[t.Union[Graph, FederationGraph]],
+    federation_version: int,
 ) -> ast.DocumentNode:
-    graph = _StripGraph().visit(graph)
+    graph = _StripGraph(federation_version).visit(graph)
     if mutation_graph is not None:
-        mutation_graph = _StripGraph().visit(mutation_graph)
+        mutation_graph = _StripGraph(federation_version).visit(mutation_graph)
     return ast.DocumentNode(
         definitions=Exporter(graph, mutation_graph, federation_version).visit(
             graph
@@ -479,6 +479,9 @@ def get_ast(
 
 
 class _StripGraph(GraphTransformer):
+    def __init__(self, federation_version: int):
+        self.federation_version = federation_version
+
     def visit_root(self, obj: Root) -> Root:
         def skip(field: t.Union[Field, Link]) -> bool:
             return field.name in ["__typename", "_entities", "_service"]
@@ -498,11 +501,22 @@ class _StripGraph(GraphTransformer):
             for name, type_ in obj.data_types.items()
             if not name.startswith("_Service")
         }
+
+        entities = get_entity_types(
+            obj.nodes, federation_version=self.federation_version
+        )
+        unions = []
+        for u in obj.unions:
+            if u.name == "_Entity" and entities:
+                unions.append(Union("_Entity", entities))
+            else:
+                unions.append(u)
+
         return Graph(
             [self.visit(node) for node in obj.items if not skip(node)],
             data_types,
             obj.directives,
-            obj.unions,
+            unions,
             obj.interfaces,
             obj.enums,
             obj.scalars,
@@ -522,7 +536,7 @@ class _StripGraph(GraphTransformer):
 
 
 def print_sdl(
-    graph: Graph,
+    graph: FederationGraph,
     mutation_graph: Optional[Graph] = None,
     federation_version: int = DEFAULT_FEDERATION_VERSION,
 ) -> str:
