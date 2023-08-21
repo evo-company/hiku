@@ -58,6 +58,7 @@ test = [
     "pytest-benchmark[histogram]>=4.0.0",
     "asyncpg",  # for tests_pg
     "greenlet",  # for tests_pg
+    "strawberry-graphql>=0.196.2",
 ]
 dev = [
     "graphql-core",  # for graphql support

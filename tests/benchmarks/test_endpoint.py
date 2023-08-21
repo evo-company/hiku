@@ -1,5 +1,7 @@
 import pytest
 
+import strawberry
+
 from hiku.graph import Graph, Link, Node, Root, Field
 from hiku.types import String, TypeRef
 
@@ -59,6 +61,26 @@ def federated_endpoint_fixture(federated_graph):
     )
 
 
+@pytest.fixture(name="strawberry_schema")
+def strawberry_schema_fixture():
+    @strawberry.type
+    class Question:
+        text: str
+        answer: int
+
+    def get_question():
+        return Question(
+            text="The Ultimate Question of Life, the Universe and Everything",
+            answer=42
+        )
+
+    @strawberry.federation.type(extend=True)
+    class Query:
+        question: Question = strawberry.field(resolver=get_question)
+
+    return strawberry.Schema(query=Query)
+
+
 query = """
 { question { text ... on Question { answer } } }
 """
@@ -88,3 +110,13 @@ def test_endpoint(benchmark, endpoint):
     )
 
     assert result == {"data": data}
+
+
+def test_strawberry(benchmark, strawberry_schema):
+    result = benchmark.pedantic(
+        strawberry_schema.execute_sync, args=(query,),
+        iterations=5,
+        rounds=1000
+    )
+
+    assert result.data == data

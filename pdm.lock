@@ -50,6 +50,15 @@ requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
 summary = "Read/rewrite/write Python ASTs"
 
 [[package]]
+name = "astunparse"
+version = "1.6.3"
+summary = "An AST unparser for Python"
+dependencies = [
+    "six<2.0,>=1.6.1",
+    "wheel<1.0,>=0.23.0",
+]
+
+[[package]]
 name = "async-timeout"
 version = "4.0.2"
 requires_python = ">=3.6"
@@ -90,6 +99,12 @@ summary = "Internationalization utilities"
 dependencies = [
     "pytz>=2015.7; python_version < \"3.9\"",
 ]
+
+[[package]]
+name = "backports-cached-property"
+version = "1.0.2"
+requires_python = ">=3.6.0"
+summary = "cached_property() - computed once per instance, cached as attribute"
 
 [[package]]
 name = "black"
@@ -556,6 +571,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "strawberry-graphql"
+version = "0.196.2"
+requires_python = ">=3.7,<4.0"
+summary = "A library for creating GraphQL APIs"
+dependencies = [
+    "astunparse<2.0.0,>=1.6.3; python_version < \"3.9\"",
+    "backports-cached-property<2.0.0,>=1.0.2; python_version < \"3.8\"",
+    "graphql-core<3.3.0,>=3.2.0",
+    "python-dateutil<3.0.0,>=2.7.0",
+    "typing-extensions>=4.5.0",
+]
+
+[[package]]
 name = "tomli"
 version = "2.0.1"
 requires_python = ">=3.7"
@@ -589,6 +617,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "wheel"
+version = "0.41.1"
+requires_python = ">=3.7"
+summary = "A built-package format for Python"
+
+[[package]]
 name = "yarl"
 version = "1.9.2"
 requires_python = ">=3.7"
@@ -609,7 +643,7 @@ summary = "Backport of pathlib-compatible object wrapper for zip files"
 lock_version = "4.2"
 cross_platform = true
 groups = ["default", "dev", "docs", "examples", "test"]
-content_hash = "sha256:dd45ba42bc8e144af1da6581838928a067ae39229dacc87eeb573f98ce0cf748"
+content_hash = "sha256:836b6a4934ef64aa469902313b2e26c763149c0262b0714839b2ed5f35df0948"
 
 [metadata.files]
 "aiohttp 3.8.4" = [
@@ -717,6 +751,10 @@ content_hash = "sha256:dd45ba42bc8e144af1da6581838928a067ae39229dacc87eeb573f98c
     {url = "https://files.pythonhosted.org/packages/5a/21/75b771132fee241dfe601d39ade629548a9626d1d39f333fde31bc46febe/astor-0.8.1.tar.gz", hash = "sha256:6a6effda93f4e1ce9f618779b2dd1d9d84f1e32812c23a29b3fff6fd7f63fa5e"},
     {url = "https://files.pythonhosted.org/packages/c3/88/97eef84f48fa04fbd6750e62dcceafba6c63c81b7ac1420856c8dcc0a3f9/astor-0.8.1-py2.py3-none-any.whl", hash = "sha256:070a54e890cefb5b3739d19f30f5a5ec840ffc9c50ffa7d23cc9fc1a38ebbfc5"},
 ]
+"astunparse 1.6.3" = [
+    {url = "https://files.pythonhosted.org/packages/2b/03/13dde6512ad7b4557eb792fbcf0c653af6076b81e5941d36ec61f7ce6028/astunparse-1.6.3-py2.py3-none-any.whl", hash = "sha256:c2652417f2c8b5bb325c885ae329bdf3f86424075c4fd1a128674bc6fba4b8e8"},
+    {url = "https://files.pythonhosted.org/packages/f3/af/4182184d3c338792894f34a62672919db7ca008c89abee9b564dd34d8029/astunparse-1.6.3.tar.gz", hash = "sha256:5ad93a8456f0d084c3456d059fd9a92cce667963232cbf763eac3bc5b7940872"},
+]
 "async-timeout 4.0.2" = [
     {url = "https://files.pythonhosted.org/packages/54/6e/9678f7b2993537452710ffb1750c62d2c26df438aa621ad5fa9d1507a43a/async-timeout-4.0.2.tar.gz", hash = "sha256:2163e1640ddb52b7a8c80d0a67a08587e5d245cc9c553a74a847056bc2976b15"},
     {url = "https://files.pythonhosted.org/packages/d6/c1/8991e7c5385b897b8c020cdaad718c5b087a6626d1d11a23e1ea87e325a7/async_timeout-4.0.2-py3-none-any.whl", hash = "sha256:8ca1e4fcf50d07413d66d1a5e416e42cfdf5851c981d679a09851a6853383b3c"},
@@ -774,6 +812,10 @@ content_hash = "sha256:dd45ba42bc8e144af1da6581838928a067ae39229dacc87eeb573f98c
 "babel 2.12.1" = [
     {url = "https://files.pythonhosted.org/packages/ba/42/54426ba5d7aeebde9f4aaba9884596eb2fe02b413ad77d62ef0b0422e205/Babel-2.12.1.tar.gz", hash = "sha256:cc2d99999cd01d44420ae725a21c9e3711b3aadc7976d6147f622d8581963455"},
     {url = "https://files.pythonhosted.org/packages/df/c4/1088865e0246d7ecf56d819a233ab2b72f7d6ab043965ef327d0731b5434/Babel-2.12.1-py3-none-any.whl", hash = "sha256:b4246fb7677d3b98f501a39d43396d3cafdc8eadb045f4a31be01863f655c610"},
+]
+"backports-cached-property 1.0.2" = [
+    {url = "https://files.pythonhosted.org/packages/08/83/4cea5c665d2af765c02f7d8e8560b5918405c1d7d11ccfc60c4919c1cfd0/backports.cached-property-1.0.2.tar.gz", hash = "sha256:9306f9eed6ec55fd156ace6bc1094e2c86fae5fb2bf07b6a9c00745c656e75dd"},
+    {url = "https://files.pythonhosted.org/packages/eb/ae/69e52acdcf381b108b36d989ea58656de4a9ab8863aba6176d80d01041df/backports.cached_property-1.0.2-py3-none-any.whl", hash = "sha256:baeb28e1cd619a3c9ab8941431fe34e8490861fb998c6c4590693d50171db0cc"},
 ]
 "black 23.3.0" = [
     {url = "https://files.pythonhosted.org/packages/06/1e/273d610249f0335afb1ddb03664a03223f4826e3d1a95170a0142cb19fb4/black-23.3.0-cp39-cp39-win_amd64.whl", hash = "sha256:6b39abdfb402002b8a7d030ccc85cf5afff64ee90fa4c5aebc531e3ad0175ddb"},
@@ -1543,6 +1585,10 @@ content_hash = "sha256:dd45ba42bc8e144af1da6581838928a067ae39229dacc87eeb573f98c
     {url = "https://files.pythonhosted.org/packages/d9/15/fc7995542fe947b3b5e85862369fa0182f45ce429a317d86e695cf23ec14/SQLAlchemy-1.4.49-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ccf956da45290df6e809ea12c54c02ace7f8ff4d765d6d3dfb3655ee876ce58d"},
     {url = "https://files.pythonhosted.org/packages/eb/d8/b16f12768de85169f8b4c9bc1b12173cebdda5b5655280e9f381b7ec451d/SQLAlchemy-1.4.49-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:1c890421651b45a681181301b3497e4d57c0d01dc001e10438a40e9a9c25ee77"},
 ]
+"strawberry-graphql 0.196.2" = [
+    {url = "https://files.pythonhosted.org/packages/25/ea/526f3feef5897b3b5c19af6eff07c15a975dcdb20976def3a46b67ad6549/strawberry_graphql-0.196.2-py3-none-any.whl", hash = "sha256:724e1349f634f22cf637b743a3e34c64eaebba442ba720cd23293a5509c54706"},
+    {url = "https://files.pythonhosted.org/packages/b1/4e/211fe8c5a4937be9c3f3411c8e14ee4dae4751677bfb65ff264b9adf3492/strawberry_graphql-0.196.2.tar.gz", hash = "sha256:475a6379aacdc14466addae5de32db89ee998c859983308cb53dd17d8297bc06"},
+]
 "tomli 2.0.1" = [
     {url = "https://files.pythonhosted.org/packages/97/75/10a9ebee3fd790d20926a90a2547f0bf78f371b2f13aa822c759680ca7b9/tomli-2.0.1-py3-none-any.whl", hash = "sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc"},
     {url = "https://files.pythonhosted.org/packages/c0/3f/d7af728f075fb08564c5949a9c95e44352e23dee646869fa104a3b2060a3/tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"},
@@ -1601,6 +1647,10 @@ content_hash = "sha256:dd45ba42bc8e144af1da6581838928a067ae39229dacc87eeb573f98c
 "werkzeug 2.2.3" = [
     {url = "https://files.pythonhosted.org/packages/02/3c/baaebf3235c87d61d6593467056d5a8fba7c75ac838b8d100a5e64eba7a0/Werkzeug-2.2.3.tar.gz", hash = "sha256:2e1ccc9417d4da358b9de6f174e3ac094391ea1d4fbef2d667865d819dfd0afe"},
     {url = "https://files.pythonhosted.org/packages/f6/f8/9da63c1617ae2a1dec2fbf6412f3a0cfe9d4ce029eccbda6e1e4258ca45f/Werkzeug-2.2.3-py3-none-any.whl", hash = "sha256:56433961bc1f12533306c624f3be5e744389ac61d722175d543e1751285da612"},
+]
+"wheel 0.41.1" = [
+    {url = "https://files.pythonhosted.org/packages/28/f5/6955d7b3a5d71ce6bac104f9cf98c1b0513ad656cdaca8ea7d579196f771/wheel-0.41.1-py3-none-any.whl", hash = "sha256:473219bd4cbedc62cea0cb309089b593e47c15c4a2531015f94e4e3b9a0f6981"},
+    {url = "https://files.pythonhosted.org/packages/c9/3d/02a14af2b413d7abf856083f327744d286f4468365cddace393a43d9d540/wheel-0.41.1.tar.gz", hash = "sha256:12b911f083e876e10c595779709f8a88a59f45aacc646492a67fe9ef796c1b47"},
 ]
 "yarl 1.9.2" = [
     {url = "https://files.pythonhosted.org/packages/0e/b1/a65fcf0363ae8c08c0e586772a34cc15b4200bae163eed24258cc95cda90/yarl-1.9.2-cp310-cp310-musllinux_1_1_aarch64.whl", hash = "sha256:566185e8ebc0898b11f8026447eacd02e46226716229cea8db37496c8cdd26e0"},
