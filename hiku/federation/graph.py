@@ -1,6 +1,8 @@
 import typing as t
 from inspect import isawaitable
 
+from hiku.federation.version import DEFAULT_FEDERATION_VERSION
+
 from hiku.engine import pass_context
 
 from hiku.directives import SchemaDirective
@@ -62,13 +64,13 @@ class GraphInit(GraphTransformer):
         if not self.has_entity_types:
             return root
 
-        return Root(
-            root.fields
-            + [
-                self.entities_link(),
-                self.service_field(),
-            ]
-        )
+        fields = root.fields[:]
+        if "_entities" not in root.fields_map:
+            fields.append(self.entities_link())
+        if "_service" not in root.fields_map:
+            fields.append(self.service_field())
+
+        return Root(fields)
 
     def visit_node(self, obj: Node) -> Node:
         if hasattr(obj, "resolve_reference") and obj.name is not None:
@@ -152,24 +154,54 @@ class Graph(_Graph):
         scalars: t.Optional[t.List[t.Type[Scalar]]] = None,
         is_async: bool = False,
     ):
+        self.is_async = is_async
+
         if unions is None:
             unions = []
-
-        entity_types = get_entity_types(items)
-        if entity_types:
-            unions.append(Union("_Entity", entity_types))
 
         if scalars is None:
             scalars = []
 
-        scalars.extend([_Any, FieldSet, LinkImport])
+        unions_map = {union.name: union for union in unions}
+        scalars_map = {scalar.__type_name__: scalar for scalar in scalars}
+
+        entity_types = get_entity_types(items, DEFAULT_FEDERATION_VERSION)
+        if entity_types:
+            if "_Entity" not in unions_map:
+                unions.append(Union("_Entity", entity_types))
+
+        for scalar in [_Any, FieldSet, LinkImport]:
+            if scalar.__type_name__ not in scalars_map:
+                scalars.append(scalar)
+
         if data_types is None:
             data_types = {}
 
-        data_types["_Service"] = Record[{"sdl": String}]
+        if "_Service" not in data_types:
+            data_types["_Service"] = Record[{"sdl": String}]
 
         items = GraphInit.init(items, is_async, bool(entity_types))
 
         super().__init__(
             items, data_types, directives, unions, interfaces, enums, scalars
+        )
+
+    @classmethod
+    def from_graph(
+        cls,
+        other: "Graph",
+        root: Root,
+    ) -> "Graph":
+        """Create graph from other graph, with new root node.
+        Useful for creating mutation graph from query graph.
+        """
+        return cls(
+            other.nodes + [root],
+            data_types=other.data_types,
+            directives=other.directives,
+            unions=other.unions,
+            interfaces=other.interfaces,
+            enums=other.enums,
+            scalars=other.scalars,
+            is_async=other.is_async,
         )

@@ -130,8 +130,9 @@ QUERY_GRAPH = Graph([
 app = Flask(__name__)
 
 graphql_endpoint = FederatedGraphQLEndpoint(
-    Engine(SyncExecutor(), federation_version=1),
+    Engine(SyncExecutor()),
     QUERY_GRAPH,
+    federation_version=1,
 )
 
 

@@ -752,6 +752,9 @@ class AbstractGraph(AbstractBase, ABC):
     pass
 
 
+G = t.TypeVar("G", bound="Graph")
+
+
 class Graph(AbstractGraph):
     """Collection of nodes - definition of the graph
 
@@ -856,6 +859,23 @@ class Graph(AbstractGraph):
 
     def accept(self, visitor: "AbstractGraphVisitor") -> t.Any:
         return visitor.visit_graph(self)
+
+    @classmethod
+    def from_graph(cls: t.Type[G], other: G, root: Root) -> G:
+        """Create graph from other graph, with new root node.
+        Useful for creating mutation graph from query graph.
+        Example:
+            MUTATION_GRAPH = Graph.from_graph(QUERY_GRAPH, Root([...]))
+        """
+        return cls(
+            other.nodes + [root],
+            data_types=other.data_types,
+            directives=other.directives,
+            unions=other.unions,
+            interfaces=other.interfaces,
+            enums=other.enums,
+            scalars=other.scalars,
+        )
 
 
 class AbstractGraphVisitor(ABC):
@@ -1016,9 +1036,6 @@ class GraphTransformer(AbstractGraphVisitor):
             obj.enums,
             obj.scalars,
         )
-
-
-G = t.TypeVar("G", bound=Graph)
 
 
 def apply(graph: G, transformers: List[GraphTransformer]) -> G:

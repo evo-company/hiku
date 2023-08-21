@@ -16,6 +16,9 @@ from typing import (
     Type,
 )
 
+from hiku.federation.utils import get_entity_types
+from hiku.federation.version import DEFAULT_FEDERATION_VERSION
+
 from hiku.federation.sdl import print_sdl
 
 from hiku.federation.graph import Graph
@@ -35,7 +38,7 @@ from hiku.endpoint.graphql import (
     GraphQLError,
     _StripQuery,
 )
-from hiku.graph import apply
+from hiku.graph import GraphTransformer, apply, Union as GraphUnion
 from hiku.query import Node
 from hiku.result import Proxy
 from hiku.readers.graphql import Operation
@@ -66,9 +69,31 @@ def denormalize_entities(
     return data["_entities"]
 
 
+class FederationV1EntityTransformer(GraphTransformer):
+    def visit_graph(self, obj: Graph) -> Graph:  # type: ignore
+        entities = get_entity_types(obj.nodes, federation_version=1)
+        unions = []
+        for u in obj.unions:
+            if u.name == "_Entity" and entities:
+                unions.append(GraphUnion("_Entity", entities))
+            else:
+                unions.append(u)
+
+        return Graph(
+            [self.visit(node) for node in obj.items],
+            obj.data_types,
+            obj.directives,
+            unions,
+            obj.interfaces,
+            obj.enums,
+            obj.scalars,
+        )
+
+
 class BaseFederatedGraphEndpoint(ABC):
     query_graph: Graph
     mutation_graph: Optional[Graph]
+    federation_version: int
 
     @property
     @abstractmethod
@@ -80,13 +105,19 @@ class BaseFederatedGraphEndpoint(ABC):
         engine: Engine,
         query_graph: Graph,
         mutation_graph: Optional[Graph] = None,
+        federation_version: int = DEFAULT_FEDERATION_VERSION,
     ):
         self.engine = engine
+        self.federation_version = federation_version
 
         introspection = self.introspection_cls(query_graph, mutation_graph)
-        self.query_graph = apply(query_graph, [introspection])
+        transformers: List[GraphTransformer] = [introspection]
+        if federation_version == 1:
+            transformers.insert(0, FederationV1EntityTransformer())
+
+        self.query_graph = apply(query_graph, transformers)
         if mutation_graph is not None:
-            self.mutation_graph = apply(mutation_graph, [introspection])
+            self.mutation_graph = apply(mutation_graph, transformers)
         else:
             self.mutation_graph = None
 
@@ -135,7 +166,7 @@ class FederatedGraphQLEndpoint(BaseSyncFederatedGraphQLEndpoint):
             ctx["__sdl__"] = print_sdl(
                 self.query_graph,
                 self.mutation_graph,
-                federation_version=self.engine.federation_version,
+                self.federation_version,
             )
 
         result = self.engine.execute(graph, stripped_query, ctx, op)
@@ -174,7 +205,7 @@ class AsyncFederatedGraphQLEndpoint(BaseAsyncFederatedGraphQLEndpoint):
             ctx["__sdl__"] = print_sdl(
                 self.query_graph,
                 self.mutation_graph,
-                federation_version=self.engine.federation_version,
+                self.federation_version,
             )
 
         coro = self.engine.execute(graph, stripped_query, ctx)

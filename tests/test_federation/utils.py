@@ -12,7 +12,7 @@ from hiku.types import (
     Optional,
 )
 from hiku.utils import listify
-from hiku.federation.graph import Graph, FederatedNode
+from hiku.federation.graph import FederatedNode, Graph
 from hiku.federation.directive import Key
 
 

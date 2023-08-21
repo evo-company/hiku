@@ -17,7 +17,6 @@ from hiku.engine import (
     Context,
 )
 from hiku.executors.queue import Queue
-from hiku.federation.version import DEFAULT_FEDERATION_VERSION
 from hiku.graph import (
     Graph,
     GraphTransformer,
@@ -61,12 +60,8 @@ class Engine(BaseEngine):
         self,
         executor: SyncAsyncExecutor,
         cache: Optional[CacheSettings] = None,
-        federation_version: int = DEFAULT_FEDERATION_VERSION,
     ) -> None:
         super().__init__(executor, cache)
-        if federation_version not in (1, 2):
-            raise ValueError("federation_version must be 1 or 2")
-        self.federation_version = federation_version
 
     def execute(
         self,

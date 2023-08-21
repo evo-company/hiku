@@ -10,14 +10,15 @@ from hiku.executors.sync import SyncExecutor
 
 from tests.test_federation.utils import (
     GRAPH,
-    ASYNC_GRAPH,
+    ASYNC_GRAPH
 )
 
 
 def execute_v1(graph, query_dict):
     graphql_endpoint = FederatedGraphQLEndpoint(
-        Engine(SyncExecutor(), federation_version=1),
+        Engine(SyncExecutor()),
         graph,
+        federation_version=1
     )
 
     return graphql_endpoint.dispatch(query_dict)
@@ -25,8 +26,9 @@ def execute_v1(graph, query_dict):
 
 async def execute_async_v1(graph, query_dict):
     graphql_endpoint = AsyncFederatedGraphQLEndpoint(
-        Engine(AsyncIOExecutor(), federation_version=1),
+        Engine(AsyncIOExecutor()),
         graph,
+        federation_version=1
     )
 
     return await graphql_endpoint.dispatch(query_dict)

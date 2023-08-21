@@ -58,6 +58,9 @@ GRAPH = Graph([
         Field('status', TypeRef['Status'], field_resolver),
         Field('_secret', String, field_resolver),
     ], directives=[Key('id')]),
+    FederatedNode('CartItem', [
+        Field('id', Integer, field_resolver),
+    ], directives=[Key('id', resolvable=False)]),
     Root([
         Link(
             'order',
@@ -79,21 +82,19 @@ GRAPH = Graph([
 ])
 
 
-MUTATION_GRAPH = Graph(
-    GRAPH.nodes
-    + [
-        Root([
-            Link(
-                "saveOrder",
-                TypeRef["SaveOrderResult"],
-                lambda: None,
-                options=[
-                    Option("id", Integer),
-                ],
-                requires=None,
-            ),
-        ])
-    ]
+MUTATION_GRAPH = Graph.from_graph(
+    GRAPH,
+    Root([
+        Link(
+            "saveOrder",
+            TypeRef["SaveOrderResult"],
+            lambda: None,
+            options=[
+                Option("id", Integer),
+            ],
+            requires=None,
+        ),
+    ])
 )
 
 
@@ -124,6 +125,10 @@ expected_tmpl = """
     type Cart @key(fields: "id", resolvable: true) {
       id: Int!
       status: Status!
+    }
+    
+    type CartItem @key(fields: "id", resolvable: false) {
+      id: Int!
     }
 
     extend type Query {

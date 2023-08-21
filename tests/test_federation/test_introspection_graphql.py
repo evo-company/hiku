@@ -139,6 +139,7 @@ def execute(graph, query_string):
     graphql_endpoint = FederatedGraphQLEndpoint(
         Engine(SyncExecutor()),
         graph,
+        federation_version=1
     )
 
     return graphql_endpoint.dispatch(query_string)
