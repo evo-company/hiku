@@ -1,3 +1,5 @@
+from typing import List
+
 from .query import Node, Field, Link
 
 
@@ -42,7 +44,7 @@ class Handle:
 Q = Handle()
 
 
-def build(items):
+def build(items: List[Handle]) -> Node:
     """Builds a query
 
     Example:
@@ -73,7 +75,7 @@ def build(items):
             )
         else:
             query_items.append(
-                Link(
+                Link(  # type: ignore
                     handle.__field_name__,
                     build(handle.__node_items__),
                     handle.__field_options__,

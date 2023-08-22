@@ -2,34 +2,31 @@ import typing as t
 
 from abc import ABC, abstractmethod
 from asyncio import gather
-from inspect import isawaitable
+from contextlib import contextmanager
 
+from hiku.graph import GraphTransformer
+
+from hiku.result import Proxy
+
+from ..context import (
+    ExecutionContextFinal,
+    create_execution_context,
+    ExecutionContext,
+)
 from ..engine import Engine
-from ..graph import (
-    apply,
-    Graph,
-)
-from ..query import (
-    Fragment,
-    QueryTransformer,
-    Node,
-)
-from ..result import Proxy
+from ..extensions.base_extension import Extension, ExtensionsManager
+from ..extensions.base_validator import QueryValidator
+from ..graph import apply, Graph
+from ..query import Node
 from ..validate.query import validate
 from ..readers.graphql import (
+    parse_query,
     read_operation,
-    OperationType,
     Operation,
 )
 from ..denormalize.graphql import DenormalizeGraphQL
-from ..introspection.graphql import AsyncGraphQLIntrospection, QUERY_ROOT_NAME
-from ..introspection.graphql import GraphQLIntrospection, MUTATION_ROOT_NAME
-
-
-_type_names: t.Dict[OperationType, str] = {
-    OperationType.QUERY: QUERY_ROOT_NAME,
-    OperationType.MUTATION: MUTATION_ROOT_NAME,
-}
+from ..introspection.graphql import AsyncGraphQLIntrospection
+from ..introspection.graphql import GraphQLIntrospection
 
 
 class GraphQLError(Exception):
@@ -38,133 +35,224 @@ class GraphQLError(Exception):
         self.errors = errors
 
 
-class _StripQuery(QueryTransformer):
-    """Removes __typename fields from query"""
-
-    def visit_node(self, obj: Node) -> Node:
-        return obj.copy(
-            fields=[
-                self.visit(f) for f in obj.fields if f.name != "__typename"
-            ],
-            fragments=[self.visit(f) for f in obj.fragments],
-        )
-
-    def visit_fragment(self, obj: Fragment) -> Fragment:
-        return obj.copy(node=self.visit(obj.node))
-
-
 G = t.TypeVar("G", bound=Graph)
 
 
-def _switch_graph(
-    data: t.Dict, query_graph: G, mutation_graph: t.Optional[G] = None
-) -> t.Tuple[G, Operation]:
-    try:
-        op = read_operation(
-            data["query"],
-            variables=data.get("variables"),
-            operation_name=data.get("operationName"),
-        )
-    except TypeError as e:
-        raise GraphQLError(
-            errors=[
-                "Failed to read query: {}".format(e),
-            ]
-        )
-    if op.type is OperationType.QUERY:
-        graph = query_graph
-    elif op.type is OperationType.MUTATION and mutation_graph is not None:
-        graph = mutation_graph
-    else:
-        raise GraphQLError(
-            errors=[
-                "Unsupported operation type: {!r}".format(op.type),
-            ]
-        )
+def _run_validation(
+    graph: Graph,
+    query: Node,
+    validators: t.Optional[t.Tuple[QueryValidator, ...]] = None,
+) -> t.List[str]:
+    errors = validate(graph, query)
+    for validator in validators or ():
+        errors.extend(validator.validate(query, graph))
 
-    return graph, op
+    return errors
 
 
-def _process_query(graph: Graph, query: Node) -> Node:
-    stripped_query = _StripQuery().visit(query)
-    errors = validate(graph, stripped_query)
-    if errors:
-        raise GraphQLError(errors=errors)
-    else:
-        return stripped_query
+C = t.TypeVar("C")
 
 
-class BaseGraphQLEndpoint(ABC):
+class BaseGraphQLEndpoint(ABC, t.Generic[C]):
     query_graph: Graph
     mutation_graph: t.Optional[Graph]
+    batching: bool
+    validation: bool
+    introspection: bool
+    get_context: t.Optional[t.Callable[[ExecutionContext], C]]
 
     @property
     @abstractmethod
     def introspection_cls(self) -> t.Type[GraphQLIntrospection]:
         pass
 
+    @contextmanager
+    def context(
+        self, execution_context: ExecutionContext
+    ) -> t.Iterator[t.Optional[C]]:
+        yield self.get_context(execution_context) if self.get_context else None
+
     def __init__(
         self,
         engine: Engine,
         query_graph: Graph,
         mutation_graph: t.Optional[Graph] = None,
+        batching: bool = False,
+        validation: bool = True,
+        introspection: bool = True,
+        extensions: t.Optional[
+            t.Sequence[t.Union[Extension, t.Type[Extension]]]
+        ] = None,
+        get_context: t.Optional[t.Callable[[ExecutionContext], C]] = None,
     ):
         self.engine = engine
+        self.batching = batching
+        self.validation = validation
+        self.introspection = introspection
+        self.extensions = extensions or []
+        self.get_context = get_context
 
-        introspection = self.introspection_cls(query_graph, mutation_graph)
-        self.query_graph = apply(query_graph, [introspection])
+        execution_context = create_execution_context()
+        extensions_manager = ExtensionsManager(
+            execution_context=execution_context,
+            extensions=self.extensions,
+        )
+        with extensions_manager.graph():
+            transformers: t.List[GraphTransformer] = list(
+                execution_context.transformers
+            )
+
+        if self.introspection:
+            transformers.append(
+                self.introspection_cls(query_graph, mutation_graph)
+            )
+
+        self.query_graph = apply(query_graph, transformers)
         if mutation_graph is not None:
-            self.mutation_graph = apply(mutation_graph, [introspection])
+            self.mutation_graph = apply(mutation_graph, transformers)
         else:
             self.mutation_graph = None
+
+    def _init_execution_context(
+        self,
+        execution_context: ExecutionContext,
+        extensions_manager: ExtensionsManager,
+    ) -> t.Tuple[Graph, Operation]:
+        with extensions_manager.parsing():
+            if execution_context.graphql_document is None:
+                execution_context.graphql_document = parse_query(
+                    execution_context.query_src
+                )
+
+        with extensions_manager.operation():
+            if execution_context.operation is None:
+                try:
+                    execution_context.operation = read_operation(
+                        execution_context.graphql_document,
+                        execution_context.variables,
+                        execution_context.request_operation_name,
+                    )
+                except TypeError as e:
+                    raise GraphQLError(
+                        errors=[
+                            "Failed to read query: {}".format(e),
+                        ]
+                    )
+
+        execution_context.query = execution_context.operation.query
+        execution_context.query_graph = self.query_graph
+        execution_context.mutation_graph = self.mutation_graph
+
+        try:
+            return execution_context.graph, execution_context.operation
+        except ValueError as err:
+            raise GraphQLError(errors=[str(err)])
 
 
 class BaseSyncGraphQLEndpoint(BaseGraphQLEndpoint):
     @abstractmethod
-    def execute(self, graph: Graph, op: Operation, ctx: t.Dict) -> t.Dict:
+    def execute(
+        self,
+        execution_context: ExecutionContext,
+        extensions_manager: ExtensionsManager,
+    ) -> t.Dict:
         pass
 
-    @abstractmethod
     def dispatch(self, data: t.Dict) -> t.Dict:
-        pass
+        execution_context = create_execution_context(
+            query=data["query"],
+            variables=data.get("variables"),
+            operation_name=data.get("operationName"),
+        )
+
+        extensions_manager = ExtensionsManager(
+            execution_context=execution_context,
+            extensions=self.extensions,
+        )
+
+        try:
+            with extensions_manager.dispatch():
+                self._init_execution_context(
+                    execution_context, extensions_manager
+                )
+                with self.context(execution_context) as ctx:
+                    if ctx is not None:
+                        execution_context.context.update(ctx)
+
+                result = self.execute(execution_context, extensions_manager)
+                return {"data": result}
+        except GraphQLError as e:
+            return {"errors": [{"message": e} for e in e.errors]}
 
 
 class BaseAsyncGraphQLEndpoint(BaseGraphQLEndpoint):
     @abstractmethod
-    async def execute(self, graph: Graph, op: Operation, ctx: t.Dict) -> t.Dict:
+    async def execute(
+        self,
+        execution_context: ExecutionContext,
+        extensions_manager: ExtensionsManager,
+    ) -> t.Dict:
         pass
 
-    @abstractmethod
     async def dispatch(self, data: t.Dict) -> t.Dict:
-        pass
+        execution_context = create_execution_context(
+            query=data["query"],
+            variables=data.get("variables"),
+            operation_name=data.get("operationName"),
+        )
+
+        extensions_manager = ExtensionsManager(
+            execution_context=execution_context,
+            extensions=self.extensions,
+        )
+        try:
+            with extensions_manager.dispatch():
+                self._init_execution_context(
+                    execution_context, extensions_manager
+                )
+                with self.context(execution_context) as ctx:
+                    if ctx is not None:
+                        execution_context.context.update(ctx)
+                result = await self.execute(
+                    execution_context, extensions_manager
+                )
+                return {"data": result}
+        except GraphQLError as e:
+            return {"errors": [{"message": e} for e in e.errors]}
 
 
 class GraphQLEndpoint(BaseSyncGraphQLEndpoint):
     introspection_cls = GraphQLIntrospection
 
     def execute(
-        self, graph: Graph, op: Operation, ctx: t.Optional[t.Dict]
+        self,
+        execution_context: ExecutionContext,
+        extensions_manager: ExtensionsManager,
     ) -> t.Dict:
-        stripped_query = _process_query(graph, op.query)
-        result = self.engine.execute(graph, stripped_query, ctx, op)
-        assert isinstance(result, Proxy)
-        type_name = _type_names[op.type]
-        return DenormalizeGraphQL(graph, result, type_name).process(op.query)
+        execution_context = t.cast(ExecutionContextFinal, execution_context)
 
-    def dispatch(self, data: t.Dict) -> t.Dict:
-        try:
-            graph, op = _switch_graph(
-                data,
-                self.query_graph,
-                self.mutation_graph,
-            )
-            result = self.execute(graph, op, {})
-            return {"data": result}
-        except GraphQLError as e:
-            return {"errors": [{"message": e} for e in e.errors]}
+        with extensions_manager.validation():
+            if self.validation and execution_context.errors is None:
+                execution_context.errors = _run_validation(
+                    execution_context.graph,
+                    execution_context.query,
+                    execution_context.validators,
+                )
 
+        if execution_context.errors:
+            raise GraphQLError(errors=execution_context.errors)
 
-class BatchGraphQLEndpoint(GraphQLEndpoint):
+        with extensions_manager.execution():
+            result = self.engine.execute(execution_context)
+            assert isinstance(result, Proxy)
+            execution_context.result = result
+
+        return DenormalizeGraphQL(
+            execution_context.graph,
+            result,
+            execution_context.operation_type_name,
+        ).process(execution_context.query)
+
     @t.overload
     def dispatch(self, data: t.List[t.Dict]) -> t.List[t.Dict]:
         ...
@@ -177,41 +265,55 @@ class BatchGraphQLEndpoint(GraphQLEndpoint):
         self, data: t.Union[t.Dict, t.List[t.Dict]]
     ) -> t.Union[t.Dict, t.List[t.Dict]]:
         if isinstance(data, list):
+            if not self.batching:
+                raise GraphQLError(errors=["Batching is not supported"])
+
             return [
-                super(BatchGraphQLEndpoint, self).dispatch(item)
-                for item in data
+                super(GraphQLEndpoint, self).dispatch(item) for item in data
             ]
         else:
-            return super(BatchGraphQLEndpoint, self).dispatch(data)
+            return super(GraphQLEndpoint, self).dispatch(data)
+
+
+class BatchGraphQLEndpoint(GraphQLEndpoint):
+    """For backward compatibility"""
+
+    def __init__(self, *args: t.Any, **kwargs: t.Any):
+        kwargs["batching"] = True
+        super().__init__(*args, **kwargs)
 
 
 class AsyncGraphQLEndpoint(BaseAsyncGraphQLEndpoint):
     introspection_cls = AsyncGraphQLIntrospection
 
     async def execute(
-        self, graph: Graph, op: Operation, ctx: t.Optional[t.Dict]
+        self,
+        execution_context: ExecutionContext,
+        extensions_manager: ExtensionsManager,
     ) -> t.Dict:
-        stripped_query = _process_query(graph, op.query)
-        coro = self.engine.execute(graph, stripped_query, ctx, op)
-        assert isawaitable(coro)
-        result = await coro
-        type_name = _type_names[op.type]
-        return DenormalizeGraphQL(graph, result, type_name).process(op.query)
+        execution_context = t.cast(ExecutionContextFinal, execution_context)
 
-    async def dispatch(self, data: t.Dict) -> t.Dict:
-        try:
-            graph, op = _switch_graph(
-                data,
-                self.query_graph,
-                self.mutation_graph,
-            )
-            result = await self.execute(graph, op, {})
-            return {"data": result}
-        except GraphQLError as e:
-            return {"errors": [{"message": e} for e in e.errors]}
+        with extensions_manager.validation():
+            if self.validation and execution_context.errors is None:
+                execution_context.errors = _run_validation(
+                    execution_context.graph,
+                    execution_context.query,
+                    execution_context.validators,
+                )
 
+        if execution_context.errors:
+            raise GraphQLError(errors=execution_context.errors)
 
-class AsyncBatchGraphQLEndpoint(AsyncGraphQLEndpoint):
+        with extensions_manager.execution():
+            result = await self.engine.execute(execution_context)  # type: ignore[union-attr]  # noqa: E501
+            execution_context.result = result
+
+        return DenormalizeGraphQL(
+            execution_context.graph,
+            result,
+            execution_context.operation_type_name,
+        ).process(execution_context.query)
+
     @t.overload
     async def dispatch(self, data: t.List[t.Dict]) -> t.List[t.Dict]:
         ...
@@ -227,10 +329,18 @@ class AsyncBatchGraphQLEndpoint(AsyncGraphQLEndpoint):
             return list(
                 await gather(
                     *(
-                        super(AsyncBatchGraphQLEndpoint, self).dispatch(item)
+                        super(AsyncGraphQLEndpoint, self).dispatch(item)
                         for item in data
                     )
                 )
             )
         else:
-            return await super(AsyncBatchGraphQLEndpoint, self).dispatch(data)
+            return await super(AsyncGraphQLEndpoint, self).dispatch(data)
+
+
+class AsyncBatchGraphQLEndpoint(AsyncGraphQLEndpoint):
+    """For backward compatibility"""
+
+    def __init__(self, *args: t.Any, **kwargs: t.Any):
+        kwargs["batching"] = True
+        super().__init__(*args, **kwargs)

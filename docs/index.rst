@@ -20,6 +20,7 @@ User's Guide
   federation
   telemetry
   caching
+  extensions
   reference/index
   changelog/index
   development

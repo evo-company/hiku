@@ -53,6 +53,6 @@ def test_query_reading():
 
     query = read(binary_message)
 
-    result = hiku_engine.execute(GRAPH, query)
+    result = hiku_engine.execute_query(GRAPH, query)
 
     assert all(c['name'] for c in result['characters'])

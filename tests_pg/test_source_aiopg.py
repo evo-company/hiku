@@ -35,8 +35,9 @@ class TestSourceAIOPG(SourceSQLAlchemyTestBase):
         sa_engine = await aiopg.sa.create_engine(self.db_dsn, minsize=0)
         engine = Engine(AsyncIOExecutor())
         try:
-            result = await engine.execute(self.graph, read(src),
-                                          {SA_ENGINE_KEY: sa_engine})
+            result = await engine.execute_query(
+                self.graph, read(src), {SA_ENGINE_KEY: sa_engine}
+            )
             check_result(result, value)
         finally:
             sa_engine.close()

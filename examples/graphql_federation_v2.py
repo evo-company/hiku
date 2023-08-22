@@ -12,7 +12,6 @@ from hiku.graph import (
     Option,
     Link,
 )
-from hiku.readers.graphql import setup_query_cache
 from hiku.types import (
     Integer,
     TypeRef,
@@ -154,7 +153,6 @@ def handle_graphql():
 def main():
     logging.basicConfig(level=logging.DEBUG)
 
-    setup_query_cache(size=128)
     app.run(host='0.0.0.0', port=4001, debug=True)
 
 

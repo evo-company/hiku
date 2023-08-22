@@ -1,5 +1,6 @@
 import pytest
 
+from hiku.context import create_execution_context
 from hiku.query import Node, Field, Link
 from hiku.executors.asyncio import AsyncIOExecutor
 from hiku.federation.endpoint import denormalize_entities
@@ -14,14 +15,14 @@ from tests.test_federation.utils import (
 )
 
 
-def execute(graph, query_, ctx=None):
+def execute(graph, query: Node, ctx=None):
     engine = Engine(SyncExecutor())
-    return engine.execute(graph, query_, ctx=ctx)
+    return engine.execute_query(graph, query, ctx=ctx)
 
 
-async def execute_async_executor(graph, query_, ctx=None):
+async def execute_async_executor(graph, query: Node, ctx=None):
     engine = Engine(AsyncIOExecutor())
-    return await engine.execute(graph, query_, ctx=ctx)
+    return await engine.execute_query(graph, query, ctx=ctx)
 
 
 ENTITIES_QUERY = {

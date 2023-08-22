@@ -8,7 +8,9 @@ from typing import (
 )
 
 import pytest
-from hiku.readers.graphql import read
+
+from hiku.context import create_execution_context
+from hiku.readers.graphql import OperationType, read
 
 from hiku.endpoint.graphql import GraphQLEndpoint
 
@@ -59,7 +61,7 @@ OPTION_BEHAVIOUR = [
 
 def execute(graph, query_, ctx=None):
     engine = Engine(SyncExecutor())
-    return engine.execute(graph, query_, ctx=ctx)
+    return engine.execute_query(graph, query_, ctx)
 
 
 def execute_endpoint(graph, query):
@@ -309,8 +311,6 @@ def test_links_requires_list_sa():
     SA_ENGINE_KEY = "sa-engine"
     metadata = MetaData()
 
-    thread_pool = ThreadPoolExecutor(2)
-
     song_table = Table(
         "song",
         metadata,
@@ -356,12 +356,7 @@ def test_links_requires_list_sa():
     )
     setup_db(sa_engine)
 
-    engine = Engine(ThreadsExecutor(thread_pool))
     ctx = {SA_ENGINE_KEY: sa_engine}
-
-    def execute(query_node):
-        proxy = engine.execute(graph, query_node, ctx)
-        return DenormalizeGraphQL(graph, proxy, "query").process(query_node)
 
     link_song = Mock(return_value=100)
 
@@ -453,7 +448,8 @@ def test_links_requires_list_sa():
             ]
         ]
     )
-    result = execute(query)
+    norm_result = execute(graph, query, ctx)
+    result = DenormalizeGraphQL(graph, norm_result, "query").process(query)
     check_result(
         result,
         {
@@ -1223,8 +1219,7 @@ def test_process_ordered_node():
         ordered=True,
     )
 
-    engine = Engine(SyncExecutor())
-    result = engine.execute(graph, query)
+    result = execute(graph, query)
     check_result(
         result,
         {

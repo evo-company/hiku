@@ -6,39 +6,10 @@ from hiku.types import (
 )
 from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
-from hiku.readers.graphql import read
-from hiku.endpoint.graphql import _StripQuery, GraphQLEndpoint
+from hiku.endpoint.graphql import GraphQLEndpoint
 from hiku.endpoint.graphql import BatchGraphQLEndpoint, AsyncGraphQLEndpoint
 from hiku.endpoint.graphql import AsyncBatchGraphQLEndpoint
 from hiku.executors.asyncio import AsyncIOExecutor
-
-
-def test_strip():
-    query = read(
-        """
-    query {
-        __typename
-        foo {
-            __typename
-            bar {
-                __typename
-                baz
-            }
-        }
-    }
-    """
-    )
-    assert _StripQuery().visit(query) == read(
-        """
-    query {
-        foo {
-            bar {
-                baz
-            }
-        }
-    }
-    """
-    )
 
 
 @pytest.fixture(name="sync_graph")

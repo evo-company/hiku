@@ -117,9 +117,9 @@ another:
 .. code-block:: python
 
   if op.type is OperationType.QUERY:
-      result = engine.execute(query_graph, op.query)
+      result = engine.execute_query(query_graph, op.query)
   elif op.type is OperationType.MUTATION:
-      result = engine.execute(mutation_graph, op.query)
+      result = engine.execute_mutation(mutation_graph, op.query)
   else:
       return {'errors': [{'message': ('Unsupported operation type: {!r}'
                                       .format(op.type))}]}
@@ -168,7 +168,7 @@ Query with inlined variables is bad for caching.
 
 Query with separated variables is good for caching.
 
-.. code-block:: python
+.. code-block::
 
     query User($id: ID!, $photoSize: Int) {
         user(id: $id) {

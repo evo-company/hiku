@@ -21,7 +21,7 @@ hiku_engine = Engine(SyncExecutor())
 
 def execute(graph, query_string):
     query = read(query_string)
-    result = hiku_engine.execute(graph, query)
+    result = hiku_engine.execute_query(graph, query)
     return denormalize(graph, result)
 
 from tests.base import patch, Mock

@@ -6,7 +6,9 @@ Changes in 0.7
 
   - Dropped support for Python 3.6, which ended support on 2021-12-23
   - Added support for Python 3.10
+  - Added support for Python 3.11
   - Added support for `Apollo Federation (v1) <https://www.apollographql.com/docs/federation/v1/>`_
+  - Added support for `Apollo Federation v2 (v2 is default now)`
   - [internal] Refactored introspection directives
   - Added graph schema directives support
 
@@ -43,20 +45,25 @@ Changes in 0.7
 
   - Added mypy and typings to codebase
   - Added checks for link results that can not be hashed and extend errors. This must improve developer experience.
-  - Added caching for parsing graphql query. It is optional and can be enabled by calling :py:func:`hiku.readers.graphql.setup_query_cache`.
   - Added result cache - it is possible now to specify ``@cached`` directive to cache parts of the query. :ref:`Check cache documentation <caching-doc>`
   - ``Link(requires=['a', 'b'])`` can be specified as a list of strings. It is useful when you want to require multiple fields at once. It will pass a list of dicts to the resolver.
-  - Added support for Python 3.11
   - Added hints when failing on return values that are not hashable
   - Migrated to ``pdm`` package manager
   - Reformat code with ``black``
-  - Added support for Apollo Federation v2 (v2 is default now)
   - Added support for custom schema directives :ref:`Check directives documentation <directives-doc>`
   - Added `ID` type.
   - Added support for unions :ref:`Check unions documentation <unions-doc>`
   - Added support for interfaces :ref:`Check interfaces documentation <interfaces-doc>`
   - Added support for enums :ref:`Check enums documentation <enums-doc>`
   - Added support for custom scalars :ref:`Check custom scalars documentation <scalars-doc>`
+  - Added support for extensions :ref:`Check extensions documentation <extensions-doc>`
+    - Added ``QueryParseCache`` extension - cache parsed graphql queries ast.
+    - Added ``QueryTransformCache`` extension - cache transformed graphql ast into query Node.
+    - Added ``QueryValidationCache`` extension - cache query validation.
+    - Added ``QueryDepthValidator`` extension - validate query depth
+    - Added ``PrometheusMetrics`` extension - wrapper around ``GraphMetrics`` visitor
+    - Added ``PrometheusMetricsAsync`` extension - wrapper around ``AsyncGraphMetrics`` visitor
+
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

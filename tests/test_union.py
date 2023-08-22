@@ -1,7 +1,7 @@
 import pytest
-from hiku.endpoint.graphql import _StripQuery
-
 from hiku.denormalize.graphql import DenormalizeGraphQL
+
+from hiku.endpoint.graphql import GraphQLEndpoint
 from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import Field, Graph, Link, Node, Option, Root, Union
@@ -14,7 +14,7 @@ from hiku.validate.query import validate
 
 def execute(graph, query):
     engine = Engine(SyncExecutor())
-    result = engine.execute(graph, _StripQuery().visit(query), {})
+    result = engine.execute_query(graph, query)
     return DenormalizeGraphQL(graph, result, "query").process(query)
 
 

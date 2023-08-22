@@ -66,7 +66,7 @@ def read(data):
 
         query = read(bin_query)  # reading binary message
 
-        result = engine.execute(graph, query)
+        result = engine.execute_query(graph, query)
 
     :param bytes data: binary message representation
     :return: :py:class:`hiku.query.Node`, ready to execute query object

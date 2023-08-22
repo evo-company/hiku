@@ -85,7 +85,7 @@ Query:
 
   engine = Engine(SyncExecutor())
 
-  result = engine.execute(GRAPH, build([
+  result = engine.execute_query(GRAPH, build([
       Q.characters[
           Q.name,
           Q.species,

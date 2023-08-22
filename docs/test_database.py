@@ -104,7 +104,7 @@ hiku_engine = Engine(SyncExecutor())
 
 def execute(graph, query_string):
     query = read(query_string)
-    result = hiku_engine.execute(graph, query, {SA_ENGINE_KEY: sa_engine})
+    result = hiku_engine.execute_query(graph, query, {SA_ENGINE_KEY: sa_engine})
     return denormalize(graph, result)
 
 def test_character_to_actors():

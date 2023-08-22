@@ -16,6 +16,7 @@ env
 .benchmarks
 todo
 TODO
+TODO.md
 .pdm-python
 __pypackages__
 examples/federation-compatibility/products.graphql

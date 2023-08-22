@@ -354,7 +354,7 @@ def _field_eq(a: FieldBase, b: FieldBase) -> bool:
     return a.name == b.name and a.options == b.options
 
 
-class QueryValidator(QueryVisitor):
+class DefaultQueryValidator(QueryVisitor):
     """
     Validate query against graph.
 
@@ -529,6 +529,6 @@ class QueryValidator(QueryVisitor):
 
 
 def validate(graph: Graph, query: QueryNode) -> t.List[str]:
-    query_validator = QueryValidator(graph)
+    query_validator = DefaultQueryValidator(graph)
     query_validator.visit(query)
     return query_validator.errors.list
