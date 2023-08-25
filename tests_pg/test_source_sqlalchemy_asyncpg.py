@@ -37,8 +37,8 @@ class TestSourceSQLAlchemyAsyncPG(SourceSQLAlchemyTestBase):
         sa_engine = create_async_engine(self.db_dsn)
         engine = Engine(AsyncIOExecutor())
         try:
-            result = await engine.execute_query(
-                self.graph, read(src), {SA_ENGINE_KEY: sa_engine}
+            result = await engine.execute(
+                read(src), self.graph, ctx={SA_ENGINE_KEY: sa_engine}
             )
             check_result(result, value)
         finally:

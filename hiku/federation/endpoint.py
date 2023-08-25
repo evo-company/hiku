@@ -274,7 +274,7 @@ class FederatedGraphQLEndpoint(BaseSyncFederatedGraphQLEndpoint):
                     self.federation_version,
                 )
 
-            result = self.engine.execute(execution_context)
+            result = self.engine.execute_context(execution_context)
             assert isinstance(result, Proxy)
             execution_context.result = result
 
@@ -341,7 +341,7 @@ class AsyncFederatedGraphQLEndpoint(BaseAsyncFederatedGraphQLEndpoint):
                     self.federation_version,
                 )
 
-            coro = self.engine.execute(execution_context)
+            coro = self.engine.execute_context(execution_context)
             assert isawaitable(coro)
             result = await coro
             execution_context.result = result

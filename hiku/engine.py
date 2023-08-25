@@ -971,31 +971,29 @@ class BaseEngine(abc.ABC):
         self.cache_settings = cache
 
     @abc.abstractmethod
-    def execute(
+    def execute_context(
         self,
         execution_context: ExecutionContext,
     ) -> Union[Proxy, Awaitable[Proxy]]:
         ...
 
-    def execute_query(
-        self, graph: Graph, query: QueryNode, ctx: Optional[Dict] = None
+    def execute(
+        self,
+        query: QueryNode,
+        graph: Optional[Graph] = None,
+        mutation_graph: Optional[Graph] = None,
+        ctx: Optional[Dict] = None,
     ) -> Union[Proxy, Awaitable[Proxy]]:
-        execution_context = create_execution_context(
-            query, query_graph=graph, context=ctx
-        )
-        return self.execute(execution_context)
+        assert graph is not None or mutation_graph is not None
 
-    def execute_mutation(
-        self, graph: Graph, query: QueryNode, ctx: Optional[Dict] = None
-    ) -> Union[Proxy, Awaitable[Proxy]]:
         execution_context = create_execution_context(
-            query, mutation_graph=graph, context=ctx
+            query, query_graph=graph, mutation_graph=mutation_graph, context=ctx
         )
-        return self.execute(execution_context)
+        return self.execute_context(execution_context)
 
 
 class Engine(BaseEngine):
-    def execute(
+    def execute_context(
         self,
         execution_context: ExecutionContext,
     ) -> Union[Proxy, Awaitable[Proxy]]:

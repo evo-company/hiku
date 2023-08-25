@@ -23,7 +23,7 @@ def direct_link(ids):
 
 def execute(graph, query_, ctx=None):
     engine = Engine(SyncExecutor())
-    return engine.execute_query(graph, query_, ctx=ctx)
+    return engine.execute(query_, graph, ctx=ctx)
 
 
 def test_link_requires_field_with_unhashable_data():

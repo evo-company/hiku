@@ -15,7 +15,7 @@ from hiku.validate.graph import GraphValidationError
 
 def execute(graph, query):
     engine = Engine(SyncExecutor())
-    result = engine.execute_query(graph, query, {})
+    result = engine.execute(query, graph, ctx={})
     return DenormalizeGraphQL(graph, result, "query").process(query)
 
 

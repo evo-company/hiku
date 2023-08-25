@@ -484,7 +484,7 @@ def read(
     .. code-block:: python
 
         query = read('{ foo bar }')
-        result = engine.execute(graph, query)
+        result = engine.execute(query, graph)
 
     :param str src: GraphQL query
     :param dict variables: query variables
@@ -515,7 +515,7 @@ def read_operation(
 
         op = read_operation('{ foo bar }')
         if op.type is OperationType.QUERY:
-            result = engine.execute(query_graph, op.query)
+            result = engine.execute(op.query, query_graph)
 
     :return: :py:class:`Operation`
     """

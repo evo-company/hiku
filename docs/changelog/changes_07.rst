@@ -63,6 +63,7 @@ Changes in 0.7
     - Added ``QueryDepthValidator`` extension - validate query depth
     - Added ``PrometheusMetrics`` extension - wrapper around ``GraphMetrics`` visitor
     - Added ``PrometheusMetricsAsync`` extension - wrapper around ``AsyncGraphMetrics`` visitor
+  - Add new method ``Engine.execute_context``, which accepts ``ExecutionContext``. ``Engine.execute`` changed its signature and not dispatches to ``Engine.execute_context``.
 
 
 Backward-incompatible changes
@@ -70,3 +71,5 @@ Backward-incompatible changes
 
   - Dropped Python 3.6 support, minimum supported version now is Python 3.7
   - Validate Option's default value. Now if `type` is not marked as `Optiona[...]` and `default=None`, validation will fail.
+  - `Engine.execute` signature has changed. Now it accepts query as first argument, graph and mutation as second and third arguments.
+    Both graph and mutation are optional but at least one of them must be specified. Fourth argument is `ctx` dict which is optional.

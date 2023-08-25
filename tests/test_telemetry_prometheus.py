@@ -4,7 +4,6 @@ import pytest
 from prometheus_client import REGISTRY
 
 from hiku import query as q
-from hiku.context import create_execution_context
 from hiku.graph import Graph, Node, Field, Link, Root, apply
 from hiku.types import TypeRef
 from hiku.engine import Engine, pass_context
@@ -95,9 +94,7 @@ def test_simple_sync(graph_name, sample_count):
         ]
     )
 
-    execution_context = create_execution_context(query, query_graph=hl_graph)
-
-    result = Engine(SyncExecutor()).execute(execution_context)
+    result = Engine(SyncExecutor()).execute(query, hl_graph)
     check_result(
         result,
         {
@@ -176,7 +173,7 @@ async def test_simple_async(graph_name, sample_count):
     assert sample_count("Root", "x") is None
     assert sample_count("X", "id") is None
 
-    result = await engine.execute_query(hl_graph, query)
+    result = await engine.execute(query, hl_graph)
     check_result(
         result,
         {
@@ -223,8 +220,7 @@ def test_with_pass_context(graph_name, sample_count):
         ]
     )
 
-    execution_context = create_execution_context(query, query_graph=graph)
-    result = Engine(SyncExecutor()).execute(execution_context)
+    result = Engine(SyncExecutor()).execute(query, graph)
     check_result(
         result,
         {

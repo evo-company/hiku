@@ -61,7 +61,7 @@ OPTION_BEHAVIOUR = [
 
 def execute(graph, query_, ctx=None):
     engine = Engine(SyncExecutor())
-    return engine.execute_query(graph, query_, ctx)
+    return engine.execute(query_, graph, ctx=ctx)
 
 
 def execute_endpoint(graph, query):

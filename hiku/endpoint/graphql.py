@@ -243,7 +243,7 @@ class GraphQLEndpoint(BaseSyncGraphQLEndpoint):
             raise GraphQLError(errors=execution_context.errors)
 
         with extensions_manager.execution():
-            result = self.engine.execute(execution_context)
+            result = self.engine.execute_context(execution_context)
             assert isinstance(result, Proxy)
             execution_context.result = result
 
@@ -305,7 +305,7 @@ class AsyncGraphQLEndpoint(BaseAsyncGraphQLEndpoint):
             raise GraphQLError(errors=execution_context.errors)
 
         with extensions_manager.execution():
-            result = await self.engine.execute(execution_context)  # type: ignore[union-attr]  # noqa: E501
+            result = await self.engine.execute_context(execution_context)  # type: ignore[union-attr]  # noqa: E501
             execution_context.result = result
 
         return DenormalizeGraphQL(

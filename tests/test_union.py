@@ -14,7 +14,7 @@ from hiku.validate.query import validate
 
 def execute(graph, query):
     engine = Engine(SyncExecutor())
-    result = engine.execute_query(graph, query)
+    result = engine.execute(query, graph)
     return DenormalizeGraphQL(graph, result, "query").process(query)
 
 

@@ -148,7 +148,7 @@ from hiku.executors.asyncio import AsyncIOExecutor
 
 async def execute(hiku_engine, sa_engine, graph, query_string):
     query = read(query_string)
-    result = await hiku_engine.execute_query(graph, query, {SA_ENGINE_KEY: sa_engine})
+    result = await hiku_engine.execute(query, graph, ctx={SA_ENGINE_KEY: sa_engine})
     return denormalize(graph, result)
 
 @pytest.mark.asyncio(forbid_global_loop=True)

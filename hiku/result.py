@@ -245,7 +245,7 @@ def denormalize(graph: Graph, result: Proxy) -> t.Dict:
     .. code-block:: python
 
         query = hiku.readers.simple.read('[:foo]')
-        norm_result = hiku_engine.execute_query(graph, query)
+        norm_result = hiku_engine.execute(query, graph)
         result = hiku.result.denormalize(graph, norm_result)
         assert result == {'foo': 'value'}
 

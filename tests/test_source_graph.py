@@ -200,7 +200,7 @@ def _graph():
 
 
 def test_field(engine, graph):
-    result = engine.execute_query(graph, read("[{:x1s [:a :f]}]"))
+    result = engine.execute(read("[{:x1s [:a :f]}]"), graph)
     check_result(
         result,
         {
@@ -214,7 +214,7 @@ def test_field(engine, graph):
 
 
 def test_field_options(engine, graph):
-    result = engine.execute_query(graph, read('[{:x1s [(:buz {:size "100"})]}]'))
+    result = engine.execute(read('[{:x1s [(:buz {:size "100"})]}]'), graph)
     check_result(
         result,
         {
@@ -228,7 +228,7 @@ def test_field_options(engine, graph):
 
 
 def test_field_without_options(engine, graph):
-    result = engine.execute_query(graph, read("[{:x1s [:buz]}]"))
+    result = engine.execute(read("[{:x1s [:buz]}]"), graph)
     check_result(
         result,
         {
@@ -243,12 +243,12 @@ def test_field_without_options(engine, graph):
 
 def test_field_without_required_option(engine, graph):
     with pytest.raises(TypeError) as err:
-        engine.execute_query(graph, read("[{:x1s [:buz3]}]"))
+        engine.execute(read("[{:x1s [:buz3]}]"), graph)
     err.match('^Required option "size" for (.*)buz3(.*) was not provided$')
 
 
 def test_field_option_defaults(engine, graph):
-    result = engine.execute_query(graph, read("[{:x1s [:buz2]}]"))
+    result = engine.execute(read("[{:x1s [:buz2]}]"), graph)
     check_result(
         result,
         {
@@ -259,7 +259,7 @@ def test_field_option_defaults(engine, graph):
             ]
         },
     )
-    result = engine.execute_query(graph, read("[{:x1s [(:buz2 {:size 200})]}]"))
+    result = engine.execute(read("[{:x1s [(:buz2 {:size 200})]}]"), graph)
     check_result(
         result,
         {
@@ -273,7 +273,7 @@ def test_field_option_defaults(engine, graph):
 
 
 def test_sequence_in_arg_type(engine, graph):
-    result = engine.execute_query(graph, read("[{:x1s [:baz]}]"))
+    result = engine.execute(read("[{:x1s [:baz]}]"), graph)
     check_result(
         result,
         {
@@ -284,7 +284,7 @@ def test_sequence_in_arg_type(engine, graph):
             ]
         },
     )
-    result = engine.execute_query(graph, read("[{:y1s [:baz]}]"))
+    result = engine.execute(read("[{:y1s [:baz]}]"), graph)
     check_result(
         result,
         {
@@ -298,8 +298,8 @@ def test_sequence_in_arg_type(engine, graph):
 
 
 def test_mixed_query(engine, graph):
-    result = engine.execute_query(
-        graph, read("[{:x1s [(:with_option {:opt 123}) :a]}]")
+    result = engine.execute(
+        read("[{:x1s [(:with_option {:opt 123}) :a]}]"), graph
     )
     check_result(
         result,
@@ -345,5 +345,5 @@ def test_complex_field():
             ),
         ]
     )
-    result = engine.execute_query(hl_graph, build([Q.foo[Q.a[Q.s]]]))
+    result = engine.execute(build([Q.foo[Q.a[Q.s]]]), hl_graph)
     check_result(result, {"foo": {"a": {"s": "bar"}}})
