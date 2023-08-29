@@ -409,6 +409,9 @@ class Exporter(GraphVisitor):
             type=_encode_type(obj.type),
             arguments=[self.visit(o) for o in obj.options],
             directives=[self.visit(d) for d in obj.directives],
+            description=_encode_default_value(obj.description)
+            if obj.description
+            else None,
         )
 
     def visit_node(

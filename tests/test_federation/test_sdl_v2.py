@@ -55,7 +55,7 @@ GRAPH = Graph([
     ], directives=[Key('cartId'), Extends()]),
     FederatedNode('Cart', [
         Field('id', Integer, field_resolver),
-        Field('status', TypeRef['Status'], field_resolver),
+        Field('status', TypeRef['Status'], field_resolver, description="Cart status"),
         Field('_secret', String, field_resolver),
     ], directives=[Key('id')]),
     FederatedNode('CartItem', [
@@ -124,6 +124,7 @@ expected_tmpl = """
 
     type Cart @key(fields: "id", resolvable: true) {
       id: Int!
+      "Cart status"
       status: Status!
     }
     
