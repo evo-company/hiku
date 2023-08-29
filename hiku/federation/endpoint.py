@@ -2,7 +2,6 @@ from abc import abstractmethod
 from asyncio import gather
 from inspect import isawaitable
 from typing import (
-    Callable,
     List,
     Dict,
     Any,
@@ -39,7 +38,13 @@ from hiku.denormalize.graphql import DenormalizeGraphQL
 from hiku.federation.denormalize import DenormalizeEntityGraphQL
 from hiku.endpoint.graphql import (
     BaseGraphQLEndpoint,
+    BatchedRequest,
+    BatchedResponse,
     GraphQLError,
+    GraphQLRequest,
+    GraphQLResponse,
+    SingleOrBatchedRequest,
+    SingleOrBatchedResponse,
     _run_validation as _run_validation_base,
 )
 from hiku.graph import (
@@ -111,7 +116,6 @@ class BaseFederatedGraphEndpoint(BaseGraphQLEndpoint):
     validation: bool
     introspection: bool
     federation_version: int
-    get_context: Optional[Callable[[ExecutionContext], Any]]
 
     @property
     @abstractmethod
@@ -129,7 +133,6 @@ class BaseFederatedGraphEndpoint(BaseGraphQLEndpoint):
         extensions: Optional[
             Sequence[Union[Extension, Type[Extension]]]
         ] = None,
-        get_context: Optional[Callable[[ExecutionContext], Any]] = None,
         federation_version: int = DEFAULT_FEDERATION_VERSION,
     ):
         self.engine = engine
@@ -138,7 +141,6 @@ class BaseFederatedGraphEndpoint(BaseGraphQLEndpoint):
         self.batching = batching
         self.validation = validation
         self.extensions = extensions or []
-        self.get_context = get_context
 
         execution_context = create_execution_context()
         extensions_manager = ExtensionsManager(
@@ -174,11 +176,12 @@ class BaseSyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
     ) -> Dict:
         pass
 
-    def dispatch(self, data: Dict) -> Dict:
+    def dispatch(self, data: Dict, context: Optional[Dict] = None) -> Dict:
         execution_context = create_execution_context(
             query=data["query"],
             variables=data.get("variables"),
             operation_name=data.get("operationName"),
+            context=context,
         )
 
         extensions_manager = ExtensionsManager(
@@ -191,9 +194,7 @@ class BaseSyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
                 self._init_execution_context(
                     execution_context, extensions_manager
                 )
-                with self.context(execution_context) as ctx:
-                    if ctx is not None:
-                        execution_context.context.update(ctx)
+                with extensions_manager.context():
                     result = self.execute(execution_context, extensions_manager)
                 return {"data": result}
         except GraphQLError as e:
@@ -209,11 +210,14 @@ class BaseAsyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
     ) -> Dict:
         pass
 
-    async def dispatch(self, data: Dict) -> Dict:
+    async def dispatch(
+        self, data: GraphQLRequest, context: Optional[Dict] = None
+    ) -> GraphQLResponse:
         execution_context = create_execution_context(
             query=data["query"],
             variables=data.get("variables"),
             operation_name=data.get("operationName"),
+            context=context,
         )
 
         extensions_manager = ExtensionsManager(
@@ -226,9 +230,7 @@ class BaseAsyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
                 self._init_execution_context(
                     execution_context, extensions_manager
                 )
-                with self.context(execution_context) as ctx:
-                    if ctx is not None:
-                        execution_context.context.update(ctx)
+                with extensions_manager.context():
                     result = await self.execute(
                         execution_context, extensions_manager
                     )
@@ -284,11 +286,12 @@ class FederatedGraphQLEndpoint(BaseSyncFederatedGraphQLEndpoint):
             execution_context.operation_type_name,
         ).process(execution_context.query)
 
-    def dispatch(self, data: Dict) -> Dict:
+    def dispatch(self, data: Dict, context: Optional[Dict] = None) -> Dict:
         execution_context = create_execution_context(
             query=data["query"],
             variables=data.get("variables"),
             operation_name=data.get("operationName"),
+            context=context,
         )
 
         extensions_manager = ExtensionsManager(
@@ -301,9 +304,7 @@ class FederatedGraphQLEndpoint(BaseSyncFederatedGraphQLEndpoint):
                 self._init_execution_context(
                     execution_context, extensions_manager
                 )
-                with self.context(execution_context) as ctx:
-                    if ctx is not None:
-                        execution_context.context.update(ctx)
+                with extensions_manager.context():
                     result = self.execute(execution_context, extensions_manager)
                 return {"data": result}
         except GraphQLError as e:
@@ -353,16 +354,20 @@ class AsyncFederatedGraphQLEndpoint(BaseAsyncFederatedGraphQLEndpoint):
         ).process(execution_context.query)
 
     @overload
-    async def dispatch(self, data: List[Dict]) -> List[Dict]:
+    async def dispatch(
+        self, data: GraphQLRequest, context: Optional[Dict] = None
+    ) -> GraphQLResponse:
         ...
 
     @overload
-    async def dispatch(self, data: Dict) -> Dict:
+    async def dispatch(
+        self, data: BatchedRequest, context: Optional[Dict] = None
+    ) -> BatchedResponse:
         ...
 
     async def dispatch(
-        self, data: Union[Dict, List[Dict]]
-    ) -> Union[Dict, List[Dict]]:
+        self, data: SingleOrBatchedRequest, context: Optional[Dict] = None
+    ) -> SingleOrBatchedResponse:
         if isinstance(data, list):
             return list(
                 await gather(*(super().dispatch(item) for item in data))

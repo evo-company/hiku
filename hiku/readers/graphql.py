@@ -484,7 +484,7 @@ def read(
     .. code-block:: python
 
         query = read('{ foo bar }')
-        result = engine.execute(query, graph)
+        result = engine.execute(graph, query)
 
     :param str src: GraphQL query
     :param dict variables: query variables

@@ -88,7 +88,7 @@ def read(src):
     .. code-block:: python
 
         query = read('[{(:characters {:limit 100}) [:name]}]')
-        result = engine.execute(query, graph)
+        result = engine.execute(graph, query)
 
     :param str src: EDN-encoded data structure
     :return: :py:class:`hiku.query.Node`, ready to execute query object

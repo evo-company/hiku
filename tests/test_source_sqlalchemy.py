@@ -354,8 +354,7 @@ class TestSourceSQLAlchemy(SourceSQLAlchemyTestBase):
         endpoint = GraphQLEndpoint(
             engine,
             self.graph,
-            get_context=lambda _: {SA_ENGINE_KEY: sa_engine}
         )
 
-        result = endpoint.dispatch({"query": src})
+        result = endpoint.dispatch({"query": src}, context={SA_ENGINE_KEY: sa_engine})
         check_result(result['data'], value)

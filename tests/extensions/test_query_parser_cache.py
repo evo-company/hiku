@@ -9,7 +9,7 @@ from hiku.executors.sync import SyncExecutor
 from hiku.engine import Engine
 from hiku.endpoint.graphql import GraphQLEndpoint
 from hiku.graph import Field, Root, Graph
-from hiku.extensions import QueryParserCache
+from hiku.extensions.query_parse_cache import QueryParserCache
 
 
 @pytest.fixture(name="sync_graph")

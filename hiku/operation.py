@@ -1,9 +1,11 @@
 import enum
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from graphql.language import ast
-from hiku.query import Node
+
+if TYPE_CHECKING:
+    from hiku.query import Node
 
 
 class OperationType(enum.Enum):
@@ -23,7 +25,7 @@ class Operation:
     __slots__ = ("type", "query", "name")
 
     def __init__(
-        self, type_: OperationType, query: Node, name: Optional[str] = None
+        self, type_: OperationType, query: "Node", name: Optional[str] = None
     ):
         #: type of the operation
         self.type = type_

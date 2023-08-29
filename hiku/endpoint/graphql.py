@@ -2,7 +2,8 @@ import typing as t
 
 from abc import ABC, abstractmethod
 from asyncio import gather
-from contextlib import contextmanager
+
+from typing_extensions import TypedDict
 
 from hiku.graph import GraphTransformer
 
@@ -27,6 +28,33 @@ from ..readers.graphql import (
 from ..denormalize.graphql import DenormalizeGraphQL
 from ..introspection.graphql import AsyncGraphQLIntrospection
 from ..introspection.graphql import GraphQLIntrospection
+
+
+class GraphQLErrorObject(TypedDict):
+    message: str
+
+
+class GraphQLRequest(TypedDict, total=False):
+    query: str
+    variables: t.Optional[t.Dict[t.Any, t.Any]]
+    operationName: t.Optional[str]
+
+
+class GraphQLResponseError(TypedDict):
+    errors: t.List[GraphQLErrorObject]
+
+
+class GraphQLResponseOk(TypedDict):
+    data: t.Dict[t.Any, t.Any]
+
+
+GraphQLResponse = t.Union[GraphQLResponseError, GraphQLResponseOk]
+
+BatchedRequest = t.List[GraphQLRequest]
+BatchedResponse = t.List[GraphQLResponse]
+
+SingleOrBatchedRequest = t.Union[GraphQLRequest, BatchedRequest]
+SingleOrBatchedResponse = t.Union[GraphQLResponse, BatchedResponse]
 
 
 class GraphQLError(Exception):
@@ -59,18 +87,11 @@ class BaseGraphQLEndpoint(ABC, t.Generic[C]):
     batching: bool
     validation: bool
     introspection: bool
-    get_context: t.Optional[t.Callable[[ExecutionContext], C]]
 
     @property
     @abstractmethod
     def introspection_cls(self) -> t.Type[GraphQLIntrospection]:
         pass
-
-    @contextmanager
-    def context(
-        self, execution_context: ExecutionContext
-    ) -> t.Iterator[t.Optional[C]]:
-        yield self.get_context(execution_context) if self.get_context else None
 
     def __init__(
         self,
@@ -83,14 +104,12 @@ class BaseGraphQLEndpoint(ABC, t.Generic[C]):
         extensions: t.Optional[
             t.Sequence[t.Union[Extension, t.Type[Extension]]]
         ] = None,
-        get_context: t.Optional[t.Callable[[ExecutionContext], C]] = None,
     ):
         self.engine = engine
         self.batching = batching
         self.validation = validation
         self.introspection = introspection
         self.extensions = extensions or []
-        self.get_context = get_context
 
         execution_context = create_execution_context()
         extensions_manager = ExtensionsManager(
@@ -158,11 +177,22 @@ class BaseSyncGraphQLEndpoint(BaseGraphQLEndpoint):
     ) -> t.Dict:
         pass
 
-    def dispatch(self, data: t.Dict) -> t.Dict:
+    def dispatch(
+        self, data: GraphQLRequest, context: t.Optional[t.Dict] = None
+    ) -> GraphQLResponse:
+        """
+        Dispatch graphql request to graph
+        Args:
+            data: {"query": str, "variables": dict, "operationName": str}
+            context: context for operation
+
+        Returns: graphql response: data or errors
+        """
         execution_context = create_execution_context(
             query=data["query"],
             variables=data.get("variables"),
             operation_name=data.get("operationName"),
+            context=context,
         )
 
         extensions_manager = ExtensionsManager(
@@ -175,11 +205,9 @@ class BaseSyncGraphQLEndpoint(BaseGraphQLEndpoint):
                 self._init_execution_context(
                     execution_context, extensions_manager
                 )
-                with self.context(execution_context) as ctx:
-                    if ctx is not None:
-                        execution_context.context.update(ctx)
 
-                result = self.execute(execution_context, extensions_manager)
+                with extensions_manager.context():
+                    result = self.execute(execution_context, extensions_manager)
                 return {"data": result}
         except GraphQLError as e:
             return {"errors": [{"message": e} for e in e.errors]}
@@ -194,11 +222,14 @@ class BaseAsyncGraphQLEndpoint(BaseGraphQLEndpoint):
     ) -> t.Dict:
         pass
 
-    async def dispatch(self, data: t.Dict) -> t.Dict:
+    async def dispatch(
+        self, data: GraphQLRequest, context: t.Optional[t.Dict] = None
+    ) -> GraphQLResponse:
         execution_context = create_execution_context(
             query=data["query"],
             variables=data.get("variables"),
             operation_name=data.get("operationName"),
+            context=context,
         )
 
         extensions_manager = ExtensionsManager(
@@ -210,12 +241,10 @@ class BaseAsyncGraphQLEndpoint(BaseGraphQLEndpoint):
                 self._init_execution_context(
                     execution_context, extensions_manager
                 )
-                with self.context(execution_context) as ctx:
-                    if ctx is not None:
-                        execution_context.context.update(ctx)
-                result = await self.execute(
-                    execution_context, extensions_manager
-                )
+                with extensions_manager.context():
+                    result = await self.execute(
+                        execution_context, extensions_manager
+                    )
                 return {"data": result}
         except GraphQLError as e:
             return {"errors": [{"message": e} for e in e.errors]}
@@ -254,25 +283,30 @@ class GraphQLEndpoint(BaseSyncGraphQLEndpoint):
         ).process(execution_context.query)
 
     @t.overload
-    def dispatch(self, data: t.List[t.Dict]) -> t.List[t.Dict]:
+    def dispatch(
+        self, data: GraphQLRequest, context: t.Optional[t.Dict] = None
+    ) -> GraphQLResponse:
         ...
 
     @t.overload
-    def dispatch(self, data: t.Dict) -> t.Dict:
+    def dispatch(
+        self, data: BatchedRequest, context: t.Optional[t.Dict] = None
+    ) -> BatchedResponse:
         ...
 
     def dispatch(
-        self, data: t.Union[t.Dict, t.List[t.Dict]]
-    ) -> t.Union[t.Dict, t.List[t.Dict]]:
+        self, data: SingleOrBatchedRequest, context: t.Optional[t.Dict] = None
+    ) -> SingleOrBatchedResponse:
         if isinstance(data, list):
             if not self.batching:
                 raise GraphQLError(errors=["Batching is not supported"])
 
             return [
-                super(GraphQLEndpoint, self).dispatch(item) for item in data
+                super(GraphQLEndpoint, self).dispatch(item, context)
+                for item in data
             ]
         else:
-            return super(GraphQLEndpoint, self).dispatch(data)
+            return super(GraphQLEndpoint, self).dispatch(data, context)
 
 
 class BatchGraphQLEndpoint(GraphQLEndpoint):
@@ -315,16 +349,20 @@ class AsyncGraphQLEndpoint(BaseAsyncGraphQLEndpoint):
         ).process(execution_context.query)
 
     @t.overload
-    async def dispatch(self, data: t.List[t.Dict]) -> t.List[t.Dict]:
+    async def dispatch(
+        self, data: GraphQLRequest, context: t.Optional[t.Dict] = None
+    ) -> GraphQLResponse:
         ...
 
     @t.overload
-    async def dispatch(self, data: t.Dict) -> t.Dict:
+    async def dispatch(
+        self, data: BatchedRequest, context: t.Optional[t.Dict] = None
+    ) -> BatchedResponse:
         ...
 
     async def dispatch(
-        self, data: t.Union[t.Dict, t.List[t.Dict]]
-    ) -> t.Union[t.Dict, t.List[t.Dict]]:
+        self, data: SingleOrBatchedRequest, context: t.Optional[t.Dict] = None
+    ) -> SingleOrBatchedResponse:
         if isinstance(data, list):
             return list(
                 await gather(

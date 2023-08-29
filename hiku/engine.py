@@ -32,6 +32,7 @@ from .cache import (
 from .compat import Concatenate, ParamSpec
 from .context import ExecutionContext, create_execution_context
 from .executors.base import SyncAsyncExecutor
+from .operation import Operation, OperationType
 from .query import (
     Node as QueryNode,
     Field as QueryField,
@@ -979,15 +980,29 @@ class BaseEngine(abc.ABC):
 
     def execute(
         self,
+        graph: Graph,
         query: QueryNode,
-        graph: Optional[Graph] = None,
-        mutation_graph: Optional[Graph] = None,
         ctx: Optional[Dict] = None,
     ) -> Union[Proxy, Awaitable[Proxy]]:
-        assert graph is not None or mutation_graph is not None
-
         execution_context = create_execution_context(
-            query, query_graph=graph, mutation_graph=mutation_graph, context=ctx
+            query,
+            query_graph=graph,
+            context=ctx,
+            operation=Operation(OperationType.QUERY, query, None),
+        )
+        return self.execute_context(execution_context)
+
+    def execute_mutation(
+        self,
+        graph: Graph,
+        query: QueryNode,
+        ctx: Optional[Dict] = None,
+    ) -> Union[Proxy, Awaitable[Proxy]]:
+        execution_context = create_execution_context(
+            query,
+            mutation_graph=graph,
+            context=ctx,
+            operation=Operation(OperationType.MUTATION, query, None),
         )
         return self.execute_context(execution_context)
 

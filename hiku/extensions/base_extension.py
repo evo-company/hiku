@@ -41,11 +41,15 @@ class Extension:
         self.execution_context = execution_context  # type: ignore[assignment]
 
     def on_graph(self) -> AsyncIteratorOrIterator[None]:
-        """Called before the graph transformation step"""
+        """Called before and after the graph (transformation) step"""
         yield None
 
     def on_dispatch(self) -> AsyncIteratorOrIterator[None]:
         """Called before and after the dispatch step"""
+        yield None
+
+    def on_context(self) -> AsyncIteratorOrIterator[None]:
+        """Called before and after the context step"""
         yield None
 
     def on_operation(self) -> AsyncIteratorOrIterator[None]:
@@ -98,6 +102,12 @@ class ExtensionsManager:
     def dispatch(self) -> "ExtensionContextManagerBase":
         return ExtensionContextManagerBase(
             Extension.on_dispatch.__name__,
+            self.extensions,
+        )
+
+    def context(self) -> "ExtensionContextManagerBase":
+        return ExtensionContextManagerBase(
+            Extension.on_context.__name__,
             self.extensions,
         )
 

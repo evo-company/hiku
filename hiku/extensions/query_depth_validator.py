@@ -2,7 +2,7 @@ from typing import Iterator, List
 
 from hiku.graph import Graph
 
-from hiku.extensions import Extension
+from hiku.extensions.base_extension import Extension
 from hiku.extensions.base_validator import QueryValidator
 from hiku.query import Field, Link, Node
 

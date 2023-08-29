@@ -18,12 +18,12 @@ from tests.test_federation.utils import (
 
 def execute(query: Node, graph: Graph, ctx=None):
     engine = Engine(SyncExecutor())
-    return engine.execute(query, graph, ctx=ctx)
+    return engine.execute(graph, query, ctx=ctx)
 
 
 async def execute_async(query: Node, graph: Graph, ctx=None):
     engine = Engine(AsyncIOExecutor())
-    return await engine.execute(query, graph, ctx=ctx)
+    return await engine.execute(graph, query, ctx=ctx)
 
 
 ENTITIES_QUERY = {

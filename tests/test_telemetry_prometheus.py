@@ -94,7 +94,7 @@ def test_simple_sync(graph_name, sample_count):
         ]
     )
 
-    result = Engine(SyncExecutor()).execute(query, hl_graph)
+    result = Engine(SyncExecutor()).execute(hl_graph, query)
     check_result(
         result,
         {
@@ -173,7 +173,7 @@ async def test_simple_async(graph_name, sample_count):
     assert sample_count("Root", "x") is None
     assert sample_count("X", "id") is None
 
-    result = await engine.execute(query, hl_graph)
+    result = await engine.execute(hl_graph, query)
     check_result(
         result,
         {
@@ -220,7 +220,7 @@ def test_with_pass_context(graph_name, sample_count):
         ]
     )
 
-    result = Engine(SyncExecutor()).execute(query, graph)
+    result = Engine(SyncExecutor()).execute(graph, query)
     check_result(
         result,
         {

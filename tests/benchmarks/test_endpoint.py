@@ -1,6 +1,6 @@
 import pytest
 
-from hiku.extensions import QueryParserCache
+from hiku.extensions.query_parse_cache import QueryParserCache
 from hiku.extensions.query_transform_cache import QueryTransformCache
 from hiku.extensions.query_validation_cache import QueryValidationCache
 from hiku.graph import Graph, Link, Node, Root, Field
