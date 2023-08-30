@@ -33,6 +33,7 @@ from hiku.query import (
     QueryVisitor,
     Field as QueryField,
     Link as QueryLink,
+    Node as QueryNode,
 )
 
 if TYPE_CHECKING:
@@ -137,6 +138,13 @@ class HashVisitor(QueryVisitor):
     def visit_field(self, obj: QueryField) -> None:
         self._hasher.update(obj.index_key.encode())
 
+    def visit_node(self, obj: QueryNode) -> None:
+        for field in obj.fields:
+            self.visit(field)
+
+        for fr in obj.fragments:
+            self.visit(fr)
+
     def visit_link(self, obj: QueryLink) -> None:
         self._hasher.update(obj.index_key.encode())
         super().visit_link(obj)
@@ -162,6 +170,13 @@ class CacheVisitor(QueryVisitor):
     def visit_field(self, field: QueryField) -> None:
         self._data[-1][field.index_key] = self._node_idx[-1][field.index_key]
         super().visit_field(field)
+
+    def visit_node(self, node: QueryNode) -> None:
+        for field in node.fields:
+            self.visit(field)
+
+        for fr in node.fragments:
+            self.visit(fr)
 
     def visit_link(self, link: QueryLink) -> None:
         refs = self._node_idx[-1][link.index_key]
