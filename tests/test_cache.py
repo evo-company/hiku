@@ -24,7 +24,7 @@ from hiku.expr.core import (
     define,
     S,
 )
-from hiku.query import _compute_hash
+from hiku.query import FieldOrLink, _compute_hash, Link as QueryLink, Node as QueryNode
 from hiku.result import Reference
 from hiku.sources.graph import SubGraph
 from hiku.sources.sqlalchemy import (
@@ -405,6 +405,10 @@ def sync_high_level_graph_fixture(sync_low_level_graph_sqlalchemy):
     def get_address(company):
         return {"city": "Kyiv"}
 
+    @define(Integer, Integer)
+    def get_logo_image(company_id, size):
+        return f"https://example.com/logo{company_id}.jpg?size={size}"
+
     def resolve_product_fields(fields, products):
         def get_field(field, product):
             if field.name == "id":
@@ -450,6 +454,16 @@ def sync_high_level_graph_fixture(sync_low_level_graph_sqlalchemy):
                         "address",
                         TypeRef["Address"],
                         company_sg.c(get_address(S.this)),
+                    ),
+                    Field(
+                        "logoImage",
+                        String,
+                        company_sg.c(
+                            get_logo_image(S.this.id, S.size)
+                        ),
+                        options=[
+                            Option("size", Integer),
+                        ],
                     ),
                     Link(
                         "owner",
@@ -533,19 +547,32 @@ def get_product_query(product_id: int) -> str:
                     name
                 }
             }
+            ...ProductInfo
             company @cached(ttl: 10) {
                 id
                 name
-                address { city }
-                owner {
-                    username
-                    photo(size: 50)
-                }
-                emptyOwner {
-                    username
-                }
             }
         }
+    }
+    
+    fragment ProductInfo on Product {
+        company {
+            id
+            name
+            address { city }
+            emptyOwner {
+                username
+            }
+            owner {
+                username
+                photo(size: 50)
+            }
+            ...CompanyInfo
+        }
+    }
+    
+    fragment CompanyInfo on Company {
+        logoImage(size: 100)
     }
     """
         % product_id
@@ -566,22 +593,57 @@ def get_products_query() -> str:
                     name
                 }
             }
+            ...ProductInfo
             company @cached(ttl: 10) {
                 id
                 name
-                address { city }
-                owner {
-                    username
-                    photo(size: 50)
-                }
             }
         }
+    }
+    fragment ProductInfo on Product {
+        company {
+            id
+            name
+            address { city }
+            owner {
+                username
+                photo(size: 50)
+            }
+            ...CompanyInfo
+        }
+    }
+    
+    fragment CompanyInfo on Company {
+        logoImage(size: 100)
     }
     """
 
 
 def assert_dict_equal(got, exp):
     assert _compute_hash(got) == _compute_hash(exp)
+
+
+def get_field(query: QueryNode, path: t.List[str]) -> FieldOrLink:
+    node = query
+    path_size = len(path)
+
+    def last(idx: int):
+        return idx + 1 == path_size
+
+    for idx, name in enumerate(path):
+        if name in node.fields_map:
+            node = node.fields_map[name]
+            if last(idx):
+                return node
+
+            if isinstance(node, QueryLink):
+                node = node.node
+        else:
+            for fr in node.fragments:
+                if name in fr.node.fields_map:
+                    node = fr.node.fields_map[name]
+
+    return node
 
 
 def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
@@ -605,15 +667,11 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
         return DenormalizeGraphQL(graph, proxy, "query").process(q)
 
     query = read(get_product_query(1))
-    company_link = query.fields_map["product"].node.fields_map["company"]
-    attributes_link = query.fields_map["product"].node.fields_map["attributes"]
+    company_link = get_field(query, ['product', 'company'])
+    attributes_link = get_field(query, ['product', 'attributes'])
 
-    photo_field = (
-        query.fields_map["product"]
-        .node.fields_map["company"]
-        .node.fields_map["owner"]
-        .node.fields_map["photo"]
-    )
+    photo_field = get_field(query, ["product", "company", "owner", "photo"])
+    logo_image_field = get_field(query, ["product", "company", "logoImage"])
 
     company_key = cache_info.query_hash(ctx, company_link, 10)
     attributes_key = cache_info.query_hash(ctx, attributes_link, [11, 12])
@@ -632,6 +690,7 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
                 "address": {"city": "Kyiv"},
                 "owner": Reference("User", 100),
                 "emptyOwner": None,
+                logo_image_field.index_key: "https://example.com/logo10.jpg?size=100",
             },
         },
         "Product": {"company": Reference("Company", 10)},
@@ -685,6 +744,7 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
                     "photo": "https://example.com/photo.jpg?size=50",
                 },
                 "emptyOwner": None,
+                "logoImage": "https://example.com/logo10.jpg?size=100",
             },
         }
     }
@@ -697,9 +757,8 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
         **cache.set_many.mock_calls[0][1][0],
         **cache.set_many.mock_calls[1][1][0],
     }
-    assert_dict_equal(
-        calls, {attributes_key: attributes_cache, company_key: company_cache}
-    )
+    calls_expected = {attributes_key: attributes_cache, company_key: company_cache}
+    assert_dict_equal(calls, calls_expected)
 
     cache.reset_mock()
 
@@ -740,15 +799,11 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
 
     query = read(get_products_query())
 
-    company_link = query.fields_map["products"].node.fields_map["company"]
-    attributes_link = query.fields_map["products"].node.fields_map["attributes"]
+    company_link = get_field(query, ['products', 'company'])
+    attributes_link = get_field(query, ['products', 'attributes'])
 
-    photo_field = (
-        query.fields_map["products"]
-        .node.fields_map["company"]
-        .node.fields_map["owner"]
-        .node.fields_map["photo"]
-    )
+    photo_field = get_field(query, ["products", "company", "owner", "photo"])
+    logo_image_field = get_field(query, ["products", "company", "logoImage"])
 
     company10_key = cache_info.query_hash(ctx, company_link, 10)
     company20_key = cache_info.query_hash(ctx, company_link, 20)
@@ -768,6 +823,7 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
                 "name": "apple",
                 "address": {"city": "Kyiv"},
                 "owner": Reference("User", 100),
+                logo_image_field.index_key: "https://example.com/logo10.jpg?size=100",
             },
         },
         "Product": {"company": Reference("Company", 10)},
@@ -785,6 +841,7 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
                 "name": "microsoft",
                 "address": {"city": "Kyiv"},
                 "owner": Reference("User", 200),
+                logo_image_field.index_key: "https://example.com/logo20.jpg?size=100",
             },
         },
         "Product": {"company": Reference("Company", 20)},
@@ -839,6 +896,7 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
                         "username": "steve",
                         "photo": "https://example.com/photo.jpg?size=50",
                     },
+                    "logoImage": "https://example.com/logo10.jpg?size=100",
                 },
             },
             {
@@ -853,6 +911,7 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
                         "username": "bill",
                         "photo": "https://example.com/photo.jpg?size=50",
                     },
+                    "logoImage": "https://example.com/logo20.jpg?size=100",
                 },
             },
             {
@@ -867,6 +926,7 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
                         "username": "steve",
                         "photo": "https://example.com/photo.jpg?size=50",
                     },
+                    "logoImage": "https://example.com/logo10.jpg?size=100",
                 },
             },
         ]
@@ -879,15 +939,13 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
         **cache.set_many.mock_calls[0][1][0],
         **cache.set_many.mock_calls[1][1][0],
     }
-    assert_dict_equal(
-        calls,
-        {
-            attributes11_12_key: attributes11_12_cache,
-            attributes_none_key: attributes_none_cache,
-            company10_key: company10_cache,
-            company20_key: company20_cache,
-        },
-    )
+    calls_expected = {
+        attributes11_12_key: attributes11_12_cache,
+        attributes_none_key: attributes_none_cache,
+        company10_key: company10_cache,
+        company20_key: company20_cache,
+    }
+    assert_dict_equal(calls, calls_expected)
 
     cache.reset_mock()
 
