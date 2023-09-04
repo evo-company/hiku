@@ -538,6 +538,8 @@ class OperationType(enum.Enum):
 class Operation:
     """Represents requested GraphQL operation"""
 
+    __slots__ = ("type", "query", "name")
+
     def __init__(
         self, type_: OperationType, query: Node, name: Optional[str] = None
     ):
