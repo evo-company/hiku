@@ -21,6 +21,7 @@ User's Guide
   telemetry
   caching
   extensions
+  integrations
   reference/index
   changelog/index
   development

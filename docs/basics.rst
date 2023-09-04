@@ -30,26 +30,26 @@ This is the simplest :py:class:`~hiku.graph.Graph` with one
 
 Then this field could be queried using this query:
 
-.. code-block:: clojure
+.. code-block::
 
-    [:now]
+    { now }
 
 To perform this query let's define a helper function ``execute``:
 
 .. literalinclude:: basics/test_stage1.py
-    :lines: 15-25
+    :lines: 15-26
 
 Then we will be ready to execute our query:
 
 .. literalinclude:: basics/test_stage1.py
-    :lines: 34-35
+    :lines: 38-39
     :dedent: 4
 
 You can also test this graph using special web console application, this is how
 to setup and run it:
 
 .. literalinclude:: basics/test_stage1.py
-    :lines: 39-46
+    :lines: 43-50
 
 Then just open http://localhost:5000/ url in your browser and perform query from
 the console.
@@ -98,14 +98,14 @@ node. This function should return character ids.
 
 So now you are able to try this query in the console:
 
-.. code-block:: clojure
+.. code-block::
 
-  [{:characters [:name :species]}]
+  { characters { name species } }
 
 Or in the program:
 
 .. literalinclude:: basics/test_stage2.py
-    :lines: 51-67
+    :lines: 53-69
     :dedent: 4
 
 Linking node to node

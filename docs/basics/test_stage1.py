@@ -15,7 +15,7 @@ GRAPH = Graph([
 from hiku.engine import Engine
 from hiku.result import denormalize
 from hiku.executors.sync import SyncExecutor
-from hiku.readers.simple import read
+from hiku.readers.graphql import read
 
 hiku_engine = Engine(SyncExecutor())
 

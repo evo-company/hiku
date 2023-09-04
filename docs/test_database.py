@@ -97,7 +97,7 @@ GRAPH = Graph([
 
 from hiku.engine import Engine
 from hiku.result import denormalize
-from hiku.readers.simple import read
+from hiku.readers.graphql import read
 from hiku.executors.sync import SyncExecutor
 
 hiku_engine = Engine(SyncExecutor())
@@ -110,7 +110,7 @@ def execute(graph, query_string):
 
 
 def test_character_to_actors():
-    result = execute(GRAPH, '[{:characters [:name {:actors [:name]}]}]')
+    result = execute(GRAPH, '{ characters { name actors { name } } }')
     assert result == {
         'characters': [
             {
@@ -138,7 +138,7 @@ def test_character_to_actors():
     }
 
 def test_actor_to_character():
-    result = execute(GRAPH, '[{:actors [:name {:character [:name]}]}]')
+    result = execute(GRAPH, '{ actors { name character { name } } }')
     assert result == {
         'actors': [
             {
