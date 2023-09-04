@@ -27,6 +27,7 @@ Optional dependencies
 * `aiopg` - for async PostgreSQL support with `aiopg`
 * `asyncpg` - for async PostgreSQL support with `asyncpg`
 * `prometheus-client` - for Prometheus metrics support
+* `sentry-sdk` - for Sentry tracing support
 
 
 Highlights

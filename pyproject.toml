@@ -65,6 +65,7 @@ dev = [
     "protobuf<4.0.0",  # for protobuf support
     "aiopg",  # for async postgresql support
     "prometheus-client",  # for prometheus metrics
+    "sentry-sdk",  # for sentry tracing
     "typing-extensions",
     "mypy",
     "black",
@@ -240,6 +241,10 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "prometheus_client.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "sentry_sdk.*"
 ignore_missing_imports = true
 
 [tool.black]
