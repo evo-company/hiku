@@ -41,31 +41,68 @@ class Extension:
         self.execution_context = execution_context  # type: ignore[assignment]
 
     def on_graph(self) -> AsyncIteratorOrIterator[None]:
-        """Called before and after the graph (transformation) step"""
+        """Called before and after the graph (transformation) step.
+
+        Graph transformation step is a step where we applying transformations
+        to the graph such as introspection, etc.
+
+        Note: unlike other hooks, this hook is called only once during endpoint
+        creation.
+        """
         yield None
 
     def on_dispatch(self) -> AsyncIteratorOrIterator[None]:
-        """Called before and after the dispatch step"""
-        yield None
+        """Called before and after the dispatch step.
 
-    def on_context(self) -> AsyncIteratorOrIterator[None]:
-        """Called before and after the context step"""
+        Dispatch step is a step where the query is dispatched by to the endpoint
+        to be parsed, validated and executed.
+
+        At this step the:
+        - execution_context.query_src is set to the query string
+            from request
+        - execution_context.variables is set to the query variables
+            from request
+        - execution_context.operation_name is set to the query operation name
+            from request
+        - execution_context.query_graph is set to the query graph
+        - execution_context.mutation_graph is set to the mutation graph
+        - execution_context.context is set to the context from dispatch argument
+        """
         yield None
 
     def on_operation(self) -> AsyncIteratorOrIterator[None]:
-        """Called before and after the operation step"""
+        """Called before and after the operation step.
+
+        Operation step is a step where the graphql ast is transformed into
+        hiku's query ast and Operation type is created and assigned to the
+        execution_context.operation.
+        """
         yield None
 
     def on_parse(self) -> AsyncIteratorOrIterator[None]:
-        """Called before and after the parsing step"""
+        """Called before and after the parsing step.
+
+        Parse step is when query string is parsed into graphql ast
+        and will be assigned to the execution_context.graphql_document.
+        """
         yield None
 
     def on_validate(self) -> AsyncIteratorOrIterator[None]:
-        """Called before and after the validation step"""
+        """Called before and after the validation step.
+
+        Validation step is when hiku query is validated.
+        After validation is done, if there are errors, they will be assigned
+        to the execution_context.errors.
+        """
         yield None
 
     def on_execute(self) -> AsyncIteratorOrIterator[None]:
-        """Called before and after the execution step"""
+        """Called before and after the execution step.
+
+        Execution step is when hiku query is executed by hiku engine.
+
+        After execution, normalized result(Proxy) will be assigned
+        to execution_context.result."""
         yield None
 
 
@@ -102,12 +139,6 @@ class ExtensionsManager:
     def dispatch(self) -> "ExtensionContextManagerBase":
         return ExtensionContextManagerBase(
             Extension.on_dispatch.__name__,
-            self.extensions,
-        )
-
-    def context(self) -> "ExtensionContextManagerBase":
-        return ExtensionContextManagerBase(
-            Extension.on_context.__name__,
             self.extensions,
         )
 

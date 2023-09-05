@@ -11,7 +11,7 @@ class CustomContext(Extension):
     ):
         self.get_context = get_context
 
-    def on_context(self) -> Iterator[None]:
+    def on_execute(self) -> Iterator[None]:
         self.execution_context.context = self.get_context(
             self.execution_context
         )

@@ -14,7 +14,6 @@ Here are all the methods that can be implemented:
 
 - :meth:`~hiku.extensions.Extension.on_graph` - when endpoint is created and transformations applied to graph
 - :meth:`~hiku.extensions.Extension.on_dispatch` - when query is dispatched to the endpoint
-- :meth:`~hiku.extensions.Extension.on_context` - after query is dispatched to the endpoint but before query is executed
 - :meth:`~hiku.extensions.Extension.on_parse` - when query string is parsed into ast
 - :meth:`~hiku.extensions.Extension.on_operation` - when query ast parsed into query Node
 - :meth:`~hiku.extensions.Extension.on_validate` - when query is validated

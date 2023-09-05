@@ -151,6 +151,14 @@ def test_field_complex(field_name):
     check_errors(q.Node([q.Link(field_name, q.Node([q.Field("attr")]))]), [])
 
 
+def test_field_complex_with_typename():
+    check_errors(
+        q.Node([
+            q.Link('val', q.Node([q.Field('__typename'), q.Field('attr')], []))
+        ]), []
+    )
+
+
 def test_nested_records():
     query = q.Node(
         [

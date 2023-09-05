@@ -324,6 +324,9 @@ class _RecordFieldsValidator(QueryVisitor):
         self._errors = errors
 
     def visit_field(self, obj: QueryField) -> None:
+        if obj.name == "__typename":
+            return
+
         if obj.name not in self._field_types:
             self._errors.report('Unknown field name "{}"'.format(obj.name))
         elif obj.options is not None:

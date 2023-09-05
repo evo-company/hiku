@@ -13,10 +13,6 @@ from ..sources.graph import CheckedExpr
 
 _METRIC = None
 
-metrics_ctx: contextvars.ContextVar[Optional[Dict]] = contextvars.ContextVar(
-    "metrics_ctx", default=None
-)
-
 
 def _get_default_metric():
     global _METRIC
@@ -48,11 +44,18 @@ def _subquery_field_names(func):
 class GraphMetricsBase(GraphTransformer):
     root_name = "Root"
 
-    def __init__(self, name, *, metric=None):
+    def __init__(
+        self,
+        name,
+        *,
+        metric=None,
+        ctx_var: Optional[contextvars.ContextVar] = None,
+    ):
         self._name = name
         self._metric = metric or _get_default_metric()
+        self._ctx = ctx_var
         self._node = None
-        self._wrappers = {}
+        self._wrappers: Dict = {}
 
     @abstractmethod
     def field_wrapper(self, observe, func):
@@ -77,11 +80,16 @@ class GraphMetricsBase(GraphTransformer):
                     field_metric = by_field[name]
                 except KeyError:
                     field_metric = by_field[name] = self._metric.labels(
-                        self._name, node_name, name
+                        *self.get_labels(self._name, node_name, name, ctx),
                     )
                 field_metric.observe(duration)
 
         return observe
+
+    def get_labels(
+        self, graph_name: str, node_name: str, field_name: str, ctx: dict
+    ) -> list:
+        return [graph_name, node_name, field_name]
 
     def _wrap_field(self, node_name, func):
         observe = self._observe_fields(node_name)
@@ -164,7 +172,7 @@ class _SubqueryMixin:
 
             def proc_wrapper():
                 result = result_proc()
-                ctx = metrics_ctx.get()
+                ctx = self._ctx.get() if self._ctx else None
                 observe(start_time, field_names, ctx)
                 return result
 
@@ -178,7 +186,7 @@ class GraphMetrics(_SubqueryMixin, GraphMetricsBase):
         def wrapper(field_names, *args):
             start_time = time.perf_counter()
             result = func(*args)
-            ctx = metrics_ctx.get()
+            ctx = self._ctx.get() if self._ctx else None
             observe(start_time, field_names, ctx)
             return result
 
@@ -188,7 +196,7 @@ class GraphMetrics(_SubqueryMixin, GraphMetricsBase):
         def wrapper(link_name, *args):
             start_time = time.perf_counter()
             result = func(*args)
-            ctx = metrics_ctx.get()
+            ctx = self._ctx.get() if self._ctx else None
             observe(start_time, [link_name], ctx)
             return result
 
@@ -200,7 +208,7 @@ class AsyncGraphMetrics(_SubqueryMixin, GraphMetricsBase):
         async def wrapper(field_names, *args):
             start_time = time.perf_counter()
             result = await func(*args)
-            ctx = metrics_ctx.get()
+            ctx = self._ctx.get() if self._ctx else None
             observe(start_time, field_names, ctx)
             return result
 
@@ -210,7 +218,7 @@ class AsyncGraphMetrics(_SubqueryMixin, GraphMetricsBase):
         async def wrapper(link_name, *args):
             start_time = time.perf_counter()
             result = await func(*args)
-            ctx = metrics_ctx.get()
+            ctx = self._ctx.get() if self._ctx else None
             observe(start_time, [link_name], ctx)
             return result
 

@@ -18,12 +18,12 @@ from ..engine import Engine
 from ..extensions.base_extension import Extension, ExtensionsManager
 from ..extensions.base_validator import QueryValidator
 from ..graph import apply, Graph
+from ..operation import OperationType
 from ..query import Node
 from ..validate.query import validate
 from ..readers.graphql import (
     parse_query,
     read_operation,
-    Operation,
 )
 from ..denormalize.graphql import DenormalizeGraphQL
 from ..introspection.graphql import AsyncGraphQLIntrospection
@@ -136,7 +136,7 @@ class BaseGraphQLEndpoint(ABC, t.Generic[C]):
         self,
         execution_context: ExecutionContext,
         extensions_manager: ExtensionsManager,
-    ) -> t.Tuple[Graph, Operation]:
+    ) -> None:
         with extensions_manager.parsing():
             if execution_context.graphql_document is None:
                 execution_context.graphql_document = parse_query(
@@ -158,14 +158,13 @@ class BaseGraphQLEndpoint(ABC, t.Generic[C]):
                         ]
                     )
 
-        execution_context.query = execution_context.operation.query
-        execution_context.query_graph = self.query_graph
-        execution_context.mutation_graph = self.mutation_graph
+            execution_context.query = execution_context.operation.query
 
-        try:
-            return execution_context.graph, execution_context.operation
-        except ValueError as err:
-            raise GraphQLError(errors=[str(err)])
+        op = execution_context.operation
+        if op.type not in (OperationType.QUERY, OperationType.MUTATION):
+            raise GraphQLError(
+                errors=["Unsupported operation type: {!r}".format(op.type)]
+            )
 
 
 class BaseSyncGraphQLEndpoint(BaseGraphQLEndpoint):
@@ -193,6 +192,8 @@ class BaseSyncGraphQLEndpoint(BaseGraphQLEndpoint):
             variables=data.get("variables"),
             operation_name=data.get("operationName"),
             context=context,
+            query_graph=self.query_graph,
+            mutation_graph=self.mutation_graph,
         )
 
         extensions_manager = ExtensionsManager(
@@ -206,8 +207,7 @@ class BaseSyncGraphQLEndpoint(BaseGraphQLEndpoint):
                     execution_context, extensions_manager
                 )
 
-                with extensions_manager.context():
-                    result = self.execute(execution_context, extensions_manager)
+                result = self.execute(execution_context, extensions_manager)
                 return {"data": result}
         except GraphQLError as e:
             return {"errors": [{"message": e} for e in e.errors]}
@@ -230,6 +230,8 @@ class BaseAsyncGraphQLEndpoint(BaseGraphQLEndpoint):
             variables=data.get("variables"),
             operation_name=data.get("operationName"),
             context=context,
+            query_graph=self.query_graph,
+            mutation_graph=self.mutation_graph,
         )
 
         extensions_manager = ExtensionsManager(
@@ -241,10 +243,9 @@ class BaseAsyncGraphQLEndpoint(BaseGraphQLEndpoint):
                 self._init_execution_context(
                     execution_context, extensions_manager
                 )
-                with extensions_manager.context():
-                    result = await self.execute(
-                        execution_context, extensions_manager
-                    )
+                result = await self.execute(
+                    execution_context, extensions_manager
+                )
                 return {"data": result}
         except GraphQLError as e:
             return {"errors": [{"message": e} for e in e.errors]}

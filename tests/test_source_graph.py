@@ -3,7 +3,6 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from hiku.context import create_execution_context
 from hiku.graph import Graph, Node, Link, Field, Option, Root
 from hiku.types import Record, Sequence, Any, TypeRef, String
 from hiku.engine import Engine

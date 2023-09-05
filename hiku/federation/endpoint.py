@@ -182,6 +182,8 @@ class BaseSyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
             variables=data.get("variables"),
             operation_name=data.get("operationName"),
             context=context,
+            query_graph=self.query_graph,
+            mutation_graph=self.mutation_graph,
         )
 
         extensions_manager = ExtensionsManager(
@@ -194,8 +196,7 @@ class BaseSyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
                 self._init_execution_context(
                     execution_context, extensions_manager
                 )
-                with extensions_manager.context():
-                    result = self.execute(execution_context, extensions_manager)
+                result = self.execute(execution_context, extensions_manager)
                 return {"data": result}
         except GraphQLError as e:
             return {"errors": [{"message": e} for e in e.errors]}
@@ -218,6 +219,8 @@ class BaseAsyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
             variables=data.get("variables"),
             operation_name=data.get("operationName"),
             context=context,
+            query_graph=self.query_graph,
+            mutation_graph=self.mutation_graph,
         )
 
         extensions_manager = ExtensionsManager(
@@ -230,10 +233,9 @@ class BaseAsyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
                 self._init_execution_context(
                     execution_context, extensions_manager
                 )
-                with extensions_manager.context():
-                    result = await self.execute(
-                        execution_context, extensions_manager
-                    )
+                result = await self.execute(
+                    execution_context, extensions_manager
+                )
                 return {"data": result}
         except GraphQLError as e:
             return {"errors": [{"message": e} for e in e.errors]}
@@ -292,6 +294,8 @@ class FederatedGraphQLEndpoint(BaseSyncFederatedGraphQLEndpoint):
             variables=data.get("variables"),
             operation_name=data.get("operationName"),
             context=context,
+            query_graph=self.query_graph,
+            mutation_graph=self.mutation_graph,
         )
 
         extensions_manager = ExtensionsManager(
@@ -304,8 +308,7 @@ class FederatedGraphQLEndpoint(BaseSyncFederatedGraphQLEndpoint):
                 self._init_execution_context(
                     execution_context, extensions_manager
                 )
-                with extensions_manager.context():
-                    result = self.execute(execution_context, extensions_manager)
+                result = self.execute(execution_context, extensions_manager)
                 return {"data": result}
         except GraphQLError as e:
             return {"errors": [{"message": e} for e in e.errors]}

@@ -77,9 +77,8 @@ class ExecutionContext:
         ):
             return self.mutation_graph
 
-        raise ValueError(
-            "Unsupported operation type: {!r}".format(self.operation.type)
-        )
+        assert self.query_graph is not None
+        return self.query_graph
 
 
 @dataclass

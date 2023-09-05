@@ -1,6 +1,5 @@
 import re
 
-from concurrent.futures import ThreadPoolExecutor
 from typing import (
     List,
     Tuple,
@@ -8,9 +7,6 @@ from typing import (
 )
 
 import pytest
-
-from hiku.context import create_execution_context
-from hiku.readers.graphql import OperationType, read
 
 from hiku.endpoint.graphql import GraphQLEndpoint
 
@@ -27,7 +23,6 @@ from sqlalchemy.pool import StaticPool
 
 from hiku import query as q
 from hiku.denormalize.graphql import DenormalizeGraphQL
-from hiku.executors.threads import ThreadsExecutor
 from hiku.graph import Graph, Interface, Node, Field, Link, Nothing, Option, Root, Union
 from hiku.sources.sqlalchemy import FieldsQuery
 from hiku.types import InterfaceRef, Record, Sequence, Integer, Optional, String, TypeRef, UnionRef
