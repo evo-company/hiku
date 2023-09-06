@@ -1,19 +1,14 @@
+import contextvars
 import time
 from abc import abstractmethod
 from functools import partial
+from typing import Dict, Optional
 
-from prometheus_client import (
-    Summary,
-    Gauge,
-)
+from prometheus_client import Summary
 
 from ..graph import GraphTransformer
 from ..engine import pass_context, _do_pass_context
 from ..sources.graph import CheckedExpr
-
-
-QUERY_CACHE_HITS = Gauge("hiku_query_cache_hits", "Query cache hits")
-QUERY_CACHE_MISSES = Gauge("hiku_query_cache_misses", "Query cache misses")
 
 
 _METRIC = None
@@ -49,11 +44,18 @@ def _subquery_field_names(func):
 class GraphMetricsBase(GraphTransformer):
     root_name = "Root"
 
-    def __init__(self, name, *, metric=None):
+    def __init__(
+        self,
+        name,
+        *,
+        metric=None,
+        ctx_var: Optional[contextvars.ContextVar] = None,
+    ):
         self._name = name
         self._metric = metric or _get_default_metric()
+        self._ctx = ctx_var
         self._node = None
-        self._wrappers = {}
+        self._wrappers: Dict = {}
 
     @abstractmethod
     def field_wrapper(self, observe, func):
@@ -70,18 +72,24 @@ class GraphMetricsBase(GraphTransformer):
     def _observe_fields(self, node_name):
         by_field = {}
 
-        def observe(start_time, field_names):
+        def observe(start_time, field_names, ctx):
             duration = time.perf_counter() - start_time
+
             for name in field_names:
                 try:
                     field_metric = by_field[name]
                 except KeyError:
                     field_metric = by_field[name] = self._metric.labels(
-                        self._name, node_name, name
+                        *self.get_labels(self._name, node_name, name, ctx),
                     )
                 field_metric.observe(duration)
 
         return observe
+
+    def get_labels(
+        self, graph_name: str, node_name: str, field_name: str, ctx: dict
+    ) -> list:
+        return [graph_name, node_name, field_name]
 
     def _wrap_field(self, node_name, func):
         observe = self._observe_fields(node_name)
@@ -164,7 +172,8 @@ class _SubqueryMixin:
 
             def proc_wrapper():
                 result = result_proc()
-                observe(start_time, field_names)
+                ctx = self._ctx.get() if self._ctx else None
+                observe(start_time, field_names, ctx)
                 return result
 
             return proc_wrapper
@@ -177,7 +186,8 @@ class GraphMetrics(_SubqueryMixin, GraphMetricsBase):
         def wrapper(field_names, *args):
             start_time = time.perf_counter()
             result = func(*args)
-            observe(start_time, field_names)
+            ctx = self._ctx.get() if self._ctx else None
+            observe(start_time, field_names, ctx)
             return result
 
         return wrapper
@@ -186,7 +196,8 @@ class GraphMetrics(_SubqueryMixin, GraphMetricsBase):
         def wrapper(link_name, *args):
             start_time = time.perf_counter()
             result = func(*args)
-            observe(start_time, [link_name])
+            ctx = self._ctx.get() if self._ctx else None
+            observe(start_time, [link_name], ctx)
             return result
 
         return wrapper
@@ -197,7 +208,8 @@ class AsyncGraphMetrics(_SubqueryMixin, GraphMetricsBase):
         async def wrapper(field_names, *args):
             start_time = time.perf_counter()
             result = await func(*args)
-            observe(start_time, field_names)
+            ctx = self._ctx.get() if self._ctx else None
+            observe(start_time, field_names, ctx)
             return result
 
         return wrapper
@@ -206,7 +218,8 @@ class AsyncGraphMetrics(_SubqueryMixin, GraphMetricsBase):
         async def wrapper(link_name, *args):
             start_time = time.perf_counter()
             result = await func(*args)
-            observe(start_time, [link_name])
+            ctx = self._ctx.get() if self._ctx else None
+            observe(start_time, [link_name], ctx)
             return result
 
         return wrapper

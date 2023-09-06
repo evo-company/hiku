@@ -39,7 +39,7 @@ Let's start with a simple example of a federated subgraph using the following Gr
 
 Order Service
 
-.. code-block:: graphql
+.. code-block::
 
    type Order @key(fields: "id") {
        id: ID!
@@ -53,7 +53,7 @@ Order Service
 
 Shopping Cart Service
 
-.. code-block:: graphql
+.. code-block::
 
    type ShoppingCart @key(fields: "id") {
        id: ID!
@@ -224,7 +224,7 @@ With the composed schema, we can now start the router:
 
 With the router running, visit http://localhost:4000 and try running the following query:
 
-.. code-block:: graphql
+.. code-block::
 
     {
         order(id: 1) {

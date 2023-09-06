@@ -117,9 +117,9 @@ another:
 .. code-block:: python
 
   if op.type is OperationType.QUERY:
-      result = engine.execute(query_graph, op.query)
+      result = engine.execute_query(query_graph, op.query)
   elif op.type is OperationType.MUTATION:
-      result = engine.execute(mutation_graph, op.query)
+      result = engine.execute_mutation(mutation_graph, op.query)
   else:
       return {'errors': [{'message': ('Unsupported operation type: {!r}'
                                       .format(op.type))}]}
@@ -146,11 +146,16 @@ execution result into JSON, it should be denormalized, to replace references
 Query parsing cache
 ~~~~~~~~~~~~~~~~~~~
 
-Hiku uses ``graphql-core`` library to parse queries. It is possible to enable
-cache for parsed queries. This is useful when you have a lot of queries, and you
-want to parse them only once.
+Hiku uses ``graphql-core`` library to parse queries. But parsing same query again and again is a waste of resources and time.
 
-Current implementation uses ``functools.lru_cache``.
+Hiku provides a way to cache parsed queries. To enable it, you need to use ``QueryParseCache`` extensions.
+
+.. code-block:: python
+
+    endpoint = GraphQLEndpoint(
+        Engine(SyncExecutor()), sync_graph,
+        extensions=[QueryParserCache(maxsize=50)],
+    )
 
 Note than for cache to be effective, you need to separate query and variables, otherwise
 cache will be useless.
@@ -168,7 +173,7 @@ Query with inlined variables is bad for caching.
 
 Query with separated variables is good for caching.
 
-.. code-block:: python
+.. code-block::
 
     query User($id: ID!, $photoSize: Int) {
         user(id: $id) {

@@ -168,6 +168,9 @@ class CacheVisitor(QueryVisitor):
         self._node_idx: Deque[Dict] = deque()
 
     def visit_field(self, field: QueryField) -> None:
+        if field.name == "__typename":
+            return
+
         self._data[-1][field.index_key] = self._node_idx[-1][field.index_key]
         super().visit_field(field)
 

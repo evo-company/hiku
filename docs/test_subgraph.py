@@ -81,19 +81,20 @@ _GRAPH = Graph([
 
 from hiku.engine import Engine
 from hiku.result import denormalize
-from hiku.readers.simple import read
+from hiku.readers.graphql import read
 from hiku.executors.sync import SyncExecutor
 
 hiku_engine = Engine(SyncExecutor())
 
+
 def execute(graph, query_string):
     query = read(query_string)
-    result = hiku_engine.execute(graph, query,
-                                 {SA_ENGINE_KEY: sa_engine})
+    result = hiku_engine.execute(graph, query, {SA_ENGINE_KEY: sa_engine})
     return denormalize(graph, result)
 
+
 def test_low_level():
-    result = execute(_GRAPH, '[{:characters [:name {:image [:id :name]}]}]')
+    result = execute(_GRAPH, '{ characters { name image { id name } } }')
     assert result == {
         'characters': [
             {'name': 'James T. Kirk',
@@ -137,7 +138,7 @@ GRAPH = Graph([
 # test high-level graph
 
 def test_high_level():
-    result = execute(GRAPH, '[{:characters [:name :image-url]}]')
+    result = execute(GRAPH, '{ characters { name image-url } }')
     assert result == {
         'characters': [
             {'name': 'James T. Kirk',

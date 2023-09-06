@@ -18,7 +18,6 @@ from typing import (
     Optional,
     DefaultDict,
     Awaitable,
-    TYPE_CHECKING,
 )
 from functools import partial
 from itertools import chain, repeat
@@ -31,7 +30,9 @@ from .cache import (
     CacheSettings,
 )
 from .compat import Concatenate, ParamSpec
+from .context import ExecutionContext, create_execution_context
 from .executors.base import SyncAsyncExecutor
+from .operation import Operation, OperationType
 from .query import (
     Node as QueryNode,
     Field as QueryField,
@@ -66,9 +67,6 @@ from .executors.queue import (
 )
 from .utils import ImmutableDict
 from .utils.serialize import serialize
-
-if TYPE_CHECKING:
-    from .readers.graphql import Operation
 
 
 NodePath = Tuple[Optional[str], ...]
@@ -207,6 +205,9 @@ class SplitQuery(QueryVisitor):
             self.visit(item)
 
     def visit_field(self, obj: QueryField) -> None:
+        if obj.name == "__typename":
+            return
+
         graph_obj = self._node.fields_map[obj.name]
         func = getattr(graph_obj.func, "__subquery__", graph_obj.func)
         self._fields.append((func, graph_obj, obj))
@@ -971,33 +972,59 @@ class BaseEngine(abc.ABC):
         self.cache_settings = cache
 
     @abc.abstractmethod
-    def execute(
+    def execute_context(
         self,
-        graph: Graph,
-        query: QueryNode,
-        ctx: Optional[Dict] = None,
-        op: Optional["Operation"] = None,
+        execution_context: ExecutionContext,
     ) -> Union[Proxy, Awaitable[Proxy]]:
         ...
 
-
-class Engine(BaseEngine):
     def execute(
         self,
         graph: Graph,
         query: QueryNode,
         ctx: Optional[Dict] = None,
-        op: Optional["Operation"] = None,
     ) -> Union[Proxy, Awaitable[Proxy]]:
-        if ctx is None:
-            ctx = {}
+        execution_context = create_execution_context(
+            query,
+            query_graph=graph,
+            context=ctx,
+            operation=Operation(OperationType.QUERY, query, None),
+        )
+        return self.execute_context(execution_context)
+
+    def execute_mutation(
+        self,
+        graph: Graph,
+        query: QueryNode,
+        ctx: Optional[Dict] = None,
+    ) -> Union[Proxy, Awaitable[Proxy]]:
+        execution_context = create_execution_context(
+            query,
+            mutation_graph=graph,
+            context=ctx,
+            operation=Operation(OperationType.MUTATION, query, None),
+        )
+        return self.execute_context(execution_context)
+
+
+class Engine(BaseEngine):
+    def execute_context(
+        self,
+        execution_context: ExecutionContext,
+    ) -> Union[Proxy, Awaitable[Proxy]]:
+        graph = execution_context.graph
+        query = execution_context.query
+        ctx = execution_context.context
+        operation_name = execution_context.operation_name
+
         query = InitOptions(graph).visit(query)
+        assert query is not None
         queue = Queue(self.executor)
         task_set = queue.fork(None)
         cache = (
             CacheInfo(
                 self.cache_settings,
-                op.name if op else None,
+                operation_name,
             )
             if self.cache_settings
             else None

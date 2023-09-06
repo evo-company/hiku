@@ -324,6 +324,9 @@ class _RecordFieldsValidator(QueryVisitor):
         self._errors = errors
 
     def visit_field(self, obj: QueryField) -> None:
+        if obj.name == "__typename":
+            return
+
         if obj.name not in self._field_types:
             self._errors.report('Unknown field name "{}"'.format(obj.name))
         elif obj.options is not None:
@@ -354,7 +357,7 @@ def _field_eq(a: FieldBase, b: FieldBase) -> bool:
     return a.name == b.name and a.options == b.options
 
 
-class QueryValidator(QueryVisitor):
+class DefaultQueryValidator(QueryVisitor):
     """
     Validate query against graph.
 
@@ -529,6 +532,6 @@ class QueryValidator(QueryVisitor):
 
 
 def validate(graph: Graph, query: QueryNode) -> t.List[str]:
-    query_validator = QueryValidator(graph)
+    query_validator = DefaultQueryValidator(graph)
     query_validator.visit(query)
     return query_validator.errors.list

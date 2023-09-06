@@ -298,7 +298,8 @@ def test_sequence_in_arg_type(engine, graph):
 
 def test_mixed_query(engine, graph):
     result = engine.execute(
-        graph, read("[{:x1s [(:with_option {:opt 123}) :a]}]")
+        graph,
+        read("[{:x1s [(:with_option {:opt 123}) :a]}]"),
     )
     check_result(
         result,

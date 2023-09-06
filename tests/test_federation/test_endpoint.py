@@ -1,4 +1,7 @@
+from typing import Dict
+
 import pytest
+from hiku.graph import Graph
 
 from hiku.executors.asyncio import AsyncIOExecutor
 from hiku.federation.endpoint import (
@@ -14,42 +17,42 @@ from tests.test_federation.utils import (
 )
 
 
-def execute_v1(graph, query_dict):
+def execute_v1(query: Dict, graph: Graph):
     graphql_endpoint = FederatedGraphQLEndpoint(
         Engine(SyncExecutor()),
         graph,
         federation_version=1
     )
 
-    return graphql_endpoint.dispatch(query_dict)
+    return graphql_endpoint.dispatch(query)
 
 
-async def execute_async_v1(graph, query_dict):
+async def execute_async_v1(query: Dict, graph: Graph):
     graphql_endpoint = AsyncFederatedGraphQLEndpoint(
         Engine(AsyncIOExecutor()),
         graph,
         federation_version=1
     )
 
-    return await graphql_endpoint.dispatch(query_dict)
+    return await graphql_endpoint.dispatch(query)
 
 
-def execute_v2(graph, query_dict):
+def execute_v2(query: Dict, graph: Graph):
     graphql_endpoint = FederatedGraphQLEndpoint(
         Engine(SyncExecutor()),
         graph,
     )
 
-    return graphql_endpoint.dispatch(query_dict)
+    return graphql_endpoint.dispatch(query)
 
 
-async def execute_async_v2(graph, query_dict):
+async def execute_async_v2(query: Dict, graph: Graph):
     graphql_endpoint = AsyncFederatedGraphQLEndpoint(
         Engine(AsyncIOExecutor()),
         graph,
     )
 
-    return await graphql_endpoint.dispatch(query_dict)
+    return await graphql_endpoint.dispatch(query)
 
 
 ENTITIES_QUERY = {
@@ -78,7 +81,7 @@ SDL_QUERY = {'query': '{_service {sdl}}'}
     execute_v2,
 ])
 def test_fetch_sdl(executor):
-    result = executor(GRAPH, SDL_QUERY)
+    result = executor(SDL_QUERY, GRAPH)
     assert result['data']['_service']['sdl'] is not None
 
 
@@ -87,7 +90,7 @@ def test_fetch_sdl(executor):
     execute_v2,
 ])
 def test_execute_sync_executor(executor):
-    result = executor(GRAPH, ENTITIES_QUERY)
+    result = executor(ENTITIES_QUERY, GRAPH)
 
     expect = [
         {'status': {'id': 'NEW', 'title': 'new'}},
@@ -102,7 +105,7 @@ def test_execute_sync_executor(executor):
     execute_async_v2,
 ])
 async def test_execute_async_executor(executor):
-    result = await executor(ASYNC_GRAPH, ENTITIES_QUERY)
+    result = await executor(ENTITIES_QUERY, ASYNC_GRAPH)
 
     expect = [
         {'status': {'id': 'NEW', 'title': 'new'}},

@@ -81,18 +81,18 @@ Querying graph
 For testing purposes let's define helper function ``execute``:
 
 .. literalinclude:: test_database.py
-    :lines: 98-108
+    :lines: 98-109
 
 Testing one to many link:
 
 .. literalinclude:: test_database.py
-    :lines: 111-136
+    :lines: 111-138
     :dedent: 4
 
 Testing many to one link:
 
 .. literalinclude:: test_database.py
-    :lines: 139-167
+    :lines: 139-169
     :dedent: 4
 
 .. _SQLAlchemy: http://www.sqlalchemy.org

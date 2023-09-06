@@ -1,6 +1,5 @@
 import re
 
-from concurrent.futures import ThreadPoolExecutor
 from typing import (
     List,
     Tuple,
@@ -8,7 +7,6 @@ from typing import (
 )
 
 import pytest
-from hiku.readers.graphql import read
 
 from hiku.endpoint.graphql import GraphQLEndpoint
 
@@ -25,7 +23,6 @@ from sqlalchemy.pool import StaticPool
 
 from hiku import query as q
 from hiku.denormalize.graphql import DenormalizeGraphQL
-from hiku.executors.threads import ThreadsExecutor
 from hiku.graph import Graph, Interface, Node, Field, Link, Nothing, Option, Root, Union
 from hiku.sources.sqlalchemy import FieldsQuery
 from hiku.types import InterfaceRef, Record, Sequence, Integer, Optional, String, TypeRef, UnionRef
@@ -59,7 +56,7 @@ OPTION_BEHAVIOUR = [
 
 def execute(graph, query_, ctx=None):
     engine = Engine(SyncExecutor())
-    return engine.execute(graph, query_, ctx=ctx)
+    return engine.execute(graph, query_, ctx)
 
 
 def execute_endpoint(graph, query):
@@ -309,8 +306,6 @@ def test_links_requires_list_sa():
     SA_ENGINE_KEY = "sa-engine"
     metadata = MetaData()
 
-    thread_pool = ThreadPoolExecutor(2)
-
     song_table = Table(
         "song",
         metadata,
@@ -356,12 +351,7 @@ def test_links_requires_list_sa():
     )
     setup_db(sa_engine)
 
-    engine = Engine(ThreadsExecutor(thread_pool))
     ctx = {SA_ENGINE_KEY: sa_engine}
-
-    def execute(query_node):
-        proxy = engine.execute(graph, query_node, ctx)
-        return DenormalizeGraphQL(graph, proxy, "query").process(query_node)
 
     link_song = Mock(return_value=100)
 
@@ -453,7 +443,8 @@ def test_links_requires_list_sa():
             ]
         ]
     )
-    result = execute(query)
+    norm_result = execute(graph, query, ctx)
+    result = DenormalizeGraphQL(graph, norm_result, "query").process(query)
     check_result(
         result,
         {
@@ -1223,8 +1214,7 @@ def test_process_ordered_node():
         ordered=True,
     )
 
-    engine = Engine(SyncExecutor())
-    result = engine.execute(graph, query)
+    result = execute(graph, query)
     check_result(
         result,
         {

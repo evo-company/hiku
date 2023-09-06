@@ -14,7 +14,7 @@ from hiku.graph import Graph, Root, Field, Node, Link
 from hiku.types import TypeRef, Sequence
 from hiku.engine import Engine
 from hiku.result import denormalize
-from hiku.readers.simple import read
+from hiku.readers.graphql import read
 from hiku.executors.sync import SyncExecutor
 
 def character_data(fields, ids):
@@ -42,13 +42,15 @@ GRAPH = Graph([
 
 hiku_engine = Engine(SyncExecutor())
 
+
 def execute(graph, query_string):
     query = read(query_string)
     result = hiku_engine.execute(graph, query)
     return denormalize(graph, result)
 
+
 def test():
-    result = execute(GRAPH, '[{:characters [:name :species]}]')
+    result = execute(GRAPH, "{ characters { name species } }")
     assert result == {
         "characters": [
             {

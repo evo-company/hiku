@@ -663,7 +663,7 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
     ctx = {SA_ENGINE_KEY: sa_engine, "locale": "en"}
 
     def execute(q):
-        proxy = engine.execute(graph, q, ctx)
+        proxy = engine.execute(graph, q, ctx=ctx)
         return DenormalizeGraphQL(graph, proxy, "query").process(q)
 
     query = read(get_product_query(1))
@@ -794,7 +794,7 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
     ctx = {SA_ENGINE_KEY: sa_engine, "locale": "en"}
 
     def execute(q):
-        proxy = engine.execute(graph, q, ctx)
+        proxy = engine.execute(graph, q, ctx=ctx)
         return DenormalizeGraphQL(graph, proxy, "query").process(q)
 
     query = read(get_products_query())

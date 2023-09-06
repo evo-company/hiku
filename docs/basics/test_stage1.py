@@ -15,18 +15,22 @@ GRAPH = Graph([
 from hiku.engine import Engine
 from hiku.result import denormalize
 from hiku.executors.sync import SyncExecutor
-from hiku.readers.simple import read
+from hiku.readers.graphql import read
 
 hiku_engine = Engine(SyncExecutor())
+
 
 def execute(graph, query_string):
     query = read(query_string)
     result = hiku_engine.execute(graph, query)
     return denormalize(graph, result)
 
+
 from tests.base import patch, Mock
 
+
 _NOW = datetime(2015, 10, 21, 7, 28)
+
 
 @patch('{}.datetime'.format(__name__))
 def test(dt):

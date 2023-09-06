@@ -133,6 +133,10 @@ class FieldBase(Base):
         else:
             return self.name
 
+    # TODO: test this hash
+    def __hash__(self) -> int:
+        return hash(self.index_key)
+
 
 class Field(FieldBase):
     """Represents a field of the node
@@ -252,6 +256,9 @@ class Node(Base):
     def accept(self, visitor: "QueryVisitor") -> t.Any:
         return visitor.visit_node(self)
 
+    def __hash__(self) -> int:
+        return hash(tuple(self.fields)) + hash(tuple(self.fragments))
+
 
 class Fragment(Base):
     __attrs__ = ("type_name", "node")
@@ -262,6 +269,9 @@ class Fragment(Base):
 
     def accept(self, visitor: "QueryVisitor") -> t.Any:
         return visitor.visit_fragment(self)
+
+    def __hash__(self) -> int:
+        return hash(self.type_name) + hash(self.node)
 
 
 KeyT = t.Tuple[str, t.Optional[str], t.Optional[str]]

@@ -80,22 +80,21 @@ def test_simple_sync(graph_name, sample_count):
     assert sample_count("Root", "x") is None
     assert sample_count("X", "id") is None
 
-    result = Engine(SyncExecutor()).execute(
-        hl_graph,
-        q.Node(
-            [
-                q.Field("a"),
-                q.Link(
-                    "x",
-                    q.Node(
-                        [
-                            q.Field("id"),
-                        ]
-                    ),
+    query = q.Node(
+        [
+            q.Field("a"),
+            q.Link(
+                "x",
+                q.Node(
+                    [
+                        q.Field("id"),
+                    ]
                 ),
-            ]
-        ),
+            ),
+        ]
     )
+
+    result = Engine(SyncExecutor()).execute(hl_graph, query)
     check_result(
         result,
         {
@@ -214,15 +213,14 @@ def test_with_pass_context(graph_name, sample_count):
     assert sample_count("Root", "a") is None
     assert sample_count("Root", "b") is None
 
-    result = Engine(SyncExecutor()).execute(
-        graph,
-        q.Node(
-            [
-                q.Field("a"),
-                q.Field("b"),
-            ]
-        ),
+    query = q.Node(
+        [
+            q.Field("a"),
+            q.Field("b"),
+        ]
     )
+
+    result = Engine(SyncExecutor()).execute(graph, query)
     check_result(
         result,
         {

@@ -1,4 +1,3 @@
-import enum
 from collections import defaultdict
 
 from typing import (
@@ -11,22 +10,18 @@ from typing import (
     cast,
     Any,
     Set,
-    Callable,
 )
-from functools import lru_cache
 
 from graphql.language import ast
 from graphql.language.parser import parse
+from hiku.utils import ImmutableDict
 
 from ..directives import (
     Cached,
     Directive,
 )
+from ..operation import Operation, OperationType
 from ..query import FieldOrLink, Fragment, Node, Field, Link, merge
-from ..telemetry.prometheus import (
-    QUERY_CACHE_HITS,
-    QUERY_CACHE_MISSES,
-)
 
 
 def parse_query(src: str) -> ast.DocumentNode:
@@ -36,29 +31,6 @@ def parse_query(src: str) -> ast.DocumentNode:
     :return: :py:class:`ast.DocumentNode`
     """
     return parse(src)
-
-
-def wrap_metrics(cached_parser: Callable) -> Callable:
-    def wrapper(*args: Any, **kwargs: Any) -> ast.DocumentNode:
-        ast = cached_parser(*args, **kwargs)
-        info = cached_parser.cache_info()  # type: ignore
-        QUERY_CACHE_HITS.set(info.hits)
-        QUERY_CACHE_MISSES.set(info.misses)
-        return ast
-
-    return wrapper
-
-
-def setup_query_cache(
-    size: int = 128,
-) -> None:
-    """Sets up lru cache for the ast parsing.
-
-    :param int size: Maximum size of the cache
-    """
-    global parse_query
-    parse_query = lru_cache(maxsize=size)(parse_query)
-    parse_query = wrap_metrics(parse_query)
 
 
 class NodeVisitor:
@@ -494,6 +466,12 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
         return merge([node])
 
 
+def get_operation(
+    doc: ast.DocumentNode, operation_name: Optional[str]
+) -> ast.OperationDefinitionNode:
+    return OperationGetter.get(doc, operation_name=operation_name)
+
+
 def read(
     src: str,
     variables: Optional[Dict] = None,
@@ -514,7 +492,7 @@ def read(
     :return: :py:class:`hiku.query.Node`, ready to execute query object
     """
     doc = parse_query(src)
-    op = OperationGetter.get(doc, operation_name=operation_name)
+    op = get_operation(doc, operation_name=operation_name)
     if op.operation is not ast.OperationType.QUERY:
         raise TypeError(
             'Only "query" operations are supported, '
@@ -524,36 +502,9 @@ def read(
     return GraphQLTransformer.transform(doc, op, variables)
 
 
-class OperationType(enum.Enum):
-    """Enumerates GraphQL operation types"""
-
-    #: query operation
-    QUERY = ast.OperationType.QUERY
-    #: mutation operation
-    MUTATION = ast.OperationType.MUTATION
-    #: subscription operation
-    SUBSCRIPTION = ast.OperationType.SUBSCRIPTION
-
-
-class Operation:
-    """Represents requested GraphQL operation"""
-
-    __slots__ = ("type", "query", "name")
-
-    def __init__(
-        self, type_: OperationType, query: Node, name: Optional[str] = None
-    ):
-        #: type of the operation
-        self.type = type_
-        #: operation's query
-        self.query = query
-        #: optional name of the operation
-        self.name = name
-
-
 def read_operation(
-    src: str,
-    variables: Optional[Dict] = None,
+    src: Union[str, ast.DocumentNode],
+    variables: Optional[Union[Dict, ImmutableDict]] = None,
     operation_name: Optional[str] = None,
 ) -> Operation:
     """Reads an operation from the GraphQL document
@@ -564,15 +515,18 @@ def read_operation(
 
         op = read_operation('{ foo bar }')
         if op.type is OperationType.QUERY:
-            result = engine.execute(query_graph, op.query)
+            result = engine.execute(op.query, query_graph)
 
-    :param str src: GraphQL document
-    :param dict variables: query variables
-    :param str operation_name: Name of the operation to execute
     :return: :py:class:`Operation`
     """
-    doc = parse_query(src)
-    op = OperationGetter.get(doc, operation_name=operation_name)
+    if isinstance(src, str):
+        doc = parse_query(src)
+    elif isinstance(src, ast.DocumentNode):
+        doc = src
+    else:
+        raise TypeError("Unsupported type: {}".format(type(src)))
+
+    op = get_operation(doc, operation_name=operation_name)
     query = GraphQLTransformer.transform(doc, op, variables)
     type_ = cast(
         Optional[OperationType],

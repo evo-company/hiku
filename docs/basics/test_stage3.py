@@ -76,7 +76,7 @@ GRAPH = Graph([
 
 from hiku.engine import Engine
 from hiku.result import denormalize
-from hiku.readers.simple import read
+from hiku.readers.graphql import read
 from hiku.executors.sync import SyncExecutor
 
 hiku_engine = Engine(SyncExecutor())
@@ -87,7 +87,7 @@ def execute(graph, query_string):
     return denormalize(graph, result)
 
 def test_link():
-    result = execute(GRAPH, '[{:characters [:name {:actors [:name]}]}]')
+    result = execute(GRAPH, "{ characters { name actors { name } } }")
     assert result == {
         'characters': [
             {'name': 'James T. Kirk',
@@ -103,9 +103,7 @@ def test_link():
     }
 
 def test_link_cycle():
-    result = execute(GRAPH, '[{:characters'
-                            '  [:name {:actors'
-                            '          [:name {:character [:name]}]}]}]')
+    result = execute(GRAPH, "{ characters { name actors { name character { name } } } }")
     assert result == {
         'characters': [
             {'name': 'James T. Kirk',

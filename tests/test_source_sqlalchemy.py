@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
+from hiku.endpoint.graphql import GraphQLEndpoint
 
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
@@ -11,7 +12,6 @@ from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 from hiku.types import IntegerMeta, StringMeta, TypeRef, Sequence, Optional
 from hiku.graph import Graph, Node, Field, Link, Root
 from hiku.engine import Engine
-from hiku.readers.simple import read
 from hiku.executors.threads import ThreadsExecutor
 from hiku.sources.sqlalchemy import LinkQuery, FieldsQuery
 
@@ -211,7 +211,19 @@ class SourceSQLAlchemyTestBase(ABC):
 
     def test_many_to_one(self):
         self.check(
-            "[{:foo_list [:name :count :bar_id {:bar [:name :type]}]}]",
+            """
+            {
+                foo_list { 
+                    name
+                    count
+                    bar_id
+                    bar {
+                        name
+                        type
+                    }
+                }
+            }
+            """,
             {
                 "foo_list": [
                     {
@@ -233,7 +245,19 @@ class SourceSQLAlchemyTestBase(ABC):
 
     def test_one_to_many(self):
         self.check(
-            "[{:bar_list [:id :name :type {:foo_s [:name :count]}]}]",
+            """
+            {
+                bar_list { 
+                    id
+                    name
+                    type
+                    foo_s {
+                        name
+                        count
+                    }
+                }
+            }
+            """,
             {
                 "bar_list": [
                     {
@@ -268,8 +292,18 @@ class SourceSQLAlchemyTestBase(ABC):
 
     def test_not_found(self):
         self.check(
-            "[{:not_found_one [:name :type]}"
-            " {:not_found_list [:name :type]}]",
+            """
+            {   
+                not_found_one {
+                    name
+                    type
+                }
+                not_found_list {
+                    name
+                    type
+                }
+            }
+            """,
             {
                 "not_found_one": {"name": None, "type": None},
                 "not_found_list": [
@@ -282,7 +316,18 @@ class SourceSQLAlchemyTestBase(ABC):
 
     def test_falsy_one(self):
         self.check(
-            "[{:falsy_one [:name :type {:foo_s [:name :count]}]}]",
+            """
+            {
+                falsy_one {
+                    name
+                    type
+                    foo_s {
+                        name
+                        count
+                    }
+                }
+            }
+            """,
             {
                 "falsy_one": {
                     "name": "bar0",
@@ -306,7 +351,10 @@ class TestSourceSQLAlchemy(SourceSQLAlchemyTestBase):
         setup_db(sa_engine)
 
         engine = Engine(ThreadsExecutor(thread_pool))
-        result = engine.execute(
-            self.graph, read(src), {SA_ENGINE_KEY: sa_engine}
+        endpoint = GraphQLEndpoint(
+            engine,
+            self.graph,
         )
-        check_result(result, value)
+
+        result = endpoint.dispatch({"query": src}, context={SA_ENGINE_KEY: sa_engine})
+        check_result(result['data'], value)
