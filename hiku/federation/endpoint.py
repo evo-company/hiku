@@ -373,10 +373,12 @@ class AsyncFederatedGraphQLEndpoint(BaseAsyncFederatedGraphQLEndpoint):
     ) -> SingleOrBatchedResponse:
         if isinstance(data, list):
             return list(
-                await gather(*(super().dispatch(item) for item in data))
+                await gather(
+                    *(super().dispatch(item, context) for item in data)
+                )
             )
 
-        return await super().dispatch(data)
+        return await super().dispatch(data, context)
 
 
 class AsyncBatchFederatedGraphQLEndpoint(AsyncFederatedGraphQLEndpoint):

@@ -356,5 +356,5 @@ class TestSourceSQLAlchemy(SourceSQLAlchemyTestBase):
             self.graph,
         )
 
-        result = endpoint.dispatch({"query": src}, context={SA_ENGINE_KEY: sa_engine})
+        result = endpoint.dispatch({"query": src}, {SA_ENGINE_KEY: sa_engine})
         check_result(result['data'], value)
