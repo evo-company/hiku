@@ -368,13 +368,17 @@ class AsyncGraphQLEndpoint(BaseAsyncGraphQLEndpoint):
             return list(
                 await gather(
                     *(
-                        super(AsyncGraphQLEndpoint, self).dispatch(item)
+                        super(AsyncGraphQLEndpoint, self).dispatch(
+                            item, context
+                        )
                         for item in data
                     )
                 )
             )
         else:
-            return await super(AsyncGraphQLEndpoint, self).dispatch(data)
+            return await super(AsyncGraphQLEndpoint, self).dispatch(
+                data, context
+            )
 
 
 class AsyncBatchGraphQLEndpoint(AsyncGraphQLEndpoint):
