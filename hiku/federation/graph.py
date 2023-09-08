@@ -130,6 +130,7 @@ class GraphInit(GraphTransformer):
             return [{"sdl": ctx["__sdl__"]}]
 
         def _async(func: t.Callable) -> t.Callable:
+            @pass_context
             async def wrapper(*args: t.Any, **kwargs: t.Any) -> t.List[t.Dict]:
                 return func(*args, **kwargs)
 

@@ -75,13 +75,31 @@ ENTITIES_QUERY = {
 
 SDL_QUERY = {'query': '{_service {sdl}}'}
 
+Q = {
+    'query': """
+    query __ApolloGetServiceDefinition__ { _service { sdl } }
+    """,
+    'variables': None,
+    'operationName': '__ApolloGetServiceDefinition__',
+}
+
 
 @pytest.mark.parametrize('executor', [
     execute_v1,
     execute_v2,
 ])
 def test_fetch_sdl(executor):
-    result = executor(SDL_QUERY, GRAPH)
+    result = executor(Q, GRAPH)
+    assert result['data']['_service']['sdl'] is not None
+
+
+@pytest.mark.parametrize('executor', [
+    execute_async_v1,
+    execute_async_v2,
+])
+@pytest.mark.asyncio
+async def test_fetch_sdl_async(executor):
+    result = await executor(Q, ASYNC_GRAPH)
     assert result['data']['_service']['sdl'] is not None
 
 
