@@ -3,8 +3,6 @@ import typing as t
 from abc import ABC, abstractmethod
 from asyncio import gather
 
-from typing_extensions import TypedDict
-
 from hiku.graph import GraphTransformer
 
 from hiku.result import Proxy
@@ -30,21 +28,21 @@ from ..introspection.graphql import AsyncGraphQLIntrospection
 from ..introspection.graphql import GraphQLIntrospection
 
 
-class GraphQLErrorObject(TypedDict):
+class GraphQLErrorObject(t.TypedDict):
     message: str
 
 
-class GraphQLRequest(TypedDict, total=False):
+class GraphQLRequest(t.TypedDict, total=False):
     query: str
     variables: t.Optional[t.Dict[t.Any, t.Any]]
     operationName: t.Optional[str]
 
 
-class GraphQLResponseError(TypedDict):
+class GraphQLResponseError(t.TypedDict):
     errors: t.List[GraphQLErrorObject]
 
 
-class GraphQLResponseOk(TypedDict):
+class GraphQLResponseOk(t.TypedDict):
     data: t.Dict[t.Any, t.Any]
 
 
@@ -179,13 +177,17 @@ class BaseSyncGraphQLEndpoint(BaseGraphQLEndpoint):
     def dispatch(
         self, data: GraphQLRequest, context: t.Optional[t.Dict] = None
     ) -> GraphQLResponse:
-        """
-        Dispatch graphql request to graph
-        Args:
-            data: {"query": str, "variables": dict, "operationName": str}
-            context: context for operation
+        """Dispatch graphql request to graph
 
-        Returns: graphql response: data or errors
+        Example:
+
+        .. code-block:: python
+
+            result = endpoint.dispatch({"query": "{ hello }"})
+
+        :param dict data: {"query": str, "variables": dict, "operationName": str}
+        :param dict context: context for operation
+        :return: :py:class:`dict` graphql response: data or errors
         """
         execution_context = create_execution_context(
             query=data["query"],
@@ -225,6 +227,18 @@ class BaseAsyncGraphQLEndpoint(BaseGraphQLEndpoint):
     async def dispatch(
         self, data: GraphQLRequest, context: t.Optional[t.Dict] = None
     ) -> GraphQLResponse:
+        """Dispatch graphql request to graph
+
+        Example:
+
+        .. code-block:: python
+
+            result = await endpoint.dispatch({"query": "{ hello }"})
+
+        :param dict data: {"query": str, "variables": dict, "operationName": str}
+        :param dict context: context for operation
+        :return: :py:class:`dict` graphql response: data or errors
+        """
         execution_context = create_execution_context(
             query=data["query"],
             variables=data.get("variables"),

@@ -71,4 +71,4 @@ Testing many to one link:
     :lines: 189-219
     :dedent: 4
 
-.. _aiopg: http://aiopg.readthedocs.io/en/stable/
+.. _aiopg: https://aiopg.readthedocs.io/en/stable/

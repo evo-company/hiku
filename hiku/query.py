@@ -52,12 +52,12 @@ from collections import (
     OrderedDict,
     defaultdict,
 )
+from functools import cached_property
 from collections.abc import Sequence
 
 from typing_extensions import TypeAlias
 
 from .directives import Directive
-from .utils import cached_property
 
 T = t.TypeVar("T", bound="Base")
 

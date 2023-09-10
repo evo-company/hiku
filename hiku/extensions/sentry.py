@@ -1,8 +1,7 @@
 import hashlib
-
+from functools import cached_property
 from typing import Iterator, Optional
 
-from hiku.utils import cached_property
 from sentry_sdk import configure_scope, start_span
 
 from hiku.context import ExecutionContext

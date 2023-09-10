@@ -270,7 +270,7 @@ def parser(target, tag_handlers, stop=None):
             elif c == "{":
                 if len(lst) % 2:
                     raise Exception(
-                        "Map literal must contain an even " "number of elements"
+                        "Map literal must contain an even number of elements"
                     )
                 target.send(Dict(zip(lst[::2], lst[1::2])))
             else:

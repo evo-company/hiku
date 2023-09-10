@@ -2,7 +2,7 @@ import re
 import json
 import typing as t
 
-from functools import partial
+from functools import partial, cached_property
 from collections import OrderedDict
 
 from ..directives import (
@@ -51,7 +51,6 @@ from ..types import (
 from ..types import Any, RecordMeta, AbstractTypeVisitor
 from ..utils import (
     listify,
-    cached_property,
 )
 from .types import (
     ENUM,

@@ -55,6 +55,11 @@ commands:
     depends: [_build-tests]
     cmd: [docker-compose, run, --rm, test]
     
+  test-pg:
+    description: Run tests with pg
+    depends: [_build-tests]
+    cmd: [docker-compose, run, --rm, test-pg]
+    
   test-tox:
     description: Run tests using tox
     depends: [_build-tests]
