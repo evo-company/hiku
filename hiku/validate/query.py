@@ -461,7 +461,7 @@ class DefaultQueryValidator(QueryVisitor):
                 continue
 
             if is_union_link:
-                union = self.path[-1]
+                union = t.cast(Union, self.path[-1])
                 if not isinstance(field, Fragment):
                     self.errors.report(
                         "Cannot query field '{}' on type '{}'. "
@@ -484,7 +484,7 @@ class DefaultQueryValidator(QueryVisitor):
 
                 interface = self.path[-1]
 
-                interface_types = self.graph.interfaces_types[interface.name]
+                interface_types = self.graph.interfaces_types[interface.name]  # type: ignore[index] # noqa: E501
                 if not interface_types:
                     self.errors.report(
                         "Can not query field '{0}' on interface '{1}'. "

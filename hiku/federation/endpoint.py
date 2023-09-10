@@ -76,7 +76,7 @@ def denormalize_entities(
     query: Node,
     result: Proxy,
 ) -> List[Dict[str, Any]]:
-    representations = query.fields_map["_entities"].options["representations"]
+    representations = query.fields_map["_entities"].options["representations"]  # type: ignore[index]  # noqa: E501
 
     if not representations:
         return []

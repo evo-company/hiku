@@ -185,7 +185,8 @@ class BaseSyncGraphQLEndpoint(BaseGraphQLEndpoint):
 
             result = endpoint.dispatch({"query": "{ hello }"})
 
-        :param dict data: {"query": str, "variables": dict, "operationName": str}
+        :param dict data:
+            {"query": str, "variables": dict, "operationName": str}
         :param dict context: context for operation
         :return: :py:class:`dict` graphql response: data or errors
         """
@@ -235,7 +236,8 @@ class BaseAsyncGraphQLEndpoint(BaseGraphQLEndpoint):
 
             result = await endpoint.dispatch({"query": "{ hello }"})
 
-        :param dict data: {"query": str, "variables": dict, "operationName": str}
+        :param dict data:
+            {"query": str, "variables": dict, "operationName": str}
         :param dict context: context for operation
         :return: :py:class:`dict` graphql response: data or errors
         """

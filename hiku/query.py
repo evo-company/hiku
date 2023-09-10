@@ -213,7 +213,7 @@ class Link(FieldBase):
 
 
 FieldOrLink = t.Union[Field, Link]
-FieldsMap: TypeAlias = "OrderedDict[str, FieldBase]"
+FieldsMap: TypeAlias = "OrderedDict[str, FieldOrLink]"
 FragmentMap: TypeAlias = "OrderedDict[str, Fragment]"
 
 
@@ -274,7 +274,7 @@ class Fragment(Base):
         return hash(self.type_name) + hash(self.node)
 
 
-KeyT = t.Tuple[str, t.Optional[str], t.Optional[str]]
+KeyT = t.Tuple[str, t.Optional[int], t.Optional[str]]
 
 
 def field_key(field: FieldOrLink) -> KeyT:

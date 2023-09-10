@@ -657,7 +657,7 @@ def enum_value_info(
     schema: SchemaInfo,
     fields: t.List[Field],
     ids: t.List[EnumValueIdent],  # type: ignore[valid-type]
-) -> t.Iterator[t.List[Any]]:
+) -> t.Iterator[t.List[t.Any]]:
     for ident in ids:
         enum = schema.query_graph.enums_map[ident.enum_name]  # type: ignore[attr-defined]  # noqa: E501
         value = enum.values_map[ident.value_name]  # type: ignore[attr-defined]
