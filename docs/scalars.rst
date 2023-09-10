@@ -134,7 +134,7 @@ Lets decode the example above:
 
 If we run this query:
 
-.. code-block::
+.. code-block:: graphql
 
     query {
         user(olderThen: "2023-06-15") {
@@ -145,10 +145,10 @@ If we run this query:
 
 We will get this result:
 
-.. code-block::
+.. code-block:: json
 
     {
-        'id': "1",
-        'dateCreated': '2023-06-15',
+        "id": "1",
+        "dateCreated": "2023-06-15",
     }
 

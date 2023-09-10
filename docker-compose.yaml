@@ -67,6 +67,12 @@ services:
     depends_on:
       - postgres
     command: pdm run test-all
+    
+  test-pg:
+    <<: *test-base
+    depends_on:
+      - postgres
+    command: pdm run test-pg
 
   postgres:
     image: postgres:13-alpine

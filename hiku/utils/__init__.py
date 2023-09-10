@@ -12,7 +12,6 @@ from typing import (
 from hiku.compat import ParamSpec
 
 from .immutable import ImmutableDict, to_immutable_dict
-from .cached_property import cached_property
 from .const import const, Const
 
 if TYPE_CHECKING:

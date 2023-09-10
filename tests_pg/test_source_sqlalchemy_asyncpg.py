@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 import hiku.sources.sqlalchemy_async
 
 from hiku.engine import Engine
-from hiku.readers.simple import read
+from hiku.readers.graphql import read
 from hiku.executors.asyncio import AsyncIOExecutor
 
 from tests.base import check_result
@@ -38,7 +38,7 @@ class TestSourceSQLAlchemyAsyncPG(SourceSQLAlchemyTestBase):
         engine = Engine(AsyncIOExecutor())
         try:
             result = await engine.execute(
-                read(src), self.graph, ctx={SA_ENGINE_KEY: sa_engine}
+                self.graph, read(src), ctx={SA_ENGINE_KEY: sa_engine}
             )
             check_result(result, value)
         finally:

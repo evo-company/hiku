@@ -5,6 +5,7 @@ Changes in 0.7
 ~~~~~~~~
 
   - Dropped support for Python 3.6, which ended support on 2021-12-23
+  - Dropped support for Python 3.7, which ended support on 2023-06-27
   - Added support for Python 3.10
   - Added support for Python 3.11
   - Added support for `Apollo Federation (v1) <https://www.apollographql.com/docs/federation/v1/>`_

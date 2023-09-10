@@ -21,6 +21,7 @@
 import typing as t
 
 from collections import defaultdict
+from functools import cached_property
 
 from .scalar import ScalarMeta
 from .types import (
@@ -40,7 +41,6 @@ from .graph import (
     Maybe,
     Graph,
 )
-from .utils import cached_property
 
 
 class Reference:

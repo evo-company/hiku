@@ -9,7 +9,7 @@ Interfaces are useful when you want to define a common set of fields.
 
 In graphql you can use interfaces types like this:
 
-.. code-block::
+.. code-block:: graphql
 
     interface Media {
         id: ID!
@@ -98,7 +98,7 @@ Lets decode the example above:
 
 If we run this query:
 
-.. code-block:: python
+.. code-block:: graphql
 
     query {
         search(text: "test") {
@@ -117,20 +117,20 @@ If we run this query:
 As a result we will get a list of objects with ``__typename``, ``id`` and ``duration`` fields and fields that are specific
 to the type of the object.
 
-.. code-block::
+.. code-block:: json
 
     [
         {
-            '__typename': 'Audio',
-            'id': 1,
-            'duration': '1:20',
-            'album': 'Cool album',
+            "__typename": "Audio",
+            "id": 1,
+            "duration": "1:20",
+            "album": "Cool album",
         },
         {
-            '__typename': 'Video',
-            'id': 2,
-            'duration': '1:40',
-            'thumbnailUrl': 'http://example.com/thumbnail.jpg',
+            "__typename": "Video",
+            "id": 2,
+            "duration": "1:40",
+            "thumbnailUrl": "http://example.com/thumbnail.jpg",
         },
     ]
 

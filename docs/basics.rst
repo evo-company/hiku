@@ -30,7 +30,7 @@ This is the simplest :py:class:`~hiku.graph.Graph` with one
 
 Then this field could be queried using this query:
 
-.. code-block::
+.. code-block:: graphql
 
     { now }
 
@@ -98,7 +98,7 @@ node. This function should return character ids.
 
 So now you are able to try this query in the console:
 
-.. code-block::
+.. code-block:: graphql
 
   { characters { name species } }
 
@@ -160,7 +160,7 @@ which is normal when this feature is desired, as long as query is a hierarchical
 finite structure and result follows it's structure.
 
 .. literalinclude:: basics/test_stage3.py
-    :lines: 106-127
+    :lines: 106-125
     :dedent: 4
     :linenos:
     :emphasize-lines: 11,13,15

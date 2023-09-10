@@ -1,6 +1,7 @@
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
+    'sphinx_inline_tabs',
 ]
 
 autoclass_content = 'both'
@@ -8,7 +9,7 @@ autodoc_member_order = 'bysource'
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3.6', None),
-    'aiopg': ('http://aiopg.readthedocs.io/en/stable', None),
+    'aiopg': ('https://aiopg.readthedocs.io/en/stable', None),
     'sqlalchemy': ('http://docs.sqlalchemy.org/en/rel_1_1', None),
 }
 
@@ -23,11 +24,4 @@ templates_path = []
 
 html_theme = 'furo'
 html_static_path = ['_static']
-html_theme_options = {
-    'display_version': False,
-}
-
-
-def setup(app):
-    app.add_css_file('style.css?r=1')
-    app.add_css_file('fixes.css?r=1')
+html_theme_options = {}

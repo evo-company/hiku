@@ -75,9 +75,9 @@ Built-in schema directives
 
 Example of `@deprecated` directive in graphql
 
-.. code-block::
+.. code-block:: graphql
 
-    type Order
+    type Order {
         id: ID!
         state: String!
         status: Int! @deprecated(reason: "Use 'state' instead")

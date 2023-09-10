@@ -40,12 +40,10 @@ Default metric:
     )
 
 
-Query cache metrics
-~~~~~~~~~~~~~~~~~~~
+Query parse cache metrics
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-It is possible to enable query cache. That means that the same query will be parsed only once.
-
-When query cache is enabled, the following metrics are exposed:
+**QueryParseCache** exposes metrics for query parsing time:
 
 .. code-block:: python
 

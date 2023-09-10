@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -27,13 +27,13 @@ jobs:
         pdm sync -d -G test -G dev
         pip install tox tox-pdm tox-gh-actions
     - name: Run flake8
-      if: startsWith(matrix.python-version, '3.7')
+      if: startsWith(matrix.python-version, '3.8')
       run: pdm run flake
     - name: Run mypy
-      if: startsWith(matrix.python-version, '3.7')
+      if: startsWith(matrix.python-version, '3.8')
       run: pdm run mypy
     - name: Run black
-      if: startsWith(matrix.python-version, '3.7')
+      if: startsWith(matrix.python-version, '3.8')
       run: pdm run fmt --check
     - name: Run unit tests
       run: tox run -- --cov-report=term

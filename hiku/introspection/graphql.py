@@ -2,7 +2,7 @@ import re
 import json
 import typing as t
 
-from functools import partial
+from functools import partial, cached_property
 from collections import OrderedDict
 
 from ..directives import (
@@ -51,7 +51,6 @@ from ..types import (
 from ..types import Any, RecordMeta, AbstractTypeVisitor
 from ..utils import (
     listify,
-    cached_property,
 )
 from .types import (
     ENUM,
@@ -658,7 +657,7 @@ def enum_value_info(
     schema: SchemaInfo,
     fields: t.List[Field],
     ids: t.List[EnumValueIdent],  # type: ignore[valid-type]
-) -> t.Iterator[t.List[Any]]:
+) -> t.Iterator[t.List[t.Any]]:
     for ident in ids:
         enum = schema.query_graph.enums_map[ident.enum_name]  # type: ignore[attr-defined]  # noqa: E501
         value = enum.values_map[ident.value_name]  # type: ignore[attr-defined]
