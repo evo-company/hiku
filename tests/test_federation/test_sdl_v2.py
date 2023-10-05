@@ -1,6 +1,7 @@
 import textwrap
 
 from hiku.directives import Location
+from hiku.enum import Enum
 from hiku.graph import (
     Node,
     Field,
@@ -9,7 +10,7 @@ from hiku.graph import (
     Root, Union,
 )
 from hiku.types import (
-    Boolean, Record,
+    Boolean, EnumRef, Record,
     Integer,
     String,
     TypeRef,
@@ -57,6 +58,7 @@ GRAPH = Graph([
         Field('id', Integer, field_resolver),
         Field('status', TypeRef['Status'], field_resolver, description="Cart status"),
         Field('_secret', String, field_resolver),
+        Field('currency', EnumRef['Currency'], field_resolver),
     ], directives=[Key('id')]),
     FederatedNode('CartItem', [
         Field('id', Integer, field_resolver),
@@ -79,6 +81,8 @@ GRAPH = Graph([
     }],
 }, directives=[Custom], unions=[
     Union('Bucket', ['Cart'])
+], enums=[
+    Enum('Currency', ['UAH', 'USD'])
 ])
 
 
@@ -126,6 +130,7 @@ expected_tmpl = """
       id: Int!
       "Cart status"
       status: Status!
+      currency: Currency!
     }
     
     type CartItem @key(fields: "id", resolvable: false) {
@@ -137,6 +142,11 @@ expected_tmpl = """
     }
     %s
     scalar Any
+
+    enum Currency {
+      UAH
+      USD
+    }
     
     union Bucket = Cart
     

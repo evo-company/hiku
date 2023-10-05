@@ -38,6 +38,7 @@ from hiku.graph import (
 )
 from hiku.scalar import ScalarMeta
 from hiku.types import (
+    EnumRefMeta,
     IDMeta,
     IntegerMeta,
     MappingMeta,
@@ -94,6 +95,8 @@ def _encode_type(
         elif isinstance(val, TypeRefMeta):
             if input_type:
                 return f"IO{val.__type_name__}"
+            return val.__type_name__
+        elif isinstance(val, EnumRefMeta):
             return val.__type_name__
         elif isinstance(val, ScalarMeta):
             return val.__type_name__
@@ -235,6 +238,7 @@ class Exporter(GraphVisitor):
                 else []
             ),
             self.get_any_scalar(),
+            *self.export_enums(),
             *self.export_unions(),
             self.get_service_type(),
         ]:
@@ -371,6 +375,20 @@ class Exporter(GraphVisitor):
 
     def get_any_scalar(self) -> ast.ScalarTypeDefinitionNode:
         return ast.ScalarTypeDefinitionNode(name=_name("Any"))
+
+    def export_enums(self) -> t.List[ast.EnumTypeDefinitionNode]:
+        enums = []
+        for enum in self.graph.enums:
+            enums.append(
+                ast.EnumTypeDefinitionNode(
+                    name=_name(enum.name),
+                    values=[
+                        ast.EnumValueDefinitionNode(name=_name(value.name))
+                        for value in enum.values
+                    ],
+                )
+            )
+        return enums
 
     def export_unions(self) -> t.List[ast.UnionTypeDefinitionNode]:
         unions = []
