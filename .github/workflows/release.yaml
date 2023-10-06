@@ -6,7 +6,9 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     - uses: actions/setup-python@v4
       with:
         python-version: "3.7"
@@ -21,10 +23,10 @@ jobs:
     - name: Get Changelog
       id: get-changelog
       run: |
-        TAGS=($(git tag --sort=-version:refname | head -n 2))
-        FROM_TAG=${TAGS[2]}
-        TO_TAG=${TAGS[1]}
-        git log --oneline --decorate "${FROM_TAG}..${TO_TAG}" | tail -n +2 | awk '{print "* "$0}' > .changelog.md
+        tags=$(git tag --sort=-version:refname | head -n 2 | awk '{print $1}')
+        tag_from=$(echo "$tags" | sed -n '2p')
+        tag_to=$(echo "$tags" | sed -n '1p')
+        git log --oneline --decorate "${tag_from}..${tag_to}" | tail -n +2 | awk '{print "* "$0}' > .changelog.md
     - name: Create Release
       uses: actions/create-release@main
       env:
