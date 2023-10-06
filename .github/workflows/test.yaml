@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-tags: true
+        fetch-depth: 0
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
@@ -23,7 +23,6 @@ jobs:
     - name: Get Changelog testing
       id: get-changelog
       run: |
-        git pull --tags
         TAGS=($(git tag --sort=-version:refname | head -n 2))
         echo tags $TAGS
         FROM_TAG=${TAGS[2]}
