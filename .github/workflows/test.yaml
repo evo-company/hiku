@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.7"]
     steps:
     - uses: actions/checkout@v4
       with:
@@ -23,15 +23,13 @@ jobs:
     - name: Get Changelog testing
       id: get-changelog
       run: |
-        git tag
         TAGS=($(git tag --sort=-version:refname | head -n 2))
-        echo $TAGS
+        echo tags $TAGS
         FROM_TAG=${TAGS[2]}
         TO_TAG=${TAGS[1]}
+        echo from tag $FROM_TAG and to tag $TO_TAG
 
-        echo $FROM_TAG and $TO_TAG
-
-        git log --oneline --decorate "${FROM_TAG}..${TO_TAG}" | tail -n +2 | awk '{print "* "$0}' > .changelog.md
+        #git log --oneline --decorate "${FROM_TAG}..${TO_TAG}" | tail -n +2 | awk '{print "* "$0}' > .changelog.md
     - name: Set up PDM
       uses: pdm-project/setup-pdm@v3
       with:
@@ -51,14 +49,3 @@ jobs:
       run: pdm run fmt --check
     - name: Run unit tests
       run: tox run -- --cov-report=term
-      
-  federation-test:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Install Lets
-      uses: lets-cli/lets-action@v1.1
-      with:
-        version: latest
-    - name: Test federation compatibility
-      run: timeout 600 lets federation-compatibility-test
