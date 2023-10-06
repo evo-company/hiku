@@ -26,3 +26,4 @@ supergraph.graphql
 results.md
 htmlcov
 .DS_Store
+pyrightconfig.json
