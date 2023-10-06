@@ -1,15 +1,16 @@
 import pytest
 
-from hiku.graph import Graph, Root, Field
-from hiku.types import (
-    String,
+from hiku.endpoint.graphql import (
+    AsyncGraphQLEndpoint,
+    BatchGraphQLEndpoint,
+    GraphQLEndpoint,
 )
-from hiku.engine import Engine
-from hiku.executors.sync import SyncExecutor
-from hiku.endpoint.graphql import GraphQLEndpoint
-from hiku.endpoint.graphql import BatchGraphQLEndpoint, AsyncGraphQLEndpoint
-from hiku.endpoint.graphql import AsyncBatchGraphQLEndpoint
+from hiku.engine import Engine, pass_context
 from hiku.executors.asyncio import AsyncIOExecutor
+from hiku.executors.sync import SyncExecutor
+from hiku.extensions.context import CustomContext
+from hiku.graph import Field, Graph, Root
+from hiku.types import String
 
 
 @pytest.fixture(name="sync_graph")
@@ -22,8 +23,9 @@ def sync_graph_fixture():
 
 @pytest.fixture(name="async_graph")
 def async_graph_fixture():
-    async def answer(fields):
-        return ["42" for _ in fields]
+    @pass_context
+    async def answer(ctx, fields):
+        return [ctx.get("default_answer") or "42" for _ in fields]
 
     return Graph([Root([Field("answer", String, answer)])])
 
@@ -57,13 +59,19 @@ def test_batch_endpoint(sync_graph):
 @pytest.mark.asyncio
 async def test_async_endpoint(async_graph):
     endpoint = AsyncGraphQLEndpoint(Engine(AsyncIOExecutor()), async_graph)
-    result = await endpoint.dispatch({"query": "{answer}"})
-    assert result == {"data": {"answer": "42"}}
+    result = await endpoint.dispatch(
+        {"query": "{answer}"}, context={"default_answer": "52"}
+    )
+    assert result == {"data": {"answer": "52"}}
 
 
 @pytest.mark.asyncio
 async def test_async_batch_endpoint(async_graph):
-    endpoint = AsyncBatchGraphQLEndpoint(Engine(AsyncIOExecutor()), async_graph)
+    endpoint = AsyncGraphQLEndpoint(
+        Engine(AsyncIOExecutor()),
+        async_graph,
+        batching=True,
+    )
 
     assert await endpoint.dispatch([]) == []
 
@@ -74,9 +82,39 @@ async def test_async_batch_endpoint(async_graph):
         [
             {"query": "{answer}"},
             {"query": "{__typename}"},
+        ],
+        context={"default_answer": "52"},
+    )
+    assert batch_result == [
+        {"data": {"answer": "52"}},
+        {"data": {"__typename": "Query"}},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_async_batch_endpoint_with_custom_context(async_graph):
+    def get_custom_context(ec):
+        return {"default_answer": "52"}
+
+    endpoint = AsyncGraphQLEndpoint(
+        Engine(AsyncIOExecutor()),
+        async_graph,
+        extensions=[CustomContext(get_custom_context)],
+        batching=True,
+    )
+
+    assert await endpoint.dispatch([]) == []
+
+    result = await endpoint.dispatch({"query": "{answer}"})
+    assert result == {"data": {"answer": "52"}}
+
+    batch_result = await endpoint.dispatch(
+        [
+            {"query": "{answer}"},
+            {"query": "{__typename}"},
         ]
     )
     assert batch_result == [
-        {"data": {"answer": "42"}},
+        {"data": {"answer": "52"}},
         {"data": {"__typename": "Query"}},
     ]
