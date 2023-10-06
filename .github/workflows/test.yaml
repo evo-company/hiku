@@ -23,13 +23,13 @@ jobs:
     - name: Get Changelog testing
       id: get-changelog
       run: |
+        git tag
         TAGS=($(git tag --sort=-version:refname | head -n 2))
         echo $TAGS
         FROM_TAG=${TAGS[2]}
         TO_TAG=${TAGS[1]}
 
         echo $FROM_TAG and $TO_TAG
-        git status
 
         git log --oneline --decorate "${FROM_TAG}..${TO_TAG}" | tail -n +2 | awk '{print "* "$0}' > .changelog.md
     - name: Set up PDM
