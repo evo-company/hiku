@@ -1,41 +1,27 @@
 import re
-
-from typing import (
-    List,
-    Tuple,
-    Any,
-)
+from typing import Any, List, Tuple
 
 import pytest
-
-from hiku.endpoint.graphql import GraphQLEndpoint
-
-from sqlalchemy import (
-    MetaData,
-    Table,
-    Column,
-    Integer as SaInteger,
-    Unicode,
-    ForeignKey,
-    create_engine,
-)
+from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Integer as SaInteger
+from sqlalchemy import MetaData, Table, Unicode, create_engine
 from sqlalchemy.pool import StaticPool
 
 from hiku import query as q
+from hiku.builder import Q, build
 from hiku.denormalize.graphql import DenormalizeGraphQL
-from hiku.graph import Graph, Interface, Node, Field, Link, Nothing, Option, Root, Union
-from hiku.sources.sqlalchemy import FieldsQuery
-from hiku.types import InterfaceRef, Record, Sequence, Integer, Optional, String, TypeRef, UnionRef
-from hiku.utils import (
-    listify,
-    ImmutableDict,
-)
-from hiku.engine import Engine, pass_context, Context
-from hiku.result import denormalize
-from hiku.builder import build, Q
+from hiku.endpoint.graphql import GraphQLEndpoint
+from hiku.engine import Context, Engine, pass_context
 from hiku.executors.sync import SyncExecutor
+from hiku.graph import (Field, Graph, Interface, Link, Node, Nothing, Option,
+                        Root, Union)
+from hiku.result import denormalize
+from hiku.sources.sqlalchemy import FieldsQuery
+from hiku.types import (Integer, InterfaceRef, Optional, Record, Sequence,
+                        String, TypeRef, UnionRef)
+from hiku.utils import ImmutableDict, listify
 
-from .base import check_result, ANY, Mock
+from .base import ANY, Mock, check_result
 
 
 @listify
@@ -1269,14 +1255,21 @@ def test_root_link_with_sequence_to_optional_type_ref():
 
         return [[get_fields(f, id_) for f in fields] for id_ in ids]
 
-    graph = Graph([
-        Node('A', [
-            Field('a', String, a_fields)
-        ]),
-        Root([
-            Link('aa', Sequence[Optional[TypeRef['A']]], lambda: [1, Nothing], requires=None)
-        ])
-    ])
+    graph = Graph(
+        [
+            Node("A", [Field("a", String, a_fields)]),
+            Root(
+                [
+                    Link(
+                        "aa",
+                        Sequence[Optional[TypeRef["A"]]],
+                        lambda: [1, Nothing],
+                        requires=None,
+                    )
+                ]
+            ),
+        ]
+    )
 
     result = execute(
         graph,
@@ -1314,43 +1307,51 @@ def test_non_root_link_with_sequence_to_optional_type_ref():
         for _ in ids:
             yield [1, Nothing]
 
-    graph = Graph([
-        Node('A', [
-            Field('a', String, a_fields),
-            Link('b1', Sequence[Optional[TypeRef['B']]], lambda: [1, Nothing], requires=None),
-            # same as 'b' but with requires
-            Link('b2', Sequence[Optional[TypeRef['B']]], link_b2, requires='a'),
-        ]),
-        Node('B', [
-            Field('b', String, b_fields)
-        ]),
-        Root([
-            Link('a_root', TypeRef['A'], lambda: 1, requires=None)
-        ])
-    ])
+    graph = Graph(
+        [
+            Node(
+                "A",
+                [
+                    Field("a", String, a_fields),
+                    Link(
+                        "b1",
+                        Sequence[Optional[TypeRef["B"]]],
+                        lambda: [1, Nothing],
+                        requires=None,
+                    ),
+                    # same as 'b' but with requires
+                    Link(
+                        "b2",
+                        Sequence[Optional[TypeRef["B"]]],
+                        link_b2,
+                        requires="a",
+                    ),
+                ],
+            ),
+            Node("B", [Field("b", String, b_fields)]),
+            Root([Link("a_root", TypeRef["A"], lambda: 1, requires=None)]),
+        ]
+    )
 
     result = execute(
         graph,
         q.Node(
             [
-                q.Link("a_root", q.Node([
-                    q.Field("a"),
-                    q.Link("b1", q.Node([
-                        q.Field("b")
-                    ])),
-                    q.Link("b2", q.Node([
-                        q.Field("b")
-                    ])),
-                ])),
+                q.Link(
+                    "a_root",
+                    q.Node(
+                        [
+                            q.Field("a"),
+                            q.Link("b1", q.Node([q.Field("b")])),
+                            q.Link("b2", q.Node([q.Field("b")])),
+                        ]
+                    ),
+                ),
             ]
         ),
     )
     assert denormalize(graph, result) == {
-        "a_root": {
-            "a": 42,
-            "b1": [{"b": 24}, None],
-            "b2": [{"b": 24}, None]
-        }
+        "a_root": {"a": 42, "b1": [{"b": 24}, None], "b2": [{"b": 24}, None]}
     }
 
 
@@ -1377,18 +1378,24 @@ def test_overlapped_query_node_with_fragment():
         num_link_user += 1
         return 1
 
-    graph = Graph([
-        Node('User', [
-            Field('id', String, resolve_user),
-            Field('name', String, resolve_user),
-        ]),
-        Node('Context', [
-            Link('user', TypeRef['User'], link_user, requires=None)
-        ]),
-        Root([
-            Link('context', TypeRef['Context'], lambda: 1, requires=None)
-        ])
-    ])
+    graph = Graph(
+        [
+            Node(
+                "User",
+                [
+                    Field("id", String, resolve_user),
+                    Field("name", String, resolve_user),
+                ],
+            ),
+            Node(
+                "Context",
+                [Link("user", TypeRef["User"], link_user, requires=None)],
+            ),
+            Root(
+                [Link("context", TypeRef["Context"], lambda: 1, requires=None)]
+            ),
+        ]
+    )
 
     query = """
     query GetUser {
@@ -1401,19 +1408,12 @@ def test_overlapped_query_node_with_fragment():
     }
     """
 
-    data = execute_endpoint(graph, query)['data']
+    data = execute_endpoint(graph, query)["data"]
 
     assert num_link_user == 1
     assert num_resolve_id == 1
     assert num_resolve_name == 1
-    assert data == {
-        "context": {
-            "user": {
-                "id": 1,
-                "name": "John"
-            }
-        }
-    }
+    assert data == {"context": {"user": {"id": 1, "name": "John"}}}
 
 
 def test_overlapped_query_node_with_fragment_interface():
@@ -1439,26 +1439,48 @@ def test_overlapped_query_node_with_fragment_interface():
         num_link_user += 1
         return 1
 
-    graph = Graph([
-        Node('User', [
-            Field('id', String, resolve_user),
-            Field('name', String, resolve_user),
-        ]),
-        Node('MyContext', [
-            Link('user', TypeRef['User'], link_user, requires=None),
-            Field('balance', Integer, lambda fields, ids: [[100]])
-        ], implements=['Context']),
-        Node('BaseContext', [
-            Link('user', TypeRef['User'], link_user, requires=None),
-        ], implements=['Context']),
-        Root([
-            Link('context', InterfaceRef['Context'], lambda: (1, TypeRef['MyContext']), requires=None)
-        ])
-    ], interfaces=[
-        Interface('Context', [
-            Link('user', TypeRef['User'], lambda x: x, requires=None)
-        ])
-    ])
+    graph = Graph(
+        [
+            Node(
+                "User",
+                [
+                    Field("id", String, resolve_user),
+                    Field("name", String, resolve_user),
+                ],
+            ),
+            Node(
+                "MyContext",
+                [
+                    Link("user", TypeRef["User"], link_user, requires=None),
+                    Field("balance", Integer, lambda fields, ids: [[100]]),
+                ],
+                implements=["Context"],
+            ),
+            Node(
+                "BaseContext",
+                [
+                    Link("user", TypeRef["User"], link_user, requires=None),
+                ],
+                implements=["Context"],
+            ),
+            Root(
+                [
+                    Link(
+                        "context",
+                        InterfaceRef["Context"],
+                        lambda: (1, TypeRef["MyContext"]),
+                        requires=None,
+                    )
+                ]
+            ),
+        ],
+        interfaces=[
+            Interface(
+                "Context",
+                [Link("user", TypeRef["User"], lambda x: x, requires=None)],
+            )
+        ],
+    )
 
     query = """
     query GetUser2 {
@@ -1477,19 +1499,13 @@ def test_overlapped_query_node_with_fragment_interface():
     }
     """
 
-    data = execute_endpoint(graph, query)['data']
+    data = execute_endpoint(graph, query)["data"]
 
     assert num_link_user == 1
     assert num_resolve_id == 1
     assert num_resolve_name == 1
     assert data == {
-        "context": {
-            "user": {
-                "id": 1,
-                "name": "John"
-            },
-            'balance': 100
-        }
+        "context": {"user": {"id": 1, "name": "John"}, "balance": 100}
     }
 
 
@@ -1516,28 +1532,50 @@ def test_overlapped_query_node_with_fragment_union():
         num_link_user += 1
         return ids
 
-    graph = Graph([
-        Node('User', [
-            Field('id', String, resolve_user),
-            Field('name', String, resolve_user),
-        ]),
-        Node('MyContext', [
-            Field('user_id', Integer, lambda fields, ids: [ids]),
-            Link('user', TypeRef['User'], link_user, requires='user_id'),
-            Field('balance', Integer, lambda fields, ids: [[100]])
-        ]),
-        Node('BaseContext', [
-            Field('user_id', Integer, lambda fields, ids: [ids]),
-            Link('user', TypeRef['User'], link_user, requires='user_id'),
-        ]),
-        Root([
-            Link('contexts', Sequence[UnionRef['Context']], lambda: [(1, TypeRef['MyContext']), (2, TypeRef['BaseContext'])], requires=None)
-        ])
-    ], unions=[
-        Union('Context', [
-            'BaseContext', 'MyContext'
-        ])
-    ])
+    graph = Graph(
+        [
+            Node(
+                "User",
+                [
+                    Field("id", String, resolve_user),
+                    Field("name", String, resolve_user),
+                ],
+            ),
+            Node(
+                "MyContext",
+                [
+                    Field("user_id", Integer, lambda fields, ids: [ids]),
+                    Link(
+                        "user", TypeRef["User"], link_user, requires="user_id"
+                    ),
+                    Field("balance", Integer, lambda fields, ids: [[100]]),
+                ],
+            ),
+            Node(
+                "BaseContext",
+                [
+                    Field("user_id", Integer, lambda fields, ids: [ids]),
+                    Link(
+                        "user", TypeRef["User"], link_user, requires="user_id"
+                    ),
+                ],
+            ),
+            Root(
+                [
+                    Link(
+                        "contexts",
+                        Sequence[UnionRef["Context"]],
+                        lambda: [
+                            (1, TypeRef["MyContext"]),
+                            (2, TypeRef["BaseContext"]),
+                        ],
+                        requires=None,
+                    )
+                ]
+            ),
+        ],
+        unions=[Union("Context", ["BaseContext", "MyContext"])],
+    )
 
     query = """
     query GetUser2 {
@@ -1553,24 +1591,16 @@ def test_overlapped_query_node_with_fragment_union():
     }
     """
 
-    data = execute_endpoint(graph, query)['data']
+    data = execute_endpoint(graph, query)["data"]
 
     assert num_link_user == 2
     assert num_resolve_id == 1
     assert num_resolve_name == 2
     assert data == {
         "contexts": [
+            {"user": {"id": 1, "name": "John1"}, "balance": 100},
             {
-                "user": {
-                    "id": 1,
-                    "name": "John1"
-                },
-                'balance': 100
+                "user": {"name": "John2"},
             },
-            {
-                "user": {
-                    "name": "John2"
-                },
-            }
         ]
     }
