@@ -8,10 +8,10 @@ from hiku.telemetry.prometheus import (
     GraphMetrics,
     GraphMetricsBase,
 )
-from hiku.extensions.base_extension import Extension
+from hiku.extensions.base_extension import Extension, ExtensionFactory
 
 
-class PrometheusMetrics(Extension):
+class _PrometheusMetricsImpl(Extension):
     def __init__(
         self,
         name: str,
@@ -42,7 +42,11 @@ class PrometheusMetrics(Extension):
             self._ctx_var.reset(token)
 
 
-class PrometheusMetricsAsync(PrometheusMetrics):
+class PrometheusMetrics(ExtensionFactory):
+    ext_class = _PrometheusMetricsImpl
+
+
+class _PrometheusMetricsAsyncImpl(_PrometheusMetricsImpl):
     def __init__(
         self,
         name: str,
@@ -56,3 +60,7 @@ class PrometheusMetricsAsync(PrometheusMetrics):
             ctx_var=ctx_var,
             transformer_cls=AsyncGraphMetrics,
         )
+
+
+class PrometheusMetricsAsync(ExtensionFactory):
+    ext_class = _PrometheusMetricsAsyncImpl

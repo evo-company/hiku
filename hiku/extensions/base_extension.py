@@ -106,6 +106,24 @@ class Extension:
         yield None
 
 
+class ExtensionFactory:
+    """Lazy extension factory.
+    Remembers arguments and keyword arguments and creates an extension
+    instance when ExtensionsManager is created.
+    """
+
+    ext_class: Type[Extension]
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        self._args = args
+        self._kwargs = kwargs
+
+    def create(self, execution_context: ExecutionContext) -> Extension:
+        extension = self.ext_class(*self._args, **self._kwargs)
+        extension.execution_context = execution_context
+        return extension
+
+
 class ExtensionsManager:
     def __init__(
         self,
@@ -120,9 +138,14 @@ class ExtensionsManager:
         init_extensions: List[Extension] = []
 
         for extension in extensions:
-            if isinstance(extension, Extension):
-                extension.execution_context = execution_context
-                init_extensions.append(extension)
+            if isinstance(extension, ExtensionFactory):
+                init_extensions.append(extension.create(execution_context))
+            elif isinstance(extension, Extension):
+                raise ValueError(
+                    f"Extension {extension} must be a class, "
+                    "not an instance. Use ExtensionFactory if your extension "
+                    "has custom arguments."
+                )
             else:
                 init_extensions.append(
                     extension(execution_context=execution_context)
