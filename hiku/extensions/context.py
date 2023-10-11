@@ -1,10 +1,10 @@
 from typing import Callable, Dict, Iterator
 
 from hiku.context import ExecutionContext
-from hiku.extensions.base_extension import Extension
+from hiku.extensions.base_extension import Extension, ExtensionFactory
 
 
-class CustomContext(Extension):
+class _CustomContextImpl(Extension):
     def __init__(
         self,
         get_context: Callable[[ExecutionContext], Dict],
@@ -16,3 +16,10 @@ class CustomContext(Extension):
             self.execution_context
         )
         yield
+
+
+class CustomContext(ExtensionFactory):
+    ext_class = _CustomContextImpl
+
+    def __init__(self, get_context: Callable[[ExecutionContext], Dict]):
+        super().__init__(get_context)
