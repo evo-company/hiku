@@ -3,10 +3,9 @@ from __future__ import annotations
 import contextlib
 import inspect
 from asyncio import iscoroutinefunction
-
 from types import TracebackType
 from typing import (
-    Any,
+    TYPE_CHECKING,
     AsyncIterator,
     Awaitable,
     Callable,
@@ -15,7 +14,6 @@ from typing import (
     NamedTuple,
     Optional,
     Sequence,
-    TYPE_CHECKING,
     Type,
     TypeVar,
     Union,
@@ -29,18 +27,15 @@ T = TypeVar("T")
 
 AwaitableOrValue = Union[Awaitable[T], T]
 AsyncIteratorOrIterator = Union[AsyncIterator[T], Iterator[T]]
-Hook = Callable[["Extension"], AsyncIteratorOrIterator[None]]
+Hook = Callable[
+    ["Extension", "ExecutionContext"], AsyncIteratorOrIterator[None]
+]
 
 
 class Extension:
-    execution_context: ExecutionContext
-
-    def __init__(self, *, execution_context: Optional[ExecutionContext] = None):
-        # execution_context will be set during ExtensionsManager initialization
-        # it is safe to assume that it will be not None
-        self.execution_context = execution_context  # type: ignore[assignment]
-
-    def on_graph(self) -> AsyncIteratorOrIterator[None]:
+    def on_graph(
+        self, execution_context: ExecutionContext
+    ) -> AsyncIteratorOrIterator[None]:
         """Called before and after the graph (transformation) step.
 
         Graph transformation step is a step where we applying transformations
@@ -51,7 +46,9 @@ class Extension:
         """
         yield None
 
-    def on_dispatch(self) -> AsyncIteratorOrIterator[None]:
+    def on_dispatch(
+        self, execution_context: ExecutionContext
+    ) -> AsyncIteratorOrIterator[None]:
         """Called before and after the dispatch step.
 
         Dispatch step is a step where the query is dispatched by to the endpoint
@@ -70,7 +67,9 @@ class Extension:
         """
         yield None
 
-    def on_operation(self) -> AsyncIteratorOrIterator[None]:
+    def on_operation(
+        self, execution_context: ExecutionContext
+    ) -> AsyncIteratorOrIterator[None]:
         """Called before and after the operation step.
 
         Operation step is a step where the graphql ast is transformed into
@@ -79,7 +78,9 @@ class Extension:
         """
         yield None
 
-    def on_parse(self) -> AsyncIteratorOrIterator[None]:
+    def on_parse(
+        self, execution_context: ExecutionContext
+    ) -> AsyncIteratorOrIterator[None]:
         """Called before and after the parsing step.
 
         Parse step is when query string is parsed into graphql ast
@@ -87,7 +88,9 @@ class Extension:
         """
         yield None
 
-    def on_validate(self) -> AsyncIteratorOrIterator[None]:
+    def on_validate(
+        self, execution_context: ExecutionContext
+    ) -> AsyncIteratorOrIterator[None]:
         """Called before and after the validation step.
 
         Validation step is when hiku query is validated.
@@ -96,7 +99,9 @@ class Extension:
         """
         yield None
 
-    def on_execute(self) -> AsyncIteratorOrIterator[None]:
+    def on_execute(
+        self, execution_context: ExecutionContext
+    ) -> AsyncIteratorOrIterator[None]:
         """Called before and after the execution step.
 
         Execution step is when hiku query is executed by hiku engine.
@@ -106,25 +111,12 @@ class Extension:
         yield None
 
 
-class ExtensionFactory:
-    """Lazy extension factory.
-    Remembers arguments and keyword arguments and creates an extension
-    instance when ExtensionsManager is created.
+class ExtensionsManager:
+    """ExtensionManager is a per/dispatch extensions manager.
+
+    It is used to call excensions hooks in the right order.
     """
 
-    ext_class: Type[Extension]
-
-    def __init__(self, *args: Any, **kwargs: Any):
-        self._args = args
-        self._kwargs = kwargs
-
-    def create(self, execution_context: ExecutionContext) -> Extension:
-        extension = self.ext_class(*self._args, **self._kwargs)
-        extension.execution_context = execution_context
-        return extension
-
-
-class ExtensionsManager:
     def __init__(
         self,
         execution_context: ExecutionContext,
@@ -138,55 +130,49 @@ class ExtensionsManager:
         init_extensions: List[Extension] = []
 
         for extension in extensions:
-            if isinstance(extension, ExtensionFactory):
-                init_extensions.append(extension.create(execution_context))
-            elif isinstance(extension, Extension):
-                raise ValueError(
-                    f"Extension {extension} must be a class, "
-                    "not an instance. Use ExtensionFactory if your extension "
-                    "has custom arguments."
-                )
+            if isinstance(extension, Extension):
+                init_extensions.append(extension)
             else:
-                init_extensions.append(
-                    extension(execution_context=execution_context)
-                )
+                init_extensions.append(extension())
 
         self.extensions = init_extensions
 
     def graph(self) -> "ExtensionContextManagerBase":
         return ExtensionContextManagerBase(
-            Extension.on_graph.__name__,
-            self.extensions,
+            Extension.on_graph.__name__, self.extensions, self.execution_context
         )
 
     def dispatch(self) -> "ExtensionContextManagerBase":
         return ExtensionContextManagerBase(
             Extension.on_dispatch.__name__,
             self.extensions,
+            self.execution_context,
         )
 
     def parsing(self) -> "ExtensionContextManagerBase":
         return ExtensionContextManagerBase(
-            Extension.on_parse.__name__,
-            self.extensions,
+            Extension.on_parse.__name__, self.extensions, self.execution_context
         )
 
     def operation(self) -> "ExtensionContextManagerBase":
         return ExtensionContextManagerBase(
             Extension.on_operation.__name__,
             self.extensions,
+            self.execution_context,
         )
 
     def validation(self) -> "ExtensionContextManagerBase":
         return ExtensionContextManagerBase(
             Extension.on_validate.__name__,
             self.extensions,
+            self.execution_context,
         )
 
     def execution(self) -> "ExtensionContextManagerBase":
         return ExtensionContextManagerBase(
             Extension.on_execute.__name__,
             self.extensions,
+            self.execution_context,
         )
 
 
@@ -199,28 +185,39 @@ class WrappedHook(NamedTuple):
 class ExtensionContextManagerBase:
     __slots__ = ("hook_name", "hooks", "deprecation_message", "default_hook")
 
-    def __init__(self, hook_name: str, extensions: List[Extension]):
+    def __init__(
+        self,
+        hook_name: str,
+        extensions: List[Extension],
+        execution_context: ExecutionContext,
+    ):
         self.hook_name = hook_name
         self.hooks: List[WrappedHook] = []
         self.default_hook: Hook = getattr(Extension, self.hook_name)
         for extension in extensions:
-            hook = self.get_hook(extension)
+            hook = self.get_hook(extension, execution_context)
             if hook:
                 self.hooks.append(hook)
 
-    def get_hook(self, extension: Extension) -> Optional[WrappedHook]:
+    def get_hook(
+        self, extension: Extension, execution_context: ExecutionContext
+    ) -> Optional[WrappedHook]:
         hook_fn: Optional[Hook] = getattr(type(extension), self.hook_name)
         hook_fn = hook_fn if hook_fn is not self.default_hook else None
 
         if hook_fn:
             if inspect.isgeneratorfunction(hook_fn):
-                return WrappedHook(extension, hook_fn(extension), False)
+                return WrappedHook(
+                    extension, hook_fn(extension, execution_context), False
+                )
 
             if inspect.isasyncgenfunction(hook_fn):
-                return WrappedHook(extension, hook_fn(extension), True)
+                return WrappedHook(
+                    extension, hook_fn(extension, execution_context), True
+                )
 
             if callable(hook_fn):
-                return self.from_callable(extension, hook_fn)
+                return self.from_callable(extension, hook_fn, execution_context)
 
             raise ValueError(
                 f"Hook {self.hook_name} on {extension} "
@@ -232,12 +229,13 @@ class ExtensionContextManagerBase:
     @staticmethod
     def from_callable(
         extension: Extension,
-        func: Callable[[Extension], AwaitableOrValue[Any]],
+        func: Hook,
+        execution_context: ExecutionContext,
     ) -> WrappedHook:
         if iscoroutinefunction(func):
 
             async def async_iterator():  # type: ignore[no-untyped-def]
-                await func(extension)
+                await func(extension, execution_context)
                 yield
 
             hook = async_iterator()
@@ -245,7 +243,7 @@ class ExtensionContextManagerBase:
         else:
 
             def iterator():  # type: ignore[no-untyped-def]
-                func(extension)
+                func(extension, execution_context)
                 yield
 
             hook = iterator()
