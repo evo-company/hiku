@@ -11,6 +11,7 @@ from hiku.types import Integer, Optional, Sequence, TypeRef, EnumRef
 from hiku.utils import listify
 from hiku.readers.graphql import read
 from hiku.validate.graph import GraphValidationError
+from hiku.validate.query import validate
 
 
 def execute(graph, query):
@@ -260,13 +261,19 @@ def test_parse_enum_argument_default_value(enum, status):
         ]),
     ], enums=[enum])
 
-    result = execute(graph, read("query GetUser { user { id status } }"))
+    query = "query GetUser { user { id status } }"
+
+    assert validate(graph, read(query)) == []
+
+    result = execute(graph, read(query))
     assert result == {
         'user': {
             'id': 1,
             'status': 'ACTIVE'
         }
     }
+
+
 
 @pytest.mark.parametrize("enum", [
     Enum.from_builtin(Status, 'UserStatus'),

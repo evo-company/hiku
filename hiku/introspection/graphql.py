@@ -567,8 +567,8 @@ def input_value_info(
                     scalar = schema.query_graph.scalars_map[
                         option.type_info.type_name
                     ]
-                    default = serialize(
-                        option.type, option.default, scalar.serialize
+                    default = json.dumps(
+                        serialize(option.type, option.default, scalar.serialize)
                     )
                 else:
                     default = json.dumps(option.default)

@@ -13,6 +13,7 @@ from ..types import (
     SequenceMeta,
     RecordMeta,
     TypeRefMeta,
+    EnumRefMeta,
     GenericMeta,
     AnyMeta,
     BooleanMeta,
@@ -248,6 +249,10 @@ class _OptionTypeValidator:
 
     # TODO: add scalar validation errors
     def visit_scalar(self, type_: ScalarMeta) -> None:
+        pass
+
+    # TODO: add enum validation errors
+    def visit_enumref(self, type_: EnumRefMeta) -> None:
         pass
 
 

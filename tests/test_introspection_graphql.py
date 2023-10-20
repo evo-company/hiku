@@ -607,13 +607,47 @@ def test_custom_scalar():
         ),
         _type('Query', 'OBJECT', fields=[
             _field('user', _obj('User'), args=[
-                _ival('uid', _non_null(_scalar('UserId')), defaultValue='uid1'),
-                _ival('uidMany', _seq_of(_scalar('UserId')), defaultValue=['uid1']),
-                _ival('uidMaybe', _scalar('UserId'), defaultValue=None),
+                _ival('uid', _non_null(_scalar('UserId')), defaultValue='"uid1"'),
+                _ival('uidMany', _seq_of(_scalar('UserId')), defaultValue='["uid1"]'),
+                _ival('uidMaybe', _scalar('UserId'), defaultValue="null"),
             ]),
         ], ),
         _type('UserId', 'SCALAR'),
     ]) == introspect(graph)
+
+
+def test_custom_int_scalar():
+    class UserIdInt(Scalar):
+        @classmethod
+        def parse(cls, value: int) -> int:
+            return int(value)
+
+        @classmethod
+        def serialize(cls, value: int) -> int:
+            return int(value)
+
+    graph = Graph([
+        Root([
+            Field(
+                'userId',
+                UserIdInt,
+                _noop,
+                options=[
+                    Option('uid', UserIdInt, default=1),
+                ]
+            ),
+        ]),
+    ], scalars=[UserIdInt])
+
+    assert _schema([
+        _type('Query', 'OBJECT', fields=[
+            _field('userId', _non_null(_scalar('UserIdInt')), args=[
+                _ival('uid', _non_null(_scalar('UserIdInt')), defaultValue='1'),
+            ]),
+        ], ),
+        _type('UserIdInt', 'SCALAR'),
+    ]) == introspect(graph)
+
 
 @pytest.mark.parametrize('name, expected', [
     ('YesNo', {'kind': 'SCALAR'}),
