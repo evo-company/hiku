@@ -100,6 +100,8 @@ expected = """
     }
     
     scalar Any
+
+    scalar _FieldSet
     
     union Bucket = Cart
     
