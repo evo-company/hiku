@@ -1,9 +1,9 @@
 from typing import Iterator, List
 
-from hiku.graph import Graph
-
-from hiku.extensions.base_extension import Extension, ExtensionFactory
+from hiku.context import ExecutionContext
+from hiku.extensions.base_extension import Extension
 from hiku.extensions.base_validator import QueryValidator
+from hiku.graph import Graph
 from hiku.query import Field, Link, Node
 
 
@@ -52,7 +52,7 @@ class _QueryDepthValidator(QueryValidator):
         self._current_depth -= 1
 
 
-class _QueryDepthValidatorImpl(Extension):
+class QueryDepthValidator(Extension):
     """Use this extension to limit the maximum allowed query depth.
 
     Example:
@@ -62,20 +62,14 @@ class _QueryDepthValidatorImpl(Extension):
 
     """
 
-    def __init__(self, validator: _QueryDepthValidator):
-        self._validator = validator
+    def __init__(self, max_depth: int):
+        self._validator = _QueryDepthValidator(max_depth)
 
-    def on_dispatch(self) -> Iterator[None]:
-        self.execution_context.validators = (
-            self.execution_context.validators + tuple([self._validator])
+    def on_dispatch(
+        self, execution_context: ExecutionContext
+    ) -> Iterator[None]:
+        execution_context.validators = execution_context.validators + tuple(
+            [self._validator]
         )
 
         yield
-
-
-class QueryDepthValidator(ExtensionFactory):
-    ext_class = _QueryDepthValidatorImpl
-
-    def __init__(self, max_depth: int):
-        self._validator = _QueryDepthValidator(max_depth)
-        super().__init__(self._validator)
