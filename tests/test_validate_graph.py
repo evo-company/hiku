@@ -283,3 +283,12 @@ def test_link_uses_more_than_one_deprecated_directive():
         ],
         ['Deprecated directive must be used only once for "bar.baz", found 2'],
     )
+
+
+def test_graph_contain_duplicate_nodes():
+    check_errors(
+        [
+            Node("foo", [], description=tuple("foo")),
+        ],
+        ['Node "foo" description must be a string'],
+    )

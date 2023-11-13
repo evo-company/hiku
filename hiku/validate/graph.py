@@ -20,9 +20,14 @@ from ..graph import (
 )
 from ..graph import AbstractNode, AbstractField, AbstractLink, AbstractOption
 
+from ..compat import Protocol
 from .errors import Errors
 from ..scalar import Scalar
 from ..types import GenericMeta, OptionalMeta
+
+
+class DescriptionProtocol(Protocol):
+    description: t.Optional[str]
 
 
 class GraphValidationError(TypeError):
@@ -134,6 +139,15 @@ class GraphValidator(GraphVisitor):
                 )
             )
 
+    def _validate_description(self, obj: DescriptionProtocol) -> None:
+        if obj.description is not None:
+            if not isinstance(obj.description, str):
+                self.errors.report(
+                    '{} "{}" description must be a string'.format(
+                        obj.__class__.__name__, self._format_path(obj)
+                    ),
+                )
+
     def visit_option(self, obj: Option) -> None:
         if (
             isinstance(obj.type, GenericMeta)
@@ -145,6 +159,8 @@ class GraphValidator(GraphVisitor):
                     self._format_path(obj)
                 ),
             )
+
+        self._validate_description(obj)
 
     def visit_field(self, obj: Field) -> None:
         invalid = [
@@ -186,6 +202,7 @@ class GraphValidator(GraphVisitor):
             )
             return
 
+        self._validate_description(obj)
         self._validate_deprecated_duplicates(obj)
 
     def visit_link(self, obj: Link) -> None:
@@ -230,6 +247,7 @@ class GraphValidator(GraphVisitor):
                         )
                     )
 
+        self._validate_description(obj)
         self._validate_deprecated_duplicates(obj)
 
     def visit_node(self, obj: Node) -> None:
@@ -269,6 +287,8 @@ class GraphValidator(GraphVisitor):
                         )
                     )
 
+        self._validate_description(obj)
+
     def visit_union(self, obj: "Union") -> t.Any:
         if not obj.name:
             self.errors.report("Union must have a name")
@@ -287,6 +307,8 @@ class GraphValidator(GraphVisitor):
                 )
             )
             return
+
+        self._validate_description(obj)
 
     def visit_interface(self, obj: "Interface") -> t.Any:
         if not obj.name:
@@ -311,6 +333,8 @@ class GraphValidator(GraphVisitor):
             )
             return
 
+        self._validate_description(obj)
+
     def visit_enum(self, obj: BaseEnum) -> t.Any:
         if not obj.name:
             self.errors.report("Enum must have a name")
@@ -319,6 +343,8 @@ class GraphValidator(GraphVisitor):
         if not obj.values:
             self.errors.report("Enum must have at least one value")
             return
+
+        self._validate_description(obj)
 
     def visit_scalar(self, obj: t.Type[Scalar]) -> t.Any:
         ...
