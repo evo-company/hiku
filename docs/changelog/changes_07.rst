@@ -1,8 +1,8 @@
 Changes in 0.7
 ==============
 
-0.7.0rcX
-~~~~~~~~
+0.7.0
+~~~~~
 
   - Dropped support for Python 3.6, which ended support on 2021-12-23
   - Added support for Python 3.10
