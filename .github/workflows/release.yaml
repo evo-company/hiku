@@ -38,8 +38,6 @@ jobs:
         draft: false
         prerelease: ${{ steps.check_version.outputs.PRERELEASE }}
     - name: Set up PDM
-      uses: pdm-project/setup-pdm@v3
-      with:
-        python-version: "3.8"
+      run: pip install pdm==2.10.4
     - name: Publish package distributions to PyPI
       run: pdm publish -u "__token__" -P ${{ secrets.TWINE_PASSWORD }}
