@@ -1,27 +1,14 @@
 from collections import defaultdict
-
-from typing import (
-    Optional,
-    Dict,
-    Iterator,
-    Tuple,
-    Union,
-    List,
-    cast,
-    Any,
-    Set,
-)
+from typing import Any, cast, Dict, Iterator, List, Optional, Set, Tuple, Union
 
 from graphql.language import ast
 from graphql.language.parser import parse
+
 from hiku.utils import ImmutableDict
 
-from ..directives import (
-    Cached,
-    Directive,
-)
+from ..directives import Cached, Directive
 from ..operation import Operation, OperationType
-from ..query import FieldOrLink, Fragment, Node, Field, Link, merge
+from ..query import Field, FieldOrLink, Fragment, Link, merge, Node
 
 
 def parse_query(src: str) -> ast.DocumentNode:
@@ -93,7 +80,7 @@ class OperationGetter(NodeVisitor):
             try:
                 return self._operations[self._operation_name]
             except KeyError:
-                raise ValueError(
+                raise TypeError(
                     "Undefined operation name: {!r}".format(
                         self._operation_name
                     )
@@ -257,6 +244,9 @@ class SelectionSetVisitMixin:
                 type_name = item.type_condition.name.value
                 selection_set = item.selection_set
             elif isinstance(item, ast.FragmentSpreadNode):
+                if item.name.value not in fragments_map:
+                    raise TypeError(f'Undefined fragment: "{item.name.value}"')
+
                 fragment = fragments_map[item.name.value]
                 type_name = fragment.type_condition.name.value
                 selection_set = fragment.selection_set
@@ -376,6 +366,8 @@ class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
         self.pending_fragments: Set[str] = set()
 
     def transform_fragment(self, name: str) -> List[Union[Field, Link]]:
+        if name not in self.fragments_map:
+            raise TypeError(f'Undefined fragment: "{name}"')
         return self.visit(self.fragments_map[name])
 
     def visit_operation_definition(
