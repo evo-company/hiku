@@ -21,7 +21,7 @@ jobs:
     - name: Set up PDM
       uses: pdm-project/setup-pdm@v3
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: "3.8"
     - name: Install dependencies
       run: |
         pdm sync -d -G test -G dev

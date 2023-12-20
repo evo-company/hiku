@@ -40,6 +40,6 @@ jobs:
     - name: Set up PDM
       uses: pdm-project/setup-pdm@v3
       with:
-        python-version: "3.7"
+        python-version: "3.8"
     - name: Publish package distributions to PyPI
       run: pdm publish -u "__token__" -P ${{ secrets.TWINE_PASSWORD }}
