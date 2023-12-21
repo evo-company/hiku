@@ -1,11 +1,14 @@
 import pytest
-
 from graphql.language import ast
 from graphql.language.parser import parse
 
-from hiku.query import Fragment, Node, Field, Link
-from hiku.readers.graphql import read, OperationGetter
-from hiku.readers.graphql import read_operation, OperationType
+from hiku.query import Field, Fragment, Link, Node
+from hiku.readers.graphql import (
+    OperationGetter,
+    OperationType,
+    read,
+    read_operation,
+)
 
 
 def check_read(source, query, variables=None):
@@ -281,6 +284,34 @@ def test_reference_cycle_in_fragments():
         """
         )
     err.match('Cyclic fragment usage: "Pakol"')
+
+
+def test_non_existent_fragment_root():
+    with pytest.raises(TypeError) as err:
+        read(
+            """
+        query Pelota {
+          sinope
+          ...Pakol
+        }
+        """
+        )
+    err.match('Undefined fragment: "Pakol"')
+
+
+def test_non_existent_fragment():
+    with pytest.raises(TypeError) as err:
+        read(
+            """
+        query Pelota {
+          sinope
+          pins {
+            ...Splosh
+          }
+        }
+        """
+        )
+    err.match('Undefined fragment: "Splosh"')
 
 
 def test_duplicated_fragment_names():

@@ -251,3 +251,8 @@ ignore_missing_imports = true
 [tool.black]
 line-length = 80
 target-version = ['py37']
+
+[tool.isort]
+py_version = "37"
+profile = "black"
+line_length = 80
