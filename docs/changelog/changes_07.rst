@@ -1,6 +1,11 @@
 Changes in 0.7
 ==============
 
+0.7.1
+~~~~~
+
+  - Fixed bug in graphql parser with undefined fragment used in query
+
 0.7.0
 ~~~~~
 
