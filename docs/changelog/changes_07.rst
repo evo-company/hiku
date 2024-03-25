@@ -1,6 +1,11 @@
 Changes in 0.7
 ==============
 
+0.7.
+~~~~~
+
+  - Wrap functions in `hiku.telemetry.prometheus.py` to retain original function name in metrics
+
 0.7.1
 ~~~~~
 
