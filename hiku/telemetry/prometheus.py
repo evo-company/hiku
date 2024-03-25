@@ -1,7 +1,7 @@
 import contextvars
 import time
 from abc import abstractmethod
-from functools import partial
+from functools import partial, update_wrapper, wraps
 from typing import Dict, Optional
 
 from prometheus_client import Summary
@@ -28,6 +28,7 @@ def _get_default_metric():
 def _func_field_names(func):
     fields_pos = 1 if _do_pass_context(func) else 0
 
+    @wraps(func)
     def wrapper(*args):
         return func([f.name for f in args[fields_pos]], *args)
 
@@ -35,6 +36,7 @@ def _func_field_names(func):
 
 
 def _subquery_field_names(func):
+    @wraps(func)
     def wrapper(fields, *args):
         return func([f.name for _, f in fields], fields, *args)
 
@@ -99,11 +101,18 @@ class GraphMetricsBase(GraphTransformer):
         wrapper = _func_field_names(wrapper)
         if _do_pass_context(func):
             wrapper = pass_context(wrapper)
+        update_wrapper(wrapper, func)
         return wrapper
 
     def _wrap_link(self, node_name, link_name, func):
         observe = self._observe_fields(node_name)
         wrapper = self.link_wrapper(observe, func)
+
+        if isinstance(func, partial):
+            update_wrapper(wrapper, func.func, updated=())
+        else:
+            update_wrapper(wrapper, func)
+
         if _do_pass_context(func):
             wrapper = pass_context(wrapper)
         wrapper = partial(wrapper, link_name)
@@ -183,6 +192,7 @@ class _SubqueryMixin:
 
 class GraphMetrics(_SubqueryMixin, GraphMetricsBase):
     def field_wrapper(self, observe, func):
+        @wraps(func)
         def wrapper(field_names, *args):
             start_time = time.perf_counter()
             result = func(*args)
@@ -205,6 +215,7 @@ class GraphMetrics(_SubqueryMixin, GraphMetricsBase):
 
 class AsyncGraphMetrics(_SubqueryMixin, GraphMetricsBase):
     def field_wrapper(self, observe, func):
+        @wraps(func)
         async def wrapper(field_names, *args):
             start_time = time.perf_counter()
             result = await func(*args)
