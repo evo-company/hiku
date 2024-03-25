@@ -18,8 +18,7 @@ commands:
       Example:
         lets release 0.7.1 --message="Added federation"
         lets release 0.7.2rc1 --message="Added feature"
-    cmd: |
-      VERSION=${LETSOPT_VERSION} MESSAGE=${LETSOPT_MESSAGE} pdm run release
+    cmd: ./scripts/release.sh ${LETSOPT_VERSION} "${LETSOPT_MESSAGE}"
 
   _build-base:
     description: Build base docker image
