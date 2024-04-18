@@ -8,14 +8,18 @@ from hiku.graph import (
     Field,
     Link,
     Option,
-    Root, Union,
+    Root,
+    Union,
 )
 from hiku.types import (
-    Boolean, EnumRef, Record,
+    Boolean,
+    EnumRef,
+    Record,
     Integer,
     String,
     TypeRef,
     Optional,
+    UnionRef,
 )
 from hiku.scalar import Scalar
 from hiku.graph import apply
@@ -80,6 +84,15 @@ GRAPH = Graph([
         Link(
             'order',
             Optional[TypeRef['Order']],
+            link_resolver,
+            requires=None,
+            options=[
+                Option('id', Integer),
+            ],
+        ),
+        Link(
+            'bucket',
+            UnionRef['Bucket'],
             link_resolver,
             requires=None,
             options=[
@@ -153,6 +166,7 @@ expected_tmpl = """
 
     extend type Query {
       order(id: Int!): Order
+      bucket(id: Int!): Bucket!
     }
     %s
     scalar Any
@@ -205,5 +219,4 @@ def test_print_introspected_graph_sdl():
     ])
 
     sdl = print_sdl(INTROSPECTED_GRAPH)
-
     assert sdl.strip() == textwrap.dedent(expected).strip()

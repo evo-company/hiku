@@ -26,7 +26,7 @@ services:
   dev:
     <<: *base
     image: hiku-dev
-    
+
   docs:
     <<: *base
     image: hiku-docs
@@ -41,23 +41,23 @@ services:
   examples-federation:
     <<: *examples-base
     command: python3 examples/graphql_federation.py
-    
+
   examples-federation-v2:
     <<: *examples-base
     command: python3 examples/graphql_federation_v2.py
-  
+
   examples-flask:
     <<: *examples-base
-    command: python3 examples/graphql_flask.py  
-              
+    command: python3 examples/graphql_flask.py
+
   examples-aiohttp:
     <<: *examples-base
     command: python3 examples/graphql_aiohttp.py
-    
+
   federation-compatibility-server:
     <<: *examples-base
     entrypoint: pdm run python examples/federation-compatibility/server.py
-    
+
   test-base: &test-base
     <<: *base
     image: hiku-tests
