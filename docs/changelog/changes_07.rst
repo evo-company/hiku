@@ -1,10 +1,14 @@
 Changes in 0.7
 ==============
 
-0.7.
+0.7.x
+~~~~~
+
+0.7.2
 ~~~~~
 
   - Wrap functions in `hiku.telemetry.prometheus.py` to retain original function name in metrics
+  - [fix] Add missing UnionRef to federation sdl generation
 
 0.7.1
 ~~~~~
