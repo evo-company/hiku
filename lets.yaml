@@ -38,7 +38,7 @@ commands:
     description: Build docker image for test
     depends: [_build-base]
     cmd: docker build -t hiku-tests -f Dockerfile --target tests .
-    
+
   _build-dev:
     description: Build docker image for dev
     depends: [_build-base]
@@ -53,7 +53,7 @@ commands:
     description: Run tests
     depends: [_build-tests]
     cmd: [docker-compose, run, --rm, test]
-    
+
   test-tox:
     description: Run tests using tox
     depends: [_build-tests]
@@ -68,7 +68,7 @@ commands:
     description: Run flake8
     depends: [_build-dev]
     cmd: docker-compose run --rm dev pdm run flake
-    
+
   black:
     description: Run flake8
     depends: [_build-dev]
@@ -83,7 +83,7 @@ commands:
     description: Run federation app from examples
     depends: [_build-examples]
     cmd: docker-compose up examples-federation
-    
+
   examples-federation-v2:
     description: Run federation 2 app from examples
     depends: [_build-examples]

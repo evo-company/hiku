@@ -39,6 +39,7 @@ from hiku.graph import (
 from hiku.scalar import ScalarMeta
 from hiku.types import (
     EnumRefMeta,
+    UnionRefMeta,
     IDMeta,
     IntegerMeta,
     MappingMeta,
@@ -100,6 +101,8 @@ def _encode_type(
                 return f"IO{val.__type_name__}"
             return val.__type_name__
         elif isinstance(val, EnumRefMeta):
+            return val.__type_name__
+        elif isinstance(val, UnionRefMeta):
             return val.__type_name__
         elif isinstance(val, ScalarMeta):
             return val.__type_name__
