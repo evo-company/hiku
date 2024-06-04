@@ -1,4 +1,5 @@
 import textwrap
+from typing import Any
 
 from hiku.directives import Location
 from hiku.enum import Enum
@@ -7,15 +8,20 @@ from hiku.graph import (
     Field,
     Link,
     Option,
-    Root, Union,
+    Root,
+    Union,
 )
 from hiku.types import (
-    Boolean, EnumRef, Record,
+    Boolean,
+    EnumRef,
+    Record,
     Integer,
     String,
     TypeRef,
     Optional,
+    UnionRef,
 )
+from hiku.scalar import Scalar
 from hiku.graph import apply
 
 from hiku.federation.graph import FederatedNode, Graph
@@ -41,6 +47,16 @@ class Custom(FederationSchemaDirective):
     ...
 
 
+class Long(Scalar):
+    @classmethod
+    def parse(cls, value: Any) -> int:
+        return int(value)
+
+    @classmethod
+    def serialize(cls, value: Any) -> int:
+        return int(value)
+
+
 SaveOrderResultNode = Node(
     "SaveOrderResult",
     [
@@ -62,11 +78,21 @@ GRAPH = Graph([
     ], directives=[Key('id')]),
     FederatedNode('CartItem', [
         Field('id', Integer, field_resolver),
+        Field('productId', Long, field_resolver),
     ], directives=[Key('id', resolvable=False)]),
     Root([
         Link(
             'order',
             Optional[TypeRef['Order']],
+            link_resolver,
+            requires=None,
+            options=[
+                Option('id', Integer),
+            ],
+        ),
+        Link(
+            'bucket',
+            UnionRef['Bucket'],
             link_resolver,
             requires=None,
             options=[
@@ -83,7 +109,7 @@ GRAPH = Graph([
     Union('Bucket', ['Cart'])
 ], enums=[
     Enum('Currency', ['UAH', 'USD'])
-])
+], scalars=[Long])
 
 
 MUTATION_GRAPH = Graph.from_graph(
@@ -135,13 +161,23 @@ expected_tmpl = """
     
     type CartItem @key(fields: "id", resolvable: false) {
       id: Int!
+      productId: Long!
     }
 
     extend type Query {
       order(id: Int!): Order
+      bucket(id: Int!): Bucket!
     }
     %s
     scalar Any
+
+    scalar Long
+
+    scalar _Any
+
+    scalar _FieldSet
+
+    scalar link__Import
 
     enum Currency {
       UAH
@@ -183,5 +219,4 @@ def test_print_introspected_graph_sdl():
     ])
 
     sdl = print_sdl(INTROSPECTED_GRAPH)
-
     assert sdl.strip() == textwrap.dedent(expected).strip()

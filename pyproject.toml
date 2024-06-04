@@ -103,29 +103,6 @@ proto-tests = "python -m grpc_tools.protoc -I. --python_out=. tests/protobuf/res
 proto-example = "python -m grpc_tools.protoc -I. --python_out=. docs/example.proto"
 proto = {composite = ["proto-query", "proto-tests", "proto-example"]}
 
-[tool.pdm.scripts.release]
-shell = """
-set -e
-USAGE="Usage: VERSION=<> MESSAGE=<> pdm run release"
-
-if [ -z "${VERSION}" ]; then
-    echo $USAGE
-    echo "VERSION is not set"
-    exit 1
-fi
-if [ -z "${MESSAGE}" ]; then
-    echo $USAGE
-    echo "MESSAGE is not set"
-    exit 1
-fi
-echo "__version__ = \\"${VERSION}\\"" > hiku/__init__.py
-git add hiku/__init__.py
-git commit -m "Release ${VERSION}"
-git tag -a v${VERSION} -m "${MESSAGE}"
-git push origin master --tags
-"""
-env = {VERSION = "", MESSAGE = ""}
-
 [tool.pytest.ini_options]
 addopts = "--tb=native --benchmark-disable"
 testpaths = [
@@ -257,3 +234,8 @@ ignore_missing_imports = true
 [tool.black]
 line-length = 80
 target-version = ['py37']
+
+[tool.isort]
+py_version = "37"
+profile = "black"
+line_length = 80

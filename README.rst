@@ -18,6 +18,11 @@ Bug fixes and new features are frequently published via release candidates:
 
   $ pip3 install --upgrade --pre hiku
 
+Documentation
+~~~~~~~~~~~~~
+
+Read documentation_
+
 Optional dependencies
 ~~~~~~~~~~~~~~~~~~~~~
 

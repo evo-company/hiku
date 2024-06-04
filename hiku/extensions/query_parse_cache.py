@@ -3,9 +3,9 @@ from typing import Iterator, Optional
 
 from prometheus_client import Gauge
 
+from hiku.context import ExecutionContext
 from hiku.extensions.base_extension import Extension
 from hiku.readers.graphql import parse_query
-
 
 QUERY_CACHE_HITS = Gauge("hiku_query_cache_hits", "Query cache hits")
 QUERY_CACHE_MISSES = Gauge("hiku_query_cache_misses", "Query cache misses")
@@ -24,9 +24,7 @@ class QueryParserCache(Extension):
     def __init__(self, maxsize: Optional[int] = None):
         self.cached_parser = lru_cache(maxsize=maxsize)(parse_query)
 
-    def on_parse(self) -> Iterator[None]:
-        execution_context = self.execution_context
-
+    def on_parse(self, execution_context: ExecutionContext) -> Iterator[None]:
         execution_context.graphql_document = self.cached_parser(
             execution_context.query_src,
         )

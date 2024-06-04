@@ -1,8 +1,22 @@
 Changes in 0.7
 ==============
 
-0.7.0rcX
-~~~~~~~~
+0.7.x
+~~~~~
+
+0.7.2
+~~~~~
+
+  - Wrap functions in `hiku.telemetry.prometheus.py` to retain original function name in metrics
+  - [fix] Add missing UnionRef to federation sdl generation
+
+0.7.1
+~~~~~
+
+  - Fixed bug in graphql parser with undefined fragment used in query
+
+0.7.0
+~~~~~
 
   - Dropped support for Python 3.6, which ended support on 2021-12-23
   - Added support for Python 3.10
@@ -57,12 +71,14 @@ Changes in 0.7
   - Added support for enums :ref:`Check enums documentation <enums-doc>`
   - Added support for custom scalars :ref:`Check custom scalars documentation <scalars-doc>`
   - Added support for extensions :ref:`Check extensions documentation <extensions-doc>`
+
     - Added ``QueryParseCache`` extension - cache parsed graphql queries ast.
     - Added ``QueryTransformCache`` extension - cache transformed graphql ast into query Node.
     - Added ``QueryValidationCache`` extension - cache query validation.
     - Added ``QueryDepthValidator`` extension - validate query depth
     - Added ``PrometheusMetrics`` extension - wrapper around ``GraphMetrics`` visitor
     - Added ``PrometheusMetricsAsync`` extension - wrapper around ``AsyncGraphMetrics`` visitor
+
   - Add new method ``Engine.execute_context``, which accepts ``ExecutionContext``. ``Engine.execute`` now dispatches to ``Engine.execute_context``.
   - Add new method ``Engine.execute_mutation``, which allows to execute query against mutation graph
   - Add optional ``context`` argument to ``GraphqlEndpoint.dispatch`` method

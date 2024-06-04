@@ -39,6 +39,7 @@ from hiku.graph import (
 from hiku.scalar import ScalarMeta
 from hiku.types import (
     EnumRefMeta,
+    UnionRefMeta,
     IDMeta,
     IntegerMeta,
     MappingMeta,
@@ -53,13 +54,16 @@ from hiku.types import (
     GenericMeta,
 )
 
+
+def _name(value: t.Optional[str]) -> t.Optional[ast.NameNode]:
+    return ast.NameNode(value=value) if value is not None else None
+
+
 _BUILTIN_DIRECTIVES_NAMES = {
     directive.__directive_info__.name for directive in _BUILTIN_DIRECTIVES
 }
 
-
-def _name(value: t.Optional[str]) -> t.Optional[ast.NameNode]:
-    return ast.NameNode(value=value) if value is not None else None
+_BUILTIN_SCALARS = [ast.ScalarTypeDefinitionNode(name=_name("Any"))]
 
 
 @t.overload
@@ -97,6 +101,8 @@ def _encode_type(
                 return f"IO{val.__type_name__}"
             return val.__type_name__
         elif isinstance(val, EnumRefMeta):
+            return val.__type_name__
+        elif isinstance(val, UnionRefMeta):
             return val.__type_name__
         elif isinstance(val, ScalarMeta):
             return val.__type_name__
@@ -237,7 +243,7 @@ class Exporter(GraphVisitor):
                 if self.mutation_graph
                 else []
             ),
-            self.get_any_scalar(),
+            *self.export_scalars(),
             *self.export_enums(),
             *self.export_unions(),
             self.get_service_type(),
@@ -373,8 +379,22 @@ class Exporter(GraphVisitor):
             )
         return directives
 
-    def get_any_scalar(self) -> ast.ScalarTypeDefinitionNode:
-        return ast.ScalarTypeDefinitionNode(name=_name("Any"))
+    def export_scalars(self) -> t.List[ast.ScalarTypeDefinitionNode]:
+        scalars = []
+        for scalar in self.graph.scalars:
+            if hasattr(scalar, "__federation_versions__"):
+                if (
+                    self.federation_version
+                    not in scalar.__federation_versions__
+                ):  # noqa: E501
+                    continue
+
+            scalars.append(
+                ast.ScalarTypeDefinitionNode(
+                    name=_name(scalar.__type_name__),
+                )
+            )
+        return _BUILTIN_SCALARS + scalars
 
     def export_enums(self) -> t.List[ast.EnumTypeDefinitionNode]:
         enums = []

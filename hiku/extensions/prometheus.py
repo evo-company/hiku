@@ -3,12 +3,13 @@ from typing import Iterator, Optional, Type
 
 from prometheus_client.metrics import MetricWrapperBase
 
+from hiku.context import ExecutionContext
+from hiku.extensions.base_extension import Extension
 from hiku.telemetry.prometheus import (
     AsyncGraphMetrics,
     GraphMetrics,
     GraphMetricsBase,
 )
-from hiku.extensions.base_extension import Extension
 
 
 class PrometheusMetrics(Extension):
@@ -27,17 +28,17 @@ class PrometheusMetrics(Extension):
             self._name, metric=self._metric, ctx_var=ctx_var
         )
 
-    def on_graph(self) -> Iterator[None]:
-        self.execution_context.transformers = (
-            self.execution_context.transformers + (self._transformer,)
+    def on_graph(self, execution_context: ExecutionContext) -> Iterator[None]:
+        execution_context.transformers = execution_context.transformers + (
+            self._transformer,
         )
         yield
 
-    def on_execute(self) -> Iterator[None]:
+    def on_execute(self, execution_context: ExecutionContext) -> Iterator[None]:
         if self._ctx_var is None:
             yield
         else:
-            token = self._ctx_var.set(self.execution_context.context)
+            token = self._ctx_var.set(execution_context.context)
             yield
             self._ctx_var.reset(token)
 

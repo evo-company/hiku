@@ -5,7 +5,8 @@ from hiku.graph import (
     Field,
     Link,
     Option,
-    Root, Union,
+    Root,
+    Union,
 )
 from hiku.types import (
     Record,
@@ -13,6 +14,7 @@ from hiku.types import (
     String,
     TypeRef,
     Optional,
+    UnionRef,
 )
 from hiku.graph import apply
 
@@ -61,6 +63,15 @@ GRAPH = Graph([
                 Option('id', Integer),
             ],
         ),
+        Link(
+            'bucket',
+            UnionRef['Bucket'],
+            link_resolver,
+            requires=None,
+            options=[
+                Option('id', Integer),
+            ],
+        ),
     ]),
 ], data_types={
     'Status': Record[{
@@ -97,9 +108,12 @@ expected = """
 
     extend type Query {
       order(id: Int!): Order
+      bucket(id: Int!): Bucket!
     }
     
     scalar Any
+
+    scalar _FieldSet
     
     union Bucket = Cart
     

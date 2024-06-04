@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Iterator, Optional
 
+from hiku.context import ExecutionContext
 from hiku.endpoint.graphql import _run_validation
 from hiku.extensions.base_extension import Extension
 
@@ -14,9 +15,9 @@ class QueryValidationCache(Extension):
     def __init__(self, maxsize: Optional[int] = None):
         self.cached_validator = lru_cache(maxsize=maxsize)(_run_validation)
 
-    def on_validate(self) -> Iterator[None]:
-        execution_context = self.execution_context
-
+    def on_validate(
+        self, execution_context: ExecutionContext
+    ) -> Iterator[None]:
         execution_context.errors = self.cached_validator(
             execution_context.graph,
             execution_context.query,

@@ -21,7 +21,7 @@ def db_dsn_fixture(request):
     db_dsn = 'postgresql://postgres:postgres@{}:5432/{}'.format(host, name)
 
     pg_engine = sqlalchemy.create_engine(pg_dsn)
-    pg_engine.raw_connection()\
+    pg_engine.raw_connection() \
         .set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
     pg_engine.execute('CREATE DATABASE {0}'.format(name))
     pg_engine.dispose()

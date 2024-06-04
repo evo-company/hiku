@@ -36,10 +36,13 @@ Writing extension
 
 .. code-block:: python
 
-    from hiku.extensions import Extension
+    from typing import Iterator
+
+    from hiku.extensions.base_extension import Extension
+    from hiku.context import ExecutionContext
 
     class TimeItExtension(Extension):
-        def on_execute(self):
+        def on_execute(self, execution_context: ExecutionContext) -> Iterator[None]:
             start = time.perf_counter()
             yield
             print('Query execution took {:.3f} seconds'.format(time.perf_counter() - start))

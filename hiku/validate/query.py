@@ -3,6 +3,8 @@ import typing as t
 from contextlib import contextmanager
 from collections import abc as collections_abc
 
+from hiku.scalar import ScalarMeta
+
 from ..types import (
     AbstractTypeVisitor,
     IDMeta,
@@ -11,6 +13,7 @@ from ..types import (
     SequenceMeta,
     RecordMeta,
     TypeRefMeta,
+    EnumRefMeta,
     GenericMeta,
     AnyMeta,
     BooleanMeta,
@@ -243,6 +246,14 @@ class _OptionTypeValidator:
             type_.__type_name__ in self._data_types
         ), f'"{type_.__type_name__}" type is not present in graph data_types'
         self.visit(self._data_types[type_.__type_name__])
+
+    # TODO: add scalar validation errors
+    def visit_scalar(self, type_: ScalarMeta) -> None:
+        pass
+
+    # TODO: add enum validation errors
+    def visit_enumref(self, type_: EnumRefMeta) -> None:
+        pass
 
 
 class _ValidateOptions(GraphVisitor):

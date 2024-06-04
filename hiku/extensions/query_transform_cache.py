@@ -1,10 +1,10 @@
 from functools import lru_cache
 from typing import Iterator, Optional
 
-from hiku.utils import to_immutable_dict
-
+from hiku.context import ExecutionContext
 from hiku.extensions.base_extension import Extension
 from hiku.readers.graphql import read_operation
+from hiku.utils import to_immutable_dict
 
 
 class QueryTransformCache(Extension):
@@ -18,9 +18,9 @@ class QueryTransformCache(Extension):
             read_operation
         )
 
-    def on_operation(self) -> Iterator[None]:
-        execution_context = self.execution_context
-
+    def on_operation(
+        self, execution_context: ExecutionContext
+    ) -> Iterator[None]:
         execution_context.operation = self.cached_operation_reader(
             execution_context.graphql_document,
             to_immutable_dict(execution_context.variables)
