@@ -4,6 +4,12 @@ Changes in 0.7
 0.7.x
 ~~~~~
 
+0.7.3
+~~~~~
+
+  - Added support for Python 3.12
+  - Fixed fragments merging. Previously we were merging fragments to aggresively, and it broke unions support in some cases. Fixed in `PR-151 <https://github.com/evo-company/hiku/pull/151>` _
+
 0.7.2
 ~~~~~
 
