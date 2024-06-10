@@ -179,7 +179,55 @@ def test_mutation_operation():
     )
 
 
-def test_named_fragments():
+def test_named_fragments() -> None:
+    PinsLink = Link(
+        "pins",
+        Node(
+            [
+                Field("gunya"),
+                Link(
+                    "kilned",
+                    Node([Field("rusk")]),
+                ),
+            ],
+            [],
+        ),
+    )
+
+    SneezerLink = Link(
+        "sneezer",
+        Node(
+            [
+                Field("flowers"),
+                Field("apres"),
+            ],
+            [
+                Fragment('Makai', [
+                    Field("doozie"),
+                    PinsLink
+                ]),
+            ]
+        ),
+        options={"gire": "noatak"},
+    )
+
+    GiltsLink = Link(
+        "gilts",
+        Node(
+            [
+                SneezerLink
+            ],
+            [
+                Fragment("Valium", [
+                    Link(
+                        "movies",
+                        Node([Field("boree")]),
+                    ),
+                ]),
+            ]
+        ),
+    )
+
     check_read(
         """
         query Juger {
@@ -200,6 +248,9 @@ def test_named_fragments():
           doozie
           pins {
             gunya
+            kilned {
+                rusk
+            }
             ...Meer
           }
         }
@@ -209,59 +260,7 @@ def test_named_fragments():
           }
         }
         """,
-        Node(
-            [
-                Link(
-                    "gilts",
-                    Node(
-                        [
-                            Link(
-                                "sneezer",
-                                Node(
-                                    [
-                                        Field("flowers"),
-                                        Field("apres"),
-                                        Link(
-                                            "pins",
-                                            Node(
-                                                [
-                                                    Field("gunya"),
-
-                                                    Link(
-                                                        "kilned",
-                                                        Node(
-                                                            [
-                                                                Field("rusk"),
-                                                            ]
-                                                        ),
-                                                    ),
-                                                ], [],
-                                            ),
-                                        ),
-
-                                    ], [
-                                        Fragment('Makai', [
-                                            Field("doozie"),
-                                        ]),
-                                    ]
-                                ),
-                                options={"gire": "noatak"},
-                            ),
-
-                            Link(
-                                "movies",
-                                Node(
-                                    [
-                                        Field("boree"),
-                                    ]
-                                ),
-                            ),
-                        ],
-                        []
-                    ),
-                ),
-            ]
-        ),
+        Node([GiltsLink]),
     )
 
 
@@ -719,7 +718,54 @@ def test_parse_interface_with_one_fragment():
     )
 
 
-def test_merge_node_with_fragment_on_node():
+def test_merge_node_with_fragment_on_node() -> None:
+    check_read(
+        """
+        query GetContext {
+            context {
+                user {
+                    id
+                    name
+                    ... on User {
+                        id
+                        email
+                    }
+                }
+                ... on Context {
+                    user {
+                        ... on User {
+                            id
+                            email
+                        }
+                    }
+                }
+            }
+        }
+        """,
+
+        Node(
+            [
+                Link(
+                    "context",
+                    Node([
+                        Link("user", Node([
+                            Field("id"),
+                            Field("name"),
+                        ], [
+                            Fragment('User', [
+                                Field("email"),
+                            ]),
+                        ])),
+                    ], []),
+                )
+            ]
+        ),
+    )
+
+
+
+def test_merge_fragment_for_union() -> None:
+    """We do not know if fragments are for unions or not when we parsing query"""
     check_read(
         """
         query GetContext {

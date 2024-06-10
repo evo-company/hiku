@@ -86,6 +86,7 @@ GRAPH = Graph([
     Node('Audio', [
         Field('id', Integer, resolve_audio_fields),
         Field('duration', String, resolve_audio_fields),
+        Link('user', TypeRef['User'], link_user, requires=None),
     ]),
     Node('Video', [
         Field('id', Integer, resolve_video_fields),
@@ -330,7 +331,7 @@ def test_query_only_typename():
     }
 
 
-def test_validate_query_can_not_contain_shared_fields():
+def test_validate_query_can_not_contain_shared_fields_in_union():
     query = """
     query SearchMedia($text: String) {
       searchMedia(text: $text) {
@@ -395,3 +396,26 @@ def test_validate_union_type_field_has_no_such_option():
     assert errors == [
         'Unknown options for "Audio.duration": size',
     ]
+
+
+def test_validate_query_can_contain_shared_links():
+    # TODO: the problem here is probably because of fragment merging algorythm
+    query = """
+    query SearchMedia($text: String) {
+      searchMedia(text: $text) {
+        __typename
+        ... on Audio {
+          duration
+          user {
+            id
+          }
+        }
+        ... on Video {
+          thumbnailUrl(size: 100)
+        }
+      }
+    }
+    """
+
+    errors = validate(GRAPH, read(query, {'text': 'foo'}))
+    assert not errors

@@ -290,7 +290,6 @@ def _merge(
     link_directives: t.DefaultDict[t.Tuple, t.List] = defaultdict(list)
     to_merge = OrderedDict()
     fields_iter = chain.from_iterable(e.fields for e in nodes)
-    fragments_iter = chain.from_iterable(e.fragments for e in nodes)
 
     for field in fields_iter:
         key = field_key(field)
@@ -309,36 +308,51 @@ def _merge(
                 yield field
 
     if not visited_fields and not to_merge:
-        for fr in fragments_iter:
+        for fr in chain.from_iterable(e.fragments for e in nodes):
             yield fr
     else:
-        for fr in fragments_iter:
-            fr_fields = []
-            for field in fr.node.fields:
-                key = (field.name, field.options_hash, field.alias)
+        for node in nodes:
+            for fr in node.fragments:
+                fr_fields: t.List[FieldOrLink] = []
+                for field in fr.node.fields:
+                    key = (field.name, field.options_hash, field.alias)
 
-                if field.__class__ is Link:
-                    field = t.cast(Link, field)
-                    if key not in to_merge:
-                        to_merge[key] = [field.node]
-                        links[key] = field
+                    if field.__class__ is Link:
+                        field = t.cast(Link, field)
+
+                        # If fragment field not exists in node fields, we
+                        # can skip merging it with node fields and just
+                        # leave it in a fragment.
+                        # Field's own node will be merged as usuall
+                        if field.name not in node.fields_map:
+                            fr_fields.append(_merge_link(field))
+                            continue
+
+                        if key not in to_merge:
+                            to_merge[key] = [field.node]
+                            links[key] = field
+                        else:
+                            to_merge[key].append(field.node)
+                        link_directives[key].extend(field.directives)
                     else:
-                        to_merge[key].append(field.node)
-                    link_directives[key].extend(field.directives)
-                else:
-                    if key not in visited_fields:
-                        fr_fields.append(field)
+                        if key not in visited_fields:
+                            fr_fields.append(field)
 
-            fr_key = (fr.type_name, tuple(field_key(f) for f in fr_fields))
-            if fr_key not in visited_fragments:
-                visited_fragments.add(fr_key)
-                if fr_fields:
-                    yield Fragment(fr.type_name, fr_fields)
+                fr_key = (fr.type_name, tuple(field_key(f) for f in fr_fields))
+                if fr_key not in visited_fragments:
+                    visited_fragments.add(fr_key)
+                    if fr_fields:
+                        yield Fragment(fr.type_name, fr_fields)
 
     for key, values in to_merge.items():
         link = links[key]
         directives = link_directives[key]
         yield link.copy(node=merge(values), directives=tuple(directives))
+
+
+def _merge_link(link: Link) -> Link:
+    """Recursively merge link node fields and return new link"""
+    return link.copy(node=merge([link.node]))
 
 
 def merge(nodes: t.Iterable[Node]) -> Node:
