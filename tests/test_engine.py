@@ -1604,3 +1604,152 @@ def test_overlapped_query_node_with_fragment_union():
             },
         ]
     }
+
+
+def test_merge_fields__should_execute_each_field_once() -> None:
+    num_link_user = 0
+    num_link_info = 0
+    num_resolve_id = 0
+    num_resolve_name = 0
+
+    def resolve_user(fields, ids) -> List[Any]:
+        def get_field(f, id_) -> Any:
+            if f.name == "name":
+                nonlocal num_resolve_name
+                num_resolve_name += 1
+                return "John"
+            elif f.name == "id":
+                nonlocal num_resolve_id
+                num_resolve_id += 1
+                return id_
+
+        return [[get_field(f, id_) for f in fields] for id_ in ids]
+
+    def resolve_info(fields, ids) -> List[Any]:
+        def get_field(f, id_) -> Any:
+            if f.name == "email":
+                return "john@example.com"
+            elif f.name == "phone":
+                return "+1234567890"
+
+        return [[get_field(f, id_) for f in fields] for id_ in ids]
+
+    def link_user() -> int:
+        nonlocal num_link_user
+        num_link_user += 1
+        return 1
+
+    def link_info() -> int:
+        nonlocal num_link_info
+        num_link_info += 1
+        return 100
+
+    graph = Graph(
+        [
+            Node(
+                "User",
+                [
+                    Field("id", String, resolve_user),
+                    Field("name", String, resolve_user),
+                    Link("info", TypeRef["Info"], link_info, requires=None)
+                ],
+            ),
+            Node(
+                "Info",
+                [
+                    Field("email", String, resolve_info),
+                    Field("phone", String, resolve_info),
+                ],
+            ),
+            Node(
+                "Context",
+                [
+                    Link("user", TypeRef["User"], link_user, requires=None)
+                ],
+            ),
+            Root(
+                [Link("context", TypeRef["Context"], lambda: 100, requires=None)]
+            ),
+        ]
+    )
+
+    query = """
+    query GetUser {
+        context {
+            user {
+                id
+                ...UserFragmentA
+                ...UserFragmentB
+                ... on User {
+                    id
+                }
+            }
+            ...ContextFragment
+        }
+    }
+
+    fragment ContextFragment on Context {
+        user {
+            id
+            name
+        }
+    }
+
+    fragment UserFragmentA on User {
+        id
+        info {
+            email
+        }
+    }
+
+    fragment UserFragmentB on User {
+        id
+        name
+        info {
+            phone
+        }
+    }
+    """
+
+    data = execute_endpoint(graph, query)["data"]
+
+    assert num_link_user == 1
+    assert num_link_info == 1
+    assert num_resolve_id == 1
+    assert num_resolve_name == 1
+    assert data == {"context": {"user": {"id": 1, "name": "John", "info": {"email": "john@example.com", "phone": "+1234567890"}}}}
+
+
+def test_merge_fields__complex_field_fragment() -> None:
+    def point_func(fields):
+        return [{
+            "x": 1,
+            "y": 2,
+        }]
+
+    graph = Graph([
+        Root([
+            Field('point', TypeRef["Point"], point_func),
+        ]),
+    ], data_types={
+        'Point': Record[{
+            'x': Integer,
+            'y': Integer,
+        }],
+    })
+
+    query = """
+    query GetPoint {
+        point {
+            ...PointFragment
+        }
+    }
+
+    fragment PointFragment on User {
+        x y
+    }
+    """
+
+    data = execute_endpoint(graph, query)["data"]
+
+    assert data == {"point": {"x": 1, "y": 2}}

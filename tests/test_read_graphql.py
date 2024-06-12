@@ -190,7 +190,14 @@ def test_named_fragments() -> None:
                     Node([Field("rusk")]),
                 ),
             ],
-            [],
+            [
+                Fragment("Meer", 'Torsion', [
+                    Link(
+                        "kilned",
+                        Node([Field("rusk")]),
+                    ),
+                ]),
+            ],
         ),
     )
 
@@ -202,7 +209,7 @@ def test_named_fragments() -> None:
                 Field("apres"),
             ],
             [
-                Fragment('Makai', [
+                Fragment("Goaded", 'Makai', [
                     Field("doozie"),
                     PinsLink
                 ]),
@@ -218,7 +225,7 @@ def test_named_fragments() -> None:
                 SneezerLink
             ],
             [
-                Fragment("Valium", [
+                Fragment(None, "Valium", [
                     Link(
                         "movies",
                         Node([Field("boree")]),
@@ -599,12 +606,14 @@ def test_parse_union_with_two_fragments():
                     Node([
                         Field("__typename"),
                         ], [
-                        Fragment('Audio', [
+                        Fragment(None, 'Audio', [
                             Field("id"),
                             Field("duration"),
                         ]),
-                        Fragment('Video', [
+                        Fragment('VideoId', 'Video', [
                             Field("id"),
+                        ]),
+                        Fragment(None, 'Video', [
                             Field("thumbnailUrl"),
                         ]),
                     ]),
@@ -634,7 +643,7 @@ def test_parse_union_with_one_fragment():
                     Node([
                         Field("__typename"),
                     ], [
-                        Fragment('Audio', [
+                        Fragment(None, 'Audio', [
                             Field("id"),
                             Field("duration"),
                         ]),
@@ -672,10 +681,10 @@ def test_parse_interface_with_two_fragments():
                         Field("id"),
                         Field("duration"),
                         ], [
-                        Fragment('Audio', [
+                        Fragment(None, 'Audio', [
                             Field("album"),
                         ]),
-                        Fragment('Video', [
+                        Fragment(None, 'Video', [
                             Field("thumbnailUrl"),
                         ]),
                     ])
@@ -708,7 +717,7 @@ def test_parse_interface_with_one_fragment():
                         Field("id"),
                         Field("duration"),
                     ], [
-                        Fragment('Audio', [
+                        Fragment(None, 'Audio', [
                             Field("album"),
                         ]),
                     ]),
@@ -752,11 +761,21 @@ def test_merge_node_with_fragment_on_node() -> None:
                             Field("id"),
                             Field("name"),
                         ], [
-                            Fragment('User', [
+                            Fragment(None, 'User', [
+                                Field("id"),
                                 Field("email"),
                             ]),
                         ])),
-                    ], []),
+                    ], [
+                        Fragment(None, 'Context', [
+                            Link("user", Node([], [
+                                Fragment(None, 'User', [
+                                    Field("id"),
+                                    Field("email"),
+                                ]),
+                            ])),
+                        ]),
+                    ]),
                 )
             ]
         ),
@@ -799,11 +818,21 @@ def test_merge_fragment_for_union() -> None:
                             Field("id"),
                             Field("name"),
                         ], [
-                            Fragment('User', [
+                            Fragment(None, 'User', [
+                                Field("id"),
                                 Field("email"),
                             ]),
                         ])),
-                    ], []),
+                    ], [
+                        Fragment(None, 'Context', [
+                            Link("user", Node([], [
+                                Fragment(None, 'User', [
+                                    Field("id"),
+                                    Field("email"),
+                                ]),
+                            ])),
+                        ]),
+                    ]),
                 )
             ]
         ),

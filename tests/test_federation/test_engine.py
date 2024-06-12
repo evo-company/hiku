@@ -1,7 +1,6 @@
 import pytest
 from hiku.graph import Graph
 
-from hiku.context import create_execution_context
 from hiku.query import Node, Field, Link
 from hiku.executors.asyncio import AsyncIOExecutor
 from hiku.federation.endpoint import denormalize_entities
@@ -43,7 +42,6 @@ ENTITIES_QUERY = {
         ]
     }
 }
-QUERY = read(ENTITIES_QUERY['query'], ENTITIES_QUERY['variables'])
 
 
 SDL_QUERY = Node(fields=[
@@ -52,15 +50,17 @@ SDL_QUERY = Node(fields=[
 
 
 def test_validate_entities_query():
-    errors = validate(GRAPH, QUERY)
+    query = read(ENTITIES_QUERY['query'], ENTITIES_QUERY['variables'])
+    errors = validate(GRAPH, query)
     assert errors == []
 
 
 def test_execute_sync_executor():
-    result = execute(QUERY, GRAPH)
+    query = read(ENTITIES_QUERY['query'], ENTITIES_QUERY['variables'])
+    result = execute(query, GRAPH)
     data = denormalize_entities(
         GRAPH,
-        QUERY,
+        query,
         result,
     )
 
@@ -73,10 +73,11 @@ def test_execute_sync_executor():
 
 @pytest.mark.asyncio
 async def test_execute_async_executor():
-    result = await execute_async(QUERY, ASYNC_GRAPH)
+    query = read(ENTITIES_QUERY['query'], ENTITIES_QUERY['variables'])
+    result = await execute_async(query, ASYNC_GRAPH)
     data = denormalize_entities(
         GRAPH,
-        QUERY,
+        query,
         result,
     )
 

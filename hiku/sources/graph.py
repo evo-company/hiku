@@ -2,6 +2,7 @@ from functools import partial
 from typing import (
     NoReturn,
     List,
+    Tuple,
     Union,
     Callable,
     Iterator,
@@ -21,11 +22,15 @@ from ..graph import (
     Field,
 )
 from ..types import TypeRef, Sequence
-from ..query import merge, Node as QueryNode, Field as QueryField
+from ..query import (
+    merge,
+    Node as QueryNode,
+    Field as QueryField,
+    Link as QueryLink,
+)
 from ..types import Any
 from ..engine import (
     Query,
-    FieldGroup,
     Context,
 )
 from ..expr.refs import RequirementsExtractor
@@ -40,6 +45,7 @@ from ..expr.checker import check, fn_types
 from ..expr.compiler import ExpressionCompiler
 
 
+FieldGroup = Tuple[Field, Union[QueryField, QueryLink]]
 Expr: TypeAlias = Union[_Func, DotHandler]
 
 
@@ -176,7 +182,12 @@ class SubGraph:
 
         q = Query(queue, task_set, self.graph, reqs, ctx)
         q.process_link(
-            path, self.graph.root, this_graph_link, this_query_link, None, ids
+            path,
+            self.graph.root,
+            this_graph_link,
+            this_query_link,
+            None,
+            ids,
         )
         q.process_node(path, self.graph.root, other_reqs, None)
         return _create_result_proc(q, procs, option_values)

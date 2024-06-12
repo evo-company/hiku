@@ -133,7 +133,6 @@ class FieldBase(Base):
         else:
             return self.name
 
-    # TODO: test this hash
     def __hash__(self) -> int:
         return hash(self.index_key)
 
@@ -247,7 +246,10 @@ class Node(Base):
 
     @cached_property
     def fragments_map(self) -> FragmentMap:
-        return OrderedDict((f.type_name, f) for f in self.fragments)
+        """Only named fragments"""
+        return OrderedDict(
+            (f.name, f) for f in self.fragments if f.name is not None
+        )
 
     @cached_property
     def result_map(self) -> OrderedDict:
@@ -261,9 +263,12 @@ class Node(Base):
 
 
 class Fragment(Base):
-    __attrs__ = ("type_name", "node")
+    __attrs__ = ("name", "type_name", "node")
 
-    def __init__(self, type_name: str, fields: t.List[FieldOrLink]) -> None:
+    def __init__(
+        self, name: t.Optional[str], type_name: str, fields: t.List[FieldOrLink]
+    ) -> None:
+        self.name = name  # if None, it's an inline fragment
         self.type_name = type_name
         self.node = Node(fields)
 
@@ -285,11 +290,11 @@ def _merge(
     nodes: t.Iterable[Node],
 ) -> t.Iterator[t.Union[FieldOrLink, Fragment]]:
     visited_fields = set()
-    visited_fragments = set()
     links = {}
     link_directives: t.DefaultDict[t.Tuple, t.List] = defaultdict(list)
     to_merge = OrderedDict()
     fields_iter = chain.from_iterable(e.fields for e in nodes)
+    fragments_iter = chain.from_iterable(e.fragments for e in nodes)
 
     for field in fields_iter:
         key = field_key(field)
@@ -307,52 +312,13 @@ def _merge(
                 visited_fields.add(key)
                 yield field
 
-    if not visited_fields and not to_merge:
-        for fr in chain.from_iterable(e.fragments for e in nodes):
-            yield fr
-    else:
-        for node in nodes:
-            for fr in node.fragments:
-                fr_fields: t.List[FieldOrLink] = []
-                for field in fr.node.fields:
-                    key = (field.name, field.options_hash, field.alias)
-
-                    if field.__class__ is Link:
-                        field = t.cast(Link, field)
-
-                        # If fragment field not exists in node fields, we
-                        # can skip merging it with node fields and just
-                        # leave it in a fragment.
-                        # Field's own node will be merged as usuall
-                        if field.name not in node.fields_map:
-                            fr_fields.append(_merge_link(field))
-                            continue
-
-                        if key not in to_merge:
-                            to_merge[key] = [field.node]
-                            links[key] = field
-                        else:
-                            to_merge[key].append(field.node)
-                        link_directives[key].extend(field.directives)
-                    else:
-                        if key not in visited_fields:
-                            fr_fields.append(field)
-
-                fr_key = (fr.type_name, tuple(field_key(f) for f in fr_fields))
-                if fr_key not in visited_fragments:
-                    visited_fragments.add(fr_key)
-                    if fr_fields:
-                        yield Fragment(fr.type_name, fr_fields)
+    for fr in fragments_iter:
+        yield fr
 
     for key, values in to_merge.items():
         link = links[key]
         directives = link_directives[key]
         yield link.copy(node=merge(values), directives=tuple(directives))
-
-
-def _merge_link(link: Link) -> Link:
-    """Recursively merge link node fields and return new link"""
-    return link.copy(node=merge([link.node]))
 
 
 def merge(nodes: t.Iterable[Node]) -> Node:
@@ -372,6 +338,71 @@ def merge(nodes: t.Iterable[Node]) -> Node:
             fields.append(item)
 
     return Node(fields=fields, fragments=fragments, ordered=ordered)
+
+
+def merge_links(links: t.List[Link]) -> Link:
+    """Recursively merge link node fields and return new link"""
+    if len(links) == 1:
+        return links[0]
+
+    # directives will be the same as in the first link
+    return links[0].copy(node=collect_fields([link.node for link in links]))
+
+
+def collect_fields(nodes: t.List[Node]) -> Node:
+    """Collect fields from multiple nodes and return new node with them.
+    The main difference from `merge` is that it collects fields
+    from fragments and drops fragments.
+    """
+    assert isinstance(nodes, Sequence), type(nodes)
+    ordered = any(n.ordered for n in nodes)
+    fields = []
+    visited_fields: t.Set[KeyT] = set()
+    fragments = []
+    for item in _collect_fields(nodes, visited_fields):
+        if isinstance(item, Fragment):
+            fragments.append(item)
+        else:
+            fields.append(item)
+
+    return Node(fields=fields, fragments=fragments, ordered=ordered)
+
+
+def _collect_fields(
+    nodes: t.Iterable[Node],
+    visited_fields: t.Set[KeyT],
+) -> t.Iterator[t.Union[FieldOrLink, Fragment]]:
+    links = {}
+    link_directives: t.DefaultDict[t.Tuple, t.List] = defaultdict(list)
+    to_merge = OrderedDict()
+    fields_iter = chain.from_iterable(e.fields for e in nodes)
+    fragments_iter = chain.from_iterable(e.fragments for e in nodes)
+
+    for field in fields_iter:
+        key = field_key(field)
+
+        if field.__class__ is Link:
+            field = t.cast(Link, field)
+            if key not in to_merge:
+                to_merge[key] = [field.node]
+                links[key] = field
+            else:
+                to_merge[key].append(field.node)
+            link_directives[key].extend(field.directives)
+        else:
+            if key not in visited_fields:
+                visited_fields.add(key)
+                yield field
+
+    for fr in fragments_iter:
+        yield from _collect_fields([fr.node], visited_fields)
+
+    for key, values in to_merge.items():
+        link = links[key]
+        directives = link_directives[key]
+        yield link.copy(
+            node=collect_fields(values), directives=tuple(directives)
+        )
 
 
 class QueryVisitor:
