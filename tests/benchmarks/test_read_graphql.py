@@ -51,7 +51,7 @@ def test_link_fragment(benchmark):
                 Field("id"),
             ],
             [
-                Fragment("User", [
+                Fragment(None, "User", [
                     Field("name"),
                 ])
             ]

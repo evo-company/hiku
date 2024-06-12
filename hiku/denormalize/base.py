@@ -10,6 +10,7 @@ from ..graph import (
     Field as GraphField,
 )
 from ..query import (
+    Fragment,
     QueryVisitor,
     Link,
     Field,
@@ -56,6 +57,7 @@ class Denormalize(QueryVisitor):
         self._unions = graph.unions_map
         self._enums = graph.enums_map
         self._result = result
+        self._index = result.__idx__
         self._type: t.Deque[
             t.Union[t.Type[Record], Union, Interface, BaseEnum]
         ] = deque([self._types["__root__"]])
@@ -72,16 +74,27 @@ class Denormalize(QueryVisitor):
         for item in obj.fields:
             self.visit(item)
 
+        for fr in obj.fragments:
+            self.visit_fragment(fr)
+
+    def visit_fragment(self, obj: Fragment) -> None:
         type_name = None
         if isinstance(self._data[-1], Proxy):
             type_name = self._data[-1].__ref__.node
 
-        for fr in obj.fragments:
-            if type_name is not None and type_name != fr.type_name:
-                # do not visit fragment if type specified and not match
-                continue
+        if type_name is not None and type_name != obj.type_name:
+            # for unions we must visit only fragments with same type as node
+            return
 
-            self.visit(fr)
+        if isinstance(self._data[-1], Proxy):
+            self._data.append(
+                Proxy(self._index, self._data[-1].__ref__, obj.node)
+            )
+        else:
+            self._data.append(self._data[-1])
+        for item in obj.node.fields:
+            self.visit(item)
+        self._data.pop()
 
     def visit_field(self, obj: Field) -> None:
         if isinstance(self._data[-1], Proxy):
@@ -92,9 +105,10 @@ class Denormalize(QueryVisitor):
                 node = self._graph.nodes_map[type_name]
             graph_field = node.fields_map[obj.name]
 
-            self._res[-1][obj.result_key] = serialize_value(
-                self._graph, graph_field, self._data[-1][obj.result_key]
-            )
+            if obj.result_key not in self._res[-1]:
+                self._res[-1][obj.result_key] = serialize_value(
+                    self._graph, graph_field, self._data[-1][obj.result_key]
+                )
         else:
             # Record type itself does not have custom serialization
             # TODO: support Scalar/Enum types in Record
@@ -112,7 +126,13 @@ class Denormalize(QueryVisitor):
 
         if isinstance(type_, RefMeta):
             self._type.append(get_type(self._types, type_))
-            self._res.append({})
+            # if we already visited this link, just reuse the result
+            if obj.result_key not in self._res[-1]:
+                self._res.append({})
+            else:
+                res = self._res[-1][obj.result_key]
+                self._res.append(res)
+
             self._data.append(self._data[-1][obj.result_key])
             super().visit_link(obj)
             self._data.pop()

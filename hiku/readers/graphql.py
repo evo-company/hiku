@@ -1,4 +1,3 @@
-from collections import defaultdict
 from typing import Any, cast, Dict, Iterator, List, Optional, Set, Tuple, Union
 
 from graphql.language import ast
@@ -233,36 +232,31 @@ class SelectionSetVisitMixin:
         else:
             fragments_map = self.fragments_transformer.fragments_map  # type: ignore[attr-defined] # noqa: E501
 
-        shared_fields = []
-        type_fields = defaultdict(list)
+        fields = []
+        fragments = []
 
         for item in obj.selection_set.selections:
             type_name = None
-            selection_set = None
 
             if isinstance(item, ast.InlineFragmentNode):
                 type_name = item.type_condition.name.value
-                selection_set = item.selection_set
+                fr_fields = list(self.visit(item))  # type: ignore[attr-defined]
+                fragments.append(Fragment(None, type_name, fr_fields))
             elif isinstance(item, ast.FragmentSpreadNode):
-                if item.name.value not in fragments_map:
-                    raise TypeError(f'Undefined fragment: "{item.name.value}"')
+                fragment_name = item.name.value
+                if fragment_name not in fragments_map:
+                    raise TypeError(f'Undefined fragment: "{fragment_name}"')
 
-                fragment = fragments_map[item.name.value]
+                fragment = fragments_map[fragment_name]
                 type_name = fragment.type_condition.name.value
-                selection_set = fragment.selection_set
+
+                fr_fields = list(self.visit(item))  # type: ignore[attr-defined]
+                fragments.append(Fragment(fragment_name, type_name, fr_fields))
             else:
-                shared_fields.extend(list(self.visit(item)))  # type: ignore[attr-defined] # noqa: E501
+                res = list(self.visit(item))  # type: ignore[attr-defined]
+                fields.extend(res)
 
-            if type_name and selection_set:
-                type_fields[type_name].extend(
-                    list(self.visit(selection_set))  # type: ignore[attr-defined] # noqa: E501
-                )
-
-        node_fragments = []
-        for type_name, fields in type_fields.items():
-            node_fragments.append(Fragment(type_name, fields))
-
-        return shared_fields, node_fragments
+        return fields, fragments
 
     def visit_field(self, obj: ast.FieldNode) -> Iterator[Union[Field, Link]]:
         if self._should_skip(obj):

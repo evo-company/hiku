@@ -96,15 +96,6 @@ class Proxy:
                     "Field {!r} wasn't requested in the query".format(item)
                 )
 
-            try:
-                field = self.__node__.fragments_map[
-                    self.__ref__.node
-                ].node.result_map[item]
-            except KeyError:
-                raise KeyError(
-                    "Field {!r} wasn't requested in the query".format(item)
-                )
-
         try:
             obj: t.Dict = self.__idx__[self.__ref__.node][self.__ref__.ident]
         except KeyError:

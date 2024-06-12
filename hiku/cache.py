@@ -51,7 +51,7 @@ RESULT_CACHE_MISSES = Counter(
     labelnames=["graph", "query_name", "node", "field"],
 )
 
-CACHE_VERSION = "1"
+CACHE_VERSION = "2"
 
 
 class Hasher(Protocol):
