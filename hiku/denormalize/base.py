@@ -74,10 +74,10 @@ class Denormalize(QueryVisitor):
         for item in obj.fields:
             self.visit(item)
 
-        for fr in obj.fragments:
-            self.visit_fragment(fr)
+        for i, fr in enumerate(obj.fragments):
+            self.visit_fragment(fr, i)
 
-    def visit_fragment(self, obj: Fragment) -> None:
+    def visit_fragment(self, obj: Fragment, idx: int) -> None:
         type_name = None
         if isinstance(self._data[-1], Proxy):
             type_name = self._data[-1].__ref__.node
@@ -87,9 +87,9 @@ class Denormalize(QueryVisitor):
             return
 
         if isinstance(self._data[-1], Proxy):
-            self._data.append(
-                Proxy(self._index, self._data[-1].__ref__, obj.node)
-            )
+            node = self._data[-1].__node__.fragments[idx].node
+            ref = self._data[-1].__ref__
+            self._data.append(Proxy(self._index, ref, node))
         else:
             self._data.append(self._data[-1])
         for item in obj.node.fields:

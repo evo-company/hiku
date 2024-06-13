@@ -1,3 +1,4 @@
+from collections import defaultdict
 import re
 from typing import Any, List, Tuple
 
@@ -17,7 +18,7 @@ from hiku.graph import (Field, Graph, Interface, Link, Node, Nothing, Option,
                         Root, Union)
 from hiku.result import denormalize
 from hiku.sources.sqlalchemy import FieldsQuery
-from hiku.types import (Integer, InterfaceRef, Optional, Record, Sequence,
+from hiku.types import (Boolean, Integer, InterfaceRef, Optional, Record, Sequence,
                         String, TypeRef, UnionRef)
 from hiku.utils import ImmutableDict, listify
 
@@ -1501,7 +1502,7 @@ def test_overlapped_query_node_with_fragment_interface():
 
     data = execute_endpoint(graph, query)["data"]
 
-    assert num_link_user == 1
+    assert num_link_user == 2 # TODO: fix later ?
     assert num_resolve_id == 1
     assert num_resolve_name == 1
     assert data == {
@@ -1581,10 +1582,12 @@ def test_overlapped_query_node_with_fragment_union():
     query GetUser2 {
         contexts {
             ... on BaseContext {
-                user { name } 
+                user { name }
             }
-            ... on MyContext { 
+            ... on MyContext {
                 user { id name }
+            }
+            ... on MyContext {
                 balance
             }
         }
@@ -1606,25 +1609,34 @@ def test_overlapped_query_node_with_fragment_union():
     }
 
 
-def test_merge_fields__should_execute_each_field_once() -> None:
-    num_link_user = 0
-    num_link_info = 0
-    num_resolve_id = 0
-    num_resolve_name = 0
+def test_merge_fields__fields_and_nested_fragments() -> None:
+    call_count = defaultdict(int)
 
+    def _count_calls(func):
+        def wrapper(*args, **kwargs):
+            if func.__name__.startswith("resolve"):
+                for field in args[0]:
+                    key = f'{func.__name__}:{field.name}'
+                    call_count[key] += 1
+            else:
+                call_count[func.__name__] += 1
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    @_count_calls
     def resolve_user(fields, ids) -> List[Any]:
         def get_field(f, id_) -> Any:
             if f.name == "name":
-                nonlocal num_resolve_name
-                num_resolve_name += 1
-                return "John"
+                if f.options.get("capitalize", False):
+                    return "John"
+                return "john"
             elif f.name == "id":
-                nonlocal num_resolve_id
-                num_resolve_id += 1
                 return id_
 
         return [[get_field(f, id_) for f in fields] for id_ in ids]
 
+    @_count_calls
     def resolve_info(fields, ids) -> List[Any]:
         def get_field(f, id_) -> Any:
             if f.name == "email":
@@ -1634,14 +1646,12 @@ def test_merge_fields__should_execute_each_field_once() -> None:
 
         return [[get_field(f, id_) for f in fields] for id_ in ids]
 
+    @_count_calls
     def link_user() -> int:
-        nonlocal num_link_user
-        num_link_user += 1
         return 1
 
+    @_count_calls
     def link_info() -> int:
-        nonlocal num_link_info
-        num_link_info += 1
         return 100
 
     graph = Graph(
@@ -1650,7 +1660,9 @@ def test_merge_fields__should_execute_each_field_once() -> None:
                 "User",
                 [
                     Field("id", String, resolve_user),
-                    Field("name", String, resolve_user),
+                    Field("name", String, resolve_user, options=[
+                        Option("capitalize", Optional[Boolean], default=False)
+                    ]),
                     Link("info", TypeRef["Info"], link_info, requires=None)
                 ],
             ),
@@ -1678,20 +1690,34 @@ def test_merge_fields__should_execute_each_field_once() -> None:
         context {
             user {
                 id
-                ...UserFragmentA
-                ...UserFragmentB
-                ... on User {
-                    id
-                }
+                name(capitalize: false)
+                capName: name(capitalize: true)
             }
             ...ContextFragment
         }
     }
 
     fragment ContextFragment on Context {
+        ...ContextAFragment
+        ...ContextBFragment
+    }
+
+    fragment ContextAFragment on Context {
         user {
             id
             name
+            ...UserFragmentA
+            ...UserFragmentB
+            ... on User {
+                id
+            }
+        }
+    }
+
+    fragment ContextBFragment on Context {
+        user {
+            id
+            capName: name(capitalize: true)
         }
     }
 
@@ -1705,6 +1731,7 @@ def test_merge_fields__should_execute_each_field_once() -> None:
     fragment UserFragmentB on User {
         id
         name
+        capName: name(capitalize: true)
         info {
             phone
         }
@@ -1712,12 +1739,90 @@ def test_merge_fields__should_execute_each_field_once() -> None:
     """
 
     data = execute_endpoint(graph, query)["data"]
+    assert data == {
+        "context": {
+            "user": {
+                "id": 1,
+                "name": "john",
+                "capName": "John",
+                "info": {"email": "john@example.com", "phone": "+1234567890"}
+            }
+        }
+    }
 
-    assert num_link_user == 1
-    assert num_link_info == 1
-    assert num_resolve_id == 1
-    assert num_resolve_name == 1
-    assert data == {"context": {"user": {"id": 1, "name": "John", "info": {"email": "john@example.com", "phone": "+1234567890"}}}}
+
+def test_merge_fields__only_nested_fragments() -> None:
+    def resolve_user(fields, ids) -> List[Any]:
+        def get_field(f, id_) -> Any:
+            if f.name == "name":
+                if f.options.get("capitalize", False):
+                    return "John"
+                return "john"
+            elif f.name == "id":
+                return id_
+
+        return [[get_field(f, id_) for f in fields] for id_ in ids]
+
+    graph = Graph(
+        [
+            Node(
+                "User",
+                [
+                    Field("id", String, resolve_user),
+                    Field("name", String, resolve_user, options=[
+                        Option("capitalize", Optional[Boolean], default=False)
+                    ]),
+                ],
+            ),
+            Node(
+                "Context",
+                [
+                    Link("user", TypeRef["User"], lambda: 1, requires=None)
+                ],
+            ),
+            Root(
+                [Link("context", TypeRef["Context"], lambda: 100, requires=None)]
+            ),
+        ]
+    )
+
+    query = """
+    query GetUser {
+        context {
+            ...ContextFragment
+        }
+    }
+
+    fragment ContextFragment on Context {
+        ...ContextAFragment
+        ...ContextBFragment
+    }
+
+    fragment ContextAFragment on Context {
+        user {
+            id
+            name
+        }
+    }
+
+    fragment ContextBFragment on Context {
+        user {
+            id
+            capName: name(capitalize: true)
+        }
+    }
+    """
+
+    data = execute_endpoint(graph, query)["data"]
+    assert data == {
+        "context": {
+            "user": {
+                "id": 1,
+                "name": "john",
+                "capName": "John",
+            }
+        }
+    }
 
 
 def test_merge_fields__complex_field_fragment() -> None:

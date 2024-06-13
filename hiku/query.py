@@ -58,6 +58,7 @@ from typing_extensions import TypeAlias
 
 from .directives import Directive
 from .utils import cached_property
+from hiku import directives
 
 T = t.TypeVar("T", bound="Base")
 
@@ -161,9 +162,11 @@ class Field(FieldBase):
 
     @cached_property
     def directives_map(self) -> OrderedDict:
-        return OrderedDict(
-            (d.__directive_info__.name, d) for d in self.directives
-        )
+        directives = OrderedDict()
+        for d in self.directives:
+            if d.__directive_info__.name not in directives:
+                directives[d.__directive_info__.name] = d
+        return directives
 
     def accept(self, visitor: "QueryVisitor") -> t.Any:
         return visitor.visit_field(self)
@@ -203,9 +206,11 @@ class Link(FieldBase):
 
     @cached_property
     def directives_map(self) -> OrderedDict:
-        return OrderedDict(
-            (d.__directive_info__.name, d) for d in self.directives
-        )
+        directives = OrderedDict()
+        for d in self.directives:
+            if d.__directive_info__.name not in directives:
+                directives[d.__directive_info__.name] = d
+        return directives
 
     def accept(self, visitor: "QueryVisitor") -> t.Any:
         return visitor.visit_link(self)
@@ -266,7 +271,10 @@ class Fragment(Base):
     __attrs__ = ("name", "type_name", "node")
 
     def __init__(
-        self, name: t.Optional[str], type_name: str, fields: t.List[FieldOrLink]
+        self,
+        name: t.Optional[str],
+        type_name: t.Optional[str],
+        fields: t.List[FieldOrLink],
     ) -> None:
         self.name = name  # if None, it's an inline fragment
         self.type_name = type_name
@@ -338,71 +346,6 @@ def merge(nodes: t.Iterable[Node]) -> Node:
             fields.append(item)
 
     return Node(fields=fields, fragments=fragments, ordered=ordered)
-
-
-def merge_links(links: t.List[Link]) -> Link:
-    """Recursively merge link node fields and return new link"""
-    if len(links) == 1:
-        return links[0]
-
-    # directives will be the same as in the first link
-    return links[0].copy(node=collect_fields([link.node for link in links]))
-
-
-def collect_fields(nodes: t.List[Node]) -> Node:
-    """Collect fields from multiple nodes and return new node with them.
-    The main difference from `merge` is that it collects fields
-    from fragments and drops fragments.
-    """
-    assert isinstance(nodes, Sequence), type(nodes)
-    ordered = any(n.ordered for n in nodes)
-    fields = []
-    visited_fields: t.Set[KeyT] = set()
-    fragments = []
-    for item in _collect_fields(nodes, visited_fields):
-        if isinstance(item, Fragment):
-            fragments.append(item)
-        else:
-            fields.append(item)
-
-    return Node(fields=fields, fragments=fragments, ordered=ordered)
-
-
-def _collect_fields(
-    nodes: t.Iterable[Node],
-    visited_fields: t.Set[KeyT],
-) -> t.Iterator[t.Union[FieldOrLink, Fragment]]:
-    links = {}
-    link_directives: t.DefaultDict[t.Tuple, t.List] = defaultdict(list)
-    to_merge = OrderedDict()
-    fields_iter = chain.from_iterable(e.fields for e in nodes)
-    fragments_iter = chain.from_iterable(e.fragments for e in nodes)
-
-    for field in fields_iter:
-        key = field_key(field)
-
-        if field.__class__ is Link:
-            field = t.cast(Link, field)
-            if key not in to_merge:
-                to_merge[key] = [field.node]
-                links[key] = field
-            else:
-                to_merge[key].append(field.node)
-            link_directives[key].extend(field.directives)
-        else:
-            if key not in visited_fields:
-                visited_fields.add(key)
-                yield field
-
-    for fr in fragments_iter:
-        yield from _collect_fields([fr.node], visited_fields)
-
-    for key, values in to_merge.items():
-        link = links[key]
-        directives = link_directives[key]
-        yield link.copy(
-            node=collect_fields(values), directives=tuple(directives)
-        )
 
 
 class QueryVisitor:

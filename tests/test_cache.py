@@ -19,12 +19,14 @@ from sqlalchemy import (
 from sqlalchemy.pool import StaticPool
 
 from hiku.denormalize.graphql import DenormalizeGraphQL
+from hiku.endpoint.graphql import GraphQLEndpoint
 from hiku.executors.threads import ThreadsExecutor
 from hiku.expr.core import (
     define,
     S,
 )
-from hiku.query import FieldOrLink, Link as QueryLink, Node as QueryNode, merge_links
+from hiku.merge import QueryMerger
+from hiku.query import FieldOrLink, Link as QueryLink, Node as QueryNode
 from hiku.result import Reference
 from hiku.sources.graph import SubGraph
 from hiku.sources.sqlalchemy import (
@@ -612,7 +614,7 @@ def get_products_query() -> str:
             ...CompanyInfo
         }
     }
-    
+
     fragment CompanyInfo on Company {
         logoImage(size: 100)
     }
@@ -693,20 +695,17 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
     cache_settings = CacheSettings(cache)
     cache_info = CacheInfo(cache_settings)
     engine = Engine(ThreadsExecutor(thread_pool), cache_settings)
+    endpoint = GraphQLEndpoint(engine, graph)
     ctx = {SA_ENGINE_KEY: sa_engine, "locale": "en"}
 
     def execute(q):
-        proxy = engine.execute(graph, q, ctx=ctx)
-        return DenormalizeGraphQL(graph, proxy, "query").process(q)
+        return endpoint.dispatch({"query": q}, ctx)
 
-    query = read(get_product_query(1))
+    merger = QueryMerger(graph)
+    query_str = get_product_query(1)
+    query = merger.merge(read(query_str))
 
-    product_link = get_field(query, ['product'])
-
-    company_link = merge_links([
-        product_link.node.fields_map['company'],
-        product_link.node.fragments_map['ProductInfo'].node.fields_map['company'],
-    ])
+    company_link = get_field(query, ['product', 'company'])
 
     attributes_link = get_field(query, ['product', 'attributes'])
 
@@ -789,7 +788,7 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
         }
     }
 
-    check_result(execute(query), expected_result)
+    check_result(execute(query_str)["data"], expected_result)
 
     assert cache.get_many.call_count == 2
 
@@ -817,7 +816,7 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
 
     cache.reset_mock()
 
-    check_result(execute(query), expected_result)
+    check_result(execute(query_str)["data"], expected_result)
 
     cache.get_many.assert_has_calls(
         [
@@ -846,21 +845,17 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
     cache_settings = CacheSettings(cache, cache_key)
     cache_info = CacheInfo(cache_settings)
     engine = Engine(ThreadsExecutor(thread_pool), cache_settings)
+    endpoint = GraphQLEndpoint(engine, graph)
     ctx = {SA_ENGINE_KEY: sa_engine, "locale": "en"}
 
     def execute(q):
-        proxy = engine.execute(graph, q, ctx=ctx)
-        return DenormalizeGraphQL(graph, proxy, "query").process(q)
+        return endpoint.dispatch({"query": q}, ctx)
 
-    query = read(get_products_query())
+    merger = QueryMerger(graph)
+    query_str = get_products_query()
+    query = merger.merge(read(query_str))
 
-    products_link = get_field(query, ['products'])
-
-    company_link = merge_links([
-        products_link.node.fields_map['company'],
-        products_link.node.fragments_map['ProductInfo'].node.fields_map['company'],
-    ])
-
+    company_link = get_field(query, ['products', 'company'])
     attributes_link = get_field(query, ['products', 'attributes'])
 
     photo_field = get_field(query, ["products", "company", "owner", "photo"])
@@ -993,7 +988,7 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
         ]
     }
 
-    check_result(execute(query), expected_result)
+    check_result(execute(query_str)["data"], expected_result)
 
     assert cache.get_many.call_count == 2
 
@@ -1022,7 +1017,7 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
 
     cache.reset_mock()
 
-    check_result(execute(query), expected_result)
+    check_result(execute(query_str)["data"], expected_result)
 
     assert set(*cache.get_many.mock_calls[0][1]) == {
         attributes11_12_key,

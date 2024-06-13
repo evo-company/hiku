@@ -40,7 +40,6 @@ from .query import (
     Link as QueryLink,
     QueryTransformer,
     QueryVisitor,
-    merge_links,
 )
 from .graph import (
     FieldType,
@@ -192,10 +191,12 @@ class SplitQuery(QueryVisitor):
 
     def __init__(self, graph_node: Node) -> None:
         self._node = graph_node
-        self.links_map: Dict[str, List[LinkInfo]] = {}
-        self.fields_map: Dict[str, List[Tuple[Callable, FieldInfo]]] = {}
+        self._fields: List[Tuple[Callable, FieldInfo]] = []
+        self._links: List[LinkInfo] = []
 
-    def split(self, query_node: QueryNode) -> "SplitQuery":
+    def split(
+        self, query_node: QueryNode
+    ) -> Tuple[List[Tuple[Callable, FieldInfo]], List[LinkInfo]]:
         for item in query_node.fields:
             self.visit(item)
 
@@ -205,22 +206,7 @@ class SplitQuery(QueryVisitor):
             if fr.type_name == self._node.name:
                 self.visit(fr)
 
-        for field, fields in self.fields_map.items():
-            if len(set([f.query_field.index_key for _, f in fields])) > 1:
-                raise ValueError(
-                    f"Can not use same field '{field}' with "
-                    "different arguments."
-                    " Use different field names (aliases) or arguments."
-                )
-
-        for link, links in self.links_map.items():
-            if len(set([ln.query_link.index_key for ln in links])) > 1:
-                raise ValueError(
-                    f"Can not use same field '{field}' with "
-                    "different arguments."
-                    " Use different field names (aliases) or arguments."
-                )
-        return self
+        return self._fields, self._links
 
     def visit_fragment(self, obj: Fragment) -> None:
         self.visit(obj.node)
@@ -235,9 +221,7 @@ class SplitQuery(QueryVisitor):
 
         graph_obj = self._node.fields_map[obj.name]
         func = getattr(graph_obj.func, "__subquery__", graph_obj.func)
-        self.fields_map.setdefault(obj.name, []).append(
-            (func, FieldInfo(graph_obj, obj))
-        )
+        self._fields.append((func, FieldInfo(graph_obj, obj)))
 
     def visit_link(self, obj: QueryLink) -> None:
         graph_obj = self._node.fields_map[obj.name]
@@ -248,16 +232,12 @@ class SplitQuery(QueryVisitor):
                         self.visit(QueryField(r))
                 else:
                     self.visit(QueryField(graph_obj.requires))
-            self.links_map.setdefault(obj.name, []).append(
-                LinkInfo(graph_link=graph_obj, query_link=obj)
-            )
+            self._links.append(LinkInfo(graph_link=graph_obj, query_link=obj))
         else:
             assert isinstance(graph_obj, Field), type(graph_obj)
             # `obj` here is a link, but this link is treated as a complex field
             func = getattr(graph_obj.func, "__subquery__", graph_obj.func)
-            self.fields_map.setdefault(obj.name, []).append(
-                (func, FieldInfo(graph_obj, obj))
-            )
+            self._fields.append((func, FieldInfo(graph_obj, obj)))
 
 
 class GroupQuery(QueryVisitor):
@@ -711,12 +691,11 @@ class Query(Workflow):
             self._process_node_ordered(path, node, query, ids)
             return
 
-        fields = SplitQuery(node).split(query)
+        fields, links = SplitQuery(node).split(query)
 
         to_func: Dict[str, Callable] = {}
         from_func: DefaultDict[Callable, List[FieldInfo]] = defaultdict(list)
-        for field_name, fields_info in fields.fields_map.items():
-            func, field_info = fields_info[0]
+        for func, field_info in fields:
             to_func[field_info.graph_field.name] = func
             from_func[func].append(field_info)
 
@@ -728,12 +707,9 @@ class Query(Workflow):
             )
 
         # schedule link resolve
-        for link_name, links_info in fields.links_map.items():
-            query_links = [info.query_link for info in links_info]
-            graph_link = links_info[0].graph_link
-
-            # recursively we collect and resolve leaf fields of all links fields
-            link = merge_links(query_links)
+        for link_info in links:
+            graph_link = link_info.graph_link
+            link = link_info.query_link
 
             self._track(path)
             schedule = partial(
