@@ -1356,7 +1356,7 @@ def test_non_root_link_with_sequence_to_optional_type_ref():
     }
 
 
-def test_overlapped_query_node_with_fragment():
+def test_merge_query__fragments():
     num_link_user = 0
     num_resolve_id = 0
     num_resolve_name = 0
@@ -1417,7 +1417,7 @@ def test_overlapped_query_node_with_fragment():
     assert data == {"context": {"user": {"id": 1, "name": "John"}}}
 
 
-def test_overlapped_query_node_with_fragment_interface():
+def test_merge_query__interface_fragments():
     num_link_user = 0
     num_resolve_id = 0
     num_resolve_name = 0
@@ -1502,7 +1502,7 @@ def test_overlapped_query_node_with_fragment_interface():
 
     data = execute_endpoint(graph, query)["data"]
 
-    assert num_link_user == 2 # TODO: fix later ?
+    assert num_link_user == 1
     assert num_resolve_id == 1
     assert num_resolve_name == 1
     assert data == {
@@ -1510,7 +1510,50 @@ def test_overlapped_query_node_with_fragment_interface():
     }
 
 
-def test_overlapped_query_node_with_fragment_union():
+@pytest.mark.parametrize("query", [
+    pytest.param(
+        """
+        query GetUser {
+            contexts {
+                ... on BaseContext { user { name } }
+                ... on MyContext { user { id name } }
+                ... on MyContext { balance }
+            }
+        }
+        """,
+        id="one level fragments"),
+    pytest.param(
+        """
+        query GetUser {
+            contexts {
+                ...ContextsFragment
+            }
+        }
+        fragment ContextsFragment on Context {
+            ... on BaseContext { user { name } }
+            ... on MyContext { user { id name } }
+            ... on MyContext { balance }
+        }
+        """,
+        id="nested fragments",
+    ),
+    pytest.param(
+        """
+        query GetUser {
+            contexts {
+                ... on MyContext { balance }
+                ...ContextsFragment
+            }
+        }
+        fragment ContextsFragment on Context {
+            ... on BaseContext { user { name } }
+            ... on MyContext { user { id name } }
+        }
+        """,
+        id="nested + neighbour fragments",
+    ),
+])
+def test_merge_query__union_fragments(query):
     num_link_user = 0
     num_resolve_id = 0
     num_resolve_name = 0
@@ -1578,23 +1621,8 @@ def test_overlapped_query_node_with_fragment_union():
         unions=[Union("Context", ["BaseContext", "MyContext"])],
     )
 
-    query = """
-    query GetUser2 {
-        contexts {
-            ... on BaseContext {
-                user { name }
-            }
-            ... on MyContext {
-                user { id name }
-            }
-            ... on MyContext {
-                balance
-            }
-        }
-    }
-    """
-
-    data = execute_endpoint(graph, query)["data"]
+    result = execute_endpoint(graph, query)
+    data = result["data"]
 
     assert num_link_user == 2
     assert num_resolve_id == 1
@@ -1609,7 +1637,7 @@ def test_overlapped_query_node_with_fragment_union():
     }
 
 
-def test_merge_fields__fields_and_nested_fragments() -> None:
+def test_merge_query__fields_and_nested_fragments() -> None:
     call_count = defaultdict(int)
 
     def _count_calls(func):
@@ -1751,7 +1779,7 @@ def test_merge_fields__fields_and_nested_fragments() -> None:
     }
 
 
-def test_merge_fields__only_nested_fragments() -> None:
+def test_merge_query__only_nested_fragments() -> None:
     def resolve_user(fields, ids) -> List[Any]:
         def get_field(f, id_) -> Any:
             if f.name == "name":
@@ -1825,7 +1853,7 @@ def test_merge_fields__only_nested_fragments() -> None:
     }
 
 
-def test_merge_fields__complex_field_fragment() -> None:
+def test_merge_query__complex_field_fragment() -> None:
     def point_func(fields):
         return [{
             "x": 1,

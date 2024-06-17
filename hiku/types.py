@@ -294,6 +294,7 @@ class EnumRef(metaclass=EnumRefMeta):
 
 
 RefMeta = (TypeRefMeta, UnionRefMeta, InterfaceRefMeta, EnumRefMeta)
+RefMetaTypes = t.Union[TypeRefMeta, UnionRefMeta, InterfaceRefMeta, EnumRefMeta]
 
 
 @t.overload

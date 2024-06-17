@@ -637,48 +637,24 @@ def assert_deep_equal(got, exp):
 
 
 def get_field(query: QueryNode, path: t.List[str]) -> FieldOrLink:
-    cur = query
+    node = query
     path_size = len(path)
 
     def last(idx: int):
         return idx + 1 == path_size
 
-    field = None
-
     for idx, name in enumerate(path):
-        fields = []
-        if name in cur.fields_map:
-            field = cur.fields_map[name]
+        if name in node.fields_map:
+            field = node.fields_map[name]
             if last(idx):
                 return field
 
-            fields.append(field)
-
-            for fr in cur.fragments:
+            if isinstance(field, QueryLink):
+                node = field.node
+        else:
+            for fr in node.fragments:
                 if name in fr.node.fields_map:
-                    fields.append(fr.node.fields_map[name])
-
-            if len(fields) == 1:
-                if isinstance(fields[0], QueryLink):
-                    cur = fields[0].node
-            else:
-                peak_path = path[idx + 1]
-                for f in fields:
-                    if isinstance(f, QueryLink) and peak_path in f.node.fields_map:
-                        cur = f.node
-                        break
-
-                for f in fields:
-                    if isinstance(f, QueryLink):
-                        for fr in f.node.fragments:
-                            if peak_path in fr.node.fields_map:
-                                cur = fr.node
-                                break
-
-    if not field or field.name != path[-1]:
-        raise KeyError(f"Field {path[-1]} not found in query")
-
-    return field
+                    field = fr.node.fields_map[name]
 
 
 def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):

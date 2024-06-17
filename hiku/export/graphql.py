@@ -5,6 +5,8 @@ from typing import (
 
 from graphql.language import ast
 
+from hiku.query import Fragment
+
 from ..query import (
     QueryVisitor,
     Field,
@@ -69,10 +71,28 @@ class Exporter(QueryVisitor):
             selection_set=self.visit(obj.node),
         )
 
+    def visit_fragment(self, obj: Fragment) -> Any:
+        if obj.name is None:
+            return ast.InlineFragmentNode(
+                type_condition=ast.NamedTypeNode(
+                    name=_name(obj.type_name),
+                )
+                if obj.type_name is not None
+                else None,
+                selection_set=self.visit(obj.node),
+            )
+
+        return ast.FragmentSpreadNode(name=_name(obj.name))
+
     def visit_node(self, obj: Node) -> ast.SelectionSetNode:
-        return ast.SelectionSetNode(
-            selections=[self.visit(f) for f in obj.fields],
-        )
+        selections = []
+        for f in obj.fields:
+            selections.append(self.visit(f))
+
+        for fr in obj.fragments:
+            selections.append(self.visit(fr))
+
+        return ast.SelectionSetNode(selections=selections)
 
 
 def export(query: Node) -> ast.DocumentNode:

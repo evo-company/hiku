@@ -58,7 +58,6 @@ from typing_extensions import TypeAlias
 
 from .directives import Directive
 from .utils import cached_property
-from hiku import directives
 
 T = t.TypeVar("T", bound="Base")
 
@@ -274,11 +273,11 @@ class Fragment(Base):
         self,
         name: t.Optional[str],
         type_name: t.Optional[str],
-        fields: t.List[FieldOrLink],
+        node: Node,
     ) -> None:
         self.name = name  # if None, it's an inline fragment
         self.type_name = type_name
-        self.node = Node(fields)
+        self.node = node
 
     def accept(self, visitor: "QueryVisitor") -> t.Any:
         return visitor.visit_fragment(self)

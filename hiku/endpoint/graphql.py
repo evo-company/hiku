@@ -162,8 +162,8 @@ class BaseGraphQLEndpoint(ABC, t.Generic[C]):
             execution_context.query = execution_context.operation.query
 
             # TODO: move this into read operation
-            collector = QueryMerger(execution_context.graph)
-            execution_context.query = collector.merge(execution_context.query)
+            merger = QueryMerger(execution_context.graph)
+            execution_context.query = merger.merge(execution_context.query)
 
         op = execution_context.operation
         if op.type not in (OperationType.QUERY, OperationType.MUTATION):
