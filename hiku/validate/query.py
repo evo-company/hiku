@@ -1,5 +1,6 @@
 import typing as t
 
+from dataclasses import dataclass
 from contextlib import contextmanager
 from collections import abc as collections_abc
 
@@ -53,6 +54,22 @@ _undefined = object()
 OptionValue = t.Union[
     int, str, float, bool, collections_abc.Sequence, collections_abc.Mapping
 ]
+
+
+@dataclass
+class Path:
+    parent: t.Optional["Path"]
+    path: t.Union[str, t.Tuple[str, str]]
+
+    def add(self, node_name: str, obj_name: str) -> "Path":
+        return Path(self, (node_name, obj_name))
+
+    def pop(self) -> "Path":
+        assert self.parent is not None, "Can not pop root path"
+        return self.parent
+
+    def __hash__(self) -> int:
+        return hash(self.parent) + hash(self.path)
 
 
 class _AssumeRecord(AbstractTypeVisitor):
@@ -379,11 +396,13 @@ class DefaultQueryValidator(QueryVisitor):
 
     def __init__(self, graph: Graph):
         self.graph = graph
-        self.path = [graph.root]
+        self._type = [graph.root]
+        self._path: Path = Path(None, "root")
         self.errors = Errors()
+        self._visited_fields: t.Dict[Path, t.Dict] = {}
 
     def visit_field(self, obj: QueryField) -> None:
-        node = self.path[-1]
+        node = self._type[-1]
         field = node.fields_map.get(obj.name)
         if field is not None:
             is_field = _AssumeField(node, self.errors).visit(field)
@@ -400,7 +419,7 @@ class DefaultQueryValidator(QueryVisitor):
             )
 
     def visit_link(self, obj: QueryLink) -> None:
-        node = self.path[-1]
+        node = self._type[-1]
         graph_obj = node.fields_map.get(obj.name, _undefined)
         if isinstance(graph_obj, Field):
             for_ = (node.name or "root", obj.name)
@@ -436,11 +455,13 @@ class DefaultQueryValidator(QueryVisitor):
                 self.graph.data_types, obj.options, for_, self.errors
             ).visit(graph_obj)
 
-            self.path.append(linked_node)
+            self._type.append(linked_node)
+            self._path = self._path.add(*for_)
             try:
                 self.visit(obj.node)
             finally:
-                self.path.pop()
+                self._type.pop()
+                self._path = self._path.pop()
 
         elif graph_obj is _undefined:
             self.errors.report(
@@ -452,48 +473,92 @@ class DefaultQueryValidator(QueryVisitor):
             raise TypeError(repr(graph_obj))
 
     def visit_fragment(self, obj: Fragment) -> t.Any:
-        graph_node = self.graph.nodes_map[obj.type_name]
-        self.path.append(graph_node)
-        for field in obj.node.fields:
-            if field.name == "__typename":
-                continue
-            self.visit(field)
+        graph_node = None
+        if isinstance(self._type[-1], Union):
+            if (
+                obj.type_name is not None
+                and obj.type_name in self._type[-1].types
+            ):
+                graph_node = self.graph.nodes_map[obj.type_name]
+            elif (
+                obj.type_name is not None
+                and obj.type_name != self._type[-1].name
+            ):
+                if obj.type_name not in self.graph.nodes_map:
+                    self.errors.report(
+                        "Fragment on unknown type '{}'".format(obj.type_name)
+                    )
+                    return
+                else:
+                    self.errors.report(
+                        "Fragment type '{}' does not match "
+                        "the union type '{}'".format(
+                            obj.type_name, self._type[-1].name
+                        )
+                    )
+        elif isinstance(self._type[-1], Interface):
+            if (
+                obj.type_name is not None
+                and obj.type_name
+                in self.graph.interfaces_types[self._type[-1].name]
+            ):
+                graph_node = self.graph.nodes_map[obj.type_name]
+            elif (
+                obj.type_name is not None
+                and obj.type_name != self._type[-1].name
+            ):
+                if obj.type_name not in self.graph.nodes_map:
+                    self.errors.report(
+                        "Fragment on unknown type '{}'".format(obj.type_name)
+                    )
+                    return
+                else:
+                    self.errors.report(
+                        "Fragment type '{}' does not match "
+                        "the interface type '{}'".format(
+                            obj.type_name, self._type[-1].name
+                        )
+                    )
+        elif obj.type_name in ("Query", "Mutation") or (
+            self._type[-1].name is None and obj.type_name is None
+        ):
+            graph_node = self.graph.root
+        else:
+            graph_node = self.graph.nodes_map[obj.type_name]
 
-        self.path.pop()
+        if graph_node:
+            self._type.append(graph_node)
+
+        self.visit(obj.node)
+
+        if graph_node:
+            self._type.pop()
 
     def visit_node(self, obj: QueryNode) -> None:
-        fields: t.Dict = {}
+        is_union_link = isinstance(self._type[-1], Union)
+        is_interface_link = isinstance(self._type[-1], Interface)
 
-        is_union_link = isinstance(self.path[-1], Union)
-        is_interface_link = isinstance(self.path[-1], Interface)
+        fields: t.Dict = self._visited_fields.setdefault(self._path, {})
 
         for field in obj.fields:
             if field.name == "__typename":
                 continue
 
             if is_union_link:
-                union = self.path[-1]
-                if not isinstance(field, Fragment):
-                    self.errors.report(
-                        "Cannot query field '{}' on type '{}'. "
-                        "Did you mean to use an inline fragment on {}?".format(
-                            field.name,
-                            union.name,
-                            " or ".join(
-                                [f"'{type_name}'" for type_name in union.types]
-                            ),
-                        )
+                union = self._type[-1]
+                self.errors.report(
+                    "Cannot query field '{}' on type '{}'. "
+                    "Did you mean to use an inline fragment on {}?".format(
+                        field.name,
+                        union.name,
+                        " or ".join(
+                            [f"'{type_name}'" for type_name in union.types]
+                        ),
                     )
-                    continue
-
-                self.visit(field)
+                )
                 continue
             elif is_interface_link:
-                if isinstance(field, Fragment):
-                    self.visit(field)
-                    continue
-
-                interface = self.path[-1]
+                interface = self._type[-1]
 
                 interface_types = self.graph.interfaces_types[interface.name]
                 if not interface_types:
@@ -524,7 +589,7 @@ class DefaultQueryValidator(QueryVisitor):
             seen = fields.get(field.result_key)
             if seen is not None:
                 if not _field_eq(field, seen):
-                    node = self.path[-1].name or "root"
+                    node = self._type[-1].name or "root"
                     self.errors.report(
                         "Found distinct fields with the same "
                         'resulting name "{}" for the node "{}"'.format(

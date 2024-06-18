@@ -72,6 +72,12 @@ class QueryMerger(QueryVisitor):
         )
 
     def merge(self, query: Node) -> Node:
+        """Merge query node and return new node with merged fields, links
+        and fragments.
+
+        Must be called after the query is validated since we assume that
+        no two fields with the same name+alias are present in same node.
+        """
         return self.visit(query)
 
     @property
@@ -102,6 +108,12 @@ class QueryMerger(QueryVisitor):
         links: t.Dict[str, t.List[Link]],
         fragments: t.List[Fragment],
     ) -> None:
+        """Collect fields, links and fragments from the node.
+
+        Fields collected in the fields dict. It is safe to assume that after
+        validation, there is no possibility of having two fields with the same
+        name+alias in the same node, hence we can use alias(or name) as a key.
+        """
         for field in node.fields:
             name = field.alias or field.name
 

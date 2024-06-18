@@ -1,6 +1,6 @@
-from collections import defaultdict
 import re
 from typing import Any, List, Tuple
+from collections import defaultdict
 
 import pytest
 from sqlalchemy import Column, ForeignKey
@@ -1417,7 +1417,74 @@ def test_merge_query__fragments():
     assert data == {"context": {"user": {"id": 1, "name": "John"}}}
 
 
-def test_merge_query__interface_fragments():
+@pytest.mark.parametrize("query", [
+    pytest.param(
+        """
+        query GetUser2 {
+            context {
+                user {
+                    id
+                }
+                ... on BaseContext {
+                    user { name }
+                }
+                ... on MyContext {
+                    user { name }
+                    balance
+                }
+            }
+        }
+        """,
+        id="one level fragments"
+    ),
+    pytest.param(
+        """
+        query GetUser {
+            context {
+                ...ContextFragment
+            }
+        }
+        fragment ContextFragment on Context {
+            user {
+                id
+            }
+            ... on BaseContext {
+                user { name }
+            }
+            ... on MyContext {
+                user { name }
+                balance
+            }
+        }
+        """,
+        id="nested fragments",
+    ),
+    pytest.param(
+        """
+        query GetUser {
+            context {
+                ... on MyContext {
+                    user { name }
+                }
+                ...ContextFragment
+            }
+        }
+        fragment ContextFragment on Context {
+            user {
+                id
+            }
+            ... on BaseContext {
+                user { name }
+            }
+            ... on MyContext {
+                balance
+            }
+        }
+        """,
+        id="nested + neighbour fragments",
+    ),
+])
+def test_merge_query__interface_fragments(query):
     num_link_user = 0
     num_resolve_id = 0
     num_resolve_name = 0
@@ -1483,24 +1550,8 @@ def test_merge_query__interface_fragments():
         ],
     )
 
-    query = """
-    query GetUser2 {
-        context {
-            user {
-                id
-            }
-            ... on BaseContext {
-                user { name } 
-            }
-            ... on MyContext { 
-                user { name }
-                balance
-            }
-        }
-    }
-    """
-
-    data = execute_endpoint(graph, query)["data"]
+    result = execute_endpoint(graph, query)
+    data = result["data"]
 
     assert num_link_user == 1
     assert num_resolve_id == 1
@@ -1536,6 +1587,7 @@ def test_merge_query__interface_fragments():
         }
         """,
         id="nested fragments",
+
     ),
     pytest.param(
         """
@@ -1718,7 +1770,7 @@ def test_merge_query__fields_and_nested_fragments() -> None:
         context {
             user {
                 id
-                name(capitalize: false)
+                name
                 capName: name(capitalize: true)
             }
             ...ContextFragment
@@ -1766,7 +1818,8 @@ def test_merge_query__fields_and_nested_fragments() -> None:
     }
     """
 
-    data = execute_endpoint(graph, query)["data"]
+    result = execute_endpoint(graph, query)
+    data = result["data"]
     assert data == {
         "context": {
             "user": {
@@ -1841,7 +1894,8 @@ def test_merge_query__only_nested_fragments() -> None:
     }
     """
 
-    data = execute_endpoint(graph, query)["data"]
+    result = execute_endpoint(graph, query)
+    data = result["data"]
     assert data == {
         "context": {
             "user": {

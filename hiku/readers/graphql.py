@@ -319,7 +319,9 @@ class SelectionSetVisitMixin:
             return
 
         yield Fragment(
-            None, obj.type_condition.name.value, self._collect_fields(obj)
+            None,
+            obj.type_condition.name.value if obj.type_condition else None,
+            self._collect_fields(obj),
         )
 
 

@@ -355,6 +355,41 @@ def test_validate_query_can_not_contain_shared_fields_in_union():
     ]
 
 
+def test_validate_query_fragment_no_type_condition():
+    query = """
+    query SearchMedia($text: String) {
+      searchMedia(text: $text) {
+        ... {
+          duration
+        }
+      }
+    }
+    """
+
+    errors = validate(GRAPH, read(query, {'text': 'foo'}))
+
+    assert errors == [
+        "Cannot query field 'duration' on type 'Media'. "
+        "Did you mean to use an inline fragment on 'Audio' or 'Video'?"
+    ]
+
+
+def test_validate_query_fragment_on_unknown_type():
+    query = """
+    query SearchMedia($text: String) {
+      searchMedia(text: $text) {
+        ... on X {
+          duration
+        }
+      }
+    }
+    """
+
+    errors = validate(GRAPH, read(query, {'text': 'foo'}))
+
+    assert errors == ["Fragment on unknown type 'X'"]
+
+
 def test_validate_union_type_has_no_field():
     query = """
     query SearchMedia($text: String) {
@@ -399,7 +434,6 @@ def test_validate_union_type_field_has_no_such_option():
 
 
 def test_validate_query_can_contain_shared_links():
-    # TODO: the problem here is probably because of fragment merging algorythm
     query = """
     query SearchMedia($text: String) {
       searchMedia(text: $text) {
