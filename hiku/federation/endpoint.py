@@ -166,6 +166,14 @@ class BaseFederatedGraphEndpoint(BaseGraphQLEndpoint):
         else:
             self.mutation_graph = None
 
+    def _validate(
+        self,
+        graph: GraphT,
+        query: Node,
+        validators: Optional[Tuple[QueryValidator, ...]] = None,
+    ) -> List[str]:
+        return _run_validation(graph, query, validators)
+
 
 class BaseSyncFederatedGraphQLEndpoint(BaseFederatedGraphEndpoint):
     @abstractmethod
@@ -258,17 +266,6 @@ class FederatedGraphQLEndpoint(BaseSyncFederatedGraphQLEndpoint):
         extensions_manager: ExtensionsManager,
     ) -> Dict:
         execution_context = cast(ExecutionContextFinal, execution_context)
-
-        with extensions_manager.validation():
-            if self.validation and execution_context.errors is None:
-                execution_context.errors = _run_validation(
-                    execution_context.graph,
-                    execution_context.query,
-                    execution_context.validators,
-                )
-
-        if execution_context.errors:
-            raise GraphQLError(errors=execution_context.errors)
 
         with extensions_manager.execution():
             if "_service" in execution_context.query.fields_map:

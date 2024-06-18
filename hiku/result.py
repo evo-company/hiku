@@ -91,19 +91,9 @@ class Proxy:
         try:
             field: t.Union[Field, Link] = self.__node__.result_map[item]
         except KeyError:
-            if self.__ref__.node not in self.__node__.fragments_map:
-                raise KeyError(
-                    "Field {!r} wasn't requested in the query".format(item)
-                )
-
-            try:
-                field = self.__node__.fragments_map[
-                    self.__ref__.node
-                ].node.result_map[item]
-            except KeyError:
-                raise KeyError(
-                    "Field {!r} wasn't requested in the query".format(item)
-                )
+            raise KeyError(
+                "Field {!r} wasn't requested in the query".format(item)
+            )
 
         try:
             obj: t.Dict = self.__idx__[self.__ref__.node][self.__ref__.ident]
@@ -113,6 +103,7 @@ class Proxy:
                     self.__ref__.node, self.__ref__.ident
                 )
             )
+
         try:
             value: t.Any = obj[field.index_key]
         except KeyError:

@@ -5,6 +5,7 @@ from asyncio import gather
 
 from typing_extensions import TypedDict
 
+from hiku.merge import QueryMerger
 from hiku.graph import GraphTransformer
 
 from hiku.result import Proxy
@@ -132,6 +133,14 @@ class BaseGraphQLEndpoint(ABC, t.Generic[C]):
         else:
             self.mutation_graph = None
 
+    def _validate(
+        self,
+        graph: Graph,
+        query: Node,
+        validators: t.Optional[t.Tuple[QueryValidator, ...]] = None,
+    ) -> t.List[str]:
+        return _run_validation(graph, query, validators)
+
     def _init_execution_context(
         self,
         execution_context: ExecutionContext,
@@ -159,6 +168,20 @@ class BaseGraphQLEndpoint(ABC, t.Generic[C]):
                     )
 
             execution_context.query = execution_context.operation.query
+
+            with extensions_manager.validation():
+                if self.validation and execution_context.errors is None:
+                    execution_context.errors = self._validate(
+                        execution_context.graph,
+                        execution_context.query,
+                        execution_context.validators,
+                    )
+
+            if execution_context.errors:
+                raise GraphQLError(errors=execution_context.errors)
+
+            merger = QueryMerger(execution_context.graph)
+            execution_context.query = merger.merge(execution_context.query)
 
         op = execution_context.operation
         if op.type not in (OperationType.QUERY, OperationType.MUTATION):
@@ -260,17 +283,6 @@ class GraphQLEndpoint(BaseSyncGraphQLEndpoint):
         extensions_manager: ExtensionsManager,
     ) -> t.Dict:
         execution_context = t.cast(ExecutionContextFinal, execution_context)
-
-        with extensions_manager.validation():
-            if self.validation and execution_context.errors is None:
-                execution_context.errors = _run_validation(
-                    execution_context.graph,
-                    execution_context.query,
-                    execution_context.validators,
-                )
-
-        if execution_context.errors:
-            raise GraphQLError(errors=execution_context.errors)
 
         with extensions_manager.execution():
             result = self.engine.execute_context(execution_context)

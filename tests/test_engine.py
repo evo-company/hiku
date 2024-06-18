@@ -1,5 +1,6 @@
 import re
 from typing import Any, List, Tuple
+from collections import defaultdict
 
 import pytest
 from sqlalchemy import Column, ForeignKey
@@ -17,7 +18,7 @@ from hiku.graph import (Field, Graph, Interface, Link, Node, Nothing, Option,
                         Root, Union)
 from hiku.result import denormalize
 from hiku.sources.sqlalchemy import FieldsQuery
-from hiku.types import (Integer, InterfaceRef, Optional, Record, Sequence,
+from hiku.types import (Boolean, Integer, InterfaceRef, Optional, Record, Sequence,
                         String, TypeRef, UnionRef)
 from hiku.utils import ImmutableDict, listify
 
@@ -1355,7 +1356,7 @@ def test_non_root_link_with_sequence_to_optional_type_ref():
     }
 
 
-def test_overlapped_query_node_with_fragment():
+def test_merge_query__fragments():
     num_link_user = 0
     num_resolve_id = 0
     num_resolve_name = 0
@@ -1416,7 +1417,74 @@ def test_overlapped_query_node_with_fragment():
     assert data == {"context": {"user": {"id": 1, "name": "John"}}}
 
 
-def test_overlapped_query_node_with_fragment_interface():
+@pytest.mark.parametrize("query", [
+    pytest.param(
+        """
+        query GetUser2 {
+            context {
+                user {
+                    id
+                }
+                ... on BaseContext {
+                    user { name }
+                }
+                ... on MyContext {
+                    user { name }
+                    balance
+                }
+            }
+        }
+        """,
+        id="one level fragments"
+    ),
+    pytest.param(
+        """
+        query GetUser {
+            context {
+                ...ContextFragment
+            }
+        }
+        fragment ContextFragment on Context {
+            user {
+                id
+            }
+            ... on BaseContext {
+                user { name }
+            }
+            ... on MyContext {
+                user { name }
+                balance
+            }
+        }
+        """,
+        id="nested fragments",
+    ),
+    pytest.param(
+        """
+        query GetUser {
+            context {
+                ... on MyContext {
+                    user { name }
+                }
+                ...ContextFragment
+            }
+        }
+        fragment ContextFragment on Context {
+            user {
+                id
+            }
+            ... on BaseContext {
+                user { name }
+            }
+            ... on MyContext {
+                balance
+            }
+        }
+        """,
+        id="nested + neighbour fragments",
+    ),
+])
+def test_merge_query__interface_fragments(query):
     num_link_user = 0
     num_resolve_id = 0
     num_resolve_name = 0
@@ -1482,24 +1550,8 @@ def test_overlapped_query_node_with_fragment_interface():
         ],
     )
 
-    query = """
-    query GetUser2 {
-        context {
-            user {
-                id
-            }
-            ... on BaseContext {
-                user { name } 
-            }
-            ... on MyContext { 
-                user { name }
-                balance
-            }
-        }
-    }
-    """
-
-    data = execute_endpoint(graph, query)["data"]
+    result = execute_endpoint(graph, query)
+    data = result["data"]
 
     assert num_link_user == 1
     assert num_resolve_id == 1
@@ -1509,7 +1561,51 @@ def test_overlapped_query_node_with_fragment_interface():
     }
 
 
-def test_overlapped_query_node_with_fragment_union():
+@pytest.mark.parametrize("query", [
+    pytest.param(
+        """
+        query GetUser {
+            contexts {
+                ... on BaseContext { user { name } }
+                ... on MyContext { user { id name } }
+                ... on MyContext { balance }
+            }
+        }
+        """,
+        id="one level fragments"),
+    pytest.param(
+        """
+        query GetUser {
+            contexts {
+                ...ContextsFragment
+            }
+        }
+        fragment ContextsFragment on Context {
+            ... on BaseContext { user { name } }
+            ... on MyContext { user { id name } }
+            ... on MyContext { balance }
+        }
+        """,
+        id="nested fragments",
+
+    ),
+    pytest.param(
+        """
+        query GetUser {
+            contexts {
+                ... on MyContext { balance }
+                ...ContextsFragment
+            }
+        }
+        fragment ContextsFragment on Context {
+            ... on BaseContext { user { name } }
+            ... on MyContext { user { id name } }
+        }
+        """,
+        id="nested + neighbour fragments",
+    ),
+])
+def test_merge_query__union_fragments(query):
     num_link_user = 0
     num_resolve_id = 0
     num_resolve_name = 0
@@ -1577,21 +1673,8 @@ def test_overlapped_query_node_with_fragment_union():
         unions=[Union("Context", ["BaseContext", "MyContext"])],
     )
 
-    query = """
-    query GetUser2 {
-        contexts {
-            ... on BaseContext {
-                user { name } 
-            }
-            ... on MyContext { 
-                user { id name }
-                balance
-            }
-        }
-    }
-    """
-
-    data = execute_endpoint(graph, query)["data"]
+    result = execute_endpoint(graph, query)
+    data = result["data"]
 
     assert num_link_user == 2
     assert num_resolve_id == 1
@@ -1604,3 +1687,256 @@ def test_overlapped_query_node_with_fragment_union():
             },
         ]
     }
+
+
+def test_merge_query__fields_and_nested_fragments() -> None:
+    call_count = defaultdict(int)
+
+    def _count_calls(func):
+        def wrapper(*args, **kwargs):
+            if func.__name__.startswith("resolve"):
+                for field in args[0]:
+                    key = f'{func.__name__}:{field.name}'
+                    call_count[key] += 1
+            else:
+                call_count[func.__name__] += 1
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    @_count_calls
+    def resolve_user(fields, ids) -> List[Any]:
+        def get_field(f, id_) -> Any:
+            if f.name == "name":
+                if f.options.get("capitalize", False):
+                    return "John"
+                return "john"
+            elif f.name == "id":
+                return id_
+
+        return [[get_field(f, id_) for f in fields] for id_ in ids]
+
+    @_count_calls
+    def resolve_info(fields, ids) -> List[Any]:
+        def get_field(f, id_) -> Any:
+            if f.name == "email":
+                return "john@example.com"
+            elif f.name == "phone":
+                return "+1234567890"
+
+        return [[get_field(f, id_) for f in fields] for id_ in ids]
+
+    @_count_calls
+    def link_user() -> int:
+        return 1
+
+    @_count_calls
+    def link_info() -> int:
+        return 100
+
+    graph = Graph(
+        [
+            Node(
+                "User",
+                [
+                    Field("id", String, resolve_user),
+                    Field("name", String, resolve_user, options=[
+                        Option("capitalize", Optional[Boolean], default=False)
+                    ]),
+                    Link("info", TypeRef["Info"], link_info, requires=None)
+                ],
+            ),
+            Node(
+                "Info",
+                [
+                    Field("email", String, resolve_info),
+                    Field("phone", String, resolve_info),
+                ],
+            ),
+            Node(
+                "Context",
+                [
+                    Link("user", TypeRef["User"], link_user, requires=None)
+                ],
+            ),
+            Root(
+                [Link("context", TypeRef["Context"], lambda: 100, requires=None)]
+            ),
+        ]
+    )
+
+    query = """
+    query GetUser {
+        context {
+            user {
+                id
+                name
+                capName: name(capitalize: true)
+            }
+            ...ContextFragment
+        }
+    }
+
+    fragment ContextFragment on Context {
+        ...ContextAFragment
+        ...ContextBFragment
+    }
+
+    fragment ContextAFragment on Context {
+        user {
+            id
+            name
+            ...UserFragmentA
+            ...UserFragmentB
+            ... on User {
+                id
+            }
+        }
+    }
+
+    fragment ContextBFragment on Context {
+        user {
+            id
+            capName: name(capitalize: true)
+        }
+    }
+
+    fragment UserFragmentA on User {
+        id
+        info {
+            email
+        }
+    }
+
+    fragment UserFragmentB on User {
+        id
+        name
+        capName: name(capitalize: true)
+        info {
+            phone
+        }
+    }
+    """
+
+    result = execute_endpoint(graph, query)
+    data = result["data"]
+    assert data == {
+        "context": {
+            "user": {
+                "id": 1,
+                "name": "john",
+                "capName": "John",
+                "info": {"email": "john@example.com", "phone": "+1234567890"}
+            }
+        }
+    }
+
+
+def test_merge_query__only_nested_fragments() -> None:
+    def resolve_user(fields, ids) -> List[Any]:
+        def get_field(f, id_) -> Any:
+            if f.name == "name":
+                if f.options.get("capitalize", False):
+                    return "John"
+                return "john"
+            elif f.name == "id":
+                return id_
+
+        return [[get_field(f, id_) for f in fields] for id_ in ids]
+
+    graph = Graph(
+        [
+            Node(
+                "User",
+                [
+                    Field("id", String, resolve_user),
+                    Field("name", String, resolve_user, options=[
+                        Option("capitalize", Optional[Boolean], default=False)
+                    ]),
+                ],
+            ),
+            Node(
+                "Context",
+                [
+                    Link("user", TypeRef["User"], lambda: 1, requires=None)
+                ],
+            ),
+            Root(
+                [Link("context", TypeRef["Context"], lambda: 100, requires=None)]
+            ),
+        ]
+    )
+
+    query = """
+    query GetUser {
+        context {
+            ...ContextFragment
+        }
+    }
+
+    fragment ContextFragment on Context {
+        ...ContextAFragment
+        ...ContextBFragment
+    }
+
+    fragment ContextAFragment on Context {
+        user {
+            id
+            name
+        }
+    }
+
+    fragment ContextBFragment on Context {
+        user {
+            id
+            capName: name(capitalize: true)
+        }
+    }
+    """
+
+    result = execute_endpoint(graph, query)
+    data = result["data"]
+    assert data == {
+        "context": {
+            "user": {
+                "id": 1,
+                "name": "john",
+                "capName": "John",
+            }
+        }
+    }
+
+
+def test_merge_query__complex_field_fragment() -> None:
+    def point_func(fields):
+        return [{
+            "x": 1,
+            "y": 2,
+        }]
+
+    graph = Graph([
+        Root([
+            Field('point', TypeRef["Point"], point_func),
+        ]),
+    ], data_types={
+        'Point': Record[{
+            'x': Integer,
+            'y': Integer,
+        }],
+    })
+
+    query = """
+    query GetPoint {
+        point {
+            ...PointFragment
+        }
+    }
+
+    fragment PointFragment on User {
+        x y
+    }
+    """
+
+    data = execute_endpoint(graph, query)["data"]
+
+    assert data == {"point": {"x": 1, "y": 2}}

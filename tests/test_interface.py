@@ -430,6 +430,40 @@ def test_validate_query_implementation_node_field_without_inline_fragment():
         "Did you mean to use an inline fragment on 'Audio'?"
     ]
 
+def test_validate_query_fragment_no_type_condition():
+    query = """
+    query GetMedia {
+      media {
+        ... {
+          album
+        }
+      }
+    }
+    """
+
+    errors = validate(GRAPH, read(query, {'text': 'foo'}))
+
+    assert errors == [
+      "Can not query field 'album' on type 'Media'. "
+      "Did you mean to use an inline fragment on 'Audio'?"
+    ]
+
+
+def test_validate_query_fragment_on_unknown_type():
+    query = """
+    query GetMedia {
+      media {
+        ... on X {
+          duration
+        }
+      }
+    }
+    """
+
+    errors = validate(GRAPH, read(query, {'text': 'foo'}))
+
+    assert errors == ["Fragment on unknown type 'X'"]
+
 
 def test_validate_interface_type_has_no_such_field():
     query = """

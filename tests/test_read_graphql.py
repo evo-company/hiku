@@ -190,7 +190,14 @@ def test_named_fragments() -> None:
                     Node([Field("rusk")]),
                 ),
             ],
-            [],
+            [
+                Fragment("Meer", 'Torsion', Node([
+                    Link(
+                        "kilned",
+                        Node([Field("rusk")]),
+                    ),
+                ])),
+            ],
         ),
     )
 
@@ -202,10 +209,10 @@ def test_named_fragments() -> None:
                 Field("apres"),
             ],
             [
-                Fragment('Makai', [
+                Fragment("Goaded", 'Makai', Node([
                     Field("doozie"),
                     PinsLink
-                ]),
+                ])),
             ]
         ),
         options={"gire": "noatak"},
@@ -218,12 +225,12 @@ def test_named_fragments() -> None:
                 SneezerLink
             ],
             [
-                Fragment("Valium", [
+                Fragment(None, "Valium", Node([
                     Link(
                         "movies",
                         Node([Field("boree")]),
                     ),
-                ]),
+                ])),
             ]
         ),
     )
@@ -362,11 +369,12 @@ def test_variables_in_fragment():
         }
         """,
         Node(
+            [],
             [
-                Field(
+                Fragment("Pujari", "Ashlee", Node([Field(
                     "fibbery",
                     options={"baps": None, "bankit": 123, "riuer": 234},
-                )
+                )]))
             ]
         ),
         {"popedom": 123},
@@ -447,7 +455,7 @@ def test_skip_fragment_spread(skip):
           bar
         }
         """,
-        Node([Field("foo")] + ([] if skip else [Field("bar")])),
+        Node([Field("foo")], ([] if skip else [Fragment("Fragment", "Thing", Node([Field("bar")]))])),
         {"cond": skip},
     )
 
@@ -463,7 +471,7 @@ def test_skip_inline_fragment(skip):
           }
         }
         """,
-        Node([Field("foo")] + ([] if skip else [Field("bar")])),
+        Node([Field("foo")], ([] if skip else [Fragment(None, "Thing", Node([Field("bar")]))])),
         {"cond": skip},
     )
 
@@ -494,7 +502,7 @@ def test_include_fragment_spread(include):
           bar
         }
         """,
-        Node([Field("foo")] + ([Field("bar")] if include else [])),
+        Node([Field("foo")], ([Fragment("Fragment", "Thing", Node([Field("bar")]))] if include else [])),
         {"cond": include},
     )
 
@@ -510,7 +518,7 @@ def test_include_inline_fragment(include):
           }
         }
         """,
-        Node([Field("foo")] + ([Field("bar")] if include else [])),
+        Node([Field("foo")], ([Fragment(None, "Thing", Node([Field("bar")]))] if include else [])),
         {"cond": include},
     )
 
@@ -569,242 +577,3 @@ def test_read_operation_subscription():
     op = read_operation("subscription { ping }")
     assert op.type is OperationType.SUBSCRIPTION
     assert op.query == Node([Field("ping")])
-
-
-def test_parse_union_with_two_fragments():
-    check_read(
-        """
-        query GetMedia {
-          media {
-            __typename
-            ... on Audio {
-              id
-              duration
-            }
-            ...VideoId
-            ... on Video {
-              thumbnailUrl
-            }
-          }
-        }
-        
-        fragment VideoId on Video {
-          id
-        }
-        """,
-        Node(
-            [
-                Link(
-                    "media",
-                    Node([
-                        Field("__typename"),
-                        ], [
-                        Fragment('Audio', [
-                            Field("id"),
-                            Field("duration"),
-                        ]),
-                        Fragment('Video', [
-                            Field("id"),
-                            Field("thumbnailUrl"),
-                        ]),
-                    ]),
-                ),
-            ]
-        ),
-    )
-
-
-def test_parse_union_with_one_fragment():
-    check_read(
-        """
-        query GetMedia {
-          media {
-            __typename
-            ... on Audio {
-              id
-              duration
-            }
-          }
-        }
-        """,
-        Node(
-            [
-                Link(
-                    "media",
-                    Node([
-                        Field("__typename"),
-                    ], [
-                        Fragment('Audio', [
-                            Field("id"),
-                            Field("duration"),
-                        ]),
-                        ]
-                    )
-                ),
-            ]
-        ),
-    )
-
-
-def test_parse_interface_with_two_fragments():
-    check_read(
-        """
-        query GetMedia {
-          media {
-            __typename
-            id
-            duration
-            ... on Audio {
-              album
-            }
-            ... on Video {
-              thumbnailUrl
-            }
-          }
-        }
-        """,
-        Node(
-            [
-                Link(
-                    "media",
-                    Node([
-                        Field("__typename"),
-                        Field("id"),
-                        Field("duration"),
-                        ], [
-                        Fragment('Audio', [
-                            Field("album"),
-                        ]),
-                        Fragment('Video', [
-                            Field("thumbnailUrl"),
-                        ]),
-                    ])
-                )
-            ]
-        ),
-    )
-
-
-def test_parse_interface_with_one_fragment():
-    check_read(
-        """
-        query GetMedia {
-          media {
-            __typename
-            id
-            duration
-            ... on Audio {
-              album
-            }
-          }
-        }
-        """,
-        Node(
-            [
-                Link(
-                    "media",
-                    Node([
-                        Field("__typename"),
-                        Field("id"),
-                        Field("duration"),
-                    ], [
-                        Fragment('Audio', [
-                            Field("album"),
-                        ]),
-                    ]),
-                )
-            ]
-        ),
-    )
-
-
-def test_merge_node_with_fragment_on_node() -> None:
-    check_read(
-        """
-        query GetContext {
-            context {
-                user {
-                    id
-                    name
-                    ... on User {
-                        id
-                        email
-                    }
-                }
-                ... on Context {
-                    user {
-                        ... on User {
-                            id
-                            email
-                        }
-                    }
-                }
-            }
-        }
-        """,
-
-        Node(
-            [
-                Link(
-                    "context",
-                    Node([
-                        Link("user", Node([
-                            Field("id"),
-                            Field("name"),
-                        ], [
-                            Fragment('User', [
-                                Field("email"),
-                            ]),
-                        ])),
-                    ], []),
-                )
-            ]
-        ),
-    )
-
-
-
-def test_merge_fragment_for_union() -> None:
-    """We do not know if fragments are for unions or not when we parsing query"""
-    check_read(
-        """
-        query GetContext {
-            context {
-                user {
-                    id
-                    name
-                    ... on User {
-                        id
-                        email
-                    }
-                }
-                ... on Context {
-                    user {
-                        ... on User {
-                            id
-                            email
-                        }
-                    }
-                }
-            }
-        }
-        """,
-
-        Node(
-            [
-                Link(
-                    "context",
-                    Node([
-                        Link("user", Node([
-                            Field("id"),
-                            Field("name"),
-                        ], [
-                            Fragment('User', [
-                                Field("email"),
-                            ]),
-                        ])),
-                    ], []),
-                )
-            ]
-        ),
-    )

@@ -19,12 +19,14 @@ from sqlalchemy import (
 from sqlalchemy.pool import StaticPool
 
 from hiku.denormalize.graphql import DenormalizeGraphQL
+from hiku.endpoint.graphql import GraphQLEndpoint
 from hiku.executors.threads import ThreadsExecutor
 from hiku.expr.core import (
     define,
     S,
 )
-from hiku.query import FieldOrLink, _compute_hash, Link as QueryLink, Node as QueryNode
+from hiku.merge import QueryMerger
+from hiku.query import FieldOrLink, Link as QueryLink, Node as QueryNode
 from hiku.result import Reference
 from hiku.sources.graph import SubGraph
 from hiku.sources.sqlalchemy import (
@@ -554,9 +556,9 @@ def get_product_query(product_id: int) -> str:
             }
         }
     }
-    
+
     fragment ProductInfo on Product {
-        company {
+        company @cached(ttl: 20) {
             id
             name
             address { city }
@@ -570,7 +572,7 @@ def get_product_query(product_id: int) -> str:
             ...CompanyInfo
         }
     }
-    
+
     fragment CompanyInfo on Company {
         logoImage(size: 100)
     }
@@ -601,7 +603,7 @@ def get_products_query() -> str:
         }
     }
     fragment ProductInfo on Product {
-        company {
+        company @cached(ttl: 20) {
             id
             name
             address { city }
@@ -612,15 +614,26 @@ def get_products_query() -> str:
             ...CompanyInfo
         }
     }
-    
+
     fragment CompanyInfo on Company {
         logoImage(size: 100)
     }
     """
 
 
-def assert_dict_equal(got, exp):
-    assert _compute_hash(got) == _compute_hash(exp)
+
+def assert_deep_equal(got, exp):
+    if isinstance(got, dict):
+        for k, v in got.items():
+            assert k in exp
+            assert_deep_equal(v, exp[k])
+    elif isinstance(got, list) or isinstance(got, tuple):
+        for i, item in enumerate(got):
+            assert_deep_equal(item, exp[i])
+    elif isinstance(got, Reference):
+        assert hash(got) == hash(exp)
+    else:
+        assert got == exp
 
 
 def get_field(query: QueryNode, path: t.List[str]) -> FieldOrLink:
@@ -632,18 +645,16 @@ def get_field(query: QueryNode, path: t.List[str]) -> FieldOrLink:
 
     for idx, name in enumerate(path):
         if name in node.fields_map:
-            node = node.fields_map[name]
+            field = node.fields_map[name]
             if last(idx):
-                return node
+                return field
 
-            if isinstance(node, QueryLink):
-                node = node.node
+            if isinstance(field, QueryLink):
+                node = field.node
         else:
             for fr in node.fragments:
                 if name in fr.node.fields_map:
-                    node = fr.node.fields_map[name]
-
-    return node
+                    field = fr.node.fields_map[name]
 
 
 def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
@@ -660,14 +671,18 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
     cache_settings = CacheSettings(cache)
     cache_info = CacheInfo(cache_settings)
     engine = Engine(ThreadsExecutor(thread_pool), cache_settings)
+    endpoint = GraphQLEndpoint(engine, graph)
     ctx = {SA_ENGINE_KEY: sa_engine, "locale": "en"}
 
     def execute(q):
-        proxy = engine.execute(graph, q, ctx=ctx)
-        return DenormalizeGraphQL(graph, proxy, "query").process(q)
+        return endpoint.dispatch({"query": q}, ctx)
 
-    query = read(get_product_query(1))
+    merger = QueryMerger(graph)
+    query_str = get_product_query(1)
+    query = merger.merge(read(query_str))
+
     company_link = get_field(query, ['product', 'company'])
+
     attributes_link = get_field(query, ['product', 'attributes'])
 
     photo_field = get_field(query, ["product", "company", "owner", "photo"])
@@ -749,20 +764,35 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
         }
     }
 
-    check_result(execute(query), expected_result)
+    check_result(execute(query_str)["data"], expected_result)
 
     assert cache.get_many.call_count == 2
 
-    calls = {
-        **cache.set_many.mock_calls[0][1][0],
-        **cache.set_many.mock_calls[1][1][0],
-    }
-    calls_expected = {attributes_key: attributes_cache, company_key: company_cache}
-    assert_dict_equal(calls, calls_expected)
+    call1 = cache.set_many.call_args_list[0][0]
+    call2 = cache.set_many.call_args_list[1][0]
+
+    company_call = None
+    attributes_call = None
+
+    if company_key in call1[0]:
+        company_call = call1
+        attributes_call = call2
+    else:
+        company_call = call2
+        attributes_call = call1
+
+    if not company_call or not attributes_call:
+        pytest.fail("Expected cache.set_many call")
+
+    assert_deep_equal(company_call[0], {company_key: company_cache})
+    assert company_call[1] == 10
+
+    assert_deep_equal(attributes_call[0], {attributes_key: attributes_cache})
+    assert attributes_call[1] == 15
 
     cache.reset_mock()
 
-    check_result(execute(query), expected_result)
+    check_result(execute(query_str)["data"], expected_result)
 
     cache.get_many.assert_has_calls(
         [
@@ -791,13 +821,15 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
     cache_settings = CacheSettings(cache, cache_key)
     cache_info = CacheInfo(cache_settings)
     engine = Engine(ThreadsExecutor(thread_pool), cache_settings)
+    endpoint = GraphQLEndpoint(engine, graph)
     ctx = {SA_ENGINE_KEY: sa_engine, "locale": "en"}
 
     def execute(q):
-        proxy = engine.execute(graph, q, ctx=ctx)
-        return DenormalizeGraphQL(graph, proxy, "query").process(q)
+        return endpoint.dispatch({"query": q}, ctx)
 
-    query = read(get_products_query())
+    merger = QueryMerger(graph)
+    query_str = get_products_query()
+    query = merger.merge(read(query_str))
 
     company_link = get_field(query, ['products', 'company'])
     attributes_link = get_field(query, ['products', 'attributes'])
@@ -932,24 +964,37 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
         ]
     }
 
-    check_result(execute(query), expected_result)
+    check_result(execute(query_str)["data"], expected_result)
 
     assert cache.get_many.call_count == 2
-    calls = {
-        **cache.set_many.mock_calls[0][1][0],
-        **cache.set_many.mock_calls[1][1][0],
-    }
-    calls_expected = {
-        attributes11_12_key: attributes11_12_cache,
-        attributes_none_key: attributes_none_cache,
-        company10_key: company10_cache,
-        company20_key: company20_cache,
-    }
-    assert_dict_equal(calls, calls_expected)
+
+    call1 = cache.set_many.call_args_list[0][0]
+    call2 = cache.set_many.call_args_list[1][0]
+
+    company_call = None
+    attributes_call = None
+
+    # calls can be in different order, so we first determine which call is which
+    if company10_key in call1[0] or company20_key in call1[0]:
+        company_call = call1
+        attributes_call = call2
+    else:
+        company_call = call2
+        attributes_call = call1
+
+    if not company_call or not attributes_call:
+        pytest.fail("Expected cache.set_many call")
+
+    assert_deep_equal(company_call[0], {company10_key: company10_cache, company20_key: company20_cache})
+    assert company_call[1] == 10
+
+    assert_deep_equal(attributes_call[0], {attributes11_12_key: attributes11_12_cache, attributes_none_key: attributes_none_cache})
+    assert attributes_call[1] == 15
 
     cache.reset_mock()
 
-    check_result(execute(query), expected_result)
+    check_result(execute(query_str)["data"], expected_result)
+
     assert set(*cache.get_many.mock_calls[0][1]) == {
         attributes11_12_key,
         attributes_none_key,

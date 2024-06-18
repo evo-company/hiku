@@ -42,7 +42,7 @@ def test_link_fragment(benchmark):
             }
         }
     }
-    
+
     """
     parsed_query = benchmark(read, query, None)
     assert parsed_query == Node([
@@ -51,9 +51,9 @@ def test_link_fragment(benchmark):
                 Field("id"),
             ],
             [
-                Fragment("User", [
+                Fragment(None, "User", Node([
                     Field("name"),
-                ])
+                ]))
             ]
         ))
     ])

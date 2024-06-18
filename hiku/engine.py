@@ -34,6 +34,7 @@ from .context import ExecutionContext, create_execution_context
 from .executors.base import SyncAsyncExecutor
 from .operation import Operation, OperationType
 from .query import (
+    Fragment,
     Node as QueryNode,
     Field as QueryField,
     Link as QueryLink,
@@ -171,10 +172,16 @@ class InitOptions(QueryTransformer):
         return obj.copy(node=node, options=options)
 
 
-# query.Link is considered a complex Field if present in tuple
-FieldGroup = Tuple[Field, Union[QueryField, QueryLink]]
-CallableFieldGroup = Tuple[Callable, Field, Union[QueryField, QueryLink]]
-LinkGroup = Tuple[Link, QueryLink]
+@dataclasses.dataclass
+class FieldInfo:
+    graph_field: Field
+    query_field: Union[QueryField, QueryLink]
+
+
+@dataclasses.dataclass
+class LinkInfo:
+    graph_link: Link
+    query_link: QueryLink
 
 
 class SplitQuery(QueryVisitor):
@@ -184,21 +191,25 @@ class SplitQuery(QueryVisitor):
 
     def __init__(self, graph_node: Node) -> None:
         self._node = graph_node
-        self._fields: List[CallableFieldGroup] = []
-        self._links: List[LinkGroup] = []
+        self._fields: List[Tuple[Callable, FieldInfo]] = []
+        self._links: List[LinkInfo] = []
 
     def split(
         self, query_node: QueryNode
-    ) -> Tuple[List[CallableFieldGroup], List[LinkGroup]]:
+    ) -> Tuple[List[Tuple[Callable, FieldInfo]], List[LinkInfo]]:
         for item in query_node.fields:
             self.visit(item)
 
         for fr in query_node.fragments:
-            if fr.type_name != self._node.name:
-                continue
-            self.visit(fr)
+            # node fragments can have different type_names
+            # if node is union or inteface
+            if fr.type_name == self._node.name:
+                self.visit(fr)
 
         return self._fields, self._links
+
+    def visit_fragment(self, obj: Fragment) -> None:
+        self.visit(obj.node)
 
     def visit_node(self, obj: QueryNode) -> None:
         for item in obj.fields:
@@ -210,7 +221,7 @@ class SplitQuery(QueryVisitor):
 
         graph_obj = self._node.fields_map[obj.name]
         func = getattr(graph_obj.func, "__subquery__", graph_obj.func)
-        self._fields.append((func, graph_obj, obj))
+        self._fields.append((func, FieldInfo(graph_obj, obj)))
 
     def visit_link(self, obj: QueryLink) -> None:
         graph_obj = self._node.fields_map[obj.name]
@@ -221,24 +232,24 @@ class SplitQuery(QueryVisitor):
                         self.visit(QueryField(r))
                 else:
                     self.visit(QueryField(graph_obj.requires))
-            self._links.append((graph_obj, obj))
+            self._links.append(LinkInfo(graph_link=graph_obj, query_link=obj))
         else:
             assert isinstance(graph_obj, Field), type(graph_obj)
             # `obj` here is a link, but this link is treated as a complex field
             func = getattr(graph_obj.func, "__subquery__", graph_obj.func)
-            self._fields.append((func, graph_obj, obj))
+            self._fields.append((func, FieldInfo(graph_obj, obj)))
 
 
 class GroupQuery(QueryVisitor):
     def __init__(self, node: Node) -> None:
         self._node = node
         self._funcs: List[Callable] = []
-        self._groups: List[Union[List[FieldGroup], LinkGroup]] = []
+        self._groups: List[Union[List[FieldInfo], LinkInfo]] = []
         self._current_func = None
 
     def group(
         self, node: QueryNode
-    ) -> List[Tuple[Callable, Union[List[FieldGroup], LinkGroup]]]:
+    ) -> List[Tuple[Callable, Union[List[FieldInfo], LinkInfo]]]:
         for item in node.fields:
             self.visit(item)
         return list(zip(self._funcs, self._groups))
@@ -251,9 +262,9 @@ class GroupQuery(QueryVisitor):
         func = getattr(graph_obj.func, "__subquery__", graph_obj.func)
         if func == self._current_func:
             assert isinstance(self._groups[-1], list)
-            self._groups[-1].append((graph_obj, obj))
+            self._groups[-1].append(FieldInfo(graph_obj, obj))
         else:
-            self._groups.append([(graph_obj, obj)])
+            self._groups.append([FieldInfo(graph_obj, obj)])
             self._funcs.append(func)
             self._current_func = func
 
@@ -265,7 +276,7 @@ class GroupQuery(QueryVisitor):
                     self.visit(QueryField(r))
             else:
                 self.visit(QueryField(graph_obj.requires))
-        self._groups.append((graph_obj, obj))
+        self._groups.append(LinkInfo(graph_obj, obj))
         self._funcs.append(graph_obj.func)
         self._current_func = None
 
@@ -645,7 +656,9 @@ class Query(Workflow):
         proc_steps = GroupQuery(node).group(query)
 
         # recursively and sequentially schedule fields and links
-        def proc(steps: List) -> None:
+        def proc(
+            steps: List[Tuple[Callable, Union[List[FieldInfo], LinkInfo]]]
+        ) -> None:
             step_func, step_item = steps.pop(0)
             if isinstance(step_item, list):
                 self._track(path)
@@ -653,10 +666,9 @@ class Query(Workflow):
                     path, node, step_func, step_item, ids
                 )
             else:
-                graph_link, query_link = step_item
                 self._track(path)
                 dep = self._schedule_link(
-                    path, node, graph_link, query_link, ids
+                    path, node, step_item.graph_link, step_item.query_link, ids
                 )
 
             if steps:
@@ -682,24 +694,31 @@ class Query(Workflow):
         fields, links = SplitQuery(node).split(query)
 
         to_func: Dict[str, Callable] = {}
-        from_func: DefaultDict[Callable, List[FieldGroup]] = defaultdict(list)
-        for func, graph_field, query_field in fields:
-            to_func[graph_field.name] = func
-            from_func[func].append((graph_field, query_field))
+        from_func: DefaultDict[Callable, List[FieldInfo]] = defaultdict(list)
+        for func, field_info in fields:
+            to_func[field_info.graph_field.name] = func
+            from_func[func].append(field_info)
 
-        # schedule fields resolve
         to_dep: Dict[Callable, Dep] = {}
-        for func, func_fields in from_func.items():
+        for func, func_fields_info in from_func.items():
             self._track(path)
             to_dep[func] = self._schedule_fields(
-                path, node, func, func_fields, ids
+                path, node, func, func_fields_info, ids
             )
 
         # schedule link resolve
-        for graph_link, query_link in links:
+        for link_info in links:
+            graph_link = link_info.graph_link
+            link = link_info.query_link
+
             self._track(path)
             schedule = partial(
-                self._schedule_link, path, node, graph_link, query_link, ids
+                self._schedule_link,
+                path,
+                node,
+                graph_link,
+                link,
+                ids,
             )
             if graph_link.requires:
                 if isinstance(graph_link.requires, list):
@@ -787,15 +806,16 @@ class Query(Workflow):
         path: NodePath,
         node: Node,
         func: Callable,
-        fields: List[FieldGroup],
+        fields_info: List[FieldInfo],
         ids: Optional[Any],
     ) -> Union[SubmitRes, TaskSet]:
-        query_fields = [qf for _, qf in fields]
+        query_fields = [f.query_field for f in fields_info]
 
         dep: Union[TaskSet, SubmitRes]
         if hasattr(func, "__subquery__"):
             assert ids is not None
             dep = self._queue.fork(self._task_set)
+            fields = [(f.graph_field, f.query_field) for f in fields_info]
             proc = func(fields, ids, self._queue, self._ctx, dep)
         else:
             if ids is None:
@@ -854,7 +874,12 @@ class Query(Workflow):
 
             if ids:
                 self._schedule_link(
-                    path, node, graph_link, query_link, ids, skip_cache=True
+                    path,
+                    node,
+                    graph_link,
+                    query_link,
+                    ids,
+                    skip_cache=True,
                 )
 
         self._queue.add_callback(dep, callback)
@@ -882,13 +907,14 @@ class Query(Workflow):
         """
         args = []
         if graph_link.requires:
+            # collect data for link requires from store
             reqs: Any = link_reqs(self._index, node, graph_link, ids)
 
             if (
                 "cached" in query_link.directives_map
                 and self._cache
                 and not skip_cache
-            ):  # noqa: E501
+            ):
                 return self._update_index_from_cache(
                     path, node, graph_link, query_link, ids, reqs
                 )
@@ -902,7 +928,12 @@ class Query(Workflow):
 
         def callback() -> None:
             return self.process_link(
-                path, node, graph_link, query_link, ids, dep.result()
+                path,
+                node,
+                graph_link,
+                query_link,
+                ids,
+                dep.result(),
             )
 
         self._queue.add_callback(dep, callback)

@@ -1,5 +1,4 @@
-from collections import defaultdict
-from typing import Any, cast, Dict, Iterator, List, Optional, Set, Tuple, Union
+from typing import Any, cast, Dict, Iterator, List, Optional, Set, Union
 
 from graphql.language import ast
 from graphql.language.parser import parse
@@ -8,7 +7,7 @@ from hiku.utils import ImmutableDict
 
 from ..directives import Cached, Directive
 from ..operation import Operation, OperationType
-from ..query import Field, FieldOrLink, Fragment, Link, merge, Node
+from ..query import Field, Fragment, Link, merge, Node
 
 
 def parse_query(src: str) -> ast.DocumentNode:
@@ -120,7 +119,7 @@ class FragmentsCollector(NodeVisitor):
 
 
 class SelectionSetVisitMixin:
-    def transform_fragment(self, name: str) -> List[Union[Field, Link]]:
+    def transform_fragment(self, name: str) -> Optional[Fragment]:
         raise NotImplementedError(type(self))
 
     @property
@@ -218,51 +217,27 @@ class SelectionSetVisitMixin:
         return Cached(ttl=ttl)
 
     def _collect_fields(
-        self, obj: ast.FieldNode
-    ) -> Tuple[List[FieldOrLink], List[Fragment]]:
-        """Collect fields from AST node.
-
-        We collect shared fields and type-specific fragments separately.
-        Fragments for same type are merged.
-        Resulting list of fragments contains only type-specific fragments.
-        """
+        self,
+        obj: Union[
+            ast.OperationDefinitionNode,
+            ast.FieldNode,
+            ast.InlineFragmentNode,
+            ast.FragmentDefinitionNode,
+        ],
+        ordered: bool = False,
+    ) -> Node:
         assert obj.selection_set is not None
 
-        if isinstance(self, FragmentsTransformer):
-            fragments_map = self.fragments_map
-        else:
-            fragments_map = self.fragments_transformer.fragments_map  # type: ignore[attr-defined] # noqa: E501
+        fields = []
+        fragments = []
 
-        shared_fields = []
-        type_fields = defaultdict(list)
-
-        for item in obj.selection_set.selections:
-            type_name = None
-            selection_set = None
-
-            if isinstance(item, ast.InlineFragmentNode):
-                type_name = item.type_condition.name.value
-                selection_set = item.selection_set
-            elif isinstance(item, ast.FragmentSpreadNode):
-                if item.name.value not in fragments_map:
-                    raise TypeError(f'Undefined fragment: "{item.name.value}"')
-
-                fragment = fragments_map[item.name.value]
-                type_name = fragment.type_condition.name.value
-                selection_set = fragment.selection_set
+        for item in self.visit(obj.selection_set):  # type: ignore[attr-defined]
+            if isinstance(item, Fragment):
+                fragments.append(item)
             else:
-                shared_fields.extend(list(self.visit(item)))  # type: ignore[attr-defined] # noqa: E501
+                fields.append(item)
 
-            if type_name and selection_set:
-                type_fields[type_name].extend(
-                    list(self.visit(selection_set))  # type: ignore[attr-defined] # noqa: E501
-                )
-
-        node_fragments = []
-        for type_name, fields in type_fields.items():
-            node_fragments.append(Fragment(type_name, fields))
-
-        return shared_fields, node_fragments
+        return Node(fields, fragments, ordered=ordered)
 
     def visit_field(self, obj: ast.FieldNode) -> Iterator[Union[Field, Link]]:
         if self._should_skip(obj):
@@ -294,11 +269,9 @@ class SelectionSetVisitMixin:
                 directives=tuple(directives),
             )
         else:
-            fields, fragments = self._collect_fields(obj)
-
             yield Link(
                 obj.name.value,
-                Node(fields, fragments),
+                self._collect_fields(obj),
                 options=options,
                 alias=alias,
                 directives=tuple(directives),
@@ -333,21 +306,23 @@ class SelectionSetVisitMixin:
 
     def visit_fragment_spread(
         self, obj: ast.FragmentSpreadNode
-    ) -> Iterator[Union[Field, Link]]:
+    ) -> Iterator[Optional[Fragment]]:
         if self._should_skip(obj):
             return
 
-        for i in self.transform_fragment(obj.name.value):
-            yield i
+        yield self.transform_fragment(obj.name.value)
 
     def visit_inline_fragment(
         self, obj: ast.InlineFragmentNode
-    ) -> Iterator[Union[Field, Link]]:
+    ) -> Iterator[Optional[Fragment]]:
         if self._should_skip(obj):
             return
 
-        for i in self.visit(obj.selection_set):  # type: ignore[attr-defined]
-            yield i
+        yield Fragment(
+            None,
+            obj.type_condition.name.value if obj.type_condition else None,
+            self._collect_fields(obj),
+        )
 
 
 class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
@@ -362,13 +337,14 @@ class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
         self.query_name = query_name
         self.query_variables = query_variables
         self.fragments_map = collector.fragments_map
-        self.cache: Dict[str, List[Union[Field, Link]]] = {}
+        self.cache: Dict[str, Node] = {}
         self.pending_fragments: Set[str] = set()
 
-    def transform_fragment(self, name: str) -> List[Union[Field, Link]]:
+    def transform_fragment(self, name: str) -> Fragment:
         if name not in self.fragments_map:
             raise TypeError(f'Undefined fragment: "{name}"')
-        return self.visit(self.fragments_map[name])
+        obj = self.fragments_map[name]
+        return Fragment(name, obj.type_condition.name.value, self.visit(obj))
 
     def visit_operation_definition(
         self, obj: ast.OperationDefinitionNode
@@ -377,7 +353,7 @@ class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
 
     def visit_fragment_definition(
         self, obj: ast.FragmentDefinitionNode
-    ) -> List[Union[Field, Link]]:
+    ) -> Node:
         if obj.name.value in self.cache:
             return self.cache[obj.name.value]
         else:
@@ -387,11 +363,11 @@ class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
                 )
             self.pending_fragments.add(obj.name.value)
             try:
-                selection_set = list(self.visit(obj.selection_set))
+                node = self._collect_fields(obj)
             finally:
                 self.pending_fragments.discard(obj.name.value)
-            self.cache[obj.name.value] = selection_set
-            return selection_set
+            self.cache[obj.name.value] = node
+            return node
 
 
 class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
@@ -415,7 +391,7 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
         visitor = cls(document, variables)
         return visitor.visit(op)
 
-    def transform_fragment(self, name: str) -> List[Union[Field, Link]]:
+    def transform_fragment(self, name: str) -> Fragment:
         assert self.fragments_transformer
         return self.fragments_transformer.transform_fragment(name)
 
@@ -450,7 +426,7 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
         )
         ordered = obj.operation is ast.OperationType.MUTATION
         try:
-            node = Node(list(self.visit(obj.selection_set)), ordered=ordered)
+            node = self._collect_fields(obj, ordered=ordered)
         finally:
             self.query_name = None
             self.query_variables = None

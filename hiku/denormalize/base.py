@@ -10,6 +10,7 @@ from ..graph import (
     Field as GraphField,
 )
 from ..query import (
+    Fragment,
     QueryVisitor,
     Link,
     Field,
@@ -56,6 +57,7 @@ class Denormalize(QueryVisitor):
         self._unions = graph.unions_map
         self._enums = graph.enums_map
         self._result = result
+        self._index = result.__idx__
         self._type: t.Deque[
             t.Union[t.Type[Record], Union, Interface, BaseEnum]
         ] = deque([self._types["__root__"]])
@@ -72,16 +74,27 @@ class Denormalize(QueryVisitor):
         for item in obj.fields:
             self.visit(item)
 
+        for i, fr in enumerate(obj.fragments):
+            self.visit_fragment(fr, i)
+
+    def visit_fragment(self, obj: Fragment, idx: int) -> None:  # type: ignore[override]  # noqa: E501
         type_name = None
         if isinstance(self._data[-1], Proxy):
             type_name = self._data[-1].__ref__.node
 
-        for fr in obj.fragments:
-            if type_name is not None and type_name != fr.type_name:
-                # do not visit fragment if type specified and not match
-                continue
+        if type_name is not None and type_name != obj.type_name:
+            # for unions we must visit only fragments with same type as node
+            return
 
-            self.visit(fr)
+        if isinstance(self._data[-1], Proxy):
+            node = self._data[-1].__node__.fragments[idx].node
+            ref = self._data[-1].__ref__
+            self._data.append(Proxy(self._index, ref, node))
+        else:
+            self._data.append(self._data[-1])
+        for item in obj.node.fields:
+            self.visit(item)
+        self._data.pop()
 
     def visit_field(self, obj: Field) -> None:
         if isinstance(self._data[-1], Proxy):

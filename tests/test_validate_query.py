@@ -609,7 +609,76 @@ def test_distinct_by_name_fields():
     ]
 
 
-def test_distinct_by_options_fields():
+@pytest.mark.parametrize("query", [
+    pytest.param(
+        q.Node([q.Link("x", q.Node([
+            q.Field("a"),
+            q.Field("a", options={"e": 1})
+        ]))]),
+        id="only fields"
+    ),
+    pytest.param(
+        q.Node([q.Link("x", q.Node(
+        [],
+        [
+            q.Fragment('Fragment', 'X', q.Node([
+                q.Field("a"),
+                q.Field("a", options={"e": 1}),
+            ]))
+        ]))]),
+        id="only fields inside fragment"
+    ),
+    pytest.param(
+        q.Node([q.Link("x", q.Node(
+        [],
+        [
+            q.Fragment('FragmentA', 'X', q.Node([
+                q.Field("a"),
+            ])),
+            q.Fragment('FragmentB', 'X', q.Node([
+                q.Field("a", options={"e": 1}),
+            ])),
+        ]))]),
+        id="fields inside neighbour fragment"
+    ),
+    pytest.param(
+        q.Node([q.Link("x", q.Node(
+        [
+            q.Field("a"),
+        ],
+        [
+            q.Fragment('Fragment', 'X', q.Node([
+                q.Field("a", options={"e": 1}),
+            ])),
+        ]))]),
+        id="field + neighbour fragment"
+    ),
+    pytest.param(
+        q.Node([
+            q.Link("x", q.Node(
+                [],
+                [
+                    q.Fragment('FragmentB', 'X', q.Node([
+                        q.Field("a", options={"e": 1}),
+                    ])),
+                ]
+            ))
+        ], [
+            q.Fragment('FragmentA', 'Query', q.Node([
+                q.Link("x", q.Node(
+                [],
+                [
+                    q.Fragment('FragmentA', 'X', q.Node([
+                        q.Field("a"),
+                    ])),
+                ]
+            ))
+            ])),
+        ]),
+        id="different level fragment, same link"
+    ),
+])
+def test_distinct_by_options_fields(query):
     graph = Graph(
         [
             Node(
@@ -630,22 +699,7 @@ def test_distinct_by_options_fields():
             ),
         ]
     )
-    errors = validate(
-        graph,
-        q.Node(
-            [
-                q.Link(
-                    "x",
-                    q.Node(
-                        [
-                            q.Field("a"),
-                            q.Field("a", options={"e": 1}),
-                        ]
-                    ),
-                ),
-            ]
-        ),
-    )
+    errors = validate(graph, query)
     assert errors == [
         'Found distinct fields with the same resulting name "a" for the '
         'node "X"',
