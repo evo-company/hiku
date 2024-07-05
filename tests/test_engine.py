@@ -2,6 +2,7 @@ import re
 from typing import Any, List, Tuple
 from collections import defaultdict
 
+from graphql import get_introspection_query
 import pytest
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy import Integer as SaInteger
@@ -11,12 +12,15 @@ from sqlalchemy.pool import StaticPool
 from hiku import query as q
 from hiku.builder import Q, build
 from hiku.denormalize.graphql import DenormalizeGraphQL
-from hiku.endpoint.graphql import GraphQLEndpoint
 from hiku.engine import Context, Engine, pass_context
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import (Field, Graph, Interface, Link, Node, Nothing, Option,
                         Root, Union)
+from hiku.introspection.graphql import GraphQLIntrospection
+from hiku.merge import QueryMerger
+from hiku.readers.graphql import read
 from hiku.result import denormalize
+from hiku.schema import Schema
 from hiku.sources.sqlalchemy import FieldsQuery
 from hiku.types import (Boolean, Integer, InterfaceRef, Optional, Record, Sequence,
                         String, TypeRef, UnionRef)
@@ -46,9 +50,9 @@ def execute(graph, query_, ctx=None):
     return engine.execute(graph, query_, ctx)
 
 
-def execute_endpoint(graph, query):
-    endpoint = GraphQLEndpoint(Engine(SyncExecutor()), graph)
-    return endpoint.dispatch({"query": query})
+def execute_schema(graph, query):
+    schema = Schema(Engine(SyncExecutor()), graph)
+    return schema.execute_sync({"query": query})
 
 
 def test_context():
@@ -1430,7 +1434,7 @@ def test_merge_query__fragments():
     }
     """
 
-    data = execute_endpoint(graph, query)["data"]
+    data = execute_schema(graph, query)["data"]
 
     assert num_link_user == 1
     assert num_resolve_id == 1
@@ -1571,7 +1575,7 @@ def test_merge_query__interface_fragments(query):
         ],
     )
 
-    result = execute_endpoint(graph, query)
+    result = execute_schema(graph, query)
     data = result["data"]
 
     assert num_link_user == 1
@@ -1694,7 +1698,7 @@ def test_merge_query__union_fragments(query):
         unions=[Union("Context", ["BaseContext", "MyContext"])],
     )
 
-    result = execute_endpoint(graph, query)
+    result = execute_schema(graph, query)
     data = result["data"]
 
     assert num_link_user == 2
@@ -1839,7 +1843,7 @@ def test_merge_query__fields_and_nested_fragments() -> None:
     }
     """
 
-    result = execute_endpoint(graph, query)
+    result = execute_schema(graph, query)
     data = result["data"]
     assert data == {
         "context": {
@@ -1915,7 +1919,7 @@ def test_merge_query__only_nested_fragments() -> None:
     }
     """
 
-    result = execute_endpoint(graph, query)
+    result = execute_schema(graph, query)
     data = result["data"]
     assert data == {
         "context": {
@@ -1958,6 +1962,32 @@ def test_merge_query__complex_field_fragment() -> None:
     }
     """
 
-    data = execute_endpoint(graph, query)["data"]
+    data = execute_schema(graph, query)["data"]
 
     assert data == {"point": {"x": 1, "y": 2}}
+
+
+def test_denormalize_introspection() -> str:
+    graph = Graph(
+        [
+            Root(
+                [
+                    Field("foo", TypeRef["Foo"], None),
+                ]
+            ),
+        ],
+        data_types={
+            "Foo": Record[{"a": Integer}],
+        },
+    )
+
+    graph = GraphQLIntrospection(graph).visit(graph)
+
+    engine = Engine(SyncExecutor())
+    query = read(get_introspection_query())
+    query = QueryMerger(graph).merge(query)
+    result = engine.execute(graph, query)
+    data = denormalize(
+        graph, result
+    )
+    assert data is not None

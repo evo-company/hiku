@@ -3,9 +3,9 @@ import logging
 from flask import Flask, request, jsonify
 
 from hiku.federation.directive import Key
-from hiku.federation.endpoint import FederatedGraphQLEndpoint
 from hiku.federation.engine import Engine
 from hiku.federation.graph import Graph, FederatedNode
+from hiku.federation.schema import Schema
 from hiku.graph import (
     Root,
     Field,
@@ -136,7 +136,7 @@ QUERY_GRAPH = Graph([
 
 app = Flask(__name__)
 
-graphql_endpoint = FederatedGraphQLEndpoint(
+schema = Schema(
     Engine(SyncExecutor()),
     QUERY_GRAPH,
 )
@@ -145,7 +145,7 @@ graphql_endpoint = FederatedGraphQLEndpoint(
 @app.route('/graphql', methods={'POST'})
 def handle_graphql():
     data = request.get_json()
-    result = graphql_endpoint.dispatch(data)
+    result = schema.execute_sync(data)
     resp = jsonify(result)
     return resp
 

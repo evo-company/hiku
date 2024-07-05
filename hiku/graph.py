@@ -819,6 +819,7 @@ class Graph(AbstractGraph):
         return "{}({!r})".format(self.__class__.__name__, self.items)
 
     def iter_root(self) -> t.Iterator[t.Union[Field, Link]]:
+        """Iterate over nodes, and yield fields from all root nodes."""
         for node in self.items:
             if node.name is None:
                 for field in node.fields:

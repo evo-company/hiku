@@ -4,11 +4,14 @@ from .query import Node, Field, Link
 
 
 class Handle:
-    def __init__(self, name=None, options=None, alias=None, items=None):
+    def __init__(
+        self, name=None, options=None, alias=None, items=None, mutation=False
+    ):
         self.__field_name__ = name
         self.__field_options__ = options
         self.__field_alias__ = alias
         self.__node_items__ = items
+        self.__mutation__ = mutation
 
     def __getattr__(self, name):
         assert self.__field_name__ is None, self.__field_name__
@@ -41,16 +44,19 @@ class Handle:
         return self
 
 
+# Q for query
 Q = Handle()
+# M for mutation
+M = Handle(mutation=True)
 
 
 def build(items: List[Handle]) -> Node:
-    """Builds a query
+    """Builds a query or mutation
 
     Example:
 
     .. code-block:: python
-
+        # Query
         query = build([
             Q.foo,
             Q.bar(arg=42)[
@@ -59,11 +65,27 @@ def build(items: List[Handle]) -> Node:
             Q.aliased << Q.field,
         ])
 
+        # Mutation
+        query = build([
+            M.create(arg=42)[
+                Q.date_created,
+            ],
+        ])
+
     :param items: list of fields
-    :return: ready to execute query
+    :return: ready to execute query/mutation
     """
+    assert (
+        len({i.__mutation__ for i in items}) == 1
+    ), "Only queries or mutations are allowed in the query"
+
     query_items = []
+    is_mutation = False
+
     for handle in items:
+        if handle.__mutation__:
+            is_mutation = True
+
         assert handle.__field_name__ is not None
         if handle.__node_items__ is None:
             query_items.append(
@@ -82,4 +104,4 @@ def build(items: List[Handle]) -> Node:
                     handle.__field_alias__,
                 )
             )
-    return Node(query_items)
+    return Node(query_items, ordered=is_mutation)

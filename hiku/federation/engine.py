@@ -28,9 +28,12 @@ def union_link_to_type(obj: Link, typ: str) -> Link:
     return link
 
 
+# TODO: do we need separate engine ?
 class Engine(_Engine):
     def __init__(
         self,
+        # TODO: maybe make executor sync/async by default
+        # and support both concurency models at once
         executor: SyncAsyncExecutor,
         cache: Optional[CacheSettings] = None,
     ) -> None:

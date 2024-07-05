@@ -2,13 +2,13 @@ from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from hiku.endpoint.graphql import GraphQLEndpoint
 
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.types import Integer, Unicode
 from sqlalchemy.schema import MetaData, Table, Column, ForeignKey
 
+from hiku.schema import Schema
 from hiku.types import IntegerMeta, StringMeta, TypeRef, Sequence, Optional
 from hiku.graph import Graph, Node, Field, Link, Root
 from hiku.engine import Engine
@@ -355,10 +355,10 @@ class TestSourceSQLAlchemy(SourceSQLAlchemyTestBase):
         setup_db(sa_engine)
 
         engine = Engine(ThreadsExecutor(thread_pool))
-        endpoint = GraphQLEndpoint(
+        schema = Schema(
             engine,
             self.graph,
         )
 
-        result = endpoint.dispatch({"query": src}, {SA_ENGINE_KEY: sa_engine})
+        result = schema.execute_sync({"query": src}, {SA_ENGINE_KEY: sa_engine})
         check_result(result['data'], value)

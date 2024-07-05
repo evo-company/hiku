@@ -1,10 +1,10 @@
 from unittest.mock import ANY
 
 from hiku.federation.directive import Key
-from hiku.federation.endpoint import FederatedGraphQLEndpoint
 from hiku.federation.engine import Engine
 from hiku.executors.sync import SyncExecutor
 from hiku.federation.graph import FederatedNode, Graph
+from hiku.federation.schema import Schema
 from hiku.graph import Field, Root
 from hiku.types import Integer, TypeRef
 from .utils import GRAPH
@@ -136,13 +136,13 @@ def _schema(types, with_mutation=False) -> dict:
 
 
 def execute(graph, query_string):
-    graphql_endpoint = FederatedGraphQLEndpoint(
+    schema = Schema(
         Engine(SyncExecutor()),
         graph,
         federation_version=1
     )
 
-    return graphql_endpoint.dispatch(query_string)
+    return schema.execute_sync(query_string)
 
 
 def introspect(query_graph, ):
@@ -150,12 +150,12 @@ def introspect(query_graph, ):
 
 
 def execute_v2(graph, query_string):
-    graphql_endpoint = FederatedGraphQLEndpoint(
+    schema = Schema(
         Engine(SyncExecutor()),
         graph,
     )
 
-    return graphql_endpoint.dispatch(query_string)
+    return schema.execute_sync(query_string)
 
 
 def introspect_v2(query_graph):

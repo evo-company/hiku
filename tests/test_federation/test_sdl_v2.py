@@ -26,6 +26,7 @@ from hiku.graph import apply
 
 from hiku.federation.graph import FederatedNode, Graph
 from hiku.federation.directive import (
+    Override,
     schema_directive,
     FederationSchemaDirective,
     External,
@@ -79,6 +80,12 @@ GRAPH = Graph([
     FederatedNode('CartItem', [
         Field('id', Integer, field_resolver),
         Field('productId', Long, field_resolver),
+        Field(
+            'productName',
+            String,
+            field_resolver,
+            directives=[Override("service2")]
+        ),
     ], directives=[Key('id', resolvable=False)]),
     Root([
         Link(
@@ -129,7 +136,7 @@ MUTATION_GRAPH = Graph.from_graph(
 
 
 expected_tmpl = """
-    extend schema @link(url: "https://specs.apollo.dev/federation/v2.3", import: ["@key", "@external", "@extends", "@composeDirective"]) @link(url: "https://myspecs.dev/myCustomDirective/v1.0", import: ["@custom"]) @composeDirective(name: "@custom")
+    extend schema @link(url: "https://specs.apollo.dev/federation/v2.3", import: ["@key", "@external", "@extends", "@override", "@composeDirective"]) @link(url: "https://myspecs.dev/myCustomDirective/v1.0", import: ["@custom"]) @composeDirective(name: "@custom")
 
     directive @custom on OBJECT
 
@@ -162,6 +169,7 @@ expected_tmpl = """
     type CartItem @key(fields: "id", resolvable: false) {
       id: Int!
       productId: Long!
+      productName: String! @override(from: "service2")
     }
 
     extend type Query {

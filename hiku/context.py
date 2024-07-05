@@ -106,6 +106,11 @@ def create_execution_context(
         query_src = query
     elif isinstance(query, Node):
         query_node = query
+        if "operation" not in kwargs:
+            kwargs["operation"] = Operation(
+                OperationType.QUERY,
+                query,
+            )
 
     return ExecutionContext(
         query_src=query_src or "",

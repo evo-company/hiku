@@ -1,7 +1,6 @@
 import pytest
 from hiku.denormalize.graphql import DenormalizeGraphQL
 
-from hiku.endpoint.graphql import GraphQLEndpoint
 from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import Field, Graph, Link, Node, Option, Root, Union

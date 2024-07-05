@@ -7,8 +7,8 @@ from hiku.federation.directive import (
     External,
     Extends,
 )
-from hiku.federation.endpoint import FederatedGraphQLEndpoint
 from hiku.federation.engine import Engine
+from hiku.federation.schema import Schema
 from hiku.graph import (
     Root,
     Field,
@@ -128,7 +128,7 @@ QUERY_GRAPH = Graph([
 
 app = Flask(__name__)
 
-graphql_endpoint = FederatedGraphQLEndpoint(
+schema = Schema(
     Engine(SyncExecutor()),
     QUERY_GRAPH,
     federation_version=1,
@@ -138,7 +138,7 @@ graphql_endpoint = FederatedGraphQLEndpoint(
 @app.route('/graphql', methods={'POST'})
 def handle_graphql():
     data = request.get_json()
-    result = graphql_endpoint.dispatch(data)
+    result = schema.execute_sync(data)
     resp = jsonify(result)
     return resp
 

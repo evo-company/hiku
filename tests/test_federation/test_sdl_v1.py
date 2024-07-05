@@ -1,7 +1,6 @@
 import textwrap
 
 from hiku.graph import (
-    Node,
     Field,
     Link,
     Option,
@@ -24,21 +23,9 @@ from hiku.federation.directive import (
     Key,
     Extends,
 )
-from hiku.federation.endpoint import FederatedGraphQLEndpoint
-from hiku.federation.engine import Engine
 from hiku.federation.introspection import FederatedGraphQLIntrospection
 from hiku.federation.sdl import print_sdl
-from hiku.executors.sync import SyncExecutor
 from tests.test_federation.utils import field_resolver, link_resolver
-
-
-def execute(graph, query_string):
-    graphql_endpoint = FederatedGraphQLEndpoint(
-        Engine(SyncExecutor()),
-        graph,
-    )
-
-    return graphql_endpoint.dispatch(query_string)
 
 
 GRAPH = Graph([

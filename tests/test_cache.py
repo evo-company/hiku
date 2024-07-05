@@ -18,8 +18,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.pool import StaticPool
 
-from hiku.denormalize.graphql import DenormalizeGraphQL
-from hiku.endpoint.graphql import GraphQLEndpoint
 from hiku.executors.threads import ThreadsExecutor
 from hiku.expr.core import (
     define,
@@ -28,6 +26,7 @@ from hiku.expr.core import (
 from hiku.merge import QueryMerger
 from hiku.query import FieldOrLink, Link as QueryLink, Node as QueryNode
 from hiku.result import Reference
+from hiku.schema import Schema
 from hiku.sources.graph import SubGraph
 from hiku.sources.sqlalchemy import (
     FieldsQuery,
@@ -675,11 +674,11 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
     cache_settings = CacheSettings(cache)
     cache_info = CacheInfo(cache_settings)
     engine = Engine(ThreadsExecutor(thread_pool), cache_settings)
-    endpoint = GraphQLEndpoint(engine, graph)
+    schema = Schema(engine, graph)
     ctx = {SA_ENGINE_KEY: sa_engine, "locale": "en"}
 
     def execute(q):
-        return endpoint.dispatch({"query": q}, ctx)
+        return schema.execute_sync({"query": q}, ctx)
 
     merger = QueryMerger(graph)
     query_str = get_product_query(1)
@@ -825,11 +824,11 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
     cache_settings = CacheSettings(cache, cache_key)
     cache_info = CacheInfo(cache_settings)
     engine = Engine(ThreadsExecutor(thread_pool), cache_settings)
-    endpoint = GraphQLEndpoint(engine, graph)
+    schema = Schema(engine, graph)
     ctx = {SA_ENGINE_KEY: sa_engine, "locale": "en"}
 
     def execute(q):
-        return endpoint.dispatch({"query": q}, ctx)
+        return schema.execute_sync({"query": q}, ctx)
 
     merger = QueryMerger(graph)
     query_str = get_products_query()
