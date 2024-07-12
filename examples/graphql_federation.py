@@ -7,8 +7,8 @@ from hiku.federation.directive import (
     External,
     Extends,
 )
-from hiku.federation.engine import Engine
 from hiku.federation.schema import Schema
+from hiku.engine import Engine
 from hiku.graph import (
     Root,
     Field,

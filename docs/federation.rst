@@ -78,10 +78,10 @@ Now let's implement the Order service using Hiku:
     from flask import Flask, request, jsonify
     from hiku.graph import Graph, Root, Field, Link, Node, Option
     from hiku.types import ID, Integer, TypeRef, String, Optional, Sequence
+    from hiku.engine import Engine
     from hiku.executors.sync import SyncExecutor
     from hiku.federation.schema import Schema
     from hiku.federation.directives import Key
-    from hiku.federation.engine import Engine
 
     QUERY_GRAPH = Graph([
         Node('Order', [
@@ -130,10 +130,10 @@ Next, let's implement the ShoppingCart service using Hiku:
     from flask import Flask, request, jsonify
     from hiku.graph import Graph, Root, Field, Link, Node, Option
     from hiku.types import ID, Integer, TypeRef, String, Optional, Sequence
+    from hiku.engine import Engine
     from hiku.executors.sync import SyncExecutor
     from hiku.federation.schema import Schema
     from hiku.federation.directives import Key
-    from hiku.federation.engine import Engine
 
     QUERY_GRAPH = Graph([
         Node('ShoppingCart', [

@@ -13,6 +13,7 @@ Changes in 0.8
     `Schema.execute` method which will then infer that this is a mutation query Node.
   - Drop `hiku.federation.validate.validate`
   - Drop `hiku.federation.denormalize`
+  - Drop `hiku.federation.engine`
   - Drop `hiku.federation.endpoint` - use `hiku.endpoint` instead
   - Merge `tests.test_federation.test_endpoint` and `tests.test_federation.test_engine` into `tests.test_federation.test_schema`
   - Change `QueryDepthValidator` hook to `on_validate`
@@ -24,6 +25,7 @@ Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
   - Drop `hiku.federation.endpoint.enormalize_entities`
-  - Drop `hiku.federation.validate.validate` 
+  - Drop `hiku.federation.validate.validate`
   - Drop `hiku.federation.endpoint` - use `hiku.endpoint` instead
-  - Drop `hiku.federation.denormalize` 
+  - Drop `hiku.federation.denormalize`
+  - Drop `hiku.federation.engine` - use `hiku.engine` instead

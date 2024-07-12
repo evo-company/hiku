@@ -1,11 +1,11 @@
 from typing import List, Optional, Sequence, Type, Union, cast
 from hiku.context import ExecutionContext, ExecutionContextFinal
+from hiku.engine import Engine
 from hiku.federation.introspection import FederatedGraphQLIntrospection
 from hiku.federation.sdl import print_sdl
 from hiku.graph import GraphTransformer
 from hiku.schema import Schema as BaseSchema
 from hiku.extensions.base_extension import Extension, ExtensionsManager
-from hiku.federation.engine import Engine
 from hiku.federation.graph import Graph
 from hiku.federation.version import DEFAULT_FEDERATION_VERSION
 from hiku.federation.utils import get_entity_types

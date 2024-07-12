@@ -1,7 +1,7 @@
 from unittest.mock import ANY
 
 from hiku.federation.directive import Key
-from hiku.federation.engine import Engine
+from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
 from hiku.federation.graph import FederatedNode, Graph
 from hiku.federation.schema import Schema

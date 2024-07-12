@@ -2,7 +2,7 @@ import pytest
 
 from hiku.executors.asyncio import AsyncIOExecutor
 from hiku.federation.schema import Schema
-from hiku.federation.engine import Engine
+from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
 
 from tests.test_federation.utils import (

@@ -20,8 +20,8 @@ from hiku.federation.directive import (
     Tag,
     schema_directive,
 )
-from hiku.federation.engine import Engine
 from hiku.federation.graph import Graph, FederatedNode
+from hiku.engine import Engine
 from hiku.graph import (
     Nothing,
     Root,

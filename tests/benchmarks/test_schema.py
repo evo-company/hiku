@@ -9,7 +9,6 @@ from hiku.types import String, TypeRef
 from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
 
-from hiku.federation.engine import Engine as FederatedEngine
 from hiku.federation.graph import Graph as FederatedGraph
 from hiku.federation.schema import Schema as FedSchema
 
@@ -76,7 +75,7 @@ def federated_graph_fixture(graph):
 
 @pytest.fixture(name="federated_schema")
 def federated_schema_fixture(federated_graph):
-    return FedSchema(FederatedEngine(SyncExecutor()), federated_graph)
+    return FedSchema(Engine(SyncExecutor()), federated_graph)
 
 
 query = """
