@@ -78,7 +78,7 @@ class Schema:
             execution_context=execution_context,
             extensions=self.extensions,
         )
-        with extensions_manager.graph():
+        with extensions_manager.init():
             transformers.extend(execution_context.transformers)
 
         # introspection transformer must be the last one in chain

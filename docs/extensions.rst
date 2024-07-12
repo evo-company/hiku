@@ -12,7 +12,7 @@ graph processing.
 
 Here are all the methods that can be implemented:
 
-- :meth:`~hiku.extensions.Extension.on_graph` - when endpoint is created and transformations applied to graph
+- :meth:`~hiku.extensions.Extension.on_init` - when schema is created
 - :meth:`~hiku.extensions.Extension.on_operation` - when query is executed by the schema
 - :meth:`~hiku.extensions.Extension.on_parse` - when query string is parsed into ast and the into query Node
 - :meth:`~hiku.extensions.Extension.on_validate` - when query is validated

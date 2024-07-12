@@ -33,16 +33,12 @@ Hook = Callable[
 
 
 class Extension:
-    def on_graph(
+    def on_init(
         self, execution_context: ExecutionContext
     ) -> AsyncIteratorOrIterator[None]:
-        """Called before and after the graph (transformation) step.
+        """Called once during schema creation.
 
-        Graph transformation step is a step where we applying transformations
-        to the graph such as introspection, etc.
-
-        Note: unlike other hooks, this hook is called only once during endpoint
-        creation.
+        It is a good place to add transformers to the execution context.
         """
         yield None
 
@@ -127,9 +123,9 @@ class ExtensionsManager:
 
         self.extensions = init_extensions
 
-    def graph(self) -> "ExtensionContextManagerBase":
+    def init(self) -> "ExtensionContextManagerBase":
         return ExtensionContextManagerBase(
-            Extension.on_graph.__name__, self.extensions, self.execution_context
+            Extension.on_init.__name__, self.extensions, self.execution_context
         )
 
     def operation(self) -> "ExtensionContextManagerBase":

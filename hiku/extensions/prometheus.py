@@ -28,7 +28,7 @@ class PrometheusMetrics(Extension):
             self._name, metric=self._metric, ctx_var=ctx_var
         )
 
-    def on_graph(self, execution_context: ExecutionContext) -> Iterator[None]:
+    def on_init(self, execution_context: ExecutionContext) -> Iterator[None]:
         execution_context.transformers = execution_context.transformers + (
             self._transformer,
         )
