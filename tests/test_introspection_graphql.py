@@ -193,7 +193,7 @@ SCALARS = [
 def execute(query_str, query_graph, mutation_graph=None):
     engine = Engine(SyncExecutor())
     schema = Schema(engine, query_graph, mutation_graph)
-    return schema.execute_sync({'query': query_str})['data']
+    return schema.execute_sync(query_str).data
 
 
 def introspect(query_graph, mutation_graph=None):

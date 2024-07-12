@@ -1,26 +1,37 @@
-import typing as t
+from typing import Any, Optional, List, Dict, Union, overload
+from typing_extensions import TypedDict
 
 from abc import ABC
 from asyncio import gather
 
 
-from hiku.schema import GraphQLError, GraphQLRequest, GraphQLResponse, Schema
-from ..graph import Graph
+from hiku.schema import ExecutionResult, GraphQLError, Schema
 
 
-BatchedRequest = t.List[GraphQLRequest]
-BatchedResponse = t.List[GraphQLResponse]
-
-SingleOrBatchedRequest = t.Union[GraphQLRequest, BatchedRequest]
-SingleOrBatchedResponse = t.Union[GraphQLResponse, BatchedResponse]
+class GraphQLErrorObject(TypedDict):
+    message: str
 
 
-# TODO: do we need it ?
-G = t.TypeVar("G", bound=Graph)
-C = t.TypeVar("C")
+class GraphQLRequest(TypedDict, total=False):
+    query: str
+    variables: Optional[Dict[Any, Any]]
+    operationName: Optional[str]
 
 
-class BaseGraphQLEndpoint(ABC, t.Generic[C]):
+class GraphQLResponse(TypedDict, total=False):
+    data: Optional[Dict[str, object]]
+    errors: Optional[List[object]]
+    extensions: Optional[Dict[str, object]]
+
+
+BatchedRequest = List[GraphQLRequest]
+BatchedResponse = List[GraphQLResponse]
+
+SingleOrBatchedRequest = Union[GraphQLRequest, BatchedRequest]
+SingleOrBatchedResponse = Union[GraphQLResponse, BatchedResponse]
+
+
+class BaseGraphQLEndpoint(ABC):
     """TODO: add doc explaining the purpose of this class over plain schema"""
 
     schema: Schema
@@ -33,10 +44,18 @@ class BaseGraphQLEndpoint(ABC, t.Generic[C]):
         self.schema = schema
         self.batching = batching
 
+    def process_result(self, result: ExecutionResult) -> GraphQLResponse:
+        data: GraphQLResponse = {"data": result.data}
+
+        if result.error:
+            data["errors"] = [{"message": e} for e in result.error.errors]
+
+        return data
+
 
 class BaseSyncGraphQLEndpoint(BaseGraphQLEndpoint):
     def dispatch(
-        self, data: GraphQLRequest, context: t.Optional[t.Dict] = None
+        self, data: GraphQLRequest, context: Optional[Dict] = None
     ) -> GraphQLResponse:
         """
         Dispatch graphql request to graph
@@ -46,32 +65,45 @@ class BaseSyncGraphQLEndpoint(BaseGraphQLEndpoint):
 
         Returns: graphql response: data or errors
         """
-        return self.schema.execute_sync(data, context)
+        assert "query" in data, "query is required"
+        result = self.schema.execute_sync(
+            query=data["query"],
+            variables=data.get("variables"),
+            operation_name=data.get("operationName"),
+            context=context,
+        )
+        return self.process_result(result)
 
 
 class BaseAsyncGraphQLEndpoint(BaseGraphQLEndpoint):
     async def dispatch(
-        self, data: GraphQLRequest, context: t.Optional[t.Dict] = None
+        self, data: GraphQLRequest, context: Optional[Dict] = None
     ) -> GraphQLResponse:
-        # TODO: what it we want to override exception handling?
-        return await self.schema.execute(data, context)
+        assert "query" in data, "query is required"
+        result = await self.schema.execute(
+            query=data["query"],
+            variables=data.get("variables"),
+            operation_name=data.get("operationName"),
+            context=context,
+        )
+        return self.process_result(result)
 
 
 class GraphQLEndpoint(BaseSyncGraphQLEndpoint):
-    @t.overload
+    @overload
     def dispatch(
-        self, data: GraphQLRequest, context: t.Optional[t.Dict] = None
+        self, data: GraphQLRequest, context: Optional[Dict] = None
     ) -> GraphQLResponse:
         ...
 
-    @t.overload
+    @overload
     def dispatch(
-        self, data: BatchedRequest, context: t.Optional[t.Dict] = None
+        self, data: BatchedRequest, context: Optional[Dict] = None
     ) -> BatchedResponse:
         ...
 
     def dispatch(
-        self, data: SingleOrBatchedRequest, context: t.Optional[t.Dict] = None
+        self, data: SingleOrBatchedRequest, context: Optional[Dict] = None
     ) -> SingleOrBatchedResponse:
         if isinstance(data, list):
             if not self.batching:
@@ -88,26 +120,26 @@ class GraphQLEndpoint(BaseSyncGraphQLEndpoint):
 class BatchGraphQLEndpoint(GraphQLEndpoint):
     """For backward compatibility"""
 
-    def __init__(self, *args: t.Any, **kwargs: t.Any):
+    def __init__(self, *args: Any, **kwargs: Any):
         kwargs["batching"] = True
         super().__init__(*args, **kwargs)
 
 
 class AsyncGraphQLEndpoint(BaseAsyncGraphQLEndpoint):
-    @t.overload
+    @overload
     async def dispatch(
-        self, data: GraphQLRequest, context: t.Optional[t.Dict] = None
+        self, data: GraphQLRequest, context: Optional[Dict] = None
     ) -> GraphQLResponse:
         ...
 
-    @t.overload
+    @overload
     async def dispatch(
-        self, data: BatchedRequest, context: t.Optional[t.Dict] = None
+        self, data: BatchedRequest, context: Optional[Dict] = None
     ) -> BatchedResponse:
         ...
 
     async def dispatch(
-        self, data: SingleOrBatchedRequest, context: t.Optional[t.Dict] = None
+        self, data: SingleOrBatchedRequest, context: Optional[Dict] = None
     ) -> SingleOrBatchedResponse:
         if isinstance(data, list):
             return list(
@@ -129,6 +161,6 @@ class AsyncGraphQLEndpoint(BaseAsyncGraphQLEndpoint):
 class AsyncBatchGraphQLEndpoint(AsyncGraphQLEndpoint):
     """For backward compatibility"""
 
-    def __init__(self, *args: t.Any, **kwargs: t.Any):
+    def __init__(self, *args: Any, **kwargs: Any):
         kwargs["batching"] = True
         super().__init__(*args, **kwargs)

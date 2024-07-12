@@ -146,7 +146,7 @@ def execute(graph, query_string):
 
 
 def introspect(query_graph, ):
-    return execute(query_graph, {'query': INTROSPECTION_QUERY})
+    return execute(query_graph, INTROSPECTION_QUERY)
 
 
 def execute_v2(graph, query_string):
@@ -159,7 +159,7 @@ def execute_v2(graph, query_string):
 
 
 def introspect_v2(query_graph):
-    return execute_v2(query_graph, {'query': INTROSPECTION_QUERY})
+    return execute_v2(query_graph, INTROSPECTION_QUERY)
 
 
 def test_federated_introspection_v1():
@@ -213,7 +213,7 @@ def test_federated_introspection_v1():
         _type('link__Import', 'SCALAR'),
     ])
     got = introspect(GRAPH)
-    assert exp == got['data']
+    assert exp == got.data
 
 
 def test_federated_introspection_v2():
@@ -267,7 +267,7 @@ def test_federated_introspection_v2():
         _type('link__Import', 'SCALAR'),
     ])
     got = introspect_v2(GRAPH)
-    assert exp == got['data']
+    assert exp == got.data
 
 
 def test_introspection_partial_query():
@@ -278,8 +278,8 @@ def test_introspection_partial_query():
         }
     }
     """
-    got = execute_v2(GRAPH, {'query': query})
-    assert got['data'] == {
+    got = execute_v2(GRAPH, query)
+    assert got.data == {
         '__schema': {
             'queryType': {'name': 'Query'}
         }
@@ -303,8 +303,8 @@ def test_entity_type_when_no_type_has_key():
             Field('id', Integer, _noop),
         ]),
     ])
-    got = execute_v2(graph, {'query': query})
-    assert got['data'] == {
+    got = execute_v2(graph, query)
+    assert got.data == {
         '__type': None
     }
 
@@ -326,8 +326,8 @@ def test_entity_type_when_type_has_key():
             Field('id', Integer, _noop),
         ], directives=[Key('id')]),
     ])
-    got = execute_v2(graph, {'query': query})
-    assert got['data'] == {
+    got = execute_v2(graph, query)
+    assert got.data == {
         '__type': {"kind": "UNION", "possibleTypes": [{"name": "Cart"}]}
     }
 
@@ -350,8 +350,8 @@ def test_entities_field_when_no_type_has_key():
             Field('cart', TypeRef['Cart'], _noop),
         ])
     ])
-    got = execute_v2(graph, {'query': query})
-    assert got['data'] == {
+    got = execute_v2(graph, query)
+    assert got.data == {
         '__type': {
             "kind": "OBJECT",
             "fields": [{
@@ -379,8 +379,8 @@ def test_entities_field_when_type_has_key():
             Field('cart', TypeRef['Cart'], _noop),
         ])
     ])
-    got = execute_v2(graph, {'query': query})
-    assert got['data'] == {
+    got = execute_v2(graph, query)
+    assert got.data == {
         '__type': {
             "kind": "OBJECT",
             "fields": [{

@@ -90,7 +90,6 @@ Changes in 0.7
   - Added support for extensions :ref:`Check extensions documentation <extensions-doc>`
 
     - Added ``QueryParseCache`` extension - cache parsed graphql queries ast.
-    - Added ``QueryTransformCache`` extension - cache transformed graphql ast into query Node.
     - Added ``QueryValidationCache`` extension - cache query validation.
     - Added ``QueryDepthValidator`` extension - validate query depth
     - Added ``PrometheusMetrics`` extension - wrapper around ``GraphMetrics`` visitor

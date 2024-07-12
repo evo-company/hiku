@@ -678,7 +678,7 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
     ctx = {SA_ENGINE_KEY: sa_engine, "locale": "en"}
 
     def execute(q):
-        return schema.execute_sync({"query": q}, ctx)
+        return schema.execute_sync(q, context=ctx)
 
     merger = QueryMerger(graph)
     query_str = get_product_query(1)
@@ -767,7 +767,7 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
         }
     }
 
-    check_result(execute(query_str)["data"], expected_result)
+    check_result(execute(query_str).data, expected_result)
 
     assert cache.get_many.call_count == 2
 
@@ -795,7 +795,7 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
 
     cache.reset_mock()
 
-    check_result(execute(query_str)["data"], expected_result)
+    check_result(execute(query_str).data, expected_result)
 
     cache.get_many.assert_has_calls(
         [
@@ -828,7 +828,7 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
     ctx = {SA_ENGINE_KEY: sa_engine, "locale": "en"}
 
     def execute(q):
-        return schema.execute_sync({"query": q}, ctx)
+        return schema.execute_sync(q, context=ctx)
 
     merger = QueryMerger(graph)
     query_str = get_products_query()
@@ -967,7 +967,7 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
         ]
     }
 
-    check_result(execute(query_str)["data"], expected_result)
+    check_result(execute(query_str).data, expected_result)
 
     assert cache.get_many.call_count == 2
 
@@ -996,7 +996,7 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
 
     cache.reset_mock()
 
-    check_result(execute(query_str)["data"], expected_result)
+    check_result(execute(query_str).data, expected_result)
 
     assert set(*cache.get_many.mock_calls[0][1]) == {
         attributes11_12_key,

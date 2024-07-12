@@ -16,14 +16,14 @@ def execute_schema_v1(query):
         Engine(SyncExecutor()),
         GRAPH,
         federation_version=1,
-    ).execute_sync(query)
+    ).execute_sync(query['query'], query['variables'], query['operationName'])
 
 
 def execute_schema_v2(query):
     return Schema(
         Engine(SyncExecutor()),
         GRAPH,
-    ).execute_sync(query)
+    ).execute_sync(query['query'], query['variables'], query['operationName'])
 
 
 async def execute_async_schema_v1(query):
@@ -31,19 +31,19 @@ async def execute_async_schema_v1(query):
         Engine(AsyncIOExecutor()),
         ASYNC_GRAPH,
         federation_version=1,
-    ).execute(query)
+    ).execute(query['query'], query['variables'], query['operationName'])
 
 
 async def execute_async_schema_v2(query):
     return await Schema(
         Engine(AsyncIOExecutor()),
         ASYNC_GRAPH,
-    ).execute(query)
+    ).execute(query['query'], query['variables'], query['operationName'])
 
 
 ENTITIES_QUERY = {
     'query': """
-        query($representations:[_Any!]!) {
+        query RepresentationsQuery($representations:[_Any!]!) {
             _entities(representations:$representations) {
                 ...on Cart {
                     status { id title }
@@ -56,7 +56,8 @@ ENTITIES_QUERY = {
             {'__typename': 'Cart', 'id': 1},
             {'__typename': 'Cart', 'id': 2},
         ]
-    }
+    },
+    'operationName': 'RepresentationsQuery',
 }
 
 SDL_QUERY = {
@@ -72,7 +73,7 @@ SDL_QUERY = {
 ])
 def test_fetch_sdl(execute):
     result = execute(SDL_QUERY)
-    assert result['data']['_service']['sdl'] is not None
+    assert result.data['_service']['sdl'] is not None
 
 
 @pytest.mark.parametrize('execute', [
@@ -82,7 +83,7 @@ def test_fetch_sdl(execute):
 @pytest.mark.asyncio
 async def test_fetch_sdl_async(execute):
     result = await execute(SDL_QUERY)
-    assert result['data']['_service']['sdl'] is not None
+    assert result.data['_service']['sdl'] is not None
 
 
 @pytest.mark.parametrize('execute', [
@@ -96,7 +97,7 @@ def test_execute_sync(execute):
         {'status': {'id': 'NEW', 'title': 'new'}},
         {'status': {'id': 'ORDERED', 'title': 'ordered'}}
     ]
-    assert expect == result['data']['_entities']
+    assert expect == result.data['_entities']
 
 
 @pytest.mark.asyncio
@@ -111,4 +112,4 @@ async def test_execute_async(execute):
         {'status': {'id': 'NEW', 'title': 'new'}},
         {'status': {'id': 'ORDERED', 'title': 'ordered'}}
     ]
-    assert expect == result['data']['_entities']
+    assert expect == result.data['_entities']

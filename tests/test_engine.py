@@ -52,7 +52,7 @@ def execute(graph, query_, ctx=None):
 
 def execute_schema(graph, query):
     schema = Schema(Engine(SyncExecutor()), graph)
-    return schema.execute_sync({"query": query})
+    return schema.execute_sync(query)
 
 
 def test_context():
@@ -1434,7 +1434,7 @@ def test_merge_query__fragments():
     }
     """
 
-    data = execute_schema(graph, query)["data"]
+    data = execute_schema(graph, query).data
 
     assert num_link_user == 1
     assert num_resolve_id == 1
@@ -1576,7 +1576,7 @@ def test_merge_query__interface_fragments(query):
     )
 
     result = execute_schema(graph, query)
-    data = result["data"]
+    data = result.data
 
     assert num_link_user == 1
     assert num_resolve_id == 1
@@ -1699,7 +1699,7 @@ def test_merge_query__union_fragments(query):
     )
 
     result = execute_schema(graph, query)
-    data = result["data"]
+    data = result.data
 
     assert num_link_user == 2
     assert num_resolve_id == 1
@@ -1844,7 +1844,7 @@ def test_merge_query__fields_and_nested_fragments() -> None:
     """
 
     result = execute_schema(graph, query)
-    data = result["data"]
+    data = result.data
     assert data == {
         "context": {
             "user": {
@@ -1920,7 +1920,7 @@ def test_merge_query__only_nested_fragments() -> None:
     """
 
     result = execute_schema(graph, query)
-    data = result["data"]
+    data = result.data
     assert data == {
         "context": {
             "user": {
@@ -1962,7 +1962,7 @@ def test_merge_query__complex_field_fragment() -> None:
     }
     """
 
-    data = execute_schema(graph, query)["data"]
+    data = execute_schema(graph, query).data
 
     assert data == {"point": {"x": 1, "y": 2}}
 

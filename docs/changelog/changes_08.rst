@@ -16,6 +16,9 @@ Changes in 0.8
   - Drop `hiku.federation.endpoint` - use `hiku.endpoint` instead
   - Merge `tests.test_federation.test_endpoint` and `tests.test_federation.test_engine` into `tests.test_federation.test_schema`
   - Change `QueryDepthValidator` hook to `on_validate`
+  - Change `GraphQLResponse` type - it now has both `data` and `errors` fields
+  - Rename `on_dispatch` hook to `on_operation`
+  - Remove old `on_operation` hook
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

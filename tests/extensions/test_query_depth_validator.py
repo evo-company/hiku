@@ -51,5 +51,5 @@ def test_query_depth_validator(sync_graph):
     }
     """
 
-    result = schema.execute_sync({"query": query})
-    assert result == {"errors": [{"message": "Query depth 4 exceeds maximum allowed depth 2"}]}
+    result = schema.execute_sync(query)
+    assert result.error.errors == ["Query depth 4 exceeds maximum allowed depth 2"]

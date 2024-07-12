@@ -1,7 +1,6 @@
 import pytest
 
 from hiku.extensions.query_parse_cache import QueryParserCache
-from hiku.extensions.query_transform_cache import QueryTransformCache
 from hiku.extensions.query_validation_cache import QueryValidationCache
 from hiku.graph import Graph, Link, Node, Root, Field
 from hiku.schema import Schema
@@ -56,18 +55,6 @@ def schema_with_parse_cache_fixture(graph):
     )
 
 
-@pytest.fixture(name="schema_with_transform_and_parse_cache")
-def schema_with_transform_and_parse_cache_fixture(graph):
-    return Schema(
-        Engine(SyncExecutor()),
-        graph,
-        extensions=[
-            QueryParserCache(2),
-            QueryTransformCache(2),
-        ]
-    )
-
-
 @pytest.fixture(name="schema_with_all_caches")
 def schema_with_all_caches_fixture(graph):
     return Schema(
@@ -75,7 +62,6 @@ def schema_with_all_caches_fixture(graph):
         graph,
         extensions=[
             QueryParserCache(2),
-            QueryTransformCache(2),
             QueryValidationCache(2),
         ]
     )
@@ -107,48 +93,38 @@ data = {
 
 def test_federated_schema(benchmark, federated_schema):
     result = benchmark.pedantic(
-        federated_schema.execute_sync, args=({"query": query},),
+        federated_schema.execute_sync, args=(query,),
         iterations=5,
         rounds=1000
     )
-    assert result == {"data": data}
+    assert result.data == data
 
 
 def test_schema(benchmark, schema):
     result = benchmark.pedantic(
-        schema.execute_sync, args=({"query": query},),
+        schema.execute_sync, args=(query,),
         iterations=5,
         rounds=1000
     )
 
-    assert result == {"data": data}
+    assert result.data == data
 
 
 def test_schema_with_parse_cache(benchmark, schema_with_parse_cache):
     result = benchmark.pedantic(
-        schema_with_parse_cache.execute_sync, args=({"query": query},),
+        schema_with_parse_cache.execute_sync, args=(query,),
         iterations=5,
         rounds=1000
     )
 
-    assert result == {"data": data}
-
-
-def test_schema_with_transform_and_parse_cache(benchmark, schema_with_transform_and_parse_cache):
-    result = benchmark.pedantic(
-        schema_with_transform_and_parse_cache.execute_sync, args=({"query": query},),
-        iterations=5,
-        rounds=1000
-    )
-
-    assert result == {"data": data}
+    assert result.data == data
 
 
 def test_schema_with_all_caches(benchmark, schema_with_all_caches):
     result = benchmark.pedantic(
-        schema_with_all_caches.execute_sync, args=({"query": query},),
+        schema_with_all_caches.execute_sync, args=(query,),
         iterations=5,
         rounds=1000
     )
 
-    assert result == {"data": data}
+    assert result.data == data

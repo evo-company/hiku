@@ -36,5 +36,5 @@ def test_custom_context_extension(sync_graph):
         extensions=[CustomContext(lambda _: {"answer": "42"})],
     )
 
-    result = schema.execute_sync({"query": "{answer}"}, {"a": "b"})
-    assert result == {"data": {"answer": "42"}}
+    result = schema.execute_sync("{answer}", {"a": "b"})
+    assert result.data == {"answer": "42"}

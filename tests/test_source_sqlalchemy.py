@@ -360,5 +360,5 @@ class TestSourceSQLAlchemy(SourceSQLAlchemyTestBase):
             self.graph,
         )
 
-        result = schema.execute_sync({"query": src}, {SA_ENGINE_KEY: sa_engine})
-        check_result(result['data'], value)
+        result = schema.execute_sync(src, context={SA_ENGINE_KEY: sa_engine})
+        check_result(result.data, value)

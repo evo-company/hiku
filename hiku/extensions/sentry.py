@@ -21,7 +21,7 @@ class SentryTracing(Extension):
     def _hash_query(self, query: str) -> str:
         return hashlib.md5(query.encode("utf-8")).hexdigest()
 
-    def on_dispatch(
+    def on_operation(
         self, execution_context: ExecutionContext
     ) -> Iterator[None]:
         self._operation_name = execution_context.operation_name

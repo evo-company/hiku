@@ -32,20 +32,20 @@ def test_query_validation_cache_extension(sync_graph):
     )
 
     with patch("hiku.schema.validate", wraps=validate) as mock_validate:
-        result = schema.execute_sync({"query": "{answer}"})
-        assert result == {"data": {"answer": "42"}}
+        result = schema.execute_sync("{answer}")
+        assert result.data == {"answer": "42"}
 
         assert mock_validate.call_count == 1
 
         for _ in range(3):
-            result = schema.execute_sync({"query": "{answer}"})
-            assert result == {"data": {"answer": "42"}}
+            result = schema.execute_sync("{answer}")
+            assert result.data == {"answer": "42"}
 
         # check that read_operation was called only once
         assert mock_validate.call_count == 1
 
         # check that new query was parsed
-        result = schema.execute_sync({"query": "{question}"})
-        assert result == {"data": {"question": "Number?"}}
+        result = schema.execute_sync("{question}")
+        assert result.data == {"question": "Number?"}
 
         assert mock_validate.call_count == 2

@@ -1,6 +1,6 @@
+from dataclasses import dataclass
 from inspect import isawaitable
 from typing import Optional, Dict, Union, Any, List, Type, Sequence, Tuple, cast
-from typing_extensions import TypedDict
 
 from hiku.context import (
     ExecutionContext,
@@ -21,27 +21,6 @@ from hiku.result import Proxy
 from hiku.validate.query import validate
 
 
-class GraphQLErrorObject(TypedDict):
-    message: str
-
-
-class GraphQLRequest(TypedDict, total=False):
-    query: str
-    variables: Optional[Dict[Any, Any]]
-    operationName: Optional[str]
-
-
-class GraphQLResponseError(TypedDict):
-    errors: List[GraphQLErrorObject]
-
-
-class GraphQLResponseOk(TypedDict):
-    data: Dict[Any, Any]
-
-
-GraphQLResponse = Union[GraphQLResponseError, GraphQLResponseOk]
-
-
 class GraphQLError(Exception):
     def __init__(self, *, errors: List[str]):
         super().__init__("{} errors".format(len(errors)))
@@ -58,6 +37,12 @@ def _run_validation(
         errors.extend(validator.validate(query, graph))
 
     return errors
+
+
+@dataclass
+class ExecutionResult:
+    data: Optional[Dict[str, Any]]
+    error: Optional[GraphQLError]
 
 
 class Schema:
@@ -107,8 +92,12 @@ class Schema:
             self.mutation = None
 
     def execute_sync(
-        self, query: Union[GraphQLRequest, Node], context: Optional[Dict] = None
-    ) -> GraphQLResponse:
+        self,
+        query: Union[str, Node],
+        variables: Optional[Dict] = None,
+        operation_name: Optional[str] = None,
+        context: Optional[Dict] = None,
+    ) -> ExecutionResult:
         if isinstance(query, Node):
             execution_context = create_execution_context(
                 query=query,
@@ -118,12 +107,12 @@ class Schema:
             )
         else:
             execution_context = create_execution_context(
-                query=query["query"],
-                variables=query.get("variables"),
-                operation_name=query.get("operationName"),
+                query=query,
+                variables=variables,
+                operation_name=operation_name,
                 context=context,
                 query_graph=self.graph,
-                mutation_graph=self.graph,
+                mutation_graph=self.mutation,
             )
 
         execution_context = cast(ExecutionContextFinal, execution_context)
@@ -134,7 +123,7 @@ class Schema:
         )
 
         try:
-            with extensions_manager.dispatch():
+            with extensions_manager.operation():
                 self._init_execution_context(
                     execution_context, extensions_manager
                 )
@@ -150,13 +139,17 @@ class Schema:
                     execution_context.operation_type_name,
                 ).process(execution_context.query)
 
-            return {"data": data}
+            return ExecutionResult(data, None)
         except GraphQLError as e:
-            return {"errors": [{"message": e} for e in e.errors]}
+            return ExecutionResult(None, e)
 
     async def execute(
-        self, query: Union[GraphQLRequest, Node], context: Optional[Dict] = None
-    ) -> GraphQLResponse:
+        self,
+        query: Union[str, Node],
+        variables: Optional[Dict] = None,
+        operation_name: Optional[str] = None,
+        context: Optional[Dict] = None,
+    ) -> ExecutionResult:
         if isinstance(query, Node):
             execution_context = create_execution_context(
                 query=query,
@@ -166,12 +159,12 @@ class Schema:
             )
         else:
             execution_context = create_execution_context(
-                query=query["query"],
-                variables=query.get("variables"),
-                operation_name=query.get("operationName"),
+                query=query,
+                variables=variables,
+                operation_name=operation_name,
                 context=context,
                 query_graph=self.graph,
-                mutation_graph=self.graph,
+                mutation_graph=self.mutation,
             )
 
         execution_context = cast(ExecutionContextFinal, execution_context)
@@ -182,7 +175,7 @@ class Schema:
         )
 
         try:
-            with extensions_manager.dispatch():
+            with extensions_manager.operation():
                 self._init_execution_context(
                     execution_context, extensions_manager
                 )
@@ -200,9 +193,9 @@ class Schema:
                     execution_context.operation_type_name,
                 ).process(execution_context.query)
 
-            return {"data": data}
+            return ExecutionResult(data, None)
         except GraphQLError as e:
-            return {"errors": [{"message": e} for e in e.errors]}
+            return ExecutionResult(None, e)
 
     def _validate(
         self,
@@ -223,11 +216,11 @@ class Schema:
                 execution_context.graphql_document is None
                 and execution_context.query is None
             ):
+                assert execution_context.query_src, "query string not provided"
                 execution_context.graphql_document = parse_query(
                     execution_context.query_src
                 )
 
-        with extensions_manager.operation():
             if execution_context.operation is None:
                 # assume that if query of type Node provided, operation
                 # populated and we will not go in this branch where
@@ -247,23 +240,26 @@ class Schema:
                     )
 
             execution_context.query = execution_context.operation.query
-
-            with extensions_manager.validation():
-                if execution_context.errors is None:
-                    execution_context.errors = self._validate(
-                        execution_context.graph,
-                        execution_context.query,
-                        execution_context.validators,
-                    )
-
-            if execution_context.errors:
-                raise GraphQLError(errors=execution_context.errors)
+            # save original query before merging to validate it
+            original_query = execution_context.query
 
             merger = QueryMerger(execution_context.graph)
             execution_context.query = merger.merge(execution_context.query)
+            execution_context.operation.query = execution_context.query
 
         op = execution_context.operation
         if op.type not in (OperationType.QUERY, OperationType.MUTATION):
             raise GraphQLError(
                 errors=["Unsupported operation type: {!r}".format(op.type)]
             )
+
+        with extensions_manager.validation():
+            if execution_context.errors is None:
+                execution_context.errors = self._validate(
+                    execution_context.graph,
+                    original_query,
+                    execution_context.validators,
+                )
+
+            if execution_context.errors:
+                raise GraphQLError(errors=execution_context.errors)
