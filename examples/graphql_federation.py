@@ -8,7 +8,6 @@ from hiku.federation.directive import (
     Extends,
 )
 from hiku.federation.schema import Schema
-from hiku.engine import Engine
 from hiku.graph import (
     Root,
     Field,
@@ -129,7 +128,7 @@ QUERY_GRAPH = Graph([
 app = Flask(__name__)
 
 schema = Schema(
-    Engine(SyncExecutor()),
+    SyncExecutor(),
     QUERY_GRAPH,
     federation_version=1,
 )

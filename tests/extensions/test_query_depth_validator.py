@@ -1,10 +1,9 @@
 import pytest
 
+from hiku.executors.sync import SyncExecutor
 from hiku.extensions.query_depth_validator import QueryDepthValidator
 from hiku.schema import Schema
 from hiku.types import Sequence, String, TypeRef
-from hiku.executors.sync import SyncExecutor
-from hiku.engine import Engine
 from hiku.graph import Field, Link, Node, Root, Graph
 
 
@@ -28,7 +27,7 @@ def sync_graph_fixture():
 
 def test_query_depth_validator(sync_graph):
     schema = Schema(
-        Engine(SyncExecutor()), sync_graph,
+        SyncExecutor(), sync_graph,
         extensions=[
             QueryDepthValidator(max_depth=2),
         ],

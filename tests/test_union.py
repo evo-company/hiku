@@ -1,9 +1,10 @@
 import pytest
-from hiku.denormalize.graphql import DenormalizeGraphQL
 
+from hiku.context import create_execution_context
 from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import Field, Graph, Link, Node, Option, Root, Union
+from hiku.schema import Schema
 from hiku.types import Integer, Optional, Sequence, String, TypeRef, UnionRef
 from hiku.utils import listify
 from hiku.readers.graphql import read
@@ -11,10 +12,9 @@ from hiku.validate.graph import GraphValidationError
 from hiku.validate.query import validate
 
 
-def execute(graph, query):
-    engine = Engine(SyncExecutor())
-    result = engine.execute(graph, query)
-    return DenormalizeGraphQL(graph, result, "query").process(query)
+def execute(query):
+    schema = Schema(SyncExecutor(), GRAPH)
+    return schema.execute_sync(query)
 
 
 @listify
@@ -167,8 +167,31 @@ def test_option_not_provided_for_field():
       }
     }
     """
+    result = execute(read(query))
+    result.error.errors == [
+      "Required option \"size\" for Field('thumbnailUrl'"
+    ]
+
+
+def test_option_not_provided_for_field__engine():
+    query = """
+    query GetMedia {
+      media {
+        __typename
+        ... on Audio {
+          id
+          duration
+        }
+        ... on Video {
+          id
+          thumbnailUrl
+        }
+      }
+    }
+    """
     with pytest.raises(TypeError) as err:
-        execute(GRAPH, read(query))
+        engine = Engine(SyncExecutor())
+        engine.execute(create_execution_context(query=read(query), query_graph=GRAPH))
         err.match("Required option \"size\" for Field('thumbnailUrl'")
 
 
@@ -188,8 +211,8 @@ def test_root_link_to_union_list():
       }
     }
     """
-    result = execute(GRAPH, read(query, {'text': 'foo'}))
-    assert result == {
+    result = execute(read(query, {'text': 'foo'}))
+    assert result.data == {
         'searchMedia': [
             {'__typename': 'Audio', 'id': 1, 'duration': '1s'},
             {'__typename': 'Video', 'id': 2, 'thumbnailUrl': '/video/2'},
@@ -215,8 +238,8 @@ def test_root_link_to_union_one():
       }
     }
     """
-    result = execute(GRAPH, read(query))
-    assert result == {
+    result = execute(read(query))
+    assert result.data == {
         'media': {'__typename': 'Audio', 'id': 1, 'duration': '1s'},
     }
 
@@ -235,8 +258,8 @@ def test_root_link_to_union_optional():
       }
     }
     """
-    result = execute(GRAPH, read(query))
-    assert result == {
+    result = execute(read(query))
+    assert result.data == {
         'maybeMedia': {'__typename': 'Video', 'thumbnailUrl': '/video/2'},
     }
 
@@ -260,8 +283,8 @@ def test_non_root_link_to_union_list():
       }
     }
     """
-    result = execute(GRAPH, read(query))
-    assert result == {
+    result = execute(read(query))
+    assert result.data == {
         'user': {
             'id': 111,
             'media': [
@@ -290,8 +313,8 @@ def test_query_with_inline_fragment_and_fragment_spread():
         duration
     }
     """
-    result = execute(GRAPH, read(query))
-    assert result == {
+    result = execute(read(query))
+    assert result.data == {
         'media': {'__typename': 'Audio', 'id': 1, 'duration': '1s'},
     }
 
@@ -309,8 +332,8 @@ def test_query_only_one_union_type():
     }
 
     """
-    result = execute(GRAPH, read(query))
-    assert result == {
+    result = execute(read(query))
+    assert result.data == {
         'media': {'__typename': 'Audio', 'id': 1, 'duration': '1s'},
     }
 
@@ -324,8 +347,8 @@ def test_query_only_typename():
     }
 
     """
-    result = execute(GRAPH, read(query))
-    assert result == {
+    result = execute(read(query))
+    assert result.data == {
         'media': {'__typename': 'Audio'},
     }
 

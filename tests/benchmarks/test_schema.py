@@ -1,13 +1,11 @@
 import pytest
 
+from hiku.executors.sync import SyncExecutor
 from hiku.extensions.query_parse_cache import QueryParserCache
 from hiku.extensions.query_validation_cache import QueryValidationCache
 from hiku.graph import Graph, Link, Node, Root, Field
 from hiku.schema import Schema
 from hiku.types import String, TypeRef
-
-from hiku.engine import Engine
-from hiku.executors.sync import SyncExecutor
 
 from hiku.federation.graph import Graph as FederatedGraph
 from hiku.federation.schema import Schema as FedSchema
@@ -42,13 +40,13 @@ def graph_fixture():
 
 @pytest.fixture(name="schema")
 def schema_fixture(graph):
-    return Schema(Engine(SyncExecutor()), graph)
+    return Schema(SyncExecutor(), graph)
 
 
 @pytest.fixture(name="schema_with_parse_cache")
 def schema_with_parse_cache_fixture(graph):
     return Schema(
-        Engine(SyncExecutor()),
+        SyncExecutor(),
         graph,
         extensions=[QueryParserCache(2)]
     )
@@ -57,7 +55,7 @@ def schema_with_parse_cache_fixture(graph):
 @pytest.fixture(name="schema_with_all_caches")
 def schema_with_all_caches_fixture(graph):
     return Schema(
-        Engine(SyncExecutor()),
+        SyncExecutor(),
         graph,
         extensions=[
             QueryParserCache(2),
@@ -75,7 +73,7 @@ def federated_graph_fixture(graph):
 
 @pytest.fixture(name="federated_schema")
 def federated_schema_fixture(federated_graph):
-    return FedSchema(Engine(SyncExecutor()), federated_graph)
+    return FedSchema(SyncExecutor(), federated_graph)
 
 
 query = """

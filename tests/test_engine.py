@@ -11,6 +11,7 @@ from sqlalchemy.pool import StaticPool
 
 from hiku import query as q
 from hiku.builder import Q, build
+from hiku.context import create_execution_context
 from hiku.denormalize.graphql import DenormalizeGraphQL
 from hiku.engine import Context, Engine, pass_context
 from hiku.executors.sync import SyncExecutor
@@ -47,11 +48,11 @@ OPTION_BEHAVIOUR = [
 
 def execute(graph, query_, ctx=None):
     engine = Engine(SyncExecutor())
-    return engine.execute(graph, query_, ctx)
+    return engine.execute(create_execution_context(query=query_, query_graph=graph, context=ctx))
 
 
 def execute_schema(graph, query):
-    schema = Schema(Engine(SyncExecutor()), graph)
+    schema = Schema(SyncExecutor(), graph)
     return schema.execute_sync(query)
 
 
@@ -1983,10 +1984,10 @@ def test_denormalize_introspection() -> str:
 
     graph = GraphQLIntrospection(graph).visit(graph)
 
-    engine = Engine(SyncExecutor())
     query = read(get_introspection_query())
     query = QueryMerger(graph).merge(query)
-    result = engine.execute(graph, query)
+
+    result = execute(graph, query)
     data = denormalize(
         graph, result
     )

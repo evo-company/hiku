@@ -1,9 +1,8 @@
 import pytest
 
 from hiku.executors.asyncio import AsyncIOExecutor
-from hiku.federation.schema import Schema
-from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
+from hiku.federation.schema import Schema
 
 from tests.test_federation.utils import (
     GRAPH,
@@ -13,7 +12,7 @@ from tests.test_federation.utils import (
 
 def execute_schema_v1(query):
     return Schema(
-        Engine(SyncExecutor()),
+        SyncExecutor(),
         GRAPH,
         federation_version=1,
     ).execute_sync(query['query'], query['variables'], query['operationName'])
@@ -21,14 +20,14 @@ def execute_schema_v1(query):
 
 def execute_schema_v2(query):
     return Schema(
-        Engine(SyncExecutor()),
+        SyncExecutor(),
         GRAPH,
     ).execute_sync(query['query'], query['variables'], query['operationName'])
 
 
 async def execute_async_schema_v1(query):
     return await Schema(
-        Engine(AsyncIOExecutor()),
+        AsyncIOExecutor(),
         ASYNC_GRAPH,
         federation_version=1,
     ).execute(query['query'], query['variables'], query['operationName'])
@@ -36,7 +35,7 @@ async def execute_async_schema_v1(query):
 
 async def execute_async_schema_v2(query):
     return await Schema(
-        Engine(AsyncIOExecutor()),
+        AsyncIOExecutor(),
         ASYNC_GRAPH,
     ).execute(query['query'], query['variables'], query['operationName'])
 

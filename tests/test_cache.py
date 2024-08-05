@@ -42,7 +42,6 @@ from hiku.types import (
     Any,
     Optional,
 )
-from hiku.engine import Engine
 from hiku.readers.graphql import read
 from hiku.cache import (
     BaseCache,
@@ -673,8 +672,7 @@ def test_cached_link_one__sqlalchemy(sync_graph_sqlalchemy):
     cache = Mock(wraps=cache)
     cache_settings = CacheSettings(cache)
     cache_info = CacheInfo(cache_settings)
-    engine = Engine(ThreadsExecutor(thread_pool), cache_settings)
-    schema = Schema(engine, graph)
+    schema = Schema(ThreadsExecutor(thread_pool), graph, cache=cache_settings)
     ctx = {SA_ENGINE_KEY: sa_engine, "locale": "en"}
 
     def execute(q):
@@ -823,8 +821,7 @@ def test_cached_link_many__sqlalchemy(sync_graph_sqlalchemy):
 
     cache_settings = CacheSettings(cache, cache_key)
     cache_info = CacheInfo(cache_settings)
-    engine = Engine(ThreadsExecutor(thread_pool), cache_settings)
-    schema = Schema(engine, graph)
+    schema = Schema(ThreadsExecutor(thread_pool), graph, cache=cache_settings)
     ctx = {SA_ENGINE_KEY: sa_engine, "locale": "en"}
 
     def execute(q):

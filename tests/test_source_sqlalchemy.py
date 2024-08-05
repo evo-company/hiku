@@ -354,9 +354,8 @@ class TestSourceSQLAlchemy(SourceSQLAlchemyTestBase):
         )
         setup_db(sa_engine)
 
-        engine = Engine(ThreadsExecutor(thread_pool))
         schema = Schema(
-            engine,
+            ThreadsExecutor(thread_pool),
             self.graph,
         )
 

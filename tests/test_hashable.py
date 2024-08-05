@@ -4,9 +4,9 @@ from typing import List
 from dataclasses import dataclass
 
 from hiku.builder import build, Q
-from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import Graph, Node, Field, Root, Link, Option
+from hiku.schema import Schema
 from hiku.types import (
     Any,
     Integer,
@@ -22,8 +22,8 @@ def direct_link(ids):
 
 
 def execute(graph, query_, ctx=None):
-    engine = Engine(SyncExecutor())
-    return engine.execute(graph, query_, ctx=ctx)
+    schema = Schema(SyncExecutor(), graph)
+    return schema.execute_sync(query_, context=ctx)
 
 
 def test_link_requires_field_with_unhashable_data():

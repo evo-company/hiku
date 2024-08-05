@@ -2,12 +2,11 @@ from unittest.mock import patch
 
 import pytest
 
+from hiku.executors.sync import SyncExecutor
 from hiku.schema import Schema
 from hiku.validate.query import validate
 from hiku.extensions.query_validation_cache import QueryValidationCache
 from hiku.types import String
-from hiku.executors.sync import SyncExecutor
-from hiku.engine import Engine
 from hiku.graph import Field, Root, Graph
 
 
@@ -27,7 +26,7 @@ def sync_graph_fixture():
 
 def test_query_validation_cache_extension(sync_graph):
     schema = Schema(
-        Engine(SyncExecutor()), sync_graph,
+        SyncExecutor(), sync_graph,
         extensions=[QueryValidationCache(2)],
     )
 

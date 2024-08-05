@@ -1,8 +1,7 @@
 from unittest.mock import ANY
 
-from hiku.federation.directive import Key
-from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
+from hiku.federation.directive import Key
 from hiku.federation.graph import FederatedNode, Graph
 from hiku.federation.schema import Schema
 from hiku.graph import Field, Root
@@ -137,7 +136,7 @@ def _schema(types, with_mutation=False) -> dict:
 
 def execute(graph, query_string):
     schema = Schema(
-        Engine(SyncExecutor()),
+        SyncExecutor(),
         graph,
         federation_version=1
     )
@@ -151,7 +150,7 @@ def introspect(query_graph, ):
 
 def execute_v2(graph, query_string):
     schema = Schema(
-        Engine(SyncExecutor()),
+        SyncExecutor(),
         graph,
     )
 

@@ -7,13 +7,12 @@ import pytest
 
 from hiku.enum import Enum
 from hiku.directives import Deprecated, Location, SchemaDirective, schema_directive
+from hiku.executors.sync import SyncExecutor
 from hiku.graph import Graph, Interface, Root, Field, Node, Link, Union, apply, Option
 from hiku.scalar import Scalar
 from hiku.schema import Schema
 from hiku.types import EnumRef, InterfaceRef, String, Integer, Sequence, TypeRef, Boolean, Float, Any, UnionRef
 from hiku.types import Optional, Record
-from hiku.engine import Engine
-from hiku.executors.sync import SyncExecutor
 from hiku.introspection.graphql import GraphQLIntrospection
 from tests.utils import INTROSPECTION_QUERY
 
@@ -191,8 +190,7 @@ SCALARS = [
 
 
 def execute(query_str, query_graph, mutation_graph=None):
-    engine = Engine(SyncExecutor())
-    schema = Schema(engine, query_graph, mutation_graph)
+    schema = Schema(SyncExecutor(), query_graph, mutation_graph)
     return schema.execute_sync(query_str).data
 
 

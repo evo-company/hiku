@@ -4,10 +4,9 @@ import pytest
 
 from graphql import parse
 
+from hiku.executors.sync import SyncExecutor
 from hiku.schema import Schema
 from hiku.types import String
-from hiku.executors.sync import SyncExecutor
-from hiku.engine import Engine
 from hiku.graph import Field, Root, Graph
 from hiku.extensions.query_parse_cache import QueryParserCache
 
@@ -28,7 +27,7 @@ def sync_graph_fixture():
 
 def test_query_parser_cache_extension(sync_graph):
     schema = Schema(
-        Engine(SyncExecutor()), sync_graph,
+        SyncExecutor(), sync_graph,
         extensions=[QueryParserCache(2)],
     )
 

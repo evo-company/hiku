@@ -1,6 +1,6 @@
 import pytest
 
-from hiku.engine import Engine, pass_context
+from hiku.engine import pass_context
 from hiku.executors.sync import SyncExecutor
 from hiku.extensions.context import CustomContext
 from hiku.graph import Field, Graph, Root
@@ -31,7 +31,7 @@ def sync_graph_fixture():
 
 def test_custom_context_extension(sync_graph):
     schema = Schema(
-        Engine(SyncExecutor()),
+        SyncExecutor(),
         sync_graph,
         extensions=[CustomContext(lambda _: {"answer": "42"})],
     )

@@ -2,11 +2,10 @@ from enum import Enum as PyEnum
 
 import pytest
 
-from hiku.denormalize.graphql import DenormalizeGraphQL
-from hiku.engine import Engine
 from hiku.enum import Enum
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import Field, Graph, Link, Node, Option, Root
+from hiku.schema import Schema
 from hiku.types import Integer, Optional, Sequence, TypeRef, EnumRef
 from hiku.utils import listify
 from hiku.readers.graphql import read
@@ -15,9 +14,8 @@ from hiku.validate.query import validate
 
 
 def execute(graph, query):
-    engine = Engine(SyncExecutor())
-    result = engine.execute(graph, query, {})
-    return DenormalizeGraphQL(graph, result, "query").process(query)
+    schema = Schema(SyncExecutor(), graph)
+    return schema.execute_sync(query)
 
 
 class Status(PyEnum):
@@ -88,7 +86,7 @@ def test_serialize_enum_field_correct(enum, status):
     }
     """
     result = execute(graph, read(query))
-    assert result == {
+    assert result.data == {
         'user': {
             'id': 1,
             'status': 'ACTIVE',
@@ -165,7 +163,7 @@ def test_root_field_enum():
     }
     """
     result = execute(graph, read(query))
-    assert result == {
+    assert result.data == {
         'statuses': ['ACTIVE', 'DELETED']
     }
 
@@ -212,7 +210,7 @@ def test_parse_enum_argument(enum, status):
     ], enums=[enum])
 
     result = execute(graph, read("query GetUser { user(status: DELETED) { id status } }"))
-    assert result == {
+    assert result.data == {
         'user': {
             'id': 1,
             'status': 'DELETED',
@@ -266,7 +264,7 @@ def test_parse_enum_argument_default_value(enum, status):
     assert validate(graph, read(query)) == []
 
     result = execute(graph, read(query))
-    assert result == {
+    assert result.data == {
         'user': {
             'id': 1,
             'status': 'ACTIVE'

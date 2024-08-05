@@ -60,8 +60,12 @@ class ExecutionContext:
 
     @property
     def graph(self) -> Graph:
-        """If operation type isn't specified, returns query graph."""
         if self.operation is None:
+            # if query ordered we need to execute it on mutation graph
+            if self.query and self.query.ordered:
+                if self.mutation_graph:
+                    return self.mutation_graph
+
             assert self.query_graph is not None
             return self.query_graph
 

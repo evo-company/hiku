@@ -2,11 +2,10 @@ from datetime import datetime
 
 import pytest
 
-from hiku.denormalize.graphql import DenormalizeGraphQL
-from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import Field, Graph, Link, Node, Nothing, Option, Root
 from hiku.scalar import DateTime, Scalar
+from hiku.schema import Schema
 from hiku.types import Integer, Optional, Sequence, TypeRef
 from hiku.utils import listify
 from hiku.readers.graphql import read
@@ -15,9 +14,8 @@ from hiku.validate.query import validate
 
 
 def execute(graph, query):
-    engine = Engine(SyncExecutor())
-    result = engine.execute(graph, query, ctx={})
-    return DenormalizeGraphQL(graph, result, "query").process(query)
+    schema = Schema(SyncExecutor(), graph)
+    return schema.execute_sync(query)
 
 
 class SomeType:
@@ -166,7 +164,7 @@ def test_serialize_scalar_field_correct():
     }
     """
     result = execute(graph, read(query))
-    assert result == {
+    assert result.data == {
         "user": {
             "id": 1,
             "dateCreated": DATE_CREATED_STR,
@@ -237,7 +235,7 @@ def test_parse_scalar_input_correct():
     )
 
     result = execute(graph, read(query))
-    assert result == {
+    assert result.data == {
         "user": {
             "id": 1,
             "dateCreated": DATE_CREATED_STR,

@@ -1,20 +1,19 @@
 import pytest
-from hiku.denormalize.graphql import DenormalizeGraphQL
 
+from hiku.context import create_execution_context
 from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import Field, Graph, Interface, Link, Node, Option, Root
+from hiku.schema import Schema
 from hiku.types import Integer, InterfaceRef, Optional, Sequence, String, TypeRef
 from hiku.utils import empty_field, listify
 from hiku.readers.graphql import read
 from hiku.validate.graph import GraphValidationError
-from hiku.validate.query import validate
 
 
 def execute(graph, query):
-    engine = Engine(SyncExecutor())
-    result = engine.execute(graph, query)
-    return DenormalizeGraphQL(graph, result, "query").process(query)
+    schema = Schema(SyncExecutor(), graph)
+    return schema.execute_sync(query)
 
 
 @listify
@@ -178,8 +177,32 @@ def test_option_not_provided_for_field():
       }
     }
     """
+
+    result = execute(GRAPH, read(query))
+    assert result.error.errors == [
+      'Required option "Video.thumbnailUrl:size" is not specified'
+    ]
+
+
+def test_option_not_provided_for_field__engine():
+    query = """
+    query GetMedia {
+      media {
+        __typename
+        id
+        duration
+        ... on Audio {
+          album
+        }
+        ... on Video {
+          thumbnailUrl
+        }
+      }
+    }
+    """
     with pytest.raises(TypeError) as err:
-        execute(GRAPH, read(query))
+        engine = Engine(SyncExecutor())
+        engine.execute(create_execution_context(read(query), query_graph=GRAPH))
         err.match("Required option \"size\" for Field('thumbnailUrl'")
 
 
@@ -201,7 +224,7 @@ def test_root_link_to_interface_list():
     """
 
     result = execute(GRAPH, read(query, {'text': 'foo'}))
-    assert result == {
+    assert result.data == {
         'searchMedia': [
             {'__typename': 'Audio', 'id': 1, 'duration': '1s', 'album': 'album#1'},
             {'__typename': 'Video', 'id': 2, 'duration': '2s', 'thumbnailUrl': '/video/2'},
@@ -228,7 +251,7 @@ def test_root_link_to_interface_one():
     }
     """
     result = execute(GRAPH, read(query))
-    assert result == {
+    assert result.data == {
         'media': {'__typename': 'Audio', 'id': 1, 'duration': '1s', 'album': 'album#1'},
     }
 
@@ -250,7 +273,7 @@ def test_root_link_to_interface_optional():
     }
     """
     result = execute(GRAPH, read(query))
-    assert result == {
+    assert result.data == {
         'maybeMedia': {'__typename': 'Video', 'id': 2, 'duration': '2s', 'thumbnailUrl': '/video/2'},
     }
 
@@ -275,7 +298,7 @@ def test_non_root_link_to_interface_list():
     }
     """
     result = execute(GRAPH, read(query))
-    assert result == {
+    assert result.data == {
         'user': {
             'id': 111,
             'media': [
@@ -305,7 +328,7 @@ def test_query_with_inline_fragment_and_fragment_spread():
     }
     """
     result = execute(GRAPH, read(query))
-    assert result == {
+    assert result.data == {
         'media': {'__typename': 'Audio', 'id': 1, 'duration': '1s', 'album': 'album#1'},
     }
 
@@ -330,7 +353,7 @@ def test_query_can_be_without_shared_fields():
     """
 
     result = execute(GRAPH, read(query))
-    assert result == {
+    assert result.data == {
         'media': {'__typename': 'Audio', 'id': 1, 'duration': '1s', 'album': 'album#1'},
     }
 
@@ -350,7 +373,7 @@ def test_query_only_one_interface_type():
     """
 
     result = execute(GRAPH, read(query))
-    assert result == {
+    assert result.data == {
         'media': {'__typename': 'Audio', 'id': 1, 'duration': '1s', 'album': 'album#1'},
     }
 
@@ -367,7 +390,7 @@ def test_query_only_shared_fields():
     """
 
     result = execute(GRAPH, read(query))
-    assert result == {
+    assert result.data == {
         'media': {'__typename': 'Audio', 'id': 1, 'duration': '1s'},
     }
 
@@ -398,9 +421,9 @@ def test_validate_interface_has_no_implementations():
     }
     """
 
-    errors = validate(graph, read(query))
+    result = execute(graph, read(query))
 
-    assert errors == [
+    assert result.error.errors == [
         "Can not query field 'id' on interface 'Media'. "
         "Interface 'Media' is not implemented by any type. "
         "Add at least one type implementing this interface.",
@@ -422,9 +445,9 @@ def test_validate_query_implementation_node_field_without_inline_fragment():
     }
     """
 
-    errors = validate(GRAPH, read(query))
+    result = execute(GRAPH, read(query))
 
-    assert errors == [
+    assert result.error.errors == [
         "Can not query field 'album' on type 'Media'. "
         "Did you mean to use an inline fragment on 'Audio'?"
     ]
@@ -440,9 +463,9 @@ def test_validate_query_fragment_no_type_condition():
     }
     """
 
-    errors = validate(GRAPH, read(query, {'text': 'foo'}))
+    result = execute(GRAPH, read(query, {'text': 'foo'}))
 
-    assert errors == [
+    assert result.error.errors == [
       "Can not query field 'album' on type 'Media'. "
       "Did you mean to use an inline fragment on 'Audio'?"
     ]
@@ -459,9 +482,9 @@ def test_validate_query_fragment_on_unknown_type():
     }
     """
 
-    errors = validate(GRAPH, read(query, {'text': 'foo'}))
+    result = execute(GRAPH, read(query, {'text': 'foo'}))
 
-    assert errors == ["Fragment on unknown type 'X'"]
+    assert result.error.errors == ["Fragment on unknown type 'X'"]
 
 
 def test_validate_interface_type_has_no_such_field():
@@ -479,9 +502,9 @@ def test_validate_interface_type_has_no_such_field():
     }
     """
 
-    errors = validate(GRAPH, read(query, {'text': 'foo'}))
+    result = execute(GRAPH, read(query, {'text': 'foo'}))
 
-    assert errors == [
+    assert result.error.errors == [
         'Field "invalid_field" is not implemented in the "Audio" node',
     ]
 
@@ -500,8 +523,8 @@ def test_validate_interface_type_field_has_no_such_option():
     }
     """
 
-    errors = validate(GRAPH, read(query, {'text': 'foo'}))
+    result = execute(GRAPH, read(query, {'text': 'foo'}))
 
-    assert errors == [
+    assert result.error.errors == [
         'Unknown options for "Audio.duration": size',
     ]

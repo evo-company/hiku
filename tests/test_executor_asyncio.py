@@ -27,9 +27,9 @@ async def coroutine():
 
 
 @pytest.mark.asyncio
-async def test_awaitable_check():
+async def test_awaitable_check__async_only():
     loop = asyncio.get_running_loop()
-    executor = AsyncIOExecutor(loop)
+    executor = AsyncIOExecutor(loop, deny_sync=True)
 
     with pytest.raises(TypeError) as func_err:
         executor.submit(func)
@@ -47,6 +47,18 @@ async def test_awaitable_check():
         executor.submit(gen2)
     gen2_err.match("returned non-awaitable object")
 
+    assert (await executor.submit(coroutine)) == "smiting"
+
+
+@pytest.mark.asyncio
+async def test_awaitable_check__sync_async():
+    loop = asyncio.get_running_loop()
+    executor = AsyncIOExecutor(loop)
+
+    assert await executor.submit(func) is None
+    assert await executor.submit(func2) == []
+    assert await executor.submit(gen)
+    assert await executor.submit(gen2)
     assert (await executor.submit(coroutine)) == "smiting"
 
 

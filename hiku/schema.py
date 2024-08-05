@@ -1,14 +1,29 @@
 from dataclasses import dataclass
-from inspect import isawaitable
-from typing import Optional, Dict, Union, Any, List, Type, Sequence, Tuple, cast
+from typing import (
+    Optional,
+    Dict,
+    Union,
+    Any,
+    List,
+    Type,
+    Sequence,
+    Tuple,
+    cast,
+    Generic,
+)
 
+from hiku.cache import CacheSettings
 from hiku.context import (
     ExecutionContext,
     ExecutionContextFinal,
     create_execution_context,
 )
 from hiku.denormalize.graphql import DenormalizeGraphQL
-from hiku.engine import Engine
+from hiku.engine import _ExecutorType, Engine
+from hiku.executors.base import (
+    BaseAsyncExecutor,
+    BaseSyncExecutor,
+)
 from hiku.extensions.base_extension import Extension, ExtensionsManager
 from hiku.extensions.base_validator import QueryValidator
 from hiku.graph import Graph, GraphTransformer, apply
@@ -17,7 +32,6 @@ from hiku.merge import QueryMerger
 from hiku.operation import OperationType
 from hiku.query import Node
 from hiku.readers.graphql import parse_query, read_operation
-from hiku.result import Proxy
 from hiku.validate.query import validate
 
 
@@ -45,7 +59,8 @@ class ExecutionResult:
     error: Optional[GraphQLError]
 
 
-class Schema:
+class Schema(Generic[_ExecutorType]):
+    engine: Engine[_ExecutorType]
     graph: Graph
     mutation: Optional[Graph]
     batching: bool
@@ -55,7 +70,7 @@ class Schema:
 
     def __init__(
         self,
-        engine: Engine,
+        executor: _ExecutorType,
         graph: Graph,
         mutation: Optional[Graph] = None,
         batching: bool = False,
@@ -64,8 +79,12 @@ class Schema:
             Sequence[Union[Extension, Type[Extension]]]
         ] = None,
         transformers: Optional[List[GraphTransformer]] = None,
+        cache: Optional[CacheSettings] = None,
     ):
-        self.engine = engine
+        self.engine = Engine(
+            executor=executor,
+            cache=cache,
+        )
         self.batching = batching
         self.introspection = introspection
         self.extensions = extensions or []
@@ -92,7 +111,7 @@ class Schema:
             self.mutation = None
 
     def execute_sync(
-        self,
+        self: "Schema[BaseSyncExecutor]",
         query: Union[str, Node],
         variables: Optional[Dict] = None,
         operation_name: Optional[str] = None,
@@ -129,8 +148,7 @@ class Schema:
                 )
 
                 with extensions_manager.execution():
-                    result = self.engine.execute_context(execution_context)
-                    assert isinstance(result, Proxy)
+                    result = self.engine.execute(execution_context)
                     execution_context.result = result
 
                 data = DenormalizeGraphQL(
@@ -144,7 +162,7 @@ class Schema:
             return ExecutionResult(None, e)
 
     async def execute(
-        self,
+        self: "Schema[BaseAsyncExecutor]",
         query: Union[str, Node],
         variables: Optional[Dict] = None,
         operation_name: Optional[str] = None,
@@ -181,10 +199,8 @@ class Schema:
                 )
 
                 with extensions_manager.execution():
-                    coro = self.engine.execute_context(execution_context)
-                    assert isawaitable(coro)
-                    result = await coro
-                    assert isinstance(result, Proxy)
+                    # result = self.engine.execute(execution_context)
+                    result = await self.engine.execute(execution_context)
                     execution_context.result = result
 
                 data = DenormalizeGraphQL(

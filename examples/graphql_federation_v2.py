@@ -5,7 +5,6 @@ from flask import Flask, request, jsonify
 from hiku.federation.directive import Key
 from hiku.federation.graph import Graph, FederatedNode
 from hiku.federation.schema import Schema
-from hiku.engine import Engine
 from hiku.graph import (
     Root,
     Field,
@@ -136,10 +135,7 @@ QUERY_GRAPH = Graph([
 
 app = Flask(__name__)
 
-schema = Schema(
-    Engine(SyncExecutor()),
-    QUERY_GRAPH,
-)
+schema = Schema(SyncExecutor(), QUERY_GRAPH)
 
 
 @app.route('/graphql', methods={'POST'})

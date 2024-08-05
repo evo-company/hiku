@@ -21,7 +21,6 @@ from hiku.federation.directive import (
     schema_directive,
 )
 from hiku.federation.graph import Graph, FederatedNode
-from hiku.engine import Engine
 from hiku.graph import (
     Nothing,
     Root,
@@ -570,7 +569,7 @@ QUERY_GRAPH = Graph(
 app = Flask(__name__)
 
 schema = Schema(
-    Engine(SyncExecutor()),
+    SyncExecutor(),
     QUERY_GRAPH,
 )
 

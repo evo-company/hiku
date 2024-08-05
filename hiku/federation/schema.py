@@ -1,6 +1,7 @@
-from typing import List, Optional, Sequence, Type, Union, cast
+from typing import Generic, List, Optional, Sequence, Type, Union, cast
+from hiku.cache import CacheSettings
 from hiku.context import ExecutionContext, ExecutionContextFinal
-from hiku.engine import Engine
+from hiku.engine import _ExecutorType
 from hiku.federation.introspection import FederatedGraphQLIntrospection
 from hiku.federation.sdl import print_sdl
 from hiku.graph import GraphTransformer
@@ -37,7 +38,7 @@ class FederationV1EntityTransformer(GraphTransformer):
         )
 
 
-class Schema(BaseSchema):
+class Schema(BaseSchema, Generic[_ExecutorType]):
     """Can execute either regular or federated queries.
     Handles following fields of federated query:
         - _service
@@ -50,7 +51,7 @@ class Schema(BaseSchema):
 
     def __init__(
         self,
-        engine: Engine,
+        executor: _ExecutorType,
         graph: Graph,
         mutation: Optional[Graph] = None,
         batching: bool = False,
@@ -58,6 +59,7 @@ class Schema(BaseSchema):
         extensions: Optional[
             Sequence[Union[Extension, Type[Extension]]]
         ] = None,
+        cache: Optional[CacheSettings] = None,
         federation_version: int = DEFAULT_FEDERATION_VERSION,
     ):
         transformers: List[GraphTransformer] = []
@@ -65,13 +67,14 @@ class Schema(BaseSchema):
             transformers.append(FederationV1EntityTransformer())
 
         super().__init__(
-            engine=engine,
             graph=graph,
             mutation=mutation,
             batching=batching,
             introspection=introspection,
             extensions=extensions,
             transformers=transformers,
+            executor=executor,
+            cache=cache,
         )
         self.federation_version = federation_version
 
