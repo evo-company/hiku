@@ -179,7 +179,7 @@ def test_option_not_provided_for_field():
     """
 
     result = execute(GRAPH, read(query))
-    assert result.error.errors == [
+    assert [e.message for e in result.errors] == [
       'Required option "Video.thumbnailUrl:size" is not specified'
     ]
 
@@ -423,7 +423,7 @@ def test_validate_interface_has_no_implementations():
 
     result = execute(graph, read(query))
 
-    assert result.error.errors == [
+    assert [e.message for e in result.errors] == [
         "Can not query field 'id' on interface 'Media'. "
         "Interface 'Media' is not implemented by any type. "
         "Add at least one type implementing this interface.",
@@ -447,7 +447,7 @@ def test_validate_query_implementation_node_field_without_inline_fragment():
 
     result = execute(GRAPH, read(query))
 
-    assert result.error.errors == [
+    assert [e.message for e in result.errors] == [
         "Can not query field 'album' on type 'Media'. "
         "Did you mean to use an inline fragment on 'Audio'?"
     ]
@@ -465,7 +465,7 @@ def test_validate_query_fragment_no_type_condition():
 
     result = execute(GRAPH, read(query, {'text': 'foo'}))
 
-    assert result.error.errors == [
+    assert [e.message for e in result.errors] == [
       "Can not query field 'album' on type 'Media'. "
       "Did you mean to use an inline fragment on 'Audio'?"
     ]
@@ -484,7 +484,7 @@ def test_validate_query_fragment_on_unknown_type():
 
     result = execute(GRAPH, read(query, {'text': 'foo'}))
 
-    assert result.error.errors == ["Fragment on unknown type 'X'"]
+    assert [e.message for e in result.errors] == ["Fragment on unknown type 'X'"]
 
 
 def test_validate_interface_type_has_no_such_field():
@@ -504,7 +504,7 @@ def test_validate_interface_type_has_no_such_field():
 
     result = execute(GRAPH, read(query, {'text': 'foo'}))
 
-    assert result.error.errors == [
+    assert [e.message for e in result.errors] == [
         'Field "invalid_field" is not implemented in the "Audio" node',
     ]
 
@@ -525,6 +525,6 @@ def test_validate_interface_type_field_has_no_such_option():
 
     result = execute(GRAPH, read(query, {'text': 'foo'}))
 
-    assert result.error.errors == [
+    assert [e.message for e in result.errors] == [
         'Unknown options for "Audio.duration": size',
     ]

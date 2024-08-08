@@ -20,6 +20,7 @@ from hiku.context import (
 )
 from hiku.denormalize.graphql import DenormalizeGraphQL
 from hiku.engine import _ExecutorType, Engine
+from hiku.error import GraphQLError
 from hiku.executors.base import (
     BaseAsyncExecutor,
     BaseSyncExecutor,
@@ -35,8 +36,8 @@ from hiku.readers.graphql import parse_query, read_operation
 from hiku.validate.query import validate
 
 
-class GraphQLError(Exception):
-    def __init__(self, *, errors: List[str]):
+class ValidationError(Exception):
+    def __init__(self, errors: List[str]) -> None:
         super().__init__("{} errors".format(len(errors)))
         self.errors = errors
 
@@ -56,7 +57,7 @@ def _run_validation(
 @dataclass
 class ExecutionResult:
     data: Optional[Dict[str, Any]]
-    error: Optional[GraphQLError]
+    errors: Optional[List[GraphQLError]]
 
 
 class Schema(Generic[_ExecutorType]):
@@ -158,8 +159,12 @@ class Schema(Generic[_ExecutorType]):
                 ).process(execution_context.query)
 
             return ExecutionResult(data, None)
+        except ValidationError as e:
+            return ExecutionResult(
+                None, [GraphQLError(message) for message in e.errors]
+            )
         except GraphQLError as e:
-            return ExecutionResult(None, e)
+            return ExecutionResult(None, [e])
 
     async def execute(
         self: "Schema[BaseAsyncExecutor]",
@@ -199,7 +204,6 @@ class Schema(Generic[_ExecutorType]):
                 )
 
                 with extensions_manager.execution():
-                    # result = self.engine.execute(execution_context)
                     result = await self.engine.execute(execution_context)
                     execution_context.result = result
 
@@ -210,8 +214,12 @@ class Schema(Generic[_ExecutorType]):
                 ).process(execution_context.query)
 
             return ExecutionResult(data, None)
+        except ValidationError as e:
+            return ExecutionResult(
+                None, [GraphQLError(message) for message in e.errors]
+            )
         except GraphQLError as e:
-            return ExecutionResult(None, e)
+            return ExecutionResult(None, [e])
 
     def _validate(
         self,
@@ -249,11 +257,7 @@ class Schema(Generic[_ExecutorType]):
                         execution_context.request_operation_name,
                     )
                 except TypeError as e:
-                    raise GraphQLError(
-                        errors=[
-                            "Failed to read query: {}".format(e),
-                        ]
-                    )
+                    raise GraphQLError("Failed to read query: {}".format(e))
 
             execution_context.query = execution_context.operation.query
             # save original query before merging to validate it
@@ -266,7 +270,7 @@ class Schema(Generic[_ExecutorType]):
         op = execution_context.operation
         if op.type not in (OperationType.QUERY, OperationType.MUTATION):
             raise GraphQLError(
-                errors=["Unsupported operation type: {!r}".format(op.type)]
+                "Unsupported operation type: {!r}".format(op.type)
             )
 
         with extensions_manager.validation():
@@ -278,4 +282,4 @@ class Schema(Generic[_ExecutorType]):
                 )
 
             if execution_context.errors:
-                raise GraphQLError(errors=execution_context.errors)
+                raise ValidationError(errors=execution_context.errors)

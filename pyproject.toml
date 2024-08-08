@@ -2,29 +2,29 @@
 name = "hiku"
 dynamic = ["version"]
 description = "Library to implement Graph APIs"
-readme = {file = "README.rst", content-type = "text/x-rst"}
-license = {text = "BSD-3-Clause"}
+readme = { file = "README.rst", content-type = "text/x-rst" }
+license = { text = "BSD-3-Clause" }
 authors = [
-    {name = "Vladimir Magamedov", email = "vladimir@magamedov.com"},
-    {name = "Maksym Kindritskyi", email = "kindritskiy.m@gmail.com"},
+  { name = "Vladimir Magamedov", email = "vladimir@magamedov.com" },
+  { name = "Maksym Kindritskyi", email = "kindritskiy.m@gmail.com" },
 ]
 dependencies = []
 requires-python = ">=3.7"
 
 classifiers = [
-    'Development Status :: 5 - Production/Stable',
-    'Intended Audience :: Developers',
-    'License :: OSI Approved :: BSD License',
-    'Operating System :: OS Independent',
-    'Programming Language :: Python',
-    'Programming Language :: Python :: 3.7',
-    'Programming Language :: Python :: 3.8',
-    'Programming Language :: Python :: 3.9',
-    'Programming Language :: Python :: 3.10',
-    'Programming Language :: Python :: 3.11',
-    'Programming Language :: Python :: 3.12',
-    'Programming Language :: Python :: 3 :: Only',
-    'Topic :: Software Development :: Libraries :: Python Modules',
+  'Development Status :: 5 - Production/Stable',
+  'Intended Audience :: Developers',
+  'License :: OSI Approved :: BSD License',
+  'Operating System :: OS Independent',
+  'Programming Language :: Python',
+  'Programming Language :: Python :: 3.7',
+  'Programming Language :: Python :: 3.8',
+  'Programming Language :: Python :: 3.9',
+  'Programming Language :: Python :: 3.10',
+  'Programming Language :: Python :: 3.11',
+  'Programming Language :: Python :: 3.12',
+  'Programming Language :: Python :: 3 :: Only',
+  'Topic :: Software Development :: Libraries :: Python Modules',
 ]
 
 [project.urls]
@@ -43,44 +43,35 @@ source = "file"
 path = "hiku/__init__.py"
 
 [tool.pdm.build]
-includes = [
-    "hiku",
-    "hiku/pytyped",
-]
-excludes = [ "tests", "**/.*.*" ]
+includes = ["hiku", "hiku/pytyped"]
+excludes = ["tests", "**/.*.*"]
 
 [tool.pdm.dev-dependencies]
 test = [
-    "astor>=0.8.1",
-    "pytest>=7.4.2",
-    "pytest-cov>=4.1.0",
-    "pytest-asyncio>=0.21.1",
-    "faker>=18.13.0",
-    "pytest-benchmark[histogram]>=4.0.0",
-    "asyncpg>=0.28.0",  # for tests_pg
-    "greenlet>=3.0.0",  # for tests_pg
+  "astor>=0.8.1",
+  "pytest>=7.4.2",
+  "pytest-cov>=4.1.0",
+  "pytest-asyncio>=0.21.1",
+  "faker>=18.13.0",
+  "pytest-benchmark[histogram]>=4.0.0",
+  "asyncpg>=0.28.0",                    # for tests_pg
+  "greenlet>=3.0.0",                    # for tests_pg
 ]
 dev = [
-    "graphql-core>=3.2.3",  # for graphql support
-    "sqlalchemy<2",
-    "protobuf>=4.24.4",  # for protobuf support
-    "aiopg>=1.4.0",  # for async postgresql support
-    "prometheus-client>=0.17.1",  # for prometheus metrics
-    "sentry-sdk>=1.31.0",  # for sentry tracing
-    "typing-extensions>=4.7.1",
-    "mypy>=1.4.1",
-    "black>=23.3.0",
-    "flake8>=5.0.4",
-    "grpcio-tools>=1.59.0",
+  "graphql-core>=3.2.3",       # for graphql support
+  "sqlalchemy<2",
+  "protobuf>=4.24.4",          # for protobuf support
+  "aiopg>=1.4.0",              # for async postgresql support
+  "prometheus-client>=0.17.1", # for prometheus metrics
+  "sentry-sdk>=1.31.0",        # for sentry tracing
+  "typing-extensions>=4.7.1",
+  "mypy>=1.4.1",
+  "black>=23.3.0",
+  "flake8>=5.0.4",
+  "grpcio-tools>=1.59.0",
 ]
-docs = [
-    "sphinx>=5.3.0",
-    "furo>=2023.3.27",
-]
-examples = [
-    "flask>=2.2.5",
-    "aiohttp>=3.8.6",
-]
+docs = ["sphinx>=5.3.0", "furo>=2023.3.27"]
+examples = ["flask>=2.2.5", "aiohttp>=3.8.6"]
 
 [tool.pdm.resolution.overrides]
 importlib-metadata = ">=4.3"
@@ -90,45 +81,38 @@ bench = "python -m pytest --benchmark-enable {args:tests}"
 test = "python -m pytest {args:tests}"
 test-pg = "python -m pytest {args:tests_pg}"
 test-pg-local = "python -m pytest --pg-host=localhost {args:tests_pg}"
-test-all = {composite = ["test", "test-pg"]}
-fmt = "python -m black hiku"
+test-all = { composite = ["test", "test-pg"] }
+fmt = "python -m black hiku examples"
 mypy = "python -m mypy"
 flake = "python -m flake8"
 docs = "sphinx-build -b html docs docs/build"
 docs-open = "open docs/build/index.html"
-check = {composite = ["fmt", "test", "mypy", "flake"]}
+check = { composite = ["fmt", "test", "mypy", "flake"] }
 example = "python examples/{args:graphql_flask}.py"
 proto-query = "python -m grpc_tools.protoc -I. --python_out=. hiku/protobuf/query.proto"
 proto-tests = "python -m grpc_tools.protoc -I. --python_out=. tests/protobuf/result.proto"
 proto-example = "python -m grpc_tools.protoc -I. --python_out=. docs/example.proto"
-proto = {composite = ["proto-query", "proto-tests", "proto-example"]}
+proto = { composite = ["proto-query", "proto-tests", "proto-example"] }
 
 [tool.pytest.ini_options]
 addopts = "--tb=native --benchmark-disable"
-testpaths = [
-    "tests",
-    "tests_pg"
-]
+testpaths = ["tests", "tests_pg"]
 
 filterwarnings = [
-    "once::DeprecationWarning",
-    "once::PendingDeprecationWarning",
-    "ignore::DeprecationWarning:graphql.*",
-    "ignore::DeprecationWarning:promise.*",
-    "ignore::DeprecationWarning:google.*",
-    "ignore::DeprecationWarning:sqlalchemy.*",
+  "once::DeprecationWarning",
+  "once::PendingDeprecationWarning",
+  "ignore::DeprecationWarning:graphql.*",
+  "ignore::DeprecationWarning:promise.*",
+  "ignore::DeprecationWarning:google.*",
+  "ignore::DeprecationWarning:sqlalchemy.*",
 ]
 
 [tool.coverage.run]
 branch = true
-source = [
-    "hiku",
-]
+source = ["hiku"]
 
 [tool.mypy]
-files = [
-    "hiku",
-]
+files = ["hiku"]
 python_version = 3.7
 check_untyped_defs = true
 #disallow_any_generics = true
@@ -141,10 +125,7 @@ warn_unused_ignores = true
 show_error_codes = true
 ignore_errors = false
 
-exclude = [
-    "tests",
-    "tests_pg"
-]
+exclude = ["tests", "tests_pg"]
 
 [[tool.mypy.overrides]]
 module = "hiku.telemetry.*"

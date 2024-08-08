@@ -15,7 +15,7 @@ class Handle:
 
     def __getattr__(self, name):
         assert self.__field_name__ is None, self.__field_name__
-        return self.__class__(name)
+        return self.__class__(name, mutation=self.__mutation__)
 
     def __getitem__(self, items):
         assert self.__node_items__ is None, self.__node_items__
@@ -36,12 +36,18 @@ class Handle:
             other.__field_options__,
             self.__field_name__,  # alias
             other.__node_items__,
+            other.__mutation__,
         )
 
     def __call__(self, **options):
         assert self.__field_options__ is None, self.__field_options__
         self.__field_options__ = options
         return self
+
+    def __repr__(self) -> str:
+        return "Handle[{}]({})".format(
+            "Q" if not self.__mutation__ else "M", id(self)
+        )
 
 
 # Q for query

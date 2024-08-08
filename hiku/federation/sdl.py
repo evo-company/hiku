@@ -577,7 +577,6 @@ class _StripGraph(GraphTransformer):
 
 
 def print_sdl(
-    # TODO: accept schema ???
     graph: FederationGraph,
     mutation_graph: Optional[Graph] = None,
     federation_version: int = DEFAULT_FEDERATION_VERSION,

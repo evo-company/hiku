@@ -20,6 +20,11 @@ Changes in 0.8
   - Change `GraphQLResponse` type - it now has both `data` and `errors` fields
   - Rename `on_dispatch` hook to `on_operation`
   - Remove old `on_operation` hook
+  - Remove `execute` method from `BaseGraphQLEndpoint` class
+  - Add `process_result` method to `BaseGraphQLEndpoint` class
+  - Move `GraphQLError` to `hiku.error` module
+  - Drop `GraphQLError.errors` field. Earlier we used to store multiple errors in single `GraphQLError` but now its one message - one `GraphQLError`.
+  - Add `GraphQLError.message` field
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -29,3 +34,7 @@ Backward-incompatible changes
   - Drop `hiku.federation.endpoint` - use `hiku.endpoint` instead
   - Drop `hiku.federation.denormalize`
   - Drop `hiku.federation.engine` - use `hiku.engine` instead
+  - Remove `execute` method from `BaseGraphQLEndpoint` class
+  - Move `GraphQLError` to `hiku.error` module
+  - Drop `GraphQLError.errors` field
+  - Add `GraphQLError.message` field

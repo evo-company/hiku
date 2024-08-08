@@ -111,10 +111,10 @@ def create_execution_context(
     elif isinstance(query, Node):
         query_node = query
         if "operation" not in kwargs:
-            kwargs["operation"] = Operation(
-                OperationType.QUERY,
-                query,
-            )
+            op_type = OperationType.QUERY
+            if query.ordered:
+                op_type = OperationType.MUTATION
+            kwargs["operation"] = Operation(op_type, query)
 
     return ExecutionContext(
         query_src=query_src or "",

@@ -1005,7 +1005,10 @@ class Context(Mapping):
             )
 
 
-_ExecutorType = TypeVar("_ExecutorType", bound=SyncAsyncExecutor)
+# Covariant must be used because we want to accept subclasses of Executor
+_ExecutorType = TypeVar(
+    "_ExecutorType", covariant=True, bound=SyncAsyncExecutor
+)
 
 
 class Engine(Generic[_ExecutorType]):

@@ -51,7 +51,7 @@ class Extension:
 
         At this step the:
         - execution_context.query_src (if type str) is set to the query string
-        - execution_context.query (if type Noe) is set to the query Node
+        - execution_context.query (if type Node) is set to the query Node
         - execution_context.variables is set to the query variables
         - execution_context.operation_name is set to the query operation name
         - execution_context.query_graph is set to the query graph

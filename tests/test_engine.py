@@ -10,21 +10,29 @@ from sqlalchemy import MetaData, Table, Unicode, create_engine
 from sqlalchemy.pool import StaticPool
 
 from hiku import query as q
-from hiku.builder import Q, build
+from hiku.builder import Q, M, build
 from hiku.context import create_execution_context
 from hiku.denormalize.graphql import DenormalizeGraphQL
 from hiku.engine import Context, Engine, pass_context
 from hiku.executors.sync import SyncExecutor
-from hiku.graph import (Field, Graph, Interface, Link, Node, Nothing, Option,
-                        Root, Union)
+from hiku.graph import Field, Graph, Interface, Link, Node, Nothing, Option, Root, Union
 from hiku.introspection.graphql import GraphQLIntrospection
 from hiku.merge import QueryMerger
 from hiku.readers.graphql import read
 from hiku.result import denormalize
 from hiku.schema import Schema
 from hiku.sources.sqlalchemy import FieldsQuery
-from hiku.types import (Boolean, Integer, InterfaceRef, Optional, Record, Sequence,
-                        String, TypeRef, UnionRef)
+from hiku.types import (
+    Boolean,
+    Integer,
+    InterfaceRef,
+    Optional,
+    Record,
+    Sequence,
+    String,
+    TypeRef,
+    UnionRef,
+)
 from hiku.utils import ImmutableDict, listify
 
 from .base import ANY, Mock, check_result
@@ -48,7 +56,9 @@ OPTION_BEHAVIOUR = [
 
 def execute(graph, query_, ctx=None):
     engine = Engine(SyncExecutor())
-    return engine.execute(create_execution_context(query=query_, query_graph=graph, context=ctx))
+    return engine.execute(
+        create_execution_context(query=query_, query_graph=graph, context=ctx)
+    )
 
 
 def execute_schema(graph, query):
@@ -218,7 +228,7 @@ def test_links_requires_list():
     link_song = Mock(return_value=100)
 
     def link_song_info(
-        reqs: List[ImmutableDict[str, Any]]
+        reqs: List[ImmutableDict[str, Any]],
     ) -> List[ImmutableDict[str, Any]]:
         return reqs
 
@@ -294,7 +304,7 @@ def test_links_requires_list():
                 Q.infoV2[
                     Q.album_name,
                     Q.artist_name,
-                ]
+                ],
             ]
         ]
     )
@@ -481,9 +491,7 @@ def test_field_option_valid(option, args, result):
             ),
         ]
     )
-    check_result(
-        execute(graph, build([Q.auslese(**args)])), {"auslese": "baking"}
-    )
+    check_result(execute(graph, build([Q.auslese(**args)])), {"auslese": "baking"})
     f.assert_called_once_with([q.Field("auslese", options=result)])
 
 
@@ -498,9 +506,7 @@ def test_field_option_missing():
         [
             Root(
                 [
-                    Field(
-                        "poofy", None, Mock(), options=[Option("mohism", None)]
-                    ),
+                    Field("poofy", None, Mock(), options=[Option("mohism", None)]),
                 ]
             ),
         ]
@@ -508,8 +514,7 @@ def test_field_option_missing():
     with pytest.raises(TypeError) as err:
         execute(graph, build([Q.poofy]))
     err.match(
-        r'^Required option "mohism" for Field\(\'poofy\', '
-        r"(.*) was not provided$"
+        r'^Required option "mohism" for Field\(\'poofy\', ' r"(.*) was not provided$"
     )
 
 
@@ -538,9 +543,7 @@ def test_link_option_valid(option, args, result):
             ),
         ]
     )
-    check_result(
-        execute(graph, build([Q.b(**args)[Q.c]])), {"b": [{"c": "aunder"}]}
-    )
+    check_result(execute(graph, build([Q.b(**args)[Q.c]])), {"b": [{"c": "aunder"}]})
     f1.assert_called_once_with(result)
     f2.assert_called_once_with([q.Field("c")], [1])
 
@@ -576,8 +579,7 @@ def test_link_option_missing():
     with pytest.raises(TypeError) as err:
         execute(graph, build([Q.eclairs[Q.papeete]]))
     err.match(
-        r'^Required option "nocks" for Link\(\'eclairs\', '
-        r"(.*) was not provided$"
+        r'^Required option "nocks" for Link\(\'eclairs\', ' r"(.*) was not provided$"
     )
 
 
@@ -594,9 +596,7 @@ def test_pass_context_field():
         ]
     )
 
-    check_result(
-        execute(graph, build([Q.a]), {"vetch": "shadier"}), {"a": "boiardo"}
-    )
+    check_result(execute(graph, build([Q.a]), {"vetch": "shadier"}), {"a": "boiardo"})
 
     f.assert_called_once_with(ANY, [q.Field("a")])
 
@@ -700,9 +700,7 @@ def test_root_field_func_result_validation(value):
     )
 
 
-@pytest.mark.parametrize(
-    "value", [1, [], [1, 2], [[], []], [[1], []], [[], [2]]]
-)
+@pytest.mark.parametrize("value", [1, [], [1, 2], [[], []], [[1], []], [[], [2]]])
 def test_node_field_func_result_validation(value):
     with pytest.raises(TypeError) as err:
         execute(
@@ -777,9 +775,7 @@ def test_node_link_one_func_result_validation(value):
         execute(
             Graph(
                 [
-                    Node(
-                        "a", [Field("b", None, Mock(return_value=[[1], [2]]))]
-                    ),
+                    Node("a", [Field("b", None, Mock(return_value=[[1], [2]]))]),
                     Node(
                         "c",
                         [
@@ -820,9 +816,7 @@ def test_node_link_many_func_result_validation(value):
         execute(
             Graph(
                 [
-                    Node(
-                        "a", [Field("b", None, Mock(return_value=[[1], [2]]))]
-                    ),
+                    Node("a", [Field("b", None, Mock(return_value=[[1], [2]]))]),
                     Node(
                         "c",
                         [
@@ -1042,10 +1036,7 @@ def test_conflicting_fields():
     @listify
     def x_fields(fields, ids):
         for i in ids:
-            yield [
-                "{}-{}".format(x_data[i][f.name], f.options["k"])
-                for f in fields
-            ]
+            yield ["{}-{}".format(x_data[i][f.name], f.options["k"]) for f in fields]
 
     graph = Graph(
         [
@@ -1382,6 +1373,42 @@ def test_non_root_link_with_sequence_to_optional_type_ref():
     }
 
 
+def test_mutation_query_builder():
+    def a_fields(fields, ids):
+        def get_fields(f, id_):
+            assert id_ is not None and id_ is not Nothing
+            if f.name == "a":
+                return 42
+            raise AssertionError("Unexpected field: {}".format(f))
+
+        return [[get_fields(f, id_) for f in fields] for id_ in ids]
+
+    graph = Graph(
+        [
+            Node(
+                "A",
+                [
+                    Field("a", String, a_fields),
+                ],
+            ),
+        ]
+    )
+
+    mutation = Graph(
+        graph.nodes
+        + [
+            Root([Link("createA", TypeRef["A"], lambda: 1, requires=None)]),
+        ]
+    )
+
+    query = build([M.createA[Q.a]])
+    print("build query", query)
+    schema = Schema(SyncExecutor(), graph, mutation=mutation)
+    result = schema.execute_sync(query)
+
+    assert result.data == {"createA": {"a": 42}}
+
+
 def test_merge_query__fragments():
     num_link_user = 0
     num_resolve_id = 0
@@ -1418,9 +1445,7 @@ def test_merge_query__fragments():
                 "Context",
                 [Link("user", TypeRef["User"], link_user, requires=None)],
             ),
-            Root(
-                [Link("context", TypeRef["Context"], lambda: 1, requires=None)]
-            ),
+            Root([Link("context", TypeRef["Context"], lambda: 1, requires=None)]),
         ]
     )
 
@@ -1443,9 +1468,11 @@ def test_merge_query__fragments():
     assert data == {"context": {"user": {"id": 1, "name": "John"}}}
 
 
-@pytest.mark.parametrize("query", [
-    pytest.param(
-        """
+@pytest.mark.parametrize(
+    "query",
+    [
+        pytest.param(
+            """
         query GetUser2 {
             context {
                 user {
@@ -1461,10 +1488,10 @@ def test_merge_query__fragments():
             }
         }
         """,
-        id="one level fragments"
-    ),
-    pytest.param(
-        """
+            id="one level fragments",
+        ),
+        pytest.param(
+            """
         query GetUser {
             context {
                 ...ContextFragment
@@ -1483,10 +1510,10 @@ def test_merge_query__fragments():
             }
         }
         """,
-        id="nested fragments",
-    ),
-    pytest.param(
-        """
+            id="nested fragments",
+        ),
+        pytest.param(
+            """
         query GetUser {
             context {
                 ... on MyContext {
@@ -1507,9 +1534,10 @@ def test_merge_query__fragments():
             }
         }
         """,
-        id="nested + neighbour fragments",
-    ),
-])
+            id="nested + neighbour fragments",
+        ),
+    ],
+)
 def test_merge_query__interface_fragments(query):
     num_link_user = 0
     num_resolve_id = 0
@@ -1582,14 +1610,14 @@ def test_merge_query__interface_fragments(query):
     assert num_link_user == 1
     assert num_resolve_id == 1
     assert num_resolve_name == 1
-    assert data == {
-        "context": {"user": {"id": 1, "name": "John"}, "balance": 100}
-    }
+    assert data == {"context": {"user": {"id": 1, "name": "John"}, "balance": 100}}
 
 
-@pytest.mark.parametrize("query", [
-    pytest.param(
-        """
+@pytest.mark.parametrize(
+    "query",
+    [
+        pytest.param(
+            """
         query GetUser {
             contexts {
                 ... on BaseContext { user { name } }
@@ -1598,9 +1626,10 @@ def test_merge_query__interface_fragments(query):
             }
         }
         """,
-        id="one level fragments"),
-    pytest.param(
-        """
+            id="one level fragments",
+        ),
+        pytest.param(
+            """
         query GetUser {
             contexts {
                 ...ContextsFragment
@@ -1612,11 +1641,10 @@ def test_merge_query__interface_fragments(query):
             ... on MyContext { balance }
         }
         """,
-        id="nested fragments",
-
-    ),
-    pytest.param(
-        """
+            id="nested fragments",
+        ),
+        pytest.param(
+            """
         query GetUser {
             contexts {
                 ... on MyContext { balance }
@@ -1628,9 +1656,10 @@ def test_merge_query__interface_fragments(query):
             ... on MyContext { user { id name } }
         }
         """,
-        id="nested + neighbour fragments",
-    ),
-])
+            id="nested + neighbour fragments",
+        ),
+    ],
+)
 def test_merge_query__union_fragments(query):
     num_link_user = 0
     num_resolve_id = 0
@@ -1667,9 +1696,7 @@ def test_merge_query__union_fragments(query):
                 "MyContext",
                 [
                     Field("user_id", Integer, lambda fields, ids: [ids]),
-                    Link(
-                        "user", TypeRef["User"], link_user, requires="user_id"
-                    ),
+                    Link("user", TypeRef["User"], link_user, requires="user_id"),
                     Field("balance", Integer, lambda fields, ids: [[100]]),
                 ],
             ),
@@ -1677,9 +1704,7 @@ def test_merge_query__union_fragments(query):
                 "BaseContext",
                 [
                     Field("user_id", Integer, lambda fields, ids: [ids]),
-                    Link(
-                        "user", TypeRef["User"], link_user, requires="user_id"
-                    ),
+                    Link("user", TypeRef["User"], link_user, requires="user_id"),
                 ],
             ),
             Root(
@@ -1722,7 +1747,7 @@ def test_merge_query__fields_and_nested_fragments() -> None:
         def wrapper(*args, **kwargs):
             if func.__name__.startswith("resolve"):
                 for field in args[0]:
-                    key = f'{func.__name__}:{field.name}'
+                    key = f"{func.__name__}:{field.name}"
                     call_count[key] += 1
             else:
                 call_count[func.__name__] += 1
@@ -1766,10 +1791,15 @@ def test_merge_query__fields_and_nested_fragments() -> None:
                 "User",
                 [
                     Field("id", String, resolve_user),
-                    Field("name", String, resolve_user, options=[
-                        Option("capitalize", Optional[Boolean], default=False)
-                    ]),
-                    Link("info", TypeRef["Info"], link_info, requires=None)
+                    Field(
+                        "name",
+                        String,
+                        resolve_user,
+                        options=[
+                            Option("capitalize", Optional[Boolean], default=False)
+                        ],
+                    ),
+                    Link("info", TypeRef["Info"], link_info, requires=None),
                 ],
             ),
             Node(
@@ -1781,13 +1811,9 @@ def test_merge_query__fields_and_nested_fragments() -> None:
             ),
             Node(
                 "Context",
-                [
-                    Link("user", TypeRef["User"], link_user, requires=None)
-                ],
+                [Link("user", TypeRef["User"], link_user, requires=None)],
             ),
-            Root(
-                [Link("context", TypeRef["Context"], lambda: 100, requires=None)]
-            ),
+            Root([Link("context", TypeRef["Context"], lambda: 100, requires=None)]),
         ]
     )
 
@@ -1852,7 +1878,7 @@ def test_merge_query__fields_and_nested_fragments() -> None:
                 "id": 1,
                 "name": "john",
                 "capName": "John",
-                "info": {"email": "john@example.com", "phone": "+1234567890"}
+                "info": {"email": "john@example.com", "phone": "+1234567890"},
             }
         }
     }
@@ -1876,20 +1902,21 @@ def test_merge_query__only_nested_fragments() -> None:
                 "User",
                 [
                     Field("id", String, resolve_user),
-                    Field("name", String, resolve_user, options=[
-                        Option("capitalize", Optional[Boolean], default=False)
-                    ]),
+                    Field(
+                        "name",
+                        String,
+                        resolve_user,
+                        options=[
+                            Option("capitalize", Optional[Boolean], default=False)
+                        ],
+                    ),
                 ],
             ),
             Node(
                 "Context",
-                [
-                    Link("user", TypeRef["User"], lambda: 1, requires=None)
-                ],
+                [Link("user", TypeRef["User"], lambda: 1, requires=None)],
             ),
-            Root(
-                [Link("context", TypeRef["Context"], lambda: 100, requires=None)]
-            ),
+            Root([Link("context", TypeRef["Context"], lambda: 100, requires=None)]),
         ]
     )
 
@@ -1935,21 +1962,30 @@ def test_merge_query__only_nested_fragments() -> None:
 
 def test_merge_query__complex_field_fragment() -> None:
     def point_func(fields):
-        return [{
-            "x": 1,
-            "y": 2,
-        }]
+        return [
+            {
+                "x": 1,
+                "y": 2,
+            }
+        ]
 
-    graph = Graph([
-        Root([
-            Field('point', TypeRef["Point"], point_func),
-        ]),
-    ], data_types={
-        'Point': Record[{
-            'x': Integer,
-            'y': Integer,
-        }],
-    })
+    graph = Graph(
+        [
+            Root(
+                [
+                    Field("point", TypeRef["Point"], point_func),
+                ]
+            ),
+        ],
+        data_types={
+            "Point": Record[
+                {
+                    "x": Integer,
+                    "y": Integer,
+                }
+            ],
+        },
+    )
 
     query = """
     query GetPoint {
@@ -1988,7 +2024,5 @@ def test_denormalize_introspection() -> str:
     query = QueryMerger(graph).merge(query)
 
     result = execute(graph, query)
-    data = denormalize(
-        graph, result
-    )
+    data = denormalize(graph, result)
     assert data is not None

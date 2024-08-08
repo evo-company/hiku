@@ -4,8 +4,8 @@ from typing_extensions import TypedDict
 from abc import ABC
 from asyncio import gather
 
-
-from hiku.schema import ExecutionResult, GraphQLError, Schema
+from hiku.error import GraphQLError
+from hiku.schema import ExecutionResult, Schema
 
 
 class GraphQLErrorObject(TypedDict):
@@ -20,7 +20,7 @@ class GraphQLRequest(TypedDict, total=False):
 
 class GraphQLResponse(TypedDict, total=False):
     data: Optional[Dict[str, object]]
-    errors: Optional[List[object]]
+    errors: Optional[List[GraphQLErrorObject]]
     extensions: Optional[Dict[str, object]]
 
 
@@ -47,8 +47,8 @@ class BaseGraphQLEndpoint(ABC):
     def process_result(self, result: ExecutionResult) -> GraphQLResponse:
         data: GraphQLResponse = {"data": result.data}
 
-        if result.error:
-            data["errors"] = [{"message": e} for e in result.error.errors]
+        if result.errors:
+            data["errors"] = [{"message": e.message} for e in result.errors]
 
         return data
 
@@ -107,7 +107,7 @@ class GraphQLEndpoint(BaseSyncGraphQLEndpoint):
     ) -> SingleOrBatchedResponse:
         if isinstance(data, list):
             if not self.batching:
-                raise GraphQLError(errors=["Batching is not supported"])
+                raise GraphQLError("Batching is not supported")
 
             return [
                 super(GraphQLEndpoint, self).dispatch(item, context)

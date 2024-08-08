@@ -168,7 +168,7 @@ def test_option_not_provided_for_field():
     }
     """
     result = execute(read(query))
-    result.error.errors == [
+    result.errors == [
       "Required option \"size\" for Field('thumbnailUrl'"
     ]
 

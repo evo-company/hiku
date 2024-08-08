@@ -6,6 +6,8 @@ from pathlib import Path
 from flask import Flask, request, jsonify
 
 from hiku.directives import Deprecated, Location
+from hiku.endpoint.graphql import GraphQLEndpoint
+from hiku.federation.schema import Schema
 from hiku.federation.directive import (
     Extends,
     FederationSchemaDirective,
@@ -29,7 +31,6 @@ from hiku.graph import (
     Node,
     Link,
 )
-from hiku.schema import Schema
 from hiku.types import (
     Float,
     ID,
@@ -408,7 +409,7 @@ QUERY_GRAPH = Graph(
                 ),
             ],
             directives=[Key("email"), Extends()],
-            resolve_reference=resolve_reference_by('email')
+            resolve_reference=resolve_reference_by("email"),
         ),
         FederatedNode(
             "Product",
@@ -454,7 +455,7 @@ QUERY_GRAPH = Graph(
                 Key("sku package"),
                 Key("sku variation { id }"),
             ],
-            resolve_reference=resolve_reference_direct
+            resolve_reference=resolve_reference_direct,
         ),
         Node(
             "ProductDimension",
@@ -489,7 +490,7 @@ QUERY_GRAPH = Graph(
                 ),
             ],
             directives=[Key("study { caseNumber }")],
-            resolve_reference=resolve_reference_direct
+            resolve_reference=resolve_reference_direct,
         ),
         FederatedNode(
             "DeprecatedProduct",
@@ -573,22 +574,24 @@ schema = Schema(
     QUERY_GRAPH,
 )
 
+endpoint = GraphQLEndpoint(schema)
+
 
 @app.route("/graphql", methods={"POST"})
 def handle_graphql():
     data = request.get_json()
-    result = schema.execute_sync(data)
+    result = endpoint.dispatch(data)
     resp = jsonify(result)
     return resp
 
 
-@app.route('/', methods={'GET'})
+@app.route("/", methods={"GET"})
 def graphiql():
-    path = Path(__file__).parent.parent / 'graphiql.html'
+    path = Path(__file__).parent.parent / "graphiql.html"
     with open(path) as f:
         page = f.read()
         page = page.replace("localhost:5000", "localhost:4001")
-        return page.encode('utf-8')
+        return page.encode("utf-8")
 
 
 def main():
@@ -600,7 +603,7 @@ def main():
 def dump():
     from hiku.federation.sdl import print_sdl
 
-    out_file = Path(__file__).resolve().parent / 'products.graphql'
+    out_file = Path(__file__).resolve().parent / "products.graphql"
     print(f"Dumping schema to {out_file}")
     sdl = print_sdl(QUERY_GRAPH)
     with open(out_file, "w") as f:
