@@ -16,6 +16,7 @@ from hiku.engine import Context, Engine, pass_context
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import (Field, Graph, Interface, Link, Node, Nothing, Option,
                         Root, Union)
+from hiku.readers.graphql import read
 from hiku.result import denormalize
 from hiku.sources.sqlalchemy import FieldsQuery
 from hiku.types import (Boolean, Integer, InterfaceRef, Optional, Record, Sequence,
@@ -1281,6 +1282,56 @@ def test_root_link_with_sequence_to_optional_type_ref():
         ),
     )
     assert denormalize(graph, result) == {"aa": [{"a": 42}, None]}
+
+
+def test_root_link_with_sequence_to_optional_union_ref():
+    def a_fields(fields, ids):
+        def get_fields(f, id_):
+            assert id_ is not None and id_ is not Nothing
+            if f.name == "a":
+                return 42
+            if f.name == "b":
+                return 24
+            raise AssertionError("Unexpected field: {}".format(f))
+
+        return [[get_fields(f, id_) for f in fields] for id_ in ids]
+
+    graph = Graph(
+        [
+            Node("A1", [Field("a", String, a_fields)]),
+            Node("A2", [Field("b", String, a_fields)]),
+            Root(
+                [
+                    Link(
+                        "aa",
+                        Sequence[Optional[UnionRef["A"]]],
+                        lambda: [
+                            (1, TypeRef["A1"]),
+                            Nothing
+                        ],
+                        requires=None,
+                    )
+                ]
+            ),
+        ],
+        unions=[
+            Union('A', ['A1', 'A2']),
+        ]
+    )
+
+    query = read("""
+        { aa {
+             ... on A1 { a }
+             ... on A2 { b }
+          }
+        }
+        """)
+    result = execute(
+        graph,
+        query,
+    )
+
+    assert DenormalizeGraphQL(graph, result, "query").process(query) == {"aa": [{"a": 42}, None]}
 
 
 # TODO: test typeref
