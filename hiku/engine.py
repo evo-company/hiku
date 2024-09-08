@@ -579,7 +579,15 @@ def link_result_to_ids(
                     "{!r}".format(result)
                 )
             return result
-        elif link_type is Many or link_type is MaybeMany:
+        elif link_type is Many:
+            result = list(chain.from_iterable(result))
+            if any(i is Nothing for i in result):
+                raise TypeError(
+                    "Link of non-optional type should not contain Nothing: "
+                    "{!r}".format(result)
+                )
+            return result
+        elif link_type is MaybeMany:
             return list(chain.from_iterable(result))
     else:
         if link_type is Maybe:
@@ -588,7 +596,14 @@ def link_result_to_ids(
             if result is Nothing:
                 raise TypeError("Non-optional link should not return Nothing")
             return [result]
-        elif link_type is Many or link_type is MaybeMany:
+        elif link_type is Many:
+            if any(i is Nothing for i in result):
+                raise TypeError(
+                    "Link of non-optional type should not contain Nothing: "
+                    "{!r}".format(result)
+                )
+            return result
+        elif link_type is MaybeMany:
             return result
     raise TypeError(repr([from_list, link_type]))
 
@@ -770,8 +785,10 @@ class Query(Workflow):
                 LinkType.INTERFACE,
             ) and isinstance(to_ids, list):
                 grouped_ids = defaultdict(list)
-                for id_, type_ref in to_ids:
-                    grouped_ids[type_ref.__type_name__].append(id_)
+                for ident in to_ids:
+                    if ident is not Nothing:
+                        id_, type_ref = ident
+                        grouped_ids[type_ref.__type_name__].append(id_)
 
                 for type_name, type_ids in grouped_ids.items():
                     self.process_node(

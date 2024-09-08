@@ -137,8 +137,13 @@ class Denormalize(QueryVisitor):
                 type_ref = type_.__item_type__.__type__
             assert isinstance(type_ref, RefMeta)
             self._type.append(get_type(self._types, type_ref))
-            items = []
+            items: t.List = []
             for item in self._data[-1][obj.result_key]:
+                if item is None:
+                    assert isinstance(type_.__item_type__, OptionalMeta)
+                    items.append(None)
+                    continue
+
                 self._res.append({})
                 self._data.append(item)
                 super().visit_link(obj)

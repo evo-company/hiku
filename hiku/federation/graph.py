@@ -20,6 +20,8 @@ from hiku.graph import (
     Interface,
     Link,
     Node,
+    Nothing,
+    NothingType,
     Option,
     Root,
     Union,
@@ -81,7 +83,7 @@ class GraphInit(GraphTransformer):
     def entities_link(self) -> Link:
         def entities_resolver(
             options: t.Dict,
-        ) -> t.List[t.Tuple[t.Any, t.Type[TypeRef]]]:
+        ) -> t.List[t.Union[t.Tuple[t.Any, t.Type[TypeRef]], NothingType]]:
             representations = options["representations"]
             if not representations:
                 return []
@@ -94,9 +96,19 @@ class GraphInit(GraphTransformer):
                 )
 
             resolve_reference = self.type_to_resolve_reference_map[typ]
-            return [
-                (r, TypeRef[typ]) for r in resolve_reference(representations)
-            ]
+            # TODO resolve_reference may be async!
+            references = resolve_reference(representations)
+
+            result: t.List[
+                t.Union[t.Tuple[t.Any, t.Type[TypeRef]], NothingType]
+            ] = []
+            for ref in references:
+                if ref is Nothing:
+                    result.append(Nothing)
+                else:
+                    result.append((ref, TypeRef[typ]))
+
+            return result
 
         def _asyncify(func: t.Callable) -> t.Callable:
             async def wrapper(*args: t.Any, **kwargs: t.Any) -> t.List[t.Tuple]:
