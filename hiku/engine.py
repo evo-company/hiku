@@ -14,6 +14,7 @@ from typing import (
     Union,
     Dict,
     List,
+    Set,
     NoReturn,
     Optional,
     DefaultDict,
@@ -722,10 +723,14 @@ class Query(Workflow):
             )
             if graph_link.requires:
                 if isinstance(graph_link.requires, list):
-                    done_deps = set()
+                    done_link_deps: Set = set()
 
                     def add_done_dep_callback(
-                        dep: Dep, req: Any, graph_link: Link, schedule: Callable
+                        done_deps: Set,
+                        dep: Dep,
+                        req: Any,
+                        graph_link: Link,
+                        schedule: Callable,
                     ) -> None:
                         def done_cb() -> None:
                             done_deps.add(req)
@@ -736,7 +741,11 @@ class Query(Workflow):
 
                     for req in graph_link.requires:
                         add_done_dep_callback(
-                            to_dep[to_func[req]], req, graph_link, schedule
+                            done_link_deps,
+                            to_dep[to_func[req]],
+                            req,
+                            graph_link,
+                            schedule,
                         )
                 else:
                     dep = to_dep[to_func[graph_link.requires]]
