@@ -203,7 +203,7 @@ def test_links():
 
 def test_links_requires_list():
     db = {
-        "song": {100: {"name": "fuel", "artist_id": 1, "album_id": 10}},
+        "song": {100: {"id": 100, "name": "fuel", "artist_id": 1, "album_id": 10}},
         "artist": {
             1: {"name": "Metallica"},
         },
@@ -224,17 +224,22 @@ def test_links_requires_list():
 
         return [list(get_fields(song_id)) for song_id in song_ids]
 
-    def song_info_fields(fields, ids):
-        def get_fields(id_):
-            album_id = id_["album_id"]
-            artist_id = id_["artist_id"]
+    def song_info_fields(fields, requires):
+        def get_fields(require):
+            if "id" in require:
+                song = db["song"][require["id"]]
+                album_id = song["album_id"]
+                artist_id = song["artist_id"]
+            else:
+                album_id = require["album_id"]
+                artist_id = require["artist_id"]
             for f in fields:
                 if f.name == "album_name":
                     yield db["album"][album_id]["name"]
                 elif f.name == "artist_name":
                     yield db["artist"][artist_id]["name"]
 
-        return [list(get_fields(id_)) for id_ in ids]
+        return [list(get_fields(require)) for require in requires]
 
     graph = Graph(
         [
@@ -258,6 +263,12 @@ def test_links_requires_list():
                         link_song_info,
                         requires=["album_id", "artist_id"],
                     ),
+                    Link(
+                        "infoV2",
+                        TypeRef["SongInfo"],
+                        link_song_info,
+                        requires=["id"],
+                    ),
                 ],
             ),
             Root(
@@ -274,6 +285,10 @@ def test_links_requires_list():
                 Q.info[
                     Q.album_name,
                     Q.artist_name,
+                ],
+                Q.infoV2[
+                    Q.album_name,
+                    Q.artist_name,
                 ]
             ]
         ]
@@ -283,7 +298,8 @@ def test_links_requires_list():
         result,
         {
             "song": {
-                "info": {"album_name": "Reload", "artist_name": "Metallica"}
+                "info": {"album_name": "Reload", "artist_name": "Metallica"},
+                "infoV2": {"album_name": "Reload", "artist_name": "Metallica"},
             }
         },
     )
