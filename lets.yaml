@@ -47,64 +47,64 @@ commands:
   docs:
     description: Build docs
     depends: [_build-docs]
-    cmd: docker-compose run --rm docs
+    cmd: docker compose run --rm docs
 
   test:
     description: Run tests
     depends: [_build-tests]
-    cmd: [docker-compose, run, --rm, test]
+    cmd: [docker compose, run, --rm, test]
 
   test-tox:
     description: Run tests using tox
     depends: [_build-tests]
-    cmd: docker-compose run --rm test tox
+    cmd: docker compose run --rm test tox
 
   bench:
     description: Run benchmarks
     depends: [_build-tests]
-    cmd: docker-compose run --rm test-base tests/benchmarks --benchmark-enable $@
+    cmd: docker compose run --rm test-base tests/benchmarks --benchmark-enable $@
 
   flake:
     description: Run flake8
     depends: [_build-dev]
-    cmd: docker-compose run --rm dev pdm run flake
+    cmd: docker compose run --rm dev pdm run flake
 
   black:
     description: Run flake8
     depends: [_build-dev]
-    cmd: docker-compose run --rm dev pdm run black
+    cmd: docker compose run --rm dev pdm run black
 
   mypy:
     description: Run mypy
     depends: [_build-dev]
-    cmd: docker-compose run --rm dev pdm run mypy $LETS_COMMAND_ARGS
+    cmd: docker compose run --rm dev pdm run mypy $LETS_COMMAND_ARGS
 
   examples-federation:
     description: Run federation app from examples
     depends: [_build-examples]
-    cmd: docker-compose up examples-federation
+    cmd: docker compose up examples-federation
 
   examples-federation-v2:
     description: Run federation 2 app from examples
     depends: [_build-examples]
-    cmd: docker-compose up examples-federation-v2
+    cmd: docker compose up examples-federation-v2
 
   examples-flask:
     description: Run flask app from examples
     depends: [_build-examples]
-    cmd: docker-compose up examples-flask
+    cmd: docker compose up examples-flask
 
   examples-aiohttp:
     description: Run aiohttp app from examples
     depends: [_build-examples]
-    cmd: docker-compose up examples-aiohttp
+    cmd: docker compose up examples-aiohttp
 
   federation-compatibility-test:
     description: Run federation compatibility test
     depends: [_build-examples]
     cmd: |
       echo "Dumping schema..."
-      docker-compose run --rm federation-compatibility-server dump
+      docker compose run --rm federation-compatibility-server dump
       export APOLLO_ELV2_LICENSE=accept
       
       npx @apollo/federation-subgraph-compatibility docker \
