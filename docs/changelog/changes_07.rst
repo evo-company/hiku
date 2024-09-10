@@ -8,6 +8,7 @@ Changes in 0.7
 ~~~~~
 
   - Fix `requires` as list if more that one Link with such `requires` is used in query
+  - Migrate project to docker compose (v2)
 
 0.7.3
 ~~~~~
