@@ -4,6 +4,11 @@ Changes in 0.7
 0.7.x
 ~~~~~
 
+0.7.4
+~~~~~
+
+  - Fix `requires` as list if more that one Link with such `requires` is used in query
+
 0.7.3
 ~~~~~
 
