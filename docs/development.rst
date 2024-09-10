@@ -24,9 +24,9 @@ Postgres in this case accessed via localhost.
 
 .. code-block:: bash
 
-    $ docker-compose up -d postgres
+    $ docker compose up -d postgres
     $ pdm run test-pg-local
-    $ docker-compose down
+    $ docker compose down
 
 Or you can use lets task runner to run unit + integration tests (all-on-one) in docker
 
