@@ -117,16 +117,20 @@ user_table = Table(
 
 def setup_db(db_engine):
     metadata.create_all(db_engine)
-    for r in [c._asdict() for c in DB["companies"].values()]:
-        db_engine.execute(company_table.insert(), r)
-    for r in [c._asdict() for c in DB["users"].values()]:
-        db_engine.execute(user_table.insert(), r)
-    for r in [p._asdict() for p in DB["attributes"].values()]:
-        db_engine.execute(attribute_table.insert(), r)
-    for r in [p._asdict() for p in DB["attribute_values"].values()]:
-        db_engine.execute(attribute_value_table.insert(), r)
-    for r in [p._asdict() for p in DB["products"].values()]:
-        db_engine.execute(product_table.insert(), r)
+    with db_engine.begin() as db_conn:
+        for r in [c._asdict() for c in DB["companies"].values()]:
+            db_conn.execute(company_table.insert(), r)
+        for r in [c._asdict() for c in DB["users"].values()]:
+            db_conn.execute(user_table.insert(), r)
+        for r in [p._asdict() for p in DB["attributes"].values()]:
+            db_conn.execute(attribute_table.insert(), r)
+        for r in [p._asdict() for p in DB["attribute_values"].values()]:
+            db_conn.execute(attribute_value_table.insert(), r)
+        for r in [p._asdict() for p in DB["products"].values()]:
+            db_conn.execute(product_table.insert(), r)
+
+        if hasattr(db_conn, "commit"):
+            db_conn.commit()
 
 
 class Product(t.NamedTuple):

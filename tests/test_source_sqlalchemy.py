@@ -50,23 +50,27 @@ bar_table = Table(
 
 def setup_db(db_engine):
     metadata.create_all(db_engine)
-    for r in [
-        {"id": 0, "name": "bar0", "type": 4},
-        {"id": 4, "name": "bar1", "type": 1},
-        {"id": 5, "name": "bar2", "type": 2},
-        {"id": 6, "name": "bar3", "type": 3},
-    ]:
-        db_engine.execute(bar_table.insert(), r)
-    for r in [
-        {"name": "foo1", "count": 5, "bar_id": None},
-        {"name": "foo2", "count": 10, "bar_id": 5},
-        {"name": "foo3", "count": 15, "bar_id": 4},
-        {"name": "foo4", "count": 20, "bar_id": 6},
-        {"name": "foo5", "count": 25, "bar_id": 5},
-        {"name": "foo6", "count": 30, "bar_id": 4},
-        {"name": "foo7", "count": 35, "bar_id": 0},
-    ]:
-        db_engine.execute(foo_table.insert(), r)
+    with db_engine.begin() as db_conn:
+        for r in [
+            {"id": 0, "name": "bar0", "type": 4},
+            {"id": 4, "name": "bar1", "type": 1},
+            {"id": 5, "name": "bar2", "type": 2},
+            {"id": 6, "name": "bar3", "type": 3},
+        ]:
+            db_conn.execute(bar_table.insert(), r)
+        for r in [
+            {"name": "foo1", "count": 5, "bar_id": None},
+            {"name": "foo2", "count": 10, "bar_id": 5},
+            {"name": "foo3", "count": 15, "bar_id": 4},
+            {"name": "foo4", "count": 20, "bar_id": 6},
+            {"name": "foo5", "count": 25, "bar_id": 5},
+            {"name": "foo6", "count": 30, "bar_id": 4},
+            {"name": "foo7", "count": 35, "bar_id": 0},
+        ]:
+            db_conn.execute(foo_table.insert(), r)
+
+        if hasattr(db_conn, "commit"):
+            db_conn.commit()
 
 
 def graph_factory(

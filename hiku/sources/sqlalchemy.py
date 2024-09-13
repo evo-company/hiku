@@ -9,11 +9,13 @@ from typing import (
     Callable,
     Dict,
     Iterable,
+    Mapping,
 )
 
 import sqlalchemy
 from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import BinaryExpression
+from sqlalchemy.sql.expression import ColumnElement
 
 from ..types import (
     String,
@@ -41,6 +43,27 @@ if SQLALCHEMY_VERSION >= (1, 4):
     from sqlalchemy.engine.row import Row
 else:
     from sqlalchemy.engine import RowProxy as Row
+
+
+if SQLALCHEMY_VERSION >= (2, 0):
+
+    def _process_select_params(
+        params: List[ColumnElement],
+    ) -> Iterable:
+        return params
+
+    def _process_result_row(row: Row) -> Mapping:
+        return row._mapping
+
+else:
+
+    def _process_select_params(
+        params: List[ColumnElement],
+    ) -> Iterable:
+        return (params,)
+
+    def _process_result_row(row: Row) -> Mapping:
+        return row
 
 
 def _translate_type(
@@ -114,14 +137,17 @@ class FieldsQuery:
     ) -> Tuple[Select, Callable]:
         columns = [self.from_clause.c[f.name] for f in fields_]
         expr = (
-            sqlalchemy.select([self.primary_key] + columns)
+            sqlalchemy.select(
+                *_process_select_params([self.primary_key] + columns)
+            )
             .select_from(self.from_clause)
             .where(self.in_impl(self.primary_key, ids))
         )
 
         def result_proc(rows: List[Row]) -> List:
             rows_map = {
-                row[self.primary_key]: [row[c] for c in columns] for row in rows
+                row[self.primary_key]: [row[c] for c in columns]
+                for row in map(_process_result_row, rows)
             }
 
             nulls = [None for _ in fields_]
@@ -210,10 +236,12 @@ class LinkQuery:
         filtered_ids = [i for i in set(ids) if i is not None]
         if filtered_ids:
             return sqlalchemy.select(
-                [
-                    self.from_column.label("from_column"),
-                    self.to_column.label("to_column"),
-                ]
+                *_process_select_params(
+                    [
+                        self.from_column.label("from_column"),
+                        self.to_column.label("to_column"),
+                    ]
+                )
             ).where(self.in_impl(self.from_column, filtered_ids))
         else:
             return None
