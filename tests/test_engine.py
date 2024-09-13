@@ -340,12 +340,16 @@ def test_links_requires_list_sa():
 
     def setup_db(db_engine):
         metadata.create_all(db_engine)
-        for row in data["artist"]:
-            db_engine.execute(artist_table.insert(), row)
-        for row in data["album"]:
-            db_engine.execute(album_table.insert(), row)
-        for row in data["song"]:
-            db_engine.execute(song_table.insert(), row)
+        with db_engine.begin() as db_conn:
+            for row in data["artist"]:
+                db_conn.execute(artist_table.insert(), row)
+            for row in data["album"]:
+                db_conn.execute(album_table.insert(), row)
+            for row in data["song"]:
+                db_conn.execute(song_table.insert(), row)
+
+            if hasattr(db_conn, "commit"):
+                db_conn.commit()
 
     sa_engine = create_engine(
         "sqlite://",
@@ -371,12 +375,13 @@ def test_links_requires_list_sa():
         def get_fields(id_):
             album_id = id_["album_id"]
             artist_id = id_["artist_id"]
-            album = db.execute(
-                album_table.select().where(album_table.c.id == album_id)
-            ).first()
-            artist = db.execute(
-                artist_table.select().where(artist_table.c.id == artist_id)
-            ).first()
+            with db.begin() as db_conn:
+                album = db_conn.execute(
+                    album_table.select().where(album_table.c.id == album_id)
+                ).first()
+                artist = db_conn.execute(
+                    artist_table.select().where(artist_table.c.id == artist_id)
+                ).first()
 
             for f in fields:
                 if f.name == "album_name":
