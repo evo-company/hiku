@@ -4,17 +4,15 @@ from typing import Dict, List
 from unittest.mock import ANY
 
 import pytest
-from hiku.endpoint.graphql import GraphQLEndpoint
 
 from hiku.enum import Enum
-
 from hiku.directives import Deprecated, Location, SchemaDirective, schema_directive
+from hiku.executors.sync import SyncExecutor
 from hiku.graph import Graph, Interface, Root, Field, Node, Link, Union, apply, Option
 from hiku.scalar import Scalar
+from hiku.schema import Schema
 from hiku.types import EnumRef, InterfaceRef, String, Integer, Sequence, TypeRef, Boolean, Float, Any, UnionRef
 from hiku.types import Optional, Record
-from hiku.engine import Engine
-from hiku.executors.sync import SyncExecutor
 from hiku.introspection.graphql import GraphQLIntrospection
 from tests.utils import INTROSPECTION_QUERY
 
@@ -192,9 +190,8 @@ SCALARS = [
 
 
 def execute(query_str, query_graph, mutation_graph=None):
-    engine = Engine(SyncExecutor())
-    endpoint = GraphQLEndpoint(engine, query_graph, mutation_graph)
-    return endpoint.dispatch({'query': query_str})['data']
+    schema = Schema(SyncExecutor(), query_graph, mutation_graph)
+    return schema.execute_sync(query_str).data
 
 
 def introspect(query_graph, mutation_graph=None):

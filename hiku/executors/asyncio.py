@@ -30,17 +30,41 @@ if TYPE_CHECKING:
 
 
 class AsyncIOExecutor(BaseAsyncExecutor):
-    def __init__(self, loop: Optional[AbstractEventLoop] = None) -> None:
-        self._loop = loop or get_event_loop()
+    """AsyncIOExecutor is an executor that uses asyncio event loop to run tasks.
+
+    By default it allows to run both synchronous and asynchronous tasks.
+    To deny synchronous tasks set deny_sync to True.
+
+    :param loop: asyncio event loop
+    :param deny_sync: deny synchronous tasks -
+                      raise TypeError if a task is not awaitable
+    """
+
+    def __init__(
+        self, loop: Optional[AbstractEventLoop] = None, deny_sync: bool = False
+    ) -> None:
+        self.loop = loop or get_event_loop()
+        self.deny_sync = deny_sync
+
+    async def _wrapper(self, fn: Callable, *args: Any, **kwargs: Any) -> Any:
+        result = fn(*args, **kwargs)
+        if inspect.isawaitable(result):
+            return await result
+        else:
+            return result
 
     def submit(self, fn: Callable, *args: Any, **kwargs: Any) -> Task:
         coro = fn(*args, **kwargs)
         if not inspect.isawaitable(coro):
-            raise TypeError(
-                "{!r} returned non-awaitable object {!r}".format(fn, coro)
-            )
+            if self.deny_sync:
+                raise TypeError(
+                    "{!r} returned non-awaitable object {!r}".format(fn, coro)
+                )
+
+            return self.loop.create_task(self._wrapper(fn, *args, **kwargs))
+
         coro = cast(Coroutine, coro)
-        return self._loop.create_task(coro)
+        return self.loop.create_task(coro)
 
     async def process(self, queue: "Queue", workflow: "Workflow") -> Proxy:
         try:

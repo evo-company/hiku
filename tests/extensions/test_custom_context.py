@@ -1,10 +1,10 @@
 import pytest
 
-from hiku.endpoint.graphql import GraphQLEndpoint
-from hiku.engine import Engine, pass_context
+from hiku.engine import pass_context
 from hiku.executors.sync import SyncExecutor
 from hiku.extensions.context import CustomContext
 from hiku.graph import Field, Graph, Root
+from hiku.schema import Schema
 from hiku.types import String
 
 
@@ -30,11 +30,11 @@ def sync_graph_fixture():
 
 
 def test_custom_context_extension(sync_graph):
-    endpoint = GraphQLEndpoint(
-        Engine(SyncExecutor()),
+    schema = Schema(
+        SyncExecutor(),
         sync_graph,
         extensions=[CustomContext(lambda _: {"answer": "42"})],
     )
 
-    result = endpoint.dispatch({"query": "{answer}"}, {"a": "b"})
-    assert result == {"data": {"answer": "42"}}
+    result = schema.execute_sync("{answer}", {"a": "b"})
+    assert result.data == {"answer": "42"}

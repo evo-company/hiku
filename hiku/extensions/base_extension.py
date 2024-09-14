@@ -33,37 +33,12 @@ Hook = Callable[
 
 
 class Extension:
-    def on_graph(
+    def on_init(
         self, execution_context: ExecutionContext
     ) -> AsyncIteratorOrIterator[None]:
-        """Called before and after the graph (transformation) step.
+        """Called once during schema creation.
 
-        Graph transformation step is a step where we applying transformations
-        to the graph such as introspection, etc.
-
-        Note: unlike other hooks, this hook is called only once during endpoint
-        creation.
-        """
-        yield None
-
-    def on_dispatch(
-        self, execution_context: ExecutionContext
-    ) -> AsyncIteratorOrIterator[None]:
-        """Called before and after the dispatch step.
-
-        Dispatch step is a step where the query is dispatched by to the endpoint
-        to be parsed, validated and executed.
-
-        At this step the:
-        - execution_context.query_src is set to the query string
-            from request
-        - execution_context.variables is set to the query variables
-            from request
-        - execution_context.operation_name is set to the query operation name
-            from request
-        - execution_context.query_graph is set to the query graph
-        - execution_context.mutation_graph is set to the mutation graph
-        - execution_context.context is set to the context from dispatch argument
+        It is a good place to add transformers to the execution context.
         """
         yield None
 
@@ -72,9 +47,16 @@ class Extension:
     ) -> AsyncIteratorOrIterator[None]:
         """Called before and after the operation step.
 
-        Operation step is a step where the graphql ast is transformed into
-        hiku's query ast and Operation type is created and assigned to the
-        execution_context.operation.
+        Operation step is a step where the query is executed by schema.
+
+        At this step the:
+        - execution_context.query_src (if type str) is set to the query string
+        - execution_context.query (if type Node) is set to the query Node
+        - execution_context.variables is set to the query variables
+        - execution_context.operation_name is set to the query operation name
+        - execution_context.query_graph is set to the query graph
+        - execution_context.mutation_graph is set to the mutation graph
+        - execution_context.context is set to the context from execute argument
         """
         yield None
 
@@ -83,8 +65,12 @@ class Extension:
     ) -> AsyncIteratorOrIterator[None]:
         """Called before and after the parsing step.
 
-        Parse step is when query string is parsed into graphql ast
-        and will be assigned to the execution_context.graphql_document.
+        Parse step is when query string is:
+        - parsed into graphql ast and will be assigned to the
+          execution_context.graphql_document
+        - graphql ast is transformed into
+          hiku's query ast and Operation type is created and assigned to the
+          execution_context.operation.
         """
         yield None
 
@@ -137,21 +123,9 @@ class ExtensionsManager:
 
         self.extensions = init_extensions
 
-    def graph(self) -> "ExtensionContextManagerBase":
+    def init(self) -> "ExtensionContextManagerBase":
         return ExtensionContextManagerBase(
-            Extension.on_graph.__name__, self.extensions, self.execution_context
-        )
-
-    def dispatch(self) -> "ExtensionContextManagerBase":
-        return ExtensionContextManagerBase(
-            Extension.on_dispatch.__name__,
-            self.extensions,
-            self.execution_context,
-        )
-
-    def parsing(self) -> "ExtensionContextManagerBase":
-        return ExtensionContextManagerBase(
-            Extension.on_parse.__name__, self.extensions, self.execution_context
+            Extension.on_init.__name__, self.extensions, self.execution_context
         )
 
     def operation(self) -> "ExtensionContextManagerBase":
@@ -159,6 +133,11 @@ class ExtensionsManager:
             Extension.on_operation.__name__,
             self.extensions,
             self.execution_context,
+        )
+
+    def parsing(self) -> "ExtensionContextManagerBase":
+        return ExtensionContextManagerBase(
+            Extension.on_parse.__name__, self.extensions, self.execution_context
         )
 
     def validation(self) -> "ExtensionContextManagerBase":

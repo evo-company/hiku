@@ -25,11 +25,12 @@ class QueryParserCache(Extension):
         self.cached_parser = lru_cache(maxsize=maxsize)(parse_query)
 
     def on_parse(self, execution_context: ExecutionContext) -> Iterator[None]:
-        execution_context.graphql_document = self.cached_parser(
-            execution_context.query_src,
-        )
+        if execution_context.query_src:
+            execution_context.graphql_document = self.cached_parser(
+                execution_context.query_src,
+            )
 
-        info = self.cached_parser.cache_info()
-        QUERY_CACHE_HITS.set(info.hits)
-        QUERY_CACHE_MISSES.set(info.misses)
+            info = self.cached_parser.cache_info()
+            QUERY_CACHE_HITS.set(info.hits)
+            QUERY_CACHE_MISSES.set(info.misses)
         yield

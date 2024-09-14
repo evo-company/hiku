@@ -4,11 +4,12 @@ import pytest
 from prometheus_client import REGISTRY
 
 from hiku import query as q
-from hiku.graph import Graph, Node, Field, Link, Root, apply
-from hiku.types import TypeRef
-from hiku.engine import Engine, pass_context
-from hiku.sources.graph import SubGraph
 from hiku.executors.sync import SyncExecutor
+from hiku.graph import Graph, Node, Field, Link, Root, apply
+from hiku.schema import Schema
+from hiku.types import TypeRef
+from hiku.engine import pass_context
+from hiku.sources.graph import SubGraph
 from hiku.executors.asyncio import AsyncIOExecutor
 from hiku.telemetry.prometheus import GraphMetrics, AsyncGraphMetrics
 
@@ -94,9 +95,10 @@ def test_simple_sync(graph_name, sample_count):
         ]
     )
 
-    result = Engine(SyncExecutor()).execute(hl_graph, query)
+    schema = Schema(SyncExecutor(), hl_graph)
+    result = schema.execute_sync(query)
     check_result(
-        result,
+        result.data,
         {
             "a": 1,
             "x": {
@@ -167,15 +169,15 @@ async def test_simple_async(graph_name, sample_count):
         ]
     )
 
-    engine = Engine(AsyncIOExecutor())
-
     assert sample_count("Root", "a") is None
     assert sample_count("Root", "x") is None
     assert sample_count("X", "id") is None
 
-    result = await engine.execute(hl_graph, query)
+    schema = Schema(AsyncIOExecutor(), hl_graph)
+    result = await schema.execute(query)
+
     check_result(
-        result,
+        result.data,
         {
             "a": 1,
             "x": {
@@ -220,9 +222,11 @@ def test_with_pass_context(graph_name, sample_count):
         ]
     )
 
-    result = Engine(SyncExecutor()).execute(graph, query)
+    schema = Schema(SyncExecutor(), graph)
+    result = schema.execute_sync(query)
+
     check_result(
-        result,
+        result.data,
         {
             "a": 1,
             "b": 2,

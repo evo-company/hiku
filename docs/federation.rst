@@ -79,9 +79,8 @@ Now let's implement the Order service using Hiku:
     from hiku.graph import Graph, Root, Field, Link, Node, Option
     from hiku.types import ID, Integer, TypeRef, String, Optional, Sequence
     from hiku.executors.sync import SyncExecutor
+    from hiku.federation.schema import Schema
     from hiku.federation.directives import Key
-    from hiku.federation.endpoint import FederatedGraphQLEndpoint
-    from hiku.federation.engine import Engine
 
     QUERY_GRAPH = Graph([
         Node('Order', [
@@ -104,15 +103,12 @@ Now let's implement the Order service using Hiku:
 
     app = Flask(__name__)
 
-    graphql_endpoint = FederatedGraphQLEndpoint(
-        Engine(SyncExecutor()),
-        QUERY_GRAPH,
-    )
+    schema = Schema(SyncExecutor(), QUERY_GRAPH)
 
     @app.route('/graphql', methods={'POST'})
     def handle_graphql():
         data = request.get_json()
-        result = graphql_endpoint.dispatch(data)
+        result = schema.execute_sync(data)
         resp = jsonify(result)
         return resp
 
@@ -131,9 +127,8 @@ Next, let's implement the ShoppingCart service using Hiku:
     from hiku.graph import Graph, Root, Field, Link, Node, Option
     from hiku.types import ID, Integer, TypeRef, String, Optional, Sequence
     from hiku.executors.sync import SyncExecutor
+    from hiku.federation.schema import Schema
     from hiku.federation.directives import Key
-    from hiku.federation.endpoint import FederatedGraphQLEndpoint
-    from hiku.federation.engine import Engine
 
     QUERY_GRAPH = Graph([
         Node('ShoppingCart', [
@@ -165,15 +160,12 @@ Next, let's implement the ShoppingCart service using Hiku:
 
     app = Flask(__name__)
 
-    graphql_endpoint = FederatedGraphQLEndpoint(
-        Engine(SyncExecutor()),
-        QUERY_GRAPH,
-    )
+    schema = Schema(SyncExecutor(), QUERY_GRAPH)
 
     @app.route('/graphql', methods={'POST'})
     def handle_graphql():
         data = request.get_json()
-        result = graphql_endpoint.dispatch(data)
+        result = schema.execute_sync(data)
         resp = jsonify(result)
         return resp
 

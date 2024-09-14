@@ -1,4 +1,3 @@
-import abc
 import contextlib
 import inspect
 import warnings
@@ -6,6 +5,7 @@ import dataclasses
 
 from typing import (
     Any,
+    Generic,
     TypeVar,
     Callable,
     cast,
@@ -18,7 +18,7 @@ from typing import (
     NoReturn,
     Optional,
     DefaultDict,
-    Awaitable,
+    overload,
 )
 from functools import partial
 from itertools import chain, repeat
@@ -31,9 +31,12 @@ from .cache import (
     CacheSettings,
 )
 from .compat import Concatenate, ParamSpec
-from .context import ExecutionContext, create_execution_context
-from .executors.base import SyncAsyncExecutor
-from .operation import Operation, OperationType
+from .context import ExecutionContext
+from .executors.base import (
+    BaseAsyncExecutor,
+    BaseSyncExecutor,
+    SyncAsyncExecutor,
+)
 from .query import (
     Fragment,
     Node as QueryNode,
@@ -1002,56 +1005,26 @@ class Context(Mapping):
             )
 
 
-class BaseEngine(abc.ABC):
+# Covariant must be used because we want to accept subclasses of Executor
+_ExecutorType = TypeVar(
+    "_ExecutorType", covariant=True, bound=SyncAsyncExecutor
+)
+
+
+class Engine(Generic[_ExecutorType]):
+    executor: _ExecutorType
+
     def __init__(
         self,
-        executor: SyncAsyncExecutor,
+        executor: _ExecutorType,
         cache: Optional[CacheSettings] = None,
     ) -> None:
         self.executor = executor
         self.cache_settings = cache
 
-    @abc.abstractmethod
-    def execute_context(
-        self,
-        execution_context: ExecutionContext,
-    ) -> Union[Proxy, Awaitable[Proxy]]:
-        ...
-
-    def execute(
-        self,
-        graph: Graph,
-        query: QueryNode,
-        ctx: Optional[Dict] = None,
-    ) -> Union[Proxy, Awaitable[Proxy]]:
-        execution_context = create_execution_context(
-            query,
-            query_graph=graph,
-            context=ctx,
-            operation=Operation(OperationType.QUERY, query, None),
-        )
-        return self.execute_context(execution_context)
-
-    def execute_mutation(
-        self,
-        graph: Graph,
-        query: QueryNode,
-        ctx: Optional[Dict] = None,
-    ) -> Union[Proxy, Awaitable[Proxy]]:
-        execution_context = create_execution_context(
-            query,
-            mutation_graph=graph,
-            context=ctx,
-            operation=Operation(OperationType.MUTATION, query, None),
-        )
-        return self.execute_context(execution_context)
-
-
-class Engine(BaseEngine):
-    def execute_context(
-        self,
-        execution_context: ExecutionContext,
-    ) -> Union[Proxy, Awaitable[Proxy]]:
+    def _prepare_workflow(
+        self, execution_context: ExecutionContext
+    ) -> Tuple[Queue, Query]:
         graph = execution_context.graph
         query = execution_context.query
         ctx = execution_context.context
@@ -1073,4 +1046,25 @@ class Engine(BaseEngine):
             queue, task_set, graph, query, Context(ctx), cache
         )
         query_workflow.start()
-        return self.executor.process(queue, query_workflow)
+        return queue, query_workflow
+
+    @overload
+    async def execute(
+        self: "Engine[BaseAsyncExecutor]",
+        execution_context: ExecutionContext,
+    ) -> Proxy:
+        ...
+
+    @overload
+    def execute(
+        self: "Engine[BaseSyncExecutor]",
+        execution_context: ExecutionContext,
+    ) -> Proxy:
+        ...
+
+    def execute(
+        self,
+        execution_context: ExecutionContext,
+    ) -> Any:
+        queue, workflow = self._prepare_workflow(execution_context)
+        return self.executor.process(queue, workflow)

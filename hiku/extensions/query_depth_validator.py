@@ -65,7 +65,7 @@ class QueryDepthValidator(Extension):
     def __init__(self, max_depth: int):
         self._validator = _QueryDepthValidator(max_depth)
 
-    def on_dispatch(
+    def on_validate(
         self, execution_context: ExecutionContext
     ) -> Iterator[None]:
         execution_context.validators = execution_context.validators + tuple(

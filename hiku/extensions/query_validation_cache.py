@@ -2,7 +2,7 @@ from functools import lru_cache
 from typing import Iterator, Optional
 
 from hiku.context import ExecutionContext
-from hiku.endpoint.graphql import _run_validation
+from hiku.schema import _run_validation
 from hiku.extensions.base_extension import Extension
 
 

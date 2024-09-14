@@ -60,8 +60,12 @@ class ExecutionContext:
 
     @property
     def graph(self) -> Graph:
-        """If operation type isn't specified, returns query graph."""
         if self.operation is None:
+            # if query ordered we need to execute it on mutation graph
+            if self.query and self.query.ordered:
+                if self.mutation_graph:
+                    return self.mutation_graph
+
             assert self.query_graph is not None
             return self.query_graph
 
@@ -106,6 +110,11 @@ def create_execution_context(
         query_src = query
     elif isinstance(query, Node):
         query_node = query
+        if "operation" not in kwargs:
+            op_type = OperationType.QUERY
+            if query.ordered:
+                op_type = OperationType.MUTATION
+            kwargs["operation"] = Operation(op_type, query)
 
     return ExecutionContext(
         query_src=query_src or "",

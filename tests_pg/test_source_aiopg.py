@@ -2,6 +2,7 @@ import pytest
 import asyncio
 import aiopg.sa
 
+from hiku.context import create_execution_context
 import hiku.sources.aiopg
 
 from hiku.engine import Engine
@@ -35,9 +36,12 @@ class TestSourceAIOPG(SourceSQLAlchemyTestBase):
         sa_engine = await aiopg.sa.create_engine(self.db_dsn, minsize=0)
         engine = Engine(AsyncIOExecutor())
         try:
-            result = await engine.execute(
-                self.graph, read(src), ctx={SA_ENGINE_KEY: sa_engine}
+            context = create_execution_context(
+                query=read(src),
+                query_graph=self.graph,
+                context={SA_ENGINE_KEY: sa_engine},
             )
+            result = await engine.execute(context)
             check_result(result, value)
         finally:
             sa_engine.close()

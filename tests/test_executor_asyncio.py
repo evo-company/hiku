@@ -27,8 +27,9 @@ async def coroutine():
 
 
 @pytest.mark.asyncio
-async def test_awaitable_check(event_loop):
-    executor = AsyncIOExecutor(event_loop)
+async def test_awaitable_check__async_only():
+    loop = asyncio.get_running_loop()
+    executor = AsyncIOExecutor(loop, deny_sync=True)
 
     with pytest.raises(TypeError) as func_err:
         executor.submit(func)
@@ -50,7 +51,20 @@ async def test_awaitable_check(event_loop):
 
 
 @pytest.mark.asyncio
-async def test_cancellation(event_loop):
+async def test_awaitable_check__sync_async():
+    loop = asyncio.get_running_loop()
+    executor = AsyncIOExecutor(loop)
+
+    assert await executor.submit(func) is None
+    assert await executor.submit(func2) == []
+    assert await executor.submit(gen)
+    assert await executor.submit(gen2)
+    assert (await executor.submit(coroutine)) == "smiting"
+
+
+@pytest.mark.asyncio
+async def test_cancellation():
+    loop = asyncio.get_running_loop()
     result = []
 
     async def proc():
@@ -65,12 +79,12 @@ async def test_cancellation(event_loop):
         def result(self):
             raise AssertionError("impossible")
 
-    executor = AsyncIOExecutor(event_loop)
+    executor = AsyncIOExecutor(loop)
 
     queue = Queue(executor)
     queue.submit(queue.fork(None), proc)
 
-    task = event_loop.create_task(executor.process(queue, TestWorkflow()))
+    task = loop.create_task(executor.process(queue, TestWorkflow()))
     await asyncio.wait([task], timeout=0.01)
     assert not task.done()
     task.cancel()
