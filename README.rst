@@ -38,7 +38,7 @@ Highlights
 ~~~~~~~~~~
 
 * Not coupled to a single specific query language
-* Flexibility in result serialization, including binary formats
+* Flexibility in result serialization
 * Natively uses normalized result representation, without data duplication
 * All concurrency models supported: coroutines, threads
 * Parallel query execution
