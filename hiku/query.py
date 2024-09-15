@@ -1,49 +1,39 @@
 """
-    hiku.query
-    ~~~~~~~~~~
+hiku.query
+~~~~~~~~~~
 
-    `Hiku` doesn't rely on any specific query language, internally it uses
-    generic query representation to describe result and it could be constructed
-    by parsing different suitable query languages.
+`Hiku` doesn't rely on any specific query language, internally it uses
+generic query representation to describe result and it could be constructed
+by parsing different suitable query languages.
 
-    However, `Hiku` provides one built-in way to describe result -- `edn`_ data
-    structure -- `simple` queries, which are very similar to the `om.next`_
-    queries, which are inspired by `Datomic Pull API`_.
+However, `Hiku` provides built-in way to parse graphql
+query into `hiku.query.Node`:
 
-      - ``[:foo]`` - node fields definition (`edn` keywords in vector)
-      - ``{:bar [:baz]}`` - link definition (`edn` map with keyword and vector)
-      - ``(:foo {:key val})`` - field or link options definition (field name or
-        link name, wrapped with `edn` list with map of options as a second
-        value)
+Example:
 
-    Example:
+.. code-block:: graphql
 
-    .. code-block:: clojure
+    { foo { bar { baz } } }
 
-        [:foo {:bar [:baz]}]
+This query will be read internally as:
 
-    This query will be read internally as:
+.. code-block:: python
 
-    .. code-block:: python
+    Node([Field('foo'),
+          Link('bar', Node([Field('baz')]))])
 
-        Node([Field('foo'),
-              Link('bar', Node([Field('baz')]))])
+And query result will look like this:
 
-    And query result will look like this:
+.. code-block:: python
 
-    .. code-block:: python
-
-        {
-            'foo': 1,
-            'bar': {
-                'baz': 2,
-            },
-        }
-
-    .. _edn: https://github.com/edn-format/edn
-    .. _Datomic Pull API: http://docs.datomic.com/pull.html
-    .. _om.next: https://github.com/omcljs/om/wiki/Documentation-(om.next)
+    {
+        'foo': 1,
+        'bar': {
+            'baz': 2,
+        },
+    }
 """
+
 import typing as t
 import hashlib
 

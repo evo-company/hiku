@@ -4,11 +4,10 @@ from abc import abstractmethod, ABC
 from collections import OrderedDict
 from typing import TypeVar
 
-from hiku.scalar import ScalarMeta
-
 if t.TYPE_CHECKING:
     from hiku.graph import Union, Interface
     from hiku.enum import BaseEnum
+    from hiku.scalar import ScalarMeta
 
 
 class GenericMeta(type):
@@ -455,7 +454,7 @@ def get_type(  # type: ignore[misc]
 
 
 @t.overload
-def get_type(types: Types, typ: ScalarMeta) -> "ScalarMeta":
+def get_type(types: Types, typ: "ScalarMeta") -> "ScalarMeta":
     ...
 
 

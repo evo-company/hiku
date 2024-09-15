@@ -1,23 +1,24 @@
 """
-    hiku.result
-    ~~~~~~~~~~~
+hiku.result
+~~~~~~~~~~~
 
-    In all examples query results are showed in **denormalized** form, suitable
-    for reading (by humans) and for serializing into simple formats, into `JSON`
-    for example. But this is not how `Hiku` stores result internally.
+In all examples query results are showed in **denormalized** form, suitable
+for reading (by humans) and for serializing into simple formats, into `JSON`
+for example. But this is not how `Hiku` stores result internally.
 
-    Internally `Hiku` stores result in a fully **normalized** form. So result in
-    `Hiku` is also a graph structure with references between objects. This
-    approach has lots of advantages:
+Internally `Hiku` stores result in a fully **normalized** form. So result in
+`Hiku` is also a graph structure with references between objects. This
+approach has lots of advantages:
 
-      - normalization helps to heavily reduce size of serialized result when we
-        need to transfer it (this avoids data duplication)
-      - it reduces internal memory usage and simplifies work with data
-        internally
-      - gives ability to cache, precisely and effortlessly update local state
-        on the client
+  - normalization helps to heavily reduce size of serialized result when we
+    need to transfer it (this avoids data duplication)
+  - it reduces internal memory usage and simplifies work with data
+    internally
+  - gives ability to cache, precisely and effortlessly update local state
+    on the client
 
 """
+
 import typing as t
 
 from collections import defaultdict
@@ -235,7 +236,7 @@ def denormalize(graph: Graph, result: Proxy) -> t.Dict:
 
     .. code-block:: python
 
-        query = hiku.readers.simple.read('[:foo]')
+        query = hiku.readers.graphql.read('{ foo }')
         norm_result = hiku_engine.execute(graph, query)
         result = hiku.result.denormalize(graph, norm_result)
         assert result == {'foo': 'value'}

@@ -27,7 +27,6 @@ Optional dependencies
 ~~~~~~~~~~~~~~~~~~~~~
 
 * `graphql-core` - for GraphQL support
-* `protobuf` - for Protobuf support
 * `sqlalchemy` - for SQLAlchemy support as a data-source
 * `aiopg` - for async PostgreSQL support with `aiopg`
 * `asyncpg` - for async PostgreSQL support with `asyncpg`
@@ -85,13 +84,13 @@ Query:
 
 .. code-block:: python
 
-  from hiku.engine import Engine
+  from hiku.schema import Schema
   from hiku.builder import Q, build
   from hiku.executors.sync import SyncExecutor
 
-  engine = Engine(SyncExecutor())
+  schema = Schema(SyncExecutor(), GRAPH)
 
-  result = engine.execute_query(GRAPH, build([
+  result = schema.execute_sync(build([
       Q.characters[
           Q.name,
           Q.species,
@@ -99,8 +98,8 @@ Query:
   ]))
 
   # use result in your code
-  for character in result.characters:
-      print(character.name, '-', character.species)
+  for character in result.data["characters"]:
+      print(character["name"], '-', character["species"])
 
 Output:
 

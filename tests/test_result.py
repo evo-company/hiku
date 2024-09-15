@@ -7,7 +7,7 @@ from hiku.query import merge
 from hiku.types import Record, String, Optional, Sequence, TypeRef, Integer
 from hiku.graph import Graph, Link, Node, Field, Root
 from hiku.result import denormalize, Index, Proxy, Reference, ROOT
-from hiku.readers.simple import read
+from hiku.readers.graphql import read
 
 
 def _(*args):
@@ -72,7 +72,18 @@ GRAPH = Graph(
         Root(
             [
                 Field("slotted", String, _),
-                Field("tatler", Optional[Record[{"orudis": String}]], _),
+                Field(
+                    "tatler",
+                    Optional[
+                        Record[
+                            {
+                                "orudis": String,
+                                "jigsaw": Optional[String],
+                            }
+                        ]
+                    ],
+                    _,
+                ),
                 Field("coom", Record[{"yappers": String}], _),
                 Field(
                     "lovecraft",
@@ -113,7 +124,10 @@ INDEX = Index()
 INDEX.root.update(
     {
         "slotted": "quoy_ushered",
-        "tatler": {"orudis": "fhp_musterd"},
+        "tatler": {
+            "orudis": "fhp_musterd",
+            "jigsaw": "dodges_ogham",
+        },
         "coom": {"yappers": "idaho_golok"},
         "lovecraft": {
             "characters": {
@@ -214,25 +228,33 @@ def check_result(query_string, result):
 
 
 def test_root_fields():
-    check_result("[:slotted]", {"slotted": "quoy_ushered"})
+    check_result("{ slotted }", {"slotted": "quoy_ushered"})
 
 
 def test_root_fields_complex():
-    check_result("[{:tatler []}]", {"tatler": {}})
-    check_result("[{:tatler [:orudis]}]", {"tatler": {"orudis": "fhp_musterd"}})
-
-    check_result("[{:coom []}]", {"coom": {}})
-    check_result("[{:coom [:yappers]}]", {"coom": {"yappers": "idaho_golok"}})
-
-    check_result("[{:barbary []}]", {"barbary": [{}]})
+    # complex field requrested without selection must return all fields
     check_result(
-        "[{:barbary [:betty]}]", {"barbary": [{"betty": "japheth_ophir"}]}
+        "{ tatler }",
+        {
+            "tatler": {
+                "orudis": "fhp_musterd",
+                "jigsaw": "dodges_ogham",
+            }
+        },
     )
+    # complex field requrested with selection must return selected fields
+    check_result("{ tatler { orudis } }", {"tatler": {"orudis": "fhp_musterd"}})
+
+    check_result("{ coom }", {"coom": {"yappers": "idaho_golok"}})
+    check_result("{ coom { yappers } }", {"coom": {"yappers": "idaho_golok"}})
+
+    check_result("{ barbary }", {"barbary": [{"betty": "japheth_ophir"}]})
+    check_result("{ barbary { betty } }", {"barbary": [{"betty": "japheth_ophir"}]})
 
 
 def test_node_fields():
     check_result(
-        "[{:zareeba [:nerv]} {:crowdie [:doghead]}]",
+        "{ zareeba { nerv } crowdie { doghead } }",
         {
             "zareeba": {"nerv": "calgary_badass"},
             "crowdie": [
@@ -244,23 +266,34 @@ def test_node_fields():
 
 
 def test_node_fields_complex():
-    check_result("[{:moujik [{:went []}]}]", {"moujik": {"went": {}}})
+    # complex field requrested without selection must return all fields
     check_result(
-        "[{:moujik [{:went [:changer]}]}]",
+        "{ moujik { went } }", {"moujik": {"went": {"changer": "cheerly_jpg"}}}
+    )
+    # complex field requrested with selection must return selected fields
+    check_result(
+        "{ moujik { went { changer } } }",
         {"moujik": {"went": {"changer": "cheerly_jpg"}}},
     )
 
-    check_result("[{:moujik [{:atelier []}]}]", {"moujik": {"atelier": {}}})
     check_result(
-        "[{:moujik [{:atelier [:litas]}]}]",
+        "{ moujik { atelier } }", {"moujik": {"atelier": {"litas": "facula_keck"}}}
+    )
+    check_result(
+        "{ moujik { atelier { litas } } }",
         {"moujik": {"atelier": {"litas": "facula_keck"}}},
     )
 
     check_result(
-        "[{:moujik [{:matwork []}]}]", {"moujik": {"matwork": [{}, {}]}}
+        "{ moujik { matwork } }",
+        {
+            "moujik": {
+                "matwork": [{"bashaw": "bukhoro_zins"}, {"bashaw": "worms_gemman"}]
+            }
+        },
     )
     check_result(
-        "[{:moujik [{:matwork [:bashaw]}]}]",
+        "{ moujik { matwork { bashaw } } }",
         {
             "moujik": {
                 "matwork": [
@@ -274,7 +307,7 @@ def test_node_fields_complex():
 
 def test_root_node_links():
     check_result(
-        "[{:flossy [{:daur [:doghead]} {:peafowl [:nerv]}]}]",
+        "{ flossy { daur { doghead } peafowl { nerv } } }",
         {
             "flossy": {
                 "daur": {"doghead": "satsuma_mks"},
@@ -290,8 +323,8 @@ def test_root_node_links():
 def test_deep_links():
     check_result(
         """
-        [{:zareeba [{:mistic [:panton]} {:biopics [:tamsin]}]}
-         {:crowdie [{:mistic [:tamsin]} {:biopics [:panton]}]}]
+        { zareeba { mistic { panton } biopics { tamsin } }
+          crowdie { mistic { tamsin } biopics { panton } } }
         """,
         {
             "zareeba": {
@@ -323,12 +356,18 @@ def test_deep_links():
 
 def test_circle_links():
     check_result(
-        """
-        [{:zareeba [{:mistic [{:bahut [:nerv]}]}]}
-         {:zareeba [{:mistic [{:paramo [:nerv]}]}]}
-         {:zareeba [{:biopics [{:bahut [:nerv]}]}]}
-         {:zareeba [{:biopics [{:paramo [:nerv]}]}]}]
-        """,
+        """{ 
+            zareeba { 
+                mistic {
+                    bahut { nerv } 
+                    paramo { nerv }
+                }
+                biopics {
+                    bahut { nerv } 
+                    paramo { nerv }
+                }
+            }
+        }""",
         {
             "zareeba": {  # cosies 2
                 "mistic": {  # kir 5
@@ -361,22 +400,22 @@ def test_circle_links():
 
 def test_optional():
     check_result(
-        "[{:flossy [{:daur [:doghead]} {:carf [:nerv]}]}]",
+        "{ flossy { daur { doghead } carf { nerv } } }",
         {"flossy": {"daur": {"doghead": "satsuma_mks"}, "carf": None}},
     )
 
 
 def test_nested_records():
     check_result(
-        "[{:rlyeh [{:priest [:name]}]}]",
+        "{ rlyeh { priest { name } } }",
         {"rlyeh": {"priest": {"name": "Cthulhu"}}},
     )
     check_result(
-        "[{:lovecraft [{:characters [{:cthulhu [:name]}]}]}]",
+        "{ lovecraft { characters { cthulhu { name } } } }",
         {"lovecraft": {"characters": {"cthulhu": {"name": "Cthulhu"}}}},
     )
     check_result(
-        "[{:elemental [{:air [:name]} {:water [:name :stories]}]}]",
+        " { elemental { air { name } water { name stories } } }",
         {
             "elemental": {
                 "air": [],
