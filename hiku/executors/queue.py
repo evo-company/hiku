@@ -10,9 +10,9 @@ from typing import (
     Iterable,
     Set,
     Union,
+    Protocol,
 )
 
-from hiku.compat import Protocol
 from hiku.executors.base import BaseExecutor
 from hiku.result import Proxy
 

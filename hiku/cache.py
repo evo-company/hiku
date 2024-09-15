@@ -17,11 +17,11 @@ from typing import (
     Iterator,
     Optional,
     Callable,
+    Protocol,
 )
 
 from prometheus_client import Counter
 
-from hiku.compat import Protocol
 from hiku.result import Index
 from hiku.graph import (
     Many,

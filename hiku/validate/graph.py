@@ -1,4 +1,5 @@
 import typing as t
+from typing import Protocol
 
 from itertools import chain
 from contextlib import contextmanager
@@ -20,7 +21,6 @@ from ..graph import (
 )
 from ..graph import AbstractNode, AbstractField, AbstractLink, AbstractOption
 
-from ..compat import Protocol
 from .errors import Errors
 from ..scalar import Scalar
 from ..types import GenericMeta, OptionalMeta
