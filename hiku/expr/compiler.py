@@ -1,8 +1,8 @@
+import ast as py
 from contextlib import contextmanager
 from collections import Counter
 
 from ..types import CallableMeta
-from ..compat import ast as py
 
 from .core import THIS
 from .nodes import Symbol, Keyword
