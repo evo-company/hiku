@@ -37,16 +37,14 @@ class FieldsQuery(_sa.FieldsQuery):
     def select_expr(
         self, fields_: List[Field], ids: Iterable
     ) -> Tuple[Select, Callable]:
-        visited = set()
-        columns = []
-        query_columns = []
-        for f in fields_:
-            column = self.from_clause.c[f.name]
-            columns.append(column)
-
-            if f.name not in visited and column != self.primary_key:
-                visited.add(f.name)
-                query_columns.append(column)
+        result_columns = [self.from_clause.c[f.name] for f in fields_]
+        # aiopg requires unique columns to be passed to select,
+        # otherwise it will raise an error
+        query_columns = [
+            column
+            for f in _uniq_fields(fields_)
+            if (column := self.from_clause.c[f.name]) != self.primary_key
+        ]
 
         expr = (
             sqlalchemy.select(
@@ -58,7 +56,7 @@ class FieldsQuery(_sa.FieldsQuery):
 
         def result_proc(rows: List[_sa.Row]) -> List:
             rows_map = {
-                row[self.primary_key]: [row[c] for c in columns]
+                row[self.primary_key]: [row[c] for c in result_columns]
                 for row in map(_sa._process_result_row, rows)
             }
 

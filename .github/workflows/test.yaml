@@ -36,6 +36,17 @@ jobs:
       - name: Run unit tests
         run: tox run -- --cov-report=term
 
+  test-db:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Lets
+        uses: lets-cli/lets-action@v1.1
+        with:
+          version: latest
+      - name: Test database integration
+        run: timeout 600 lets test-pg
+
   federation-test:
     runs-on: ubuntu-latest
     steps:
