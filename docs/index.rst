@@ -11,7 +11,6 @@ User's Guide
   subgraph
   asyncio
   graphql
-  protobuf
   scalars
   enums
   interfaces

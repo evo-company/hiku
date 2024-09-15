@@ -10,7 +10,7 @@ from hiku.engine import Engine
 from hiku.builder import build, Q
 from hiku.expr.core import define, S, each
 from hiku.sources.graph import SubGraph
-from hiku.readers.simple import read
+from hiku.readers.graphql import read
 from hiku.executors.sync import SyncExecutor
 from hiku.executors.threads import ThreadsExecutor
 
@@ -161,9 +161,7 @@ GRAPH = Graph(
                     sg_x.c(buz(S.this, S.size)),
                     options=[Option("size", None)],
                 ),
-                Field(
-                    "with_option", None, query_x1, options=[Option("opt", None)]
-                ),
+                Field("with_option", None, query_x1, options=[Option("opt", None)]),
             ],
         ),
         Node(
@@ -172,9 +170,7 @@ GRAPH = Graph(
                 Field("id", None, sg_y),
                 Field("c", None, sg_y),
                 Field("f", None, sg_y.c(S.f2)),
-                Field(
-                    "foo", None, sg_y.c(each(S.x, S.this.xs, foo(S.x, S.this)))
-                ),
+                Field("foo", None, sg_y.c(each(S.x, S.this.xs, foo(S.x, S.this)))),
                 Field("bar", None, sg_y.c(each(S.x, S.this.xs, bar(S.x)))),
                 Field("baz", None, sg_y.c(baz(S.this))),
             ],
@@ -204,7 +200,7 @@ def execute(engine, graph, query):
 
 
 def test_field(engine, graph):
-    result = execute(engine, graph, read("[{:x1s [:a :f]}]"))
+    result = execute(engine, graph, read("{ x1s { a f } }"))
     check_result(
         result,
         {
@@ -218,7 +214,7 @@ def test_field(engine, graph):
 
 
 def test_field_options(engine, graph):
-    result = execute(engine, graph, read('[{:x1s [(:buz {:size "100"})]}]'))
+    result = execute(engine, graph, read('{ x1s { buz(size: "100") } }'))
     check_result(
         result,
         {
@@ -232,7 +228,7 @@ def test_field_options(engine, graph):
 
 
 def test_field_without_options(engine, graph):
-    result = execute(engine, graph, read("[{:x1s [:buz]}]"))
+    result = execute(engine, graph, read("{ x1s { buz } }"))
     check_result(
         result,
         {
@@ -247,12 +243,12 @@ def test_field_without_options(engine, graph):
 
 def test_field_without_required_option(engine, graph):
     with pytest.raises(TypeError) as err:
-        execute(engine, graph, read("[{:x1s [:buz3]}]"))
+        execute(engine, graph, read("{ x1s { buz3 } }"))
     err.match('^Required option "size" for (.*)buz3(.*) was not provided$')
 
 
 def test_field_option_defaults(engine, graph):
-    result = execute(engine, graph, read("[{:x1s [:buz2]}]"))
+    result = execute(engine, graph, read("{ x1s { buz2 } }"))
     check_result(
         result,
         {
@@ -263,7 +259,7 @@ def test_field_option_defaults(engine, graph):
             ]
         },
     )
-    result = execute(engine, graph, read("[{:x1s [(:buz2 {:size 200})]}]"))
+    result = execute(engine, graph, read("{ x1s { buz2(size: 200) } }"))
     check_result(
         result,
         {
@@ -277,7 +273,7 @@ def test_field_option_defaults(engine, graph):
 
 
 def test_sequence_in_arg_type(engine, graph):
-    result = execute(engine, graph, read("[{:x1s [:baz]}]"))
+    result = execute(engine, graph, read("{ x1s { baz } }"))
     check_result(
         result,
         {
@@ -288,7 +284,7 @@ def test_sequence_in_arg_type(engine, graph):
             ]
         },
     )
-    result = execute(engine, graph, read("[{:y1s [:baz]}]"))
+    result = execute(engine, graph, read("{ y1s { baz } }"))
     check_result(
         result,
         {
@@ -305,7 +301,7 @@ def test_mixed_query(engine, graph):
     result = execute(
         engine,
         graph,
-        read("[{:x1s [(:with_option {:opt 123}) :a]}]"),
+        read("{ x1s { with_option(opt: 123) a } }"),
     )
     check_result(
         result,

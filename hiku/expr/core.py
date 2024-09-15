@@ -1,10 +1,11 @@
 """
-    hiku.expr.core
-    ~~~~~~~~~~~~~~
+hiku.expr.core
+~~~~~~~~~~~~~~
 
-    Expression building blocks
+Expression building blocks
 
 """
+
 import typing as t
 
 from functools import wraps
@@ -12,7 +13,7 @@ from itertools import chain
 from collections import namedtuple
 
 from ..compat import ParamSpec
-from ..edn import loads
+
 from ..query import Node as QueryNode, Link, Field, Base as QueryBase
 from ..types import (
     Record,
@@ -20,7 +21,6 @@ from ..types import (
     Any,
     GenericMeta,
 )
-from ..readers.simple import transform
 
 from .nodes import Symbol, Tuple, List, Keyword, Dict, Node
 
@@ -142,17 +142,7 @@ def define(
 
         expr.__def_name__ = name  # type: ignore[attr-defined]
         expr.__def_body__ = fn  # type: ignore[attr-defined]
-
-        if len(types) == 1 and isinstance(types[0], str):
-            reqs_list = loads(str(types[0]))
-            expr.__def_type__ = Callable[  # type: ignore[attr-defined]
-                [
-                    (_query_to_types(transform(r)) if r is not None else Any)
-                    for r in reqs_list
-                ]
-            ]
-        else:
-            expr.__def_type__ = Callable[types]  # type: ignore[attr-defined]
+        expr.__def_type__ = Callable[types]  # type: ignore[attr-defined]
         return expr
 
     return decorator
