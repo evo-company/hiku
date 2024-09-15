@@ -906,7 +906,7 @@ class BindToSchema(GraphTransformer):
         field = super(BindToSchema, self).visit_field(obj)
         func = self._processed.get(obj.func)
         if func is None:
-            func = self._processed[obj.func] = partial(obj.func, self.schema)
+            func = self._processed[obj.func] = partial(obj.func, self.schema)  # type: ignore[misc]  # noqa: E501
         field.func = func
         return field
 
@@ -993,7 +993,7 @@ class GraphQLIntrospection(GraphTransformer):
             mutation_graph,
         )
 
-    def __type_name__(self, node_name: t.Optional[str]) -> Field:
+    def __type_name__(self, node_name: str) -> Field:
         return Field(
             "__typename", String, partial(type_name_field_func, node_name)
         )
@@ -1003,6 +1003,7 @@ class GraphQLIntrospection(GraphTransformer):
 
     def visit_node(self, obj: Node) -> Node:
         node = super(GraphQLIntrospection, self).visit_node(obj)
+        assert obj.name is not None
         node.fields.append(self.__type_name__(obj.name))
         return node
 
@@ -1041,7 +1042,7 @@ class AsyncGraphQLIntrospection(GraphQLIntrospection):
 
     """
 
-    def __type_name__(self, node_name: t.Optional[str]) -> Field:
+    def __type_name__(self, node_name: str) -> Field:
         return Field(
             "__typename",
             String,

@@ -111,14 +111,12 @@ class GraphQLEndpoint(BaseSyncGraphQLEndpoint):
     @overload
     def dispatch(
         self, data: GraphQLRequest, context: Optional[Dict] = None
-    ) -> GraphQLResponse:
-        ...
+    ) -> GraphQLResponse: ...
 
     @overload
     def dispatch(
         self, data: BatchedRequest, context: Optional[Dict] = None
-    ) -> BatchedResponse:
-        ...
+    ) -> BatchedResponse: ...
 
     def dispatch(
         self, data: SingleOrBatchedRequest, context: Optional[Dict] = None
@@ -147,14 +145,12 @@ class AsyncGraphQLEndpoint(BaseAsyncGraphQLEndpoint):
     @overload
     async def dispatch(
         self, data: GraphQLRequest, context: Optional[Dict] = None
-    ) -> GraphQLResponse:
-        ...
+    ) -> GraphQLResponse: ...
 
     @overload
     async def dispatch(
         self, data: BatchedRequest, context: Optional[Dict] = None
-    ) -> BatchedResponse:
-        ...
+    ) -> BatchedResponse: ...
 
     async def dispatch(
         self, data: SingleOrBatchedRequest, context: Optional[Dict] = None

@@ -6,6 +6,7 @@
     are used to fetch any data from any data source.
 
 """
+
 import dataclasses
 import typing as t
 
@@ -499,8 +500,7 @@ class Link(AbstractLink):
         description: t.Optional[str] = None,
         directives: t.Optional[t.List[SchemaDirective]] = None,
         deprecated: t.Optional[str] = None,
-    ):
-        ...
+    ): ...
 
     @t.overload
     def __init__(
@@ -514,8 +514,7 @@ class Link(AbstractLink):
         description: t.Optional[str] = None,
         directives: t.Optional[t.List[SchemaDirective]] = None,
         deprecated: t.Optional[str] = None,
-    ):
-        ...
+    ): ...
 
     @t.overload
     def __init__(
@@ -529,8 +528,7 @@ class Link(AbstractLink):
         description: t.Optional[str] = None,
         directives: t.Optional[t.List[SchemaDirective]] = None,
         deprecated: t.Optional[str] = None,
-    ):
-        ...
+    ): ...
 
     @t.overload
     def __init__(
@@ -544,8 +542,7 @@ class Link(AbstractLink):
         description: t.Optional[str] = None,
         directives: t.Optional[t.List[SchemaDirective]] = None,
         deprecated: t.Optional[str] = None,
-    ):
-        ...
+    ): ...
 
     def __init__(  # type: ignore[no-untyped-def]
         self,
@@ -679,7 +676,7 @@ class Node(AbstractNode):
         implements: t.Optional[t.Sequence[str]] = None,
     ):
         """
-        :param name: name of the node
+        :param name: name of the node (None if Root node)
         :param fields: list of fields and links
         :param description: description of the node
         :param directives: list of directives for the node

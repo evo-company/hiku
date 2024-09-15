@@ -1,4 +1,5 @@
 from typing import (
+    Generic,
     TypeVar,
     Callable,
     TYPE_CHECKING,
@@ -18,11 +19,11 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
-class FutureLike:
+class FutureLike(Generic[T]):
     def __init__(self, result: T) -> None:
         self._result = result
 
-    def result(self) -> T:  # type: ignore[type-var]
+    def result(self) -> T:
         return self._result
 
 

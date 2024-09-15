@@ -33,7 +33,7 @@ Hook = Callable[
 
 
 class Extension:
-    def on_init(
+    def on_init(  # type: ignore[return]
         self, execution_context: ExecutionContext
     ) -> AsyncIteratorOrIterator[None]:
         """Called once during schema creation.
@@ -42,7 +42,7 @@ class Extension:
         """
         yield None
 
-    def on_operation(
+    def on_operation(  # type: ignore[return]
         self, execution_context: ExecutionContext
     ) -> AsyncIteratorOrIterator[None]:
         """Called before and after the operation step.
@@ -60,7 +60,7 @@ class Extension:
         """
         yield None
 
-    def on_parse(
+    def on_parse(  # type: ignore[return]
         self, execution_context: ExecutionContext
     ) -> AsyncIteratorOrIterator[None]:
         """Called before and after the parsing step.
@@ -74,7 +74,7 @@ class Extension:
         """
         yield None
 
-    def on_validate(
+    def on_validate(  # type: ignore[return]
         self, execution_context: ExecutionContext
     ) -> AsyncIteratorOrIterator[None]:
         """Called before and after the validation step.
@@ -85,7 +85,7 @@ class Extension:
         """
         yield None
 
-    def on_execute(
+    def on_execute(  # type: ignore[return]
         self, execution_context: ExecutionContext
     ) -> AsyncIteratorOrIterator[None]:
         """Called before and after the execution step.

@@ -29,7 +29,7 @@ class ThreadsExecutor(BaseSyncExecutor):
 
     def process(self, queue: "Queue", workflow: "Workflow") -> Proxy:
         while queue.__futures__:
-            done, _ = wait(  # type: ignore
+            done, _ = wait(
                 queue.__futures__, return_when=FIRST_COMPLETED  # type: ignore
             )
             queue.progress(done)

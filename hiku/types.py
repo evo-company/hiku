@@ -231,8 +231,7 @@ class TypeRefMeta(TypingMeta):
         return visitor.visit_typeref(cls)
 
 
-class TypeRef(metaclass=TypeRefMeta):
-    ...
+class TypeRef(metaclass=TypeRefMeta): ...
 
 
 class UnionRefMeta(TypingMeta):
@@ -250,8 +249,7 @@ class UnionRefMeta(TypingMeta):
         return visitor.visit_unionref(cls)
 
 
-class UnionRef(metaclass=UnionRefMeta):
-    ...
+class UnionRef(metaclass=UnionRefMeta): ...
 
 
 class InterfaceRefMeta(TypingMeta):
@@ -269,8 +267,7 @@ class InterfaceRefMeta(TypingMeta):
         return visitor.visit_interfaceref(cls)
 
 
-class InterfaceRef(metaclass=InterfaceRefMeta):
-    ...
+class InterfaceRef(metaclass=InterfaceRefMeta): ...
 
 
 class EnumRefMeta(TypingMeta):
@@ -288,8 +285,7 @@ class EnumRefMeta(TypingMeta):
         return visitor.visit_enumref(cls)
 
 
-class EnumRef(metaclass=EnumRefMeta):
-    ...
+class EnumRef(metaclass=EnumRefMeta): ...
 
 
 RefMeta = (TypeRefMeta, UnionRefMeta, InterfaceRefMeta, EnumRefMeta)
@@ -297,13 +293,11 @@ RefMetaTypes = t.Union[TypeRefMeta, UnionRefMeta, InterfaceRefMeta, EnumRefMeta]
 
 
 @t.overload
-def _maybe_typeref(typ: str) -> TypeRefMeta:
-    ...
+def _maybe_typeref(typ: str) -> TypeRefMeta: ...
 
 
 @t.overload
-def _maybe_typeref(typ: GenericMeta) -> GenericMeta:
-    ...
+def _maybe_typeref(typ: GenericMeta) -> GenericMeta: ...
 
 
 def _maybe_typeref(typ: t.Union[str, GenericMeta]) -> GenericMeta:
@@ -428,39 +422,32 @@ Types = t.Mapping[str, t.Union[t.Type[Record], "Union", "Interface"]]
 
 
 @t.overload
-def get_type(  # type: ignore[misc]
-    types: Types, typ: TypeRefMeta
-) -> t.Type[Record]:
+def get_type(types: Types, typ: TypeRefMeta) -> t.Type[Record]: ...
+
+
+@t.overload
+def get_type(types: Types, typ: UnionRefMeta) -> "Union":  # type: ignore[overload-overlap]  # noqa: E501
     ...
 
 
 @t.overload
-def get_type(types: Types, typ: UnionRefMeta) -> "Union":  # type: ignore[misc]
-    ...
-
-
-@t.overload
-def get_type(  # type: ignore[misc]
+def get_type(  # type: ignore[overload-overlap]
     types: Types, typ: EnumRefMeta
-) -> "BaseEnum":
-    ...
+) -> "BaseEnum": ...
 
 
 @t.overload
-def get_type(  # type: ignore[misc]
+def get_type(  # type: ignore[overload-overlap]
     types: Types, typ: InterfaceRefMeta
-) -> "Interface":
-    ...
+) -> "Interface": ...
 
 
 @t.overload
-def get_type(types: Types, typ: "ScalarMeta") -> "ScalarMeta":
-    ...
+def get_type(types: Types, typ: "ScalarMeta") -> "ScalarMeta": ...
 
 
 @t.overload
-def get_type(types: Types, typ: T) -> T:
-    ...
+def get_type(types: Types, typ: T) -> T: ...
 
 
 def get_type(types: Types, typ: t.Any) -> t.Any:

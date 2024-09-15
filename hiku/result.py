@@ -209,9 +209,11 @@ def _denormalize(
                 ]
             elif graph_obj.type_enum is MaybeMany:
                 return [
-                    _denormalize(graph, graph_node, v, query_obj.node)
-                    if v is not None
-                    else None
+                    (
+                        _denormalize(graph, graph_node, v, query_obj.node)
+                        if v is not None
+                        else None
+                    )
                     for v in result
                 ]
             elif graph_obj.type_enum is Maybe and result is None:

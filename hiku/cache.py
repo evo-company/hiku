@@ -55,8 +55,7 @@ CACHE_VERSION = "2"
 
 
 class Hasher(Protocol):
-    def update(self, data: bytes) -> None:
-        ...
+    def update(self, data: bytes) -> None: ...
 
 
 CacheKeyFn = Callable[["Context", Hasher], None]

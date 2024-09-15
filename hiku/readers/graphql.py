@@ -5,6 +5,7 @@ hiku.readers.graphql
 Support for queries encoded using GraphQL syntax.
 
 """
+
 from typing import Any, cast, Dict, Iterator, List, Optional, Set, Union
 
 from graphql.language import ast

@@ -112,9 +112,11 @@ class GraphInit(GraphTransformer):
         return Link(
             "_entities",
             Sequence[Optional[UnionRef["_Entity"]]],
-            _asyncify(entities_resolver)
-            if self.is_async
-            else entities_resolver,
+            (
+                _asyncify(entities_resolver)
+                if self.is_async
+                else entities_resolver
+            ),
             options=[
                 Option("representations", Sequence[_Any]),
             ],

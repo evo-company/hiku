@@ -5,3 +5,5 @@ extend-ignore = E203,E231
 ignore =
     F811,
     W503,
+    E701,
+    E704

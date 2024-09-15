@@ -18,7 +18,7 @@ from hiku.utils.typing import builtin_to_introspection_type
 T = TypeVar("T", bound="FederationSchemaDirective")
 
 
-LinkPurpose = Enum("link__Purpose", ["SECURITY", "EXECUTION"])
+LinkPurpose = Enum("link__Purpose", ["SECURITY", "EXECUTION"])  # type: ignore[misc]  # noqa: E501
 
 
 @dataclass
@@ -69,9 +69,9 @@ def schema_directive(
             args=fields,
             description=description,
             repeatable=repeatable,
-            compose_options=ComposeOptions(import_url=import_url)
-            if compose
-            else None,
+            compose_options=(
+                ComposeOptions(import_url=import_url) if compose else None
+            ),
         )
 
         return cls

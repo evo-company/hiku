@@ -346,8 +346,7 @@ class GraphValidator(GraphVisitor):
 
         self._validate_description(obj)
 
-    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Any:
-        ...
+    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Any: ...
 
     def visit_root(self, obj: Root) -> None:
         self.visit_node(obj)

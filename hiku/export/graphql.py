@@ -74,11 +74,13 @@ class Exporter(QueryVisitor):
     def visit_fragment(self, obj: Fragment) -> Any:
         if obj.name is None:
             return ast.InlineFragmentNode(
-                type_condition=ast.NamedTypeNode(
-                    name=_name(obj.type_name),
-                )
-                if obj.type_name is not None
-                else None,
+                type_condition=(
+                    ast.NamedTypeNode(
+                        name=_name(obj.type_name),
+                    )
+                    if obj.type_name is not None
+                    else None
+                ),
                 selection_set=self.visit(obj.node),
             )
 
