@@ -25,6 +25,7 @@ Changes in 0.8
   - Move `GraphQLError` to `hiku.error` module
   - Drop `GraphQLError.errors` field. Earlier we used to store multiple errors in single `GraphQLError` but now its one message - one `GraphQLError`.
   - Add `GraphQLError.message` field
+  - Dropped support for Python 3.7, which ended support on 2023-06-27
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -38,3 +39,4 @@ Backward-incompatible changes
   - Move `GraphQLError` to `hiku.error` module
   - Drop `GraphQLError.errors` field
   - Add `GraphQLError.message` field
+  - Dropped support for Python 3.7, which ended support on 2023-06-27

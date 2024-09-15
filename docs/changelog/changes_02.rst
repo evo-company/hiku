@@ -169,4 +169,4 @@ Backward-incompatible changes
   :py:class:`hiku.graph.Option` now is required
 
 
-.. _aiopg: http://aiopg.readthedocs.io/
+.. _aiopg: https://aiopg.readthedocs.io/

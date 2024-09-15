@@ -17,11 +17,11 @@ from typing import (
     Iterator,
     Optional,
     Callable,
+    Protocol,
 )
 
 from prometheus_client import Counter
 
-from hiku.compat import Protocol
 from hiku.result import Index
 from hiku.graph import (
     Many,
@@ -55,8 +55,7 @@ CACHE_VERSION = "2"
 
 
 class Hasher(Protocol):
-    def update(self, data: bytes) -> None:
-        ...
+    def update(self, data: bytes) -> None: ...
 
 
 CacheKeyFn = Callable[["Context", Hasher], None]

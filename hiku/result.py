@@ -21,6 +21,7 @@ approach has lots of advantages:
 
 import typing as t
 
+from functools import cached_property
 from collections import defaultdict
 
 from .scalar import ScalarMeta
@@ -41,7 +42,6 @@ from .graph import (
     Maybe,
     Graph,
 )
-from .utils import cached_property
 
 
 class Reference:
@@ -209,9 +209,11 @@ def _denormalize(
                 ]
             elif graph_obj.type_enum is MaybeMany:
                 return [
-                    _denormalize(graph, graph_node, v, query_obj.node)
-                    if v is not None
-                    else None
+                    (
+                        _denormalize(graph, graph_node, v, query_obj.node)
+                        if v is not None
+                        else None
+                    )
                     for v in result
                 ]
             elif graph_obj.type_enum is Maybe and result is None:

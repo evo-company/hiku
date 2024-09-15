@@ -1,5 +1,4 @@
-from typing import Any, Optional, List, Dict, Union, overload
-from typing_extensions import TypedDict
+from typing import Any, Optional, List, Dict, Union, overload, TypedDict
 
 from abc import ABC
 from asyncio import gather
@@ -59,11 +58,17 @@ class BaseSyncGraphQLEndpoint(BaseGraphQLEndpoint):
     ) -> GraphQLResponse:
         """
         Dispatch graphql request to graph
-        Args:
-            data: {"query": str, "variables": dict, "operationName": str}
-            context: context for operation
 
-        Returns: graphql response: data or errors
+        Example:
+
+        .. code-block:: python
+
+            result = endpoint.dispatch({"query": "{ hello }"})
+
+        :param dict data:
+            {"query": str, "variables": dict, "operationName": str}
+        :param dict context: context for operation
+        :return: :py:class:`dict` graphql response: data or errors
         """
         assert "query" in data, "query is required"
         result = self.schema.execute_sync(
@@ -79,6 +84,19 @@ class BaseAsyncGraphQLEndpoint(BaseGraphQLEndpoint):
     async def dispatch(
         self, data: GraphQLRequest, context: Optional[Dict] = None
     ) -> GraphQLResponse:
+        """Dispatch graphql request to graph
+
+        Example:
+
+        .. code-block:: python
+
+            result = await endpoint.dispatch({"query": "{ hello }"})
+
+        :param dict data:
+            {"query": str, "variables": dict, "operationName": str}
+        :param dict context: context for operation
+        :return: :py:class:`dict` graphql response: data or errors
+        """
         assert "query" in data, "query is required"
         result = await self.schema.execute(
             query=data["query"],
@@ -93,14 +111,12 @@ class GraphQLEndpoint(BaseSyncGraphQLEndpoint):
     @overload
     def dispatch(
         self, data: GraphQLRequest, context: Optional[Dict] = None
-    ) -> GraphQLResponse:
-        ...
+    ) -> GraphQLResponse: ...
 
     @overload
     def dispatch(
         self, data: BatchedRequest, context: Optional[Dict] = None
-    ) -> BatchedResponse:
-        ...
+    ) -> BatchedResponse: ...
 
     def dispatch(
         self, data: SingleOrBatchedRequest, context: Optional[Dict] = None
@@ -129,14 +145,12 @@ class AsyncGraphQLEndpoint(BaseAsyncGraphQLEndpoint):
     @overload
     async def dispatch(
         self, data: GraphQLRequest, context: Optional[Dict] = None
-    ) -> GraphQLResponse:
-        ...
+    ) -> GraphQLResponse: ...
 
     @overload
     async def dispatch(
         self, data: BatchedRequest, context: Optional[Dict] = None
-    ) -> BatchedResponse:
-        ...
+    ) -> BatchedResponse: ...
 
     async def dispatch(
         self, data: SingleOrBatchedRequest, context: Optional[Dict] = None

@@ -369,8 +369,7 @@ def resolve_reference_direct(representations):
     compose=True,
     import_url="https://myspecs.dev/myCustomDirective/v1.0",
 )
-class Custom(FederationSchemaDirective):
-    ...
+class Custom(FederationSchemaDirective): ...
 
 
 QUERY_GRAPH = Graph(

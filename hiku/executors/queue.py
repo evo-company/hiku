@@ -10,16 +10,15 @@ from typing import (
     Iterable,
     Set,
     Union,
+    Protocol,
 )
 
-from hiku.compat import Protocol
 from hiku.executors.base import BaseExecutor
 from hiku.result import Proxy
 
 
 class SubmitRes(Protocol):
-    def result(self) -> Any:
-        ...
+    def result(self) -> Any: ...
 
 
 class Workflow:
@@ -67,9 +66,9 @@ class Queue:
         """
         A dictionary of callbacks associated with each future or task set.
         """
-        self._callbacks: DefaultDict[
-            Union[SubmitRes, TaskSet], List
-        ] = defaultdict(list)
+        self._callbacks: DefaultDict[Union[SubmitRes, TaskSet], List] = (
+            defaultdict(list)
+        )
 
     @property
     def __futures__(self) -> List[SubmitRes]:

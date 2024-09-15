@@ -2,7 +2,7 @@ import re
 import json
 import typing as t
 
-from functools import partial
+from functools import partial, cached_property
 from collections import OrderedDict
 
 from ..directives import (
@@ -49,10 +49,7 @@ from ..types import (
     UnionRefMeta,
 )
 from ..types import Any, RecordMeta, AbstractTypeVisitor
-from ..utils import (
-    listify,
-    cached_property,
-)
+from ..utils import listify
 from .types import (
     ENUM,
     EnumValueIdent,
@@ -629,7 +626,7 @@ def directive_value_info(
     schema: SchemaInfo,
     fields: t.List[Field],
     ids: t.List[DIRECTIVE],  # type: ignore[valid-type]
-) -> t.Iterator[t.List[Any]]:
+) -> t.Iterator[t.List[t.Any]]:
     for ident in ids:
         if ident.name in schema.directives_map:  # type: ignore[attr-defined]
             info = schema.directives_map[ident.name].__directive_info__  # type: ignore  # noqa: E501
@@ -658,7 +655,7 @@ def enum_value_info(
     schema: SchemaInfo,
     fields: t.List[Field],
     ids: t.List[EnumValueIdent],  # type: ignore[valid-type]
-) -> t.Iterator[t.List[Any]]:
+) -> t.Iterator[t.List[t.Any]]:
     for ident in ids:
         enum = schema.query_graph.enums_map[ident.enum_name]  # type: ignore[attr-defined]  # noqa: E501
         value = enum.values_map[ident.value_name]  # type: ignore[attr-defined]
@@ -909,7 +906,7 @@ class BindToSchema(GraphTransformer):
         field = super(BindToSchema, self).visit_field(obj)
         func = self._processed.get(obj.func)
         if func is None:
-            func = self._processed[obj.func] = partial(obj.func, self.schema)
+            func = self._processed[obj.func] = partial(obj.func, self.schema)  # type: ignore[misc]  # noqa: E501
         field.func = func
         return field
 
@@ -996,7 +993,7 @@ class GraphQLIntrospection(GraphTransformer):
             mutation_graph,
         )
 
-    def __type_name__(self, node_name: t.Optional[str]) -> Field:
+    def __type_name__(self, node_name: str) -> Field:
         return Field(
             "__typename", String, partial(type_name_field_func, node_name)
         )
@@ -1006,6 +1003,7 @@ class GraphQLIntrospection(GraphTransformer):
 
     def visit_node(self, obj: Node) -> Node:
         node = super(GraphQLIntrospection, self).visit_node(obj)
+        assert obj.name is not None
         node.fields.append(self.__type_name__(obj.name))
         return node
 
@@ -1044,7 +1042,7 @@ class AsyncGraphQLIntrospection(GraphQLIntrospection):
 
     """
 
-    def __type_name__(self, node_name: t.Optional[str]) -> Field:
+    def __type_name__(self, node_name: str) -> Field:
         return Field(
             "__typename",
             String,

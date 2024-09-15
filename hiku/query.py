@@ -37,6 +37,7 @@ And query result will look like this:
 import typing as t
 import hashlib
 
+from functools import cached_property
 from itertools import chain
 from collections import (
     OrderedDict,
@@ -44,10 +45,9 @@ from collections import (
 )
 from collections.abc import Sequence
 
-from typing_extensions import TypeAlias
-
 from .directives import Directive
-from .utils import cached_property
+from .compat import TypeAlias
+
 
 T = t.TypeVar("T", bound="Base")
 
@@ -205,8 +205,8 @@ class Link(FieldBase):
         return visitor.visit_link(self)
 
 
-FieldOrLink = t.Union[Field, Link]
-FieldsMap: TypeAlias = "OrderedDict[str, FieldBase]"
+FieldOrLink: TypeAlias = t.Union[Field, Link]
+FieldsMap: TypeAlias = "OrderedDict[str, FieldOrLink]"
 FragmentMap: TypeAlias = "OrderedDict[str, Fragment]"
 
 
@@ -276,7 +276,7 @@ class Fragment(Base):
         return hash(self.type_name) + hash(self.node)
 
 
-KeyT = t.Tuple[str, t.Optional[str], t.Optional[str]]
+KeyT = t.Tuple[str, t.Optional[int], t.Optional[str]]
 
 
 def field_key(field: FieldOrLink) -> KeyT:

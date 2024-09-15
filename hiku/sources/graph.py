@@ -6,6 +6,7 @@ from typing import (
     Union,
     Callable,
     Iterator,
+    cast,
 )
 
 from .. import query
@@ -177,7 +178,7 @@ class SubGraph:
             else:
                 option_values.append([])
 
-        this_query_link = reqs.fields_map[THIS]
+        this_query_link = cast(query.Link, reqs.fields_map[THIS])
         other_reqs = query.Node([r for r in reqs.fields if r.name != THIS])
 
         q = Query(queue, task_set, self.graph, reqs, ctx)

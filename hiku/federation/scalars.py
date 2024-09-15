@@ -26,17 +26,14 @@ class _Scalar(Scalar):
 
 
 @federation_version([2])
-class _Any(_Scalar):
-    ...
+class _Any(_Scalar): ...
 
 
 @federation_version([1, 2])
 @scalar(name="_FieldSet")
-class FieldSet(_Scalar):
-    ...
+class FieldSet(_Scalar): ...
 
 
 @federation_version([2])
 @scalar(name="link__Import")
-class LinkImport(_Scalar):
-    ...
+class LinkImport(_Scalar): ...

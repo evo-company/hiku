@@ -6,13 +6,14 @@
     are used to fetch any data from any data source.
 
 """
+
 import dataclasses
 import typing as t
 
 from abc import ABC, abstractmethod
 from enum import Enum
 from itertools import chain
-from functools import reduce
+from functools import reduce, cached_property
 from collections import OrderedDict, defaultdict
 from typing import List
 
@@ -39,7 +40,6 @@ from .types import (
     UnionRefMeta,
 )
 from .utils import (
-    cached_property,
     const,
     Const,
 )
@@ -500,8 +500,7 @@ class Link(AbstractLink):
         description: t.Optional[str] = None,
         directives: t.Optional[t.List[SchemaDirective]] = None,
         deprecated: t.Optional[str] = None,
-    ):
-        ...
+    ): ...
 
     @t.overload
     def __init__(
@@ -515,8 +514,7 @@ class Link(AbstractLink):
         description: t.Optional[str] = None,
         directives: t.Optional[t.List[SchemaDirective]] = None,
         deprecated: t.Optional[str] = None,
-    ):
-        ...
+    ): ...
 
     @t.overload
     def __init__(
@@ -530,8 +528,7 @@ class Link(AbstractLink):
         description: t.Optional[str] = None,
         directives: t.Optional[t.List[SchemaDirective]] = None,
         deprecated: t.Optional[str] = None,
-    ):
-        ...
+    ): ...
 
     @t.overload
     def __init__(
@@ -545,8 +542,7 @@ class Link(AbstractLink):
         description: t.Optional[str] = None,
         directives: t.Optional[t.List[SchemaDirective]] = None,
         deprecated: t.Optional[str] = None,
-    ):
-        ...
+    ): ...
 
     def __init__(  # type: ignore[no-untyped-def]
         self,
@@ -680,7 +676,7 @@ class Node(AbstractNode):
         implements: t.Optional[t.Sequence[str]] = None,
     ):
         """
-        :param name: name of the node
+        :param name: name of the node (None if Root node)
         :param fields: list of fields and links
         :param description: description of the node
         :param directives: list of directives for the node
@@ -865,6 +861,7 @@ class Graph(AbstractGraph):
     def from_graph(cls: t.Type[G], other: G, root: Root) -> G:
         """Create graph from other graph, with new root node.
         Useful for creating mutation graph from query graph.
+
         Example:
             MUTATION_GRAPH = Graph.from_graph(QUERY_GRAPH, Root([...]))
         """

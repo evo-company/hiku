@@ -1052,15 +1052,13 @@ class Engine(Generic[_ExecutorType]):
     async def execute(
         self: "Engine[BaseAsyncExecutor]",
         execution_context: ExecutionContext,
-    ) -> Proxy:
-        ...
+    ) -> Proxy: ...
 
     @overload
     def execute(
         self: "Engine[BaseSyncExecutor]",
         execution_context: ExecutionContext,
-    ) -> Proxy:
-        ...
+    ) -> Proxy: ...
 
     def execute(
         self,

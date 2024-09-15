@@ -67,13 +67,11 @@ _BUILTIN_SCALARS = [ast.ScalarTypeDefinitionNode(name=_name("Any"))]
 
 
 @t.overload
-def coerce_type(x: str) -> ast.NameNode:
-    ...
+def coerce_type(x: str) -> ast.NameNode: ...
 
 
 @t.overload
-def coerce_type(x: ast.Node) -> ast.Node:
-    ...
+def coerce_type(x: ast.Node) -> ast.Node: ...
 
 
 def coerce_type(x):  # type: ignore[no-untyped-def]
@@ -447,9 +445,11 @@ class Exporter(GraphVisitor):
             type=_encode_type(obj.type),
             arguments=[self.visit(o) for o in obj.options],
             directives=[self.visit(d) for d in obj.directives],
-            description=_encode_default_value(obj.description)
-            if obj.description
-            else None,
+            description=(
+                _encode_default_value(obj.description)
+                if obj.description
+                else None
+            ),
         )
 
     def visit_node(
@@ -484,9 +484,11 @@ class Exporter(GraphVisitor):
     def visit_option(self, obj: Option) -> ast.InputValueDefinitionNode:
         return ast.InputValueDefinitionNode(
             name=_name(obj.name),
-            description=_encode_default_value(obj.description)
-            if obj.description
-            else None,
+            description=(
+                _encode_default_value(obj.description)
+                if obj.description
+                else None
+            ),
             type=_encode_type(obj.type, input_type=True),
             default_value=_encode_default_value(obj.default),
         )
