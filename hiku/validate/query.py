@@ -545,7 +545,7 @@ class DefaultQueryValidator(QueryVisitor):
                 continue
 
             if is_union_link:
-                union = self._type[-1]
+                union = t.cast(Union, self._type[-1])
                 self.errors.report(
                     "Cannot query field '{}' on type '{}'. "
                     "Did you mean to use an inline fragment on {}?".format(
@@ -559,6 +559,7 @@ class DefaultQueryValidator(QueryVisitor):
                 continue
             elif is_interface_link:
                 interface = self._type[-1]
+                assert interface.name, "Interface must have a name"
 
                 interface_types = self.graph.interfaces_types[interface.name]
                 if not interface_types:

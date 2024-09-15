@@ -54,6 +54,11 @@ commands:
     depends: [_build-tests]
     cmd: [docker compose, run, --rm, test]
 
+  test-pg:
+    description: Run tests with pg
+    depends: [_build-tests]
+    cmd: [docker-compose, run, --rm, test-pg]
+
   test-tox:
     description: Run tests using tox
     depends: [_build-tests]
@@ -106,7 +111,7 @@ commands:
       echo "Dumping schema..."
       docker compose run --rm federation-compatibility-server dump
       export APOLLO_ELV2_LICENSE=accept
-      
+
       npx @apollo/federation-subgraph-compatibility docker \
         --compose ./examples/federation-compatibility/docker-compose.yml \
         --path /graphql \

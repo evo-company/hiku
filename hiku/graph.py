@@ -12,7 +12,7 @@ import typing as t
 from abc import ABC, abstractmethod
 from enum import Enum
 from itertools import chain
-from functools import reduce
+from functools import reduce, cached_property
 from collections import OrderedDict, defaultdict
 from typing import List
 
@@ -39,7 +39,6 @@ from .types import (
     UnionRefMeta,
 )
 from .utils import (
-    cached_property,
     const,
     Const,
 )
@@ -865,6 +864,7 @@ class Graph(AbstractGraph):
     def from_graph(cls: t.Type[G], other: G, root: Root) -> G:
         """Create graph from other graph, with new root node.
         Useful for creating mutation graph from query graph.
+
         Example:
             MUTATION_GRAPH = Graph.from_graph(QUERY_GRAPH, Root([...]))
         """
