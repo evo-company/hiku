@@ -9,7 +9,7 @@ Union types are special types used to represent a value that could be one of typ
 
 In graphql you can use union types like this:
 
-.. code-block::
+.. code-block:: graphql
 
     type Audio {
         id: ID!
@@ -80,7 +80,7 @@ Lets look at the example above:
 
 Now lets look at the query:
 
-.. code-block:: python
+.. code-block:: graphql
 
     query {
         search(text: "test") {
@@ -99,18 +99,18 @@ Now lets look at the query:
 As a result of the query above you will get a list of objects with `__typename` and `id` fields and fields that are specific
 to the type of the object.
 
-.. code-block::
+.. code-block:: json
 
     [
         {
-            '__typename': 'Audio',
-            'id': 1,
-            'duration': 100,
+            "__typename": "Audio",
+            "id": 1,
+            "duration": 100,
         },
         {
-            '__typename': 'Video',
-            'id': 2,
-            'thumbnailUrl': 'http://example.com/thumbnail.jpg',
+            "__typename": "Video",
+            "id": 2,
+            "thumbnailUrl": "http://example.com/thumbnail.jpg",
         },
     ]
 

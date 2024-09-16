@@ -11,6 +11,7 @@ User's Guide
   subgraph
   asyncio
   graphql
+  schema
   scalars
   enums
   interfaces

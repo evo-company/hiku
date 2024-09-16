@@ -30,7 +30,7 @@ This is the simplest :py:class:`~hiku.graph.Graph` with one
 
 Then this field could be queried using this query:
 
-.. code-block::
+.. code-block:: graphql
 
     { now }
 
@@ -98,7 +98,7 @@ node. This function should return character ids.
 
 So now you are able to try this query in the console:
 
-.. code-block::
+.. code-block:: graphql
 
   { characters { name species } }
 
@@ -163,8 +163,8 @@ finite structure and result follows it's structure.
     :lines: 106-127
     :dedent: 4
     :linenos:
-    :emphasize-lines: 11,13,15
+    :emphasize-lines: 9,11,13
 
-As you can see, there are duplicate entries in the result :sup:`[11,13,15]` --
+As you can see, there are duplicate entries in the result :sup:`[9,11,13]` --
 this is how our cycle can be seen, the same character `Spock` seen multiple
 times.
