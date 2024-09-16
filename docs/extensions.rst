@@ -26,12 +26,9 @@ and implement methods that you need.
 
 .. note::
 
-    **Extension** class accepts **execution_context** argument, but it is optional.
-
     You can pass either instance or a class of the Extension to the schema's `extensions` argument.
 
-    At runtime, if extension is a class, it will be instantiated with the **execution_context** argument.
-    If extension is an instance, **execution_context** argument will be set.
+    At runtime, if extension is a class, it will be instantiated by hiku.
 
 
 Here is an example of custom extension that measures query execution time:
@@ -105,11 +102,6 @@ Query with separated variables is good for caching.
 
     Gauge('hiku_query_cache_hits', 'Query cache hits')
     Gauge('hiku_query_cache_misses', 'Query cache misses')
-
-QueryTransformCache
-~~~~~~~~~~~~~~~~~~~
-
-Just like ``QueryParseCache``, ``QueryTransformCache`` caches the result of transformation  from graphql ast into query :py:class:`hiku.query.Node`.
 
 QueryValidationCache
 ~~~~~~~~~~~~~~~~~~~~
