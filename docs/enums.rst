@@ -5,16 +5,16 @@ Enums
 
 Enums are a special types that can be used to define a set of possible values for a field.
 
-In graphql you can use enum type like this:
+In graphql you can define enum type and use it like this:
 
-.. code-block::
+.. code-block:: graphql
 
     enum Status {
         ACTIVE
         DELETED
     }
 
-    type Usr {
+    type User {
         id: ID!
         status: Status!
     }
@@ -24,73 +24,77 @@ In graphql you can use enum type like this:
     }
 
 
-Enum from string
-----------------
+Define enum
+-----------
 
-The simplest way to create enum in `hiku` from a list of strings:
+.. tab:: Enum from string
 
-.. code-block:: python
+  The simplest way to create enum in `hiku` from a list of strings:
 
-    from hiku.enum import Enum
+  .. code-block:: python
 
-    Enum('Status', ['ACTIVE', 'DELETED'])
+      from hiku.enum import Enum
 
-Enum from python Enum
----------------------
+      Enum('Status', ['ACTIVE', 'DELETED'])
 
-You can also create enum from builtin python ``Enum`` type:
+.. tab:: Enum from python Enum
 
-.. code-block:: python
+  You can also create enum from builtin python ``Enum`` type:
 
-    from enum import Enum as PyEnum
-    from hiku.enum import Enum
+  .. code-block:: python
 
-    class Status(PyEnum):
-        ACTIVE = 'active'
-        DELETED = 'deleted'
+      from enum import Enum as PyEnum
+      from hiku.enum import Enum
 
-    Enum.from_builtin(Status)
+      class Status(PyEnum):
+          ACTIVE = 'active'
+          DELETED = 'deleted'
 
-In this example:
+      Enum.from_builtin(Status)
 
-- ``EnumFromBuiltin`` will use ``Enum.__name__`` as a enum name.
-- ``EnumFromBuiltin`` will use ``Enum.__members__`` to get a list of possible values.
-- ``EnumFromBuiltin`` will use ``member.name`` to get a value name:
+  In this example:
 
-So this python enum:
+  - ``EnumFromBuiltin`` will use ``Enum.__name__`` as a enum name.
+  - ``EnumFromBuiltin`` will use ``Enum.__members__`` to get a list of possible values.
+  - ``EnumFromBuiltin`` will use ``member.name`` to get a value name:
 
-.. code-block:: python
+  So this python enum:
 
-    class Status(PyEnum):
-        ACTIVE = 1
-        DELETED = 2
+  .. code-block:: python
 
-is equivalent to this enum in graphql:
+      class Status(PyEnum):
+          ACTIVE = 1
+          DELETED = 2
 
-.. code-block:: python
+  is equivalent to this enum in graphql:
 
-    enum Status { ACTIVE, DELETED }
+  .. code-block:: python
 
-If you want to specify different name you can pass ``name`` argument to ``Enum.from_builtin`` method:
+      enum Status { ACTIVE, DELETED }
 
-.. code-block:: python
+  If you want to specify different name you can pass ``name`` argument to ``Enum.from_builtin`` method:
 
-    Enum.from_builtin(Status, name='User_Status')
+  .. code-block:: python
 
-.. note::
+      Enum.from_builtin(Status, name='User_Status')
 
-    If you use builtin python ``Enum``, then you MUST return enum value from the resolver function, otherwise ``hiku`` will raise an error.
+  .. note::
 
-    .. code-block:: python
+      If you use builtin python ``Enum``, then you MUST return enum value from the resolver function, otherwise ``hiku`` will raise an error.
 
-        def user_fields_resolver(fields, ids):
-            def get_field(field, user):
-                if field.name == 'id':
-                    return user.id
-                elif field.name == 'status':
-                    return Status(user.status)
+      .. code-block:: python
 
-            return [[get_field(field, users[id]) for field in fields] for id in ids]
+          def user_fields_resolver(fields, ids):
+              def get_field(field, user):
+                  if field.name == 'id':
+                      return user.id
+                  elif field.name == 'status':
+                      return Status(user.status)
+
+              return [[get_field(field, users[id]) for field in fields] for id in ids]
+
+Use enum
+--------
 
 Lets look at the full example on how to use enum type in `hiku`:
 
@@ -138,7 +142,7 @@ Lets decode the example above:
 
 If we run this query:
 
-.. code-block:: python
+.. code-block:: graphql
 
     query {
         user {
@@ -149,11 +153,11 @@ If we run this query:
 
 We will get the following result:
 
-.. code-block::
+.. code-block:: json
 
     {
-        'id': "1",
-        'status': 'ACTIVE',
+        "id": "1",
+        "status": "ACTIVE",
     }
 
 
@@ -247,7 +251,7 @@ You can use enum as an field input argument:
 
 Now you can use enum as a field argument:
 
-.. code-block::
+.. code-block:: graphql
 
     query {
         users(status: DELETED) {
@@ -258,7 +262,7 @@ Now you can use enum as a field argument:
 
 The result will be:
 
-.. code-block::
+.. code-block:: json
 
     [{
         "id": "2",

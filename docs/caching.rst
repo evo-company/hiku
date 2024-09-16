@@ -49,7 +49,7 @@ Consider this graph:
 
 So in next 3 queries `company` node will be cached separately:
 
-.. code-block::
+.. code-block::  graphql
 
     query {
         product(id: 1) {
@@ -63,7 +63,7 @@ So in next 3 queries `company` node will be cached separately:
 ``company`` here has ``name`` field, which is the difference between this query and
 previous one.
 
-.. code-block::
+.. code-block:: graphql
 
     query {
         product(id: 1) {
@@ -79,7 +79,7 @@ previous one.
 previous one.
 
 
-.. code-block::
+.. code-block:: graphql
 
     query {
         product(id: 1) {
@@ -103,7 +103,7 @@ When we fetching data from cache, we basically restoring parts of index from cac
 
 For example, if we have this query:
 
-.. code-block::
+.. code-block:: graphql
 
     query {
         products {
@@ -301,7 +301,7 @@ How to specify cache on client
 
 Use `@cached` directive on any non root node.
 
-.. code-block::
+.. code-block:: graphql
 
     query Products {
       products {

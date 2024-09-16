@@ -4,6 +4,13 @@ Using GraphQL
 .. note:: Hiku is a general-purpose library to expose data as a graph of linked
   nodes. And it is possible to implement GraphQL server using Hiku.
 
+In order to parse GraphQL queries you will need to install ``graphql-core``
+library:
+
+.. code-block:: shell
+
+  $ pip install graphql-core
+
 To implement GraphQL server we will have to add GraphQL introspection into our
 graph and to add GraphQL query execution process:
 
@@ -13,8 +20,22 @@ graph and to add GraphQL query execution process:
   - denormalize result into simple data structure
   - serialize result and send back to the client
 
-Graph Definition
-~~~~~~~~~~~~~~~~
+Query
+~~~~~
+
+To create ``Query`` graph:
+
+.. code-block:: python
+
+  query_graph = Graph([
+      Root([
+          Field('value', String, value_func),
+      ]),
+  ])
+
+
+Mutation
+~~~~~~~~
 
 GraphQL schema may have several root object types for each operation type:
 query, mutation, subscription... Hiku has only one :py:class:`~hiku.graph.Root`
@@ -36,6 +57,122 @@ identical to the query graph, except :py:class:`~hiku.graph.Root` node:
       ]),
   ])
 
+
+Schema
+~~~~~~
+
+In order to expose Hiku graph as GraphQL schema, you will need to create a ``Schema`` object:
+
+.. code-block:: python
+
+  from hiku.graph import Graph, Root, Field
+  from hiku.types import String
+  from hiku.executors.sync import SyncExecutor
+
+  def value_func(*_):
+      return 'Hello, World!'
+
+  graph = Graph([
+      Root([
+          Field('value', String, value_func),
+      ]),
+  ])
+
+  schema = Schema(SyncExecutor(), graph)
+
+To learn more about schema api, see :ref:`Schema docs <schema-doc>`.
+
+Endpoint
+~~~~~~~~
+
+Hiku has a so-called GraphQL endpoint, which can be used to expose Hiku graph as http endpoint.
+
+Here is an example of how to use it:
+
+.. tab:: GraphQLEndpoint
+
+    .. literalinclude:: endpoints/sync_example.py
+        :lines: 1-26
+
+.. tab:: AsyncGraphQLEndpoint
+
+    .. literalinclude:: endpoints/async_example.py
+        :lines: 1-26
+
+Sync endpoint
+"""""""""""""
+
+.. automodule:: hiku.endpoint.graphql
+    :members: GraphQLEndpoint
+    :noindex:
+
+Async endpoint
+"""""""""""""""
+
+.. automodule:: hiku.endpoint.graphql
+    :members: AsyncGraphQLEndpoint
+    :noindex:
+
+Introspection
+"""""""""""""
+
+By default GraphQL introspection is enabled, but you can disable it by setting ``introspection`` argument to ``False``:
+
+.. code-block:: python
+
+    endpoint = GraphQLEndpoint(schema, introspection=False)
+
+Validation
+""""""""""
+
+By default GraphQL validation is enabled, but you can disable it by setting ``validation`` argument to ``False``:
+
+.. code-block:: python
+
+    endpoint = GraphQLEndpoint(schema, validation=False)
+
+Context
+"""""""
+
+GraphQL endpoint has a **context** as a second argument, which is passed to the query execution process.
+
+.. code-block:: python
+
+    db = Database()
+    endpoint = GraphQLEndpoint(schema)
+    result = endpoint.dispatch(query, context={'db': db})
+
+If you do now want to pass context to ``dispatch`` method on every query, you can use :py:class:`hiku.extensions.context.CustomContext` extension,
+which accepts a callback function, which will be called on every query execution and should return a context object:
+
+.. code-block:: python
+
+    db = Database()
+
+    def get_context(execution_context: ExecutionContext) -> dict:
+        return {'db': db}
+
+    schema = Schema(
+      graph,
+      extensions=[CustomContext(get_context)]
+    )
+
+    endpoint = GraphQLEndpoint(schema)
+    result = endpoint.dispatch(query)
+
+Batching
+""""""""
+
+GraphQL endpoint has a **batching** option, which is disabled by default. When enabled, it will collect all queries
+and execute them in one batch:
+
+.. code-block:: python
+
+    endpoint = GraphQLEndpoint(schema, batching=True)
+
+    assert endpoint.dispatch({
+        "query": ["{ a }", "{ b }"],
+    }) == {"data": ["a", "b"]}
 
 Introspection
 ~~~~~~~~~~~~~
@@ -73,13 +210,6 @@ option definitions, as long as they don't have references to nodes.
 
 Reading
 ~~~~~~~
-
-In order to parse GraphQL queries you will need to install ``graphql-core``
-library:
-
-.. code-block:: shell
-
-  $ pip install graphql-core
 
 There are two options:
 
@@ -142,47 +272,3 @@ execution result into JSON, it should be denormalized, to replace references
 
 .. _graphql-core: https://github.com/graphql-python/graphql-core
 
-
-Query parsing cache
-~~~~~~~~~~~~~~~~~~~
-
-Hiku uses ``graphql-core`` library to parse queries. But parsing same query again and again is a waste of resources and time.
-
-Hiku provides a way to cache parsed queries. To enable it, you need to use ``QueryParseCache`` extensions.
-
-.. code-block:: python
-
-    endpoint = GraphQLEndpoint(
-        Engine(SyncExecutor()), sync_graph,
-        extensions=[QueryParserCache(maxsize=50)],
-    )
-
-Note than for cache to be effective, you need to separate query and variables, otherwise
-cache will be useless.
-
-Query with inlined variables is bad for caching.
-
-.. code-block:: python
-
-    query User {
-        user(id: 1) {
-            name
-            photo(size: 50)
-        }
-    }
-
-Query with separated variables is good for caching.
-
-.. code-block::
-
-    query User($id: ID!, $photoSize: Int) {
-        user(id: $id) {
-            name
-            photo(size: $photoSize)
-        }
-    }
-
-    {
-        "id": 1,
-        "photoSize": 50
-    }

@@ -55,7 +55,7 @@ So let's query some data, needed to show characters with their photos:
 
 What's wrong with this query?
 
-.. code-block::
+.. code-block:: graphql
 
     { characters { name image { id name } } }
 

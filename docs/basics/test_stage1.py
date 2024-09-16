@@ -35,7 +35,7 @@ _NOW = datetime(2015, 10, 21, 7, 28)
 @patch('{}.datetime'.format(__name__))
 def test(dt):
     dt.now = Mock(return_value=_NOW)
-    result = execute(GRAPH, '[:now]')
+    result = execute(GRAPH, '{ now }')
     assert result == {'now': '2015-10-21T07:28:00'}
 
 # console

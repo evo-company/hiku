@@ -1,8 +1,8 @@
-Federation
-==========
+Apollo Federation
+=================
 
-What is Federation
-------------------
+What is Apollo Federation
+-------------------------
 
 Apollo Federation is a set of open-source tools that allow you to compose multiple GraphQL services into a single data graph.
 
@@ -39,7 +39,7 @@ Let's start with a simple example of a federated subgraph using the following Gr
 
 Order Service
 
-.. code-block::
+.. code-block:: graphql
 
    type Order @key(fields: "id") {
        id: ID!
@@ -53,7 +53,7 @@ Order Service
 
 Shopping Cart Service
 
-.. code-block::
+.. code-block:: graphql
 
    type ShoppingCart @key(fields: "id") {
        id: ID!
@@ -109,7 +109,7 @@ Now let's implement the Order service using Hiku:
     def handle_graphql():
         data = request.get_json()
         result = schema.execute_sync(data)
-        resp = jsonify(result)
+        resp = jsonify({"data": result.data})
         return resp
 
     if __name__ == '__main__':
@@ -166,7 +166,7 @@ Next, let's implement the ShoppingCart service using Hiku:
     def handle_graphql():
         data = request.get_json()
         result = schema.execute_sync(data)
-        resp = jsonify(result)
+        resp = jsonify({"data": result.data})
         return resp
 
     if __name__ == '__main__':
@@ -216,7 +216,7 @@ With the composed schema, we can now start the router:
 
 With the router running, visit http://localhost:4000 and try running the following query:
 
-.. code-block::
+.. code-block:: graphql
 
     {
         order(id: 1) {
