@@ -32,17 +32,13 @@ def async_graph_fixture():
 
 
 def test_endpoint(sync_graph):
-    endpoint = GraphQLEndpoint(
-        Schema(SyncExecutor(), sync_graph)
-    )
+    endpoint = GraphQLEndpoint(Schema(SyncExecutor(), sync_graph))
     result = endpoint.dispatch({"query": "{answer}"})
     assert result == {"data": {"answer": "42"}}
 
 
 def test_batch_endpoint(sync_graph):
-    endpoint = BatchGraphQLEndpoint(
-        Schema(SyncExecutor(), sync_graph)
-    )
+    endpoint = BatchGraphQLEndpoint(Schema(SyncExecutor(), sync_graph))
 
     assert endpoint.dispatch([]) == []
 
@@ -63,9 +59,7 @@ def test_batch_endpoint(sync_graph):
 
 @pytest.mark.asyncio
 async def test_async_endpoint(async_graph):
-    endpoint = AsyncGraphQLEndpoint(
-        Schema(AsyncIOExecutor(), async_graph)
-    )
+    endpoint = AsyncGraphQLEndpoint(Schema(AsyncIOExecutor(), async_graph))
     result = await endpoint.dispatch(
         {"query": "{answer}"}, context={"default_answer": "52"}
     )
