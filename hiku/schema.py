@@ -12,6 +12,7 @@ from typing import (
     Generic,
 )
 
+from hiku.result import Proxy
 from hiku.cache import CacheSettings
 from hiku.context import (
     ExecutionContext,
@@ -58,6 +59,7 @@ def _run_validation(
 class ExecutionResult:
     data: Optional[Dict[str, Any]]
     errors: Optional[List[GraphQLError]]
+    result: Optional[Proxy]
 
 
 class Schema(Generic[_ExecutorType]):
@@ -158,13 +160,13 @@ class Schema(Generic[_ExecutorType]):
                     execution_context.operation_type_name,
                 ).process(execution_context.query)
 
-            return ExecutionResult(data, None)
+            return ExecutionResult(data, None, result)
         except ValidationError as e:
             return ExecutionResult(
-                None, [GraphQLError(message) for message in e.errors]
+                None, [GraphQLError(message) for message in e.errors], None
             )
         except GraphQLError as e:
-            return ExecutionResult(None, [e])
+            return ExecutionResult(None, [e], None)
 
     async def execute(
         self: "Schema[BaseAsyncExecutor]",
@@ -213,13 +215,13 @@ class Schema(Generic[_ExecutorType]):
                     execution_context.operation_type_name,
                 ).process(execution_context.query)
 
-            return ExecutionResult(data, None)
+            return ExecutionResult(data, None, result)
         except ValidationError as e:
             return ExecutionResult(
-                None, [GraphQLError(message) for message in e.errors]
+                None, [GraphQLError(message) for message in e.errors], None
             )
         except GraphQLError as e:
-            return ExecutionResult(None, [e])
+            return ExecutionResult(None, [e], None)
 
     def _validate(
         self,
