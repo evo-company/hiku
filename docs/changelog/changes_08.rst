@@ -4,38 +4,38 @@ Changes in 0.8
 0.8.0rcX
 ~~~~~~~~
 
-  - Introduce ``Schema`` . This is a new high-level api with aim to provide single entrypoint for validation/execution
-    and query/mutations. Previously we had to manage two serapate graphs - one for Query other for Mutation or use `endpoint`
-    api but ``endpoint`` api is more like an integration-like api for http handlers.
-  - ``Schema`` returns ``ExecutionResult`` dataclass with ``data``, ``errors`` and ``result`` fields. ``data`` already denormalized but access to `Proxy` object at ``result`` field is retained.
-  - ``Endpoint`` now is much simpler under the hood and it basically delegates execution to schema, only providing support for batching.
-  - Drop custom ``validate`` function for federation since we now have better support for ```_entities`` and ```_service`` fields and their corresponding types.
-  - Add new ``M`` query builder that indicates that this is a ``mutation``. It must be used to build a ``mutation`` query that will be passed to 
-    ``Schema.execute``` method which will then infer that this is a mutation query Node.
-  - Drop ``hiku.federation.validate.validate``
-  - Drop ``hiku.federation.denormalize``
-  - Drop ``hiku.federation.engine``
-  - Drop ``hiku.federation.endpoint`` - use ``hiku.endpoint`` instead
-  - Change ``QueryDepthValidator`` hook to ``on_validate``
-  - Change ``GraphQLResponse`` type used by endpoint - it now has both ``data`` and ``errors`` fields
-  - Rename ``on_dispatch`` hook to ``on_operation``
-  - Remove ``execute`` method from ``BaseGraphQLEndpoint`` class
-  - Add ``process_result`` method to ``BaseGraphQLEndpoint`` class - it returns ``GraphQLResponse`` object with ``{"data": ...}`` or ``{"data": null, "errors": [...]`` is case ther are errors.
-  - Move ``GraphQLError`` to ``hiku.error`` module
-  - Drop ``GraphQLError.errors`` field. Earlier we used to store multiple errors in single ``GraphQLError`` but now its one message - one ``GraphQLError``.
-  - Add ``GraphQLError.message`` field
-  - Dropped support for ``Python 3.7``, which ended support on 2023-06-27
+- Introduce ``Schema`` . This is a new high-level api with aim to provide single entrypoint for validation/execution
+  and query/mutations. Previously we had to manage two serapate graphs - one for Query other for Mutation or use `endpoint`
+  api but ``endpoint`` api is more like an integration-like api for http handlers.
+- ``Schema`` returns ``ExecutionResult`` dataclass with ``data``, ``errors`` and ``result`` fields. ``data`` already denormalized but access to `Proxy` object at ``result`` field is retained.
+- ``Endpoint`` now is much simpler under the hood and it basically delegates execution to schema, only providing support for batching.
+- Drop custom ``validate`` function for federation since we now have better support for ``_entities`` and ``_service`` fields and their corresponding types.
+- Add new ``M`` query builder that indicates that this is a ``mutation``. It must be used to build a ``mutation`` query that will be passed to 
+  ``Schema.execute`` method which will then infer that this is a mutation query Node.
+- Drop ``hiku.federation.validate.validate``
+- Drop ``hiku.federation.denormalize``
+- Drop ``hiku.federation.engine``
+- Drop ``hiku.federation.endpoint`` - use ``hiku.endpoint`` instead
+- Change ``QueryDepthValidator`` hook to ``on_validate``
+- Change ``GraphQLResponse`` type used by endpoint - it now has both ``data`` and ``errors`` fields
+- Rename ``on_dispatch`` hook to ``on_operation``
+- Remove ``execute`` method from ``BaseGraphQLEndpoint`` class
+- Add ``process_result`` method to ``BaseGraphQLEndpoint`` class - it returns ``GraphQLResponse`` object with ``{"data": ...}`` or ``{"data": null, "errors": [...]`` is case ther are errors.
+- Move ``GraphQLError`` to ``hiku.error`` module
+- Drop ``GraphQLError.errors`` field. Earlier we used to store multiple errors in single ``GraphQLError`` but now its one message - one ``GraphQLError``.
+- Add ``GraphQLError.message`` field
+- Dropped support for ``Python 3.7``, which ended support on 2023-06-27
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  - Drop `hiku.federation.endpoint.enormalize_entities`
-  - Drop `hiku.federation.validate.validate`
-  - Drop `hiku.federation.endpoint` - use `hiku.endpoint` instead
-  - Drop `hiku.federation.denormalize`
-  - Drop `hiku.federation.engine` - use `hiku.engine` instead
-  - Remove `execute` method from `BaseGraphQLEndpoint` class
-  - Move `GraphQLError` to `hiku.error` module
-  - Drop `GraphQLError.errors` field
-  - Add `GraphQLError.message` field
-  - Dropped support for Python 3.7, which ended support on 2023-06-27
+- Drop `hiku.federation.endpoint.enormalize_entities`
+- Drop `hiku.federation.validate.validate`
+- Drop `hiku.federation.endpoint` - use `hiku.endpoint` instead
+- Drop `hiku.federation.denormalize`
+- Drop `hiku.federation.engine` - use `hiku.engine` instead
+- Remove `execute` method from `BaseGraphQLEndpoint` class
+- Move `GraphQLError` to `hiku.error` module
+- Drop `GraphQLError.errors` field
+- Add `GraphQLError.message` field
+- Dropped support for Python 3.7, which ended support on 2023-06-27
