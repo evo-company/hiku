@@ -111,7 +111,10 @@ class Denormalize(QueryVisitor):
         else:
             # Record type itself does not have custom serialization
             # TODO: support Scalar/Enum types in Record
-            self._res[-1][obj.result_key] = self._data[-1][obj.result_key]
+
+            # if record field is aliased, use index_key as a result-key
+            result_key = obj.result_key if obj.alias is None else obj.index_key
+            self._res[-1][obj.result_key] = self._data[-1][result_key]
 
     def visit_link(self, obj: Link) -> None:
         if isinstance(self._type[-1], (Union, Interface)):

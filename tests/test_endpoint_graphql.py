@@ -12,6 +12,8 @@ from hiku.extensions.context import CustomContext
 from hiku.graph import Field, Graph, Root
 from hiku.schema import Schema
 from hiku.types import String
+from hiku.types import Record
+from hiku.types import TypeRef
 
 
 @pytest.fixture(name="sync_graph")
@@ -123,3 +125,18 @@ async def test_async_batch_endpoint_with_custom_context(async_graph):
         {"data": {"answer": "52"}},
         {"data": {"__typename": "Query"}},
     ]
+
+
+@pytest.mark.asyncio
+async def test_denormalize_aliased_record_field():
+    async def answer(fields):
+        return [{"answer": "42"} for _ in fields]
+
+    dt = {"Answer": Record[{"answer": String}]}
+    graph = Graph(
+        [Root([Field("question", TypeRef["Answer"], answer)])], data_types=dt
+    )
+
+    schema = Schema(AsyncIOExecutor(), graph)
+    result = await schema.execute("{ question { my_answer: answer } }")
+    assert result.data == {"question": {"my_answer": "42"}}
