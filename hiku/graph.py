@@ -9,48 +9,41 @@
 
 import dataclasses
 import typing as t
-
 from abc import ABC, abstractmethod
-from enum import Enum
-from itertools import chain
-from functools import reduce, cached_property
 from collections import OrderedDict, defaultdict
+from enum import Enum
+from functools import cached_property, reduce
+from itertools import chain
 from typing import List
 
 from hiku.enum import BaseEnum
-from .scalar import Scalar, ScalarMeta
 
+from .compat import TypeAlias
+from .directives import Deprecated, SchemaDirective
+from .scalar import Scalar, ScalarMeta
 from .types import (
+    Any,
+    AnyMeta,
     EnumRefMeta,
+    GenericMeta,
     InterfaceRef,
     InterfaceRefMeta,
     Optional,
     OptionalMeta,
+    Record,
     RefMeta,
     Sequence,
     SequenceMeta,
     TypeRef,
-    Record,
-    Any,
-    GenericMeta,
     TypeRefMeta,
     TypingMeta,
-    AnyMeta,
     UnionRef,
     UnionRefMeta,
 )
-from .utils import (
-    const,
-    Const,
-)
-from .directives import Deprecated, SchemaDirective
-
-from .compat import TypeAlias
-
+from .utils import Const, const
 
 if t.TYPE_CHECKING:
-    from .sources.graph import SubGraph
-    from .sources.graph import BoundExpr
+    from .sources.graph import BoundExpr, SubGraph
 
 # TODO enum ???
 Maybe = const("Maybe")
@@ -669,7 +662,11 @@ class Node(AbstractNode):
     def __init__(
         self,
         name: t.Optional[str],
-        fields: t.List[t.Union[Field, Link]],
+        fields: t.Union[
+            t.List[t.Union[Field, Link]],
+            t.List[Field],
+            t.List[Link],
+        ],
         *,
         description: t.Optional[str] = None,
         directives: t.Optional[t.Sequence[SchemaDirective]] = None,
@@ -920,6 +917,22 @@ class AbstractGraphVisitor(ABC):
     @abstractmethod
     def visit_graph(self, obj: Graph) -> t.Any:
         pass
+
+    # @abstractmethod
+    # def visit_node_cls(self, obj: ...) -> t.Any:
+    #     pass
+
+    # @abstractmethod
+    # def visit_field_cls(self, obj: ...) -> t.Any:
+    #     pass
+
+    # @abstractmethod
+    # def visit_field_link_cls(self, obj: ...) -> t.Any:
+    #     pass
+
+    # @abstractmethod
+    # def visit_option_cls(self, obj: ...) -> t.Any:
+    #     pass
 
 
 class GraphVisitor(AbstractGraphVisitor):
