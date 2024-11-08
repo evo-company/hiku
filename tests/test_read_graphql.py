@@ -191,12 +191,18 @@ def test_named_fragments() -> None:
                 ),
             ],
             [
-                Fragment("Meer", 'Torsion', Node([
-                    Link(
-                        "kilned",
-                        Node([Field("rusk")]),
+                Fragment(
+                    "Meer",
+                    "Torsion",
+                    Node(
+                        [
+                            Link(
+                                "kilned",
+                                Node([Field("rusk")]),
+                            ),
+                        ]
                     ),
-                ])),
+                ),
             ],
         ),
     )
@@ -209,11 +215,8 @@ def test_named_fragments() -> None:
                 Field("apres"),
             ],
             [
-                Fragment("Goaded", 'Makai', Node([
-                    Field("doozie"),
-                    PinsLink
-                ])),
-            ]
+                Fragment("Goaded", "Makai", Node([Field("doozie"), PinsLink])),
+            ],
         ),
         options={"gire": "noatak"},
     )
@@ -221,17 +224,21 @@ def test_named_fragments() -> None:
     GiltsLink = Link(
         "gilts",
         Node(
+            [SneezerLink],
             [
-                SneezerLink
-            ],
-            [
-                Fragment(None, "Valium", Node([
-                    Link(
-                        "movies",
-                        Node([Field("boree")]),
+                Fragment(
+                    None,
+                    "Valium",
+                    Node(
+                        [
+                            Link(
+                                "movies",
+                                Node([Field("boree")]),
+                            ),
+                        ]
                     ),
-                ])),
-            ]
+                ),
+            ],
         ),
     )
 
@@ -371,11 +378,23 @@ def test_variables_in_fragment():
         Node(
             [],
             [
-                Fragment("Pujari", "Ashlee", Node([Field(
-                    "fibbery",
-                    options={"baps": None, "bankit": 123, "riuer": 234},
-                )]))
-            ]
+                Fragment(
+                    "Pujari",
+                    "Ashlee",
+                    Node(
+                        [
+                            Field(
+                                "fibbery",
+                                options={
+                                    "baps": None,
+                                    "bankit": 123,
+                                    "riuer": 234,
+                                },
+                            )
+                        ]
+                    ),
+                )
+            ],
         ),
         {"popedom": 123},
     )
@@ -455,7 +474,14 @@ def test_skip_fragment_spread(skip):
           bar
         }
         """,
-        Node([Field("foo")], ([] if skip else [Fragment("Fragment", "Thing", Node([Field("bar")]))])),
+        Node(
+            [Field("foo")],
+            (
+                []
+                if skip
+                else [Fragment("Fragment", "Thing", Node([Field("bar")]))]
+            ),
+        ),
         {"cond": skip},
     )
 
@@ -471,7 +497,10 @@ def test_skip_inline_fragment(skip):
           }
         }
         """,
-        Node([Field("foo")], ([] if skip else [Fragment(None, "Thing", Node([Field("bar")]))])),
+        Node(
+            [Field("foo")],
+            ([] if skip else [Fragment(None, "Thing", Node([Field("bar")]))]),
+        ),
         {"cond": skip},
     )
 
@@ -502,7 +531,14 @@ def test_include_fragment_spread(include):
           bar
         }
         """,
-        Node([Field("foo")], ([Fragment("Fragment", "Thing", Node([Field("bar")]))] if include else [])),
+        Node(
+            [Field("foo")],
+            (
+                [Fragment("Fragment", "Thing", Node([Field("bar")]))]
+                if include
+                else []
+            ),
+        ),
         {"cond": include},
     )
 
@@ -518,7 +554,14 @@ def test_include_inline_fragment(include):
           }
         }
         """,
-        Node([Field("foo")], ([Fragment(None, "Thing", Node([Field("bar")]))] if include else [])),
+        Node(
+            [Field("foo")],
+            (
+                [Fragment(None, "Thing", Node([Field("bar")]))]
+                if include
+                else []
+            ),
+        ),
         {"cond": include},
     )
 

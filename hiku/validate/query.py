@@ -1,52 +1,46 @@
 import typing as t
-
-from dataclasses import dataclass
-from contextlib import contextmanager
 from collections import abc as collections_abc
+from contextlib import contextmanager
+from dataclasses import dataclass
 
+from hiku.graph import (
+    Field,
+    Graph,
+    GraphVisitor,
+    Interface,
+    Link,
+    LinkType,
+    Node,
+    Nothing,
+    Option,
+    Root,
+    Union,
+)
+from hiku.query import Field as QueryField
+from hiku.query import FieldBase, Fragment
+from hiku.query import Link as QueryLink
+from hiku.query import Node as QueryNode
+from hiku.query import QueryVisitor
 from hiku.scalar import ScalarMeta
 
 from ..types import (
     AbstractTypeVisitor,
-    IDMeta,
-    Record,
-    OptionalMeta,
-    SequenceMeta,
-    RecordMeta,
-    TypeRefMeta,
-    EnumRefMeta,
-    GenericMeta,
     AnyMeta,
     BooleanMeta,
-    StringMeta,
-    IntegerMeta,
+    EnumRefMeta,
     FloatMeta,
+    GenericMeta,
+    IDMeta,
+    IntegerMeta,
     MappingMeta,
-)
-
-from hiku.query import (
-    Field as QueryField,
-    FieldBase,
-    Fragment,
-    Node as QueryNode,
-    Link as QueryLink,
-    QueryVisitor,
-)
-from hiku.graph import (
-    Interface,
-    LinkType,
-    Node,
-    Field,
-    Link,
-    GraphVisitor,
-    Root,
-    Option,
-    Nothing,
-    Graph,
-    Union,
+    OptionalMeta,
+    Record,
+    RecordMeta,
+    SequenceMeta,
+    StringMeta,
+    TypeRefMeta,
 )
 from .errors import Errors
-
 
 _undefined = object()
 
@@ -523,6 +517,11 @@ class DefaultQueryValidator(QueryVisitor):
             self._type[-1].name is None and obj.type_name is None
         ):
             graph_node = self.graph.root
+        elif obj.type_name not in self.graph.nodes_map:
+            self.errors.report(
+                "Fragment on an unknown type '{}'".format(obj.type_name)
+            )
+            return
         else:
             graph_node = self.graph.nodes_map[obj.type_name]
 
