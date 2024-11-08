@@ -1,9 +1,19 @@
 import pytest
 
 from hiku import query as q
-from hiku.graph import Graph, Node, Field, Link, Option, Root
-from hiku.types import Integer, Record, Sequence, Optional, TypeRef, Boolean
-from hiku.types import String, Mapping, Any
+from hiku.graph import Field, Graph, Link, Node, Option, Root
+from hiku.readers.graphql import read
+from hiku.types import (
+    Any,
+    Boolean,
+    Integer,
+    Mapping,
+    Optional,
+    Record,
+    Sequence,
+    String,
+    TypeRef,
+)
 from hiku.validate.query import validate
 
 
@@ -153,9 +163,14 @@ def test_field_complex(field_name):
 
 def test_field_complex_with_typename():
     check_errors(
-        q.Node([
-            q.Link('val', q.Node([q.Field('__typename'), q.Field('attr')], []))
-        ]), []
+        q.Node(
+            [
+                q.Link(
+                    "val", q.Node([q.Field("__typename"), q.Field("attr")], [])
+                )
+            ]
+        ),
+        [],
     )
 
 
@@ -609,75 +624,157 @@ def test_distinct_by_name_fields():
     ]
 
 
-@pytest.mark.parametrize("query", [
-    pytest.param(
-        q.Node([q.Link("x", q.Node([
-            q.Field("a"),
-            q.Field("a", options={"e": 1})
-        ]))]),
-        id="only fields"
-    ),
-    pytest.param(
-        q.Node([q.Link("x", q.Node(
-        [],
-        [
-            q.Fragment('Fragment', 'X', q.Node([
-                q.Field("a"),
-                q.Field("a", options={"e": 1}),
-            ]))
-        ]))]),
-        id="only fields inside fragment"
-    ),
-    pytest.param(
-        q.Node([q.Link("x", q.Node(
-        [],
-        [
-            q.Fragment('FragmentA', 'X', q.Node([
-                q.Field("a"),
-            ])),
-            q.Fragment('FragmentB', 'X', q.Node([
-                q.Field("a", options={"e": 1}),
-            ])),
-        ]))]),
-        id="fields inside neighbour fragment"
-    ),
-    pytest.param(
-        q.Node([q.Link("x", q.Node(
-        [
-            q.Field("a"),
-        ],
-        [
-            q.Fragment('Fragment', 'X', q.Node([
-                q.Field("a", options={"e": 1}),
-            ])),
-        ]))]),
-        id="field + neighbour fragment"
-    ),
-    pytest.param(
-        q.Node([
-            q.Link("x", q.Node(
-                [],
+@pytest.mark.parametrize(
+    "query",
+    [
+        pytest.param(
+            q.Node(
                 [
-                    q.Fragment('FragmentB', 'X', q.Node([
-                        q.Field("a", options={"e": 1}),
-                    ])),
+                    q.Link(
+                        "x",
+                        q.Node([q.Field("a"), q.Field("a", options={"e": 1})]),
+                    )
                 ]
-            ))
-        ], [
-            q.Fragment('FragmentA', 'Query', q.Node([
-                q.Link("x", q.Node(
-                [],
+            ),
+            id="only fields",
+        ),
+        pytest.param(
+            q.Node(
                 [
-                    q.Fragment('FragmentA', 'X', q.Node([
-                        q.Field("a"),
-                    ])),
+                    q.Link(
+                        "x",
+                        q.Node(
+                            [],
+                            [
+                                q.Fragment(
+                                    "Fragment",
+                                    "X",
+                                    q.Node(
+                                        [
+                                            q.Field("a"),
+                                            q.Field("a", options={"e": 1}),
+                                        ]
+                                    ),
+                                )
+                            ],
+                        ),
+                    )
                 ]
-            ))
-            ])),
-        ]),
-        id="different level fragment, same link"
-    ),
-])
+            ),
+            id="only fields inside fragment",
+        ),
+        pytest.param(
+            q.Node(
+                [
+                    q.Link(
+                        "x",
+                        q.Node(
+                            [],
+                            [
+                                q.Fragment(
+                                    "FragmentA",
+                                    "X",
+                                    q.Node(
+                                        [
+                                            q.Field("a"),
+                                        ]
+                                    ),
+                                ),
+                                q.Fragment(
+                                    "FragmentB",
+                                    "X",
+                                    q.Node(
+                                        [
+                                            q.Field("a", options={"e": 1}),
+                                        ]
+                                    ),
+                                ),
+                            ],
+                        ),
+                    )
+                ]
+            ),
+            id="fields inside neighbour fragment",
+        ),
+        pytest.param(
+            q.Node(
+                [
+                    q.Link(
+                        "x",
+                        q.Node(
+                            [
+                                q.Field("a"),
+                            ],
+                            [
+                                q.Fragment(
+                                    "Fragment",
+                                    "X",
+                                    q.Node(
+                                        [
+                                            q.Field("a", options={"e": 1}),
+                                        ]
+                                    ),
+                                ),
+                            ],
+                        ),
+                    )
+                ]
+            ),
+            id="field + neighbour fragment",
+        ),
+        pytest.param(
+            q.Node(
+                [
+                    q.Link(
+                        "x",
+                        q.Node(
+                            [],
+                            [
+                                q.Fragment(
+                                    "FragmentB",
+                                    "X",
+                                    q.Node(
+                                        [
+                                            q.Field("a", options={"e": 1}),
+                                        ]
+                                    ),
+                                ),
+                            ],
+                        ),
+                    )
+                ],
+                [
+                    q.Fragment(
+                        "FragmentA",
+                        "Query",
+                        q.Node(
+                            [
+                                q.Link(
+                                    "x",
+                                    q.Node(
+                                        [],
+                                        [
+                                            q.Fragment(
+                                                "FragmentA",
+                                                "X",
+                                                q.Node(
+                                                    [
+                                                        q.Field("a"),
+                                                    ]
+                                                ),
+                                            ),
+                                        ],
+                                    ),
+                                )
+                            ]
+                        ),
+                    ),
+                ],
+            ),
+            id="different level fragment, same link",
+        ),
+    ],
+)
 def test_distinct_by_options_fields(query):
     graph = Graph(
         [
@@ -858,3 +955,19 @@ def test_any_in_option():
         'Invalid value for option "root.get:foo", '
         '"str" instead of Mapping[String, Any]'
     ]
+
+
+def test_validate_query_fragment_on_unknown_type():
+    query = """
+    query {
+      amyls {
+        ... on Asdf {
+          id
+        }
+      }
+    }
+    """
+
+    errors = validate(GRAPH, read(query))
+
+    assert errors == ["Fragment on an unknown type 'Asdf'"]
