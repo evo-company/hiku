@@ -2,8 +2,8 @@ import asyncio
 
 import pytest
 
-from hiku.executors.queue import Queue, Workflow
 from hiku.executors.asyncio import AsyncIOExecutor
+from hiku.executors.queue import Queue, Workflow
 
 
 def func():
@@ -28,8 +28,7 @@ async def coroutine():
 
 @pytest.mark.asyncio
 async def test_awaitable_check__async_only():
-    loop = asyncio.get_running_loop()
-    executor = AsyncIOExecutor(loop, deny_sync=True)
+    executor = AsyncIOExecutor(deny_sync=True)
 
     with pytest.raises(TypeError) as func_err:
         executor.submit(func)
@@ -52,8 +51,7 @@ async def test_awaitable_check__async_only():
 
 @pytest.mark.asyncio
 async def test_awaitable_check__sync_async():
-    loop = asyncio.get_running_loop()
-    executor = AsyncIOExecutor(loop)
+    executor = AsyncIOExecutor()
 
     assert await executor.submit(func) is None
     assert await executor.submit(func2) == []
@@ -79,7 +77,7 @@ async def test_cancellation():
         def result(self):
             raise AssertionError("impossible")
 
-    executor = AsyncIOExecutor(loop)
+    executor = AsyncIOExecutor()
 
     queue = Queue(executor)
     queue.submit(queue.fork(None), proc)

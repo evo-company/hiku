@@ -1,32 +1,19 @@
 import inspect
-
 from asyncio import (
-    wait,
     FIRST_COMPLETED,
-    gather,
     CancelledError,
     Task,
-    AbstractEventLoop,
+    gather,
+    get_running_loop,
+    wait,
 )
-from asyncio import get_event_loop
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Coroutine,
-    Optional,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Callable, Coroutine, cast
 
 from hiku.executors.base import BaseAsyncExecutor
 from hiku.result import Proxy
 
-
 if TYPE_CHECKING:
-    from hiku.executors.queue import (
-        Queue,
-        Workflow,
-    )
+    from hiku.executors.queue import Queue, Workflow
 
 
 class AsyncIOExecutor(BaseAsyncExecutor):
@@ -35,15 +22,11 @@ class AsyncIOExecutor(BaseAsyncExecutor):
     By default it allows to run both synchronous and asynchronous tasks.
     To deny synchronous tasks set deny_sync to True.
 
-    :param loop: asyncio event loop
     :param deny_sync: deny synchronous tasks -
                       raise TypeError if a task is not awaitable
     """
 
-    def __init__(
-        self, loop: Optional[AbstractEventLoop] = None, deny_sync: bool = False
-    ) -> None:
-        self.loop = loop or get_event_loop()
+    def __init__(self, deny_sync: bool = False) -> None:
         self.deny_sync = deny_sync
 
     async def _wrapper(self, fn: Callable, *args: Any, **kwargs: Any) -> Any:
@@ -54,6 +37,8 @@ class AsyncIOExecutor(BaseAsyncExecutor):
             return result
 
     def submit(self, fn: Callable, *args: Any, **kwargs: Any) -> Task:
+        loop = get_running_loop()
+
         coro = fn(*args, **kwargs)
         if not inspect.isawaitable(coro):
             if self.deny_sync:
@@ -61,10 +46,10 @@ class AsyncIOExecutor(BaseAsyncExecutor):
                     "{!r} returned non-awaitable object {!r}".format(fn, coro)
                 )
 
-            return self.loop.create_task(self._wrapper(fn, *args, **kwargs))
+            return loop.create_task(self._wrapper(fn, *args, **kwargs))
 
         coro = cast(Coroutine, coro)
-        return self.loop.create_task(coro)
+        return loop.create_task(coro)
 
     async def process(self, queue: "Queue", workflow: "Workflow") -> Proxy:
         try:

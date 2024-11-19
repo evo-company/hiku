@@ -40,6 +40,8 @@ Changes in 0.8
       }
     }
 
+- Drop ``loop`` parameter from ``hiku.executors.asyncio.AsyncIOExecutor`` constructor.
+
 
 Backward-incompatible changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
