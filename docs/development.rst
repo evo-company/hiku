@@ -4,14 +4,14 @@ Development
 Tools
 ~~~~~
 
-- `pdm` package manager - https://pdm.fming.dev/
-- `lets` task runner https://lets-cli.org to run project tests, build docs and so on.
+- ``pdm`` package manager - https://pdm.fming.dev/
+- ``lets`` task runner https://lets-cli.org to run project tests, build docs and so on.
 
 Setup development
 ~~~~~~~~~~~~~~~~~
 
-1. Install `pdm` package manager - https://pdm.fming.dev/
-2. Run `pdm install` to install dependencies
+1. Install ``pdm`` package manager - https://pdm.fming.dev/
+2. Run ``pdm sync`` to install dependencies
 
 Run unit tests using pdm
 
@@ -42,7 +42,7 @@ Run linters, formatters and other checks
     $ pdm run black
     $ pdm run mypy
 
-Or you can run `pdm check` - it will reformat code, run linters and test in one command.
+Or you can run ``pdm check`` - it will reformat code, run linters and test in one command.
 
 Build docs
 Docs will be available at ``docs/build``
@@ -52,19 +52,27 @@ Docs will be available at ``docs/build``
     $ pdm run docs
 
 
-Setup PDM with PyCharm
-~~~~~~~~~~~~~~~~~~~~~~
+Setup PDM with IDE
+~~~~~~~~~~~~~~~~~~
 
-Pdm supports two ways of dependency management: venv and pep582 https://pdm.fming.dev/latest/#virtualenv-and-pep-582
+PDM supports ``venv`` so in order to setup PDM with IDE you need to create a new virtual environment and point your IDE to it.
 
-PyCharm supports only venv way, so in case you want to use pep582 with ``__pypackages__`` you need to setup it manually.
+Run ``pdm sync``. It will create ``.venv`` directory with virtual environment.
+
+Point your IDE to this virtual environment and you are good to go.
+
+In PyCharm you can also mark some directories as excluded to speed up indexing and autocompletion, and to make search ignore venv.
 
 #. Open PyCharm Settings -> Project Structure
-#. Mark ``__pypackages__`` as Excluded
-#. Mark ``__pypackages__/<python_version>/lib`` both as `Excluded` (to exclude files from search) and `Sources` (to enable autocompletion)
+#. Mark ``.venv`` as Excluded
+#. Mark ``.venv/lib/<python_version>/site-packages`` both as `Excluded` (to exclude files from search) and `Sources` (to enable autocompletion)
 
-Pdm also provides how-to guides on how to configure other IDE/editors https://pdm.fming.dev/latest/usage/pep582
+Pdm also provides how-to guides on how to configure other IDE/editors https://pdm-project.org/latest/usage/venv/
 
+Integrate with ``pyright``
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Pyright is a static type checker for Python and is used many in ``VSCode`` and `` integrate it with your IDE.
 Changelog
 ~~~~~~~~~
 

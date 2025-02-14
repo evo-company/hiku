@@ -27,3 +27,4 @@ results.md
 htmlcov
 .DS_Store
 pyrightconfig.json
+.python-version

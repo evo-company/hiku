@@ -34,10 +34,10 @@ commands:
     depends: [_build-base]
     cmd: docker build -t hiku-docs -f Dockerfile --target docs .
 
-  _build-tests:
+  _build-test:
     description: Build docker image for test
     depends: [_build-base]
-    cmd: docker build -t hiku-tests -f Dockerfile --target tests .
+    cmd: docker build -t hiku-test -f Dockerfile --target test . --progress=plain
 
   _build-dev:
     description: Build docker image for dev
@@ -51,22 +51,22 @@ commands:
 
   test:
     description: Run tests
-    depends: [_build-tests]
+    depends: [_build-test]
     cmd: [docker compose, run, --rm, test]
 
   test-pg:
     description: Run tests with pg
-    depends: [_build-tests]
+    depends: [_build-test]
     cmd: [docker compose, run, --rm, test-pg]
 
   test-tox:
     description: Run tests using tox
-    depends: [_build-tests]
+    depends: [_build-test]
     cmd: docker compose run --rm test tox
 
   bench:
     description: Run benchmarks
-    depends: [_build-tests]
+    depends: [_build-test]
     cmd: docker compose run --rm test-base tests/benchmarks --benchmark-enable $@
 
   flake:
@@ -112,8 +112,14 @@ commands:
       docker compose run --rm federation-compatibility-server dump
       export APOLLO_ELV2_LICENSE=accept
 
-      npx @apollo/federation-subgraph-compatibility docker \
+      echo "Running compatibility test..."
+      npx -y @apollo/federation-subgraph-compatibility docker \
         --compose ./examples/federation-compatibility/docker-compose.yml \
         --path /graphql \
         --schema ./examples/federation-compatibility/products.graphql \
+        --failOnRequired \
         --debug
+      
+  lock:
+    description: Lock dependencies
+    cmd: pdm lock --update-reuse -v -S inherit_metadata

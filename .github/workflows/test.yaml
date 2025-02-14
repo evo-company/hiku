@@ -6,12 +6,16 @@ on:
   # Trigger the workflow on any pull request
   pull_request:
 
+env:
+  PDM_VERSION: 2.22.3
+  PYTHON_VERSION: 3.9
+
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -19,19 +23,19 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Set up PDM
-        run: pip install pdm==2.10.4
+        run: pip install pdm==${{ env.PDM_VERSION }}
       - name: Install dependencies
         run: |
           pdm sync -d -G test -G dev
           pip install tox tox-pdm tox-gh-actions
       - name: Run flake8
-        if: startsWith(matrix.python-version, '3.8')
+        if: ${{ matrix.python-version == env.PYTHON_VERSION }}
         run: pdm run flake
       - name: Run mypy
-        if: startsWith(matrix.python-version, '3.8')
+        if: ${{ matrix.python-version == env.PYTHON_VERSION }}
         run: pdm run mypy
       - name: Run black
-        if: startsWith(matrix.python-version, '3.8')
+        if: ${{ matrix.python-version == env.PYTHON_VERSION }}
         run: pdm run fmt --check
       - name: Run unit tests
         run: tox run -- --cov-report=term

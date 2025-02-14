@@ -2,6 +2,11 @@ name: Release
 on:
   push:
     tags: ["v*"]
+    
+env:
+  PDM_VERSION: 2.22.3
+  PYTHON_VERSION: 3.9
+  
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -11,7 +16,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v4
         with:
-          python-version: "3.8"
+          python-version: ${{ env.PYTHON_VERSION }}
       - name: Check prerelease
         id: check_version
         run: |
@@ -38,6 +43,6 @@ jobs:
           draft: false
           prerelease: ${{ steps.check_version.outputs.PRERELEASE }}
       - name: Set up PDM
-        run: pip install pdm==2.10.4
+        run: pip install pdm== ${{ env.PDM_VERSION }}
       - name: Publish package distributions to PyPI
         run: pdm publish -u "__token__" -P ${{ secrets.TWINE_PASSWORD }}

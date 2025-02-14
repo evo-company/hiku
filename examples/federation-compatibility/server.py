@@ -613,7 +613,7 @@ if __name__ == "__main__":
     """
     Run server: python3 ./examples/federation-compatibility/server.py
     Dump schema: python3 ./examples/federation-compatibility/ dump
-    Federation Compatibility test: ./examples/federation-compatibility/run_compatibility_test.sh  # noqa
+    Federation Compatibility test: lets federation-compatibility-test
     """
     if len(sys.argv) > 1 and sys.argv[1] == "dump":
         dump()

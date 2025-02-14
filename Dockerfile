@@ -1,14 +1,15 @@
-FROM python:3.8.18-slim as base
+FROM python:3.9-slim as base
 
 WORKDIR /work
 
 ENV PIP_VERSION=23.1.2
-ENV PDM_VERSION=2.7.4
-ENV PDM_USE_VENV=no
-ENV PYTHONPATH=/work/__pypackages__/3.8/lib
+ENV PDM_VERSION=2.22.3
+ENV UV_VERSION=0.5.31
+ENV PYTHON_VERSION=3.9
 
 RUN apt-get update && apt-get install -y libpq-dev && \
-  pip install --upgrade pip==${PIP_VERSION} && pip install pdm==${PDM_VERSION}
+  # install base python deps
+  pip install --upgrade pip==${PIP_VERSION} && pip install pdm==${PDM_VERSION} && pip install uv==${UV_VERSION}
 
 # for pyproject.toml to extract version
 COPY hiku/__init__.py ./hiku/__init__.py
@@ -18,21 +19,26 @@ COPY README.rst .
 COPY pyproject.toml .
 COPY pdm.lock .
 
-RUN pdm sync --prod
+RUN pdm export --prod -o requirements-base.txt -f requirements && \
+  uv pip install --system -r requirements-base.txt --no-deps --no-cache-dir --index-strategy unsafe-best-match
 
 FROM base as dev
 
-RUN pdm sync -G dev
+RUN pdm export -G dev -G lint -o requirements-dev.txt -f requirements && \
+  uv pip install --system -r requirements-dev.txt --no-deps --no-cache-dir --index-strategy unsafe-best-match
+
+FROM base AS test
+
+RUN pdm export -G dev -G test -o requirements-test.txt -f requirements && \
+  uv pip install --system -r requirements-test.txt --no-deps --no-cache-dir --index-strategy unsafe-best-match && \
+  uv pip install tox tox-pdm
 
 FROM base as docs
 
-RUN pdm sync -G dev -G docs
-
-FROM base as tests
-
-RUN pdm sync -G test -G dev
-RUN python3 -m pip install tox tox-pdm
+RUN pdm export -G dev -G docs -o requirements-docs.txt -f requirements && \
+  uv pip install --system -r requirements-docs.txt --no-deps --no-cache-dir --index-strategy unsafe-best-match
 
 FROM base as examples
 
-RUN pdm sync -d -G dev -G examples
+RUN pdm export -G dev -G examples -o requirements-examples.txt -f requirements && \
+  uv pip install --system -r requirements-examples.txt --no-deps --no-cache-dir --index-strategy unsafe-best-match
