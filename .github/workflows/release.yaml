@@ -43,6 +43,6 @@ jobs:
           draft: false
           prerelease: ${{ steps.check_version.outputs.PRERELEASE }}
       - name: Set up PDM
-        run: pip install pdm== ${{ env.PDM_VERSION }}
+        run: pip install pdm==${{ env.PDM_VERSION }}
       - name: Publish package distributions to PyPI
         run: pdm publish -u "__token__" -P ${{ secrets.TWINE_PASSWORD }}
