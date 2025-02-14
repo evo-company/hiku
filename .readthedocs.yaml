@@ -5,7 +5,7 @@ build:
   tools:
     python: "3.10"
   commands:
-    - pip install pdm==2.7.4
+    - pip install pdm==2.22.3
     - pdm sync -G dev -G docs
     - pdm run docs
     - mkdir -p _readthedocs

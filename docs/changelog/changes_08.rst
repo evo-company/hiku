@@ -25,7 +25,8 @@ Changes in 0.8
 - Drop ``GraphQLError.errors`` field. Earlier we used to store multiple errors in single ``GraphQLError`` but now its one message - one ``GraphQLError``.
 - Add ``GraphQLError.message`` field
 - Dropped support for ``Python 3.7``, which ended support on 2023-06-27
-- Fix: now it is possible to alias record field:
+- Dropped support for ``Python 3.8``, which ended support on 2024-10-07
+- Fix: now it is possible to alias record field
 
   .. code-block:: python
 
@@ -56,3 +57,4 @@ Backward-incompatible changes
 - Drop `GraphQLError.errors` field
 - Add `GraphQLError.message` field
 - Dropped support for Python 3.7, which ended support on 2023-06-27
+- Dropped support for Python 3.8, which ended support on 2024-10-07
