@@ -1,14 +1,15 @@
-FROM python:3.8.18-slim as base
+FROM python:3.9-slim
 
 WORKDIR /work
 
 ENV PIP_VERSION=23.1.2
-ENV PDM_VERSION=2.7.4
-ENV PDM_USE_VENV=no
-ENV PYTHONPATH=/work/__pypackages__/3.8/lib
+ENV PDM_VERSION=2.22.3
+ENV UV_VERSION=0.5.31
+ENV PYTHON_VERSION=3.9
 
-RUN apt-get update && apt-get install -y libpq-dev gcc && \
-  pip install --upgrade pip==${PIP_VERSION} && pip install pdm==${PDM_VERSION}
+RUN apt-get update && apt-get install -y libpq-dev && \
+  # install base python deps
+  pip install --upgrade pip==${PIP_VERSION} && pip install pdm==${PDM_VERSION} && pip install uv==${UV_VERSION}
 
 # for pyproject.toml to extract version
 COPY hiku/__init__.py ./hiku/__init__.py
@@ -18,7 +19,8 @@ COPY README.rst .
 COPY pyproject.toml .
 COPY pdm.lock .
 
-RUN pdm sync -G dev -G examples
+RUN pdm export -G dev -G examples -o requirements-examples.txt -f requirements && \
+  uv pip install --system -r requirements-examples.txt --no-deps --no-cache-dir --index-strategy unsafe-best-match
 
 COPY examples/federation-compatibility/server.py .
 

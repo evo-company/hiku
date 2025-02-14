@@ -27,6 +27,8 @@ Changes in 0.8
 - Dropped support for ``Python 3.7``, which ended support on 2023-06-27
 - Dropped support for ``Python 3.8``, which ended support on 2024-10-07
 - Fix: now it is possible to alias record field
+- Update pdm and migrate from pep528 to venv
+- Use ``uv`` for faster package installation
 
   .. code-block:: python
 
