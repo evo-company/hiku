@@ -86,6 +86,31 @@ class Enum(BaseEnum):
 
 
 class EnumFromBuiltin(BaseEnum, Generic[E]):
+    """Enum from Python's built-in Enum class.
+
+    When serialized, keys are used to represent possible values of graphql enum.
+    When parsed, self.enum_cls[value] is used to get enum value.
+
+    Example with default name::
+
+        class MyEnum(enum.Enum):
+            FOO = 1
+            BAR = 2
+
+        enum = Enum.from_builtin(MyEnum)
+
+        # is equivalent to graphql enum ``enum MyEnum { FOO BAR }``
+
+        assert enum.parse('FOO') == MyEnum.FOO
+        assert enum.serialize(MyEnum.FOO) == 'FOO'
+
+        Graph(..., enums=[enum])
+
+    Example with custom name::
+
+        enum = Enum.from_builtin(MyEnum, "MyCustomEnum")
+    """
+
     def __init__(
         self, enum_cls: EM, name: str, description: Optional[str] = None
     ):
@@ -93,11 +118,14 @@ class EnumFromBuiltin(BaseEnum, Generic[E]):
         self.enum_cls = enum_cls
 
     def parse(self, value: Any) -> E:
+        if isinstance(value, self.enum_cls):
+            return value
+
         try:
-            return self.enum_cls(value)
-        except ValueError:
+            return self.enum_cls[value]
+        except KeyError:
             raise TypeError(
-                "Enum '{}' can not represent value: {!r}".format(
+                "Enum '{}' can not represent value: {!r}.".format(
                     self.name, value
                 )
             )

@@ -29,7 +29,7 @@ Define enum
 
 .. tab:: Enum from string
 
-  The simplest way to create enum in `hiku` from a list of strings:
+  The simplest way to create enum in `hiku` is from a list of strings:
 
   .. code-block:: python
 
@@ -52,13 +52,19 @@ Define enum
 
       Enum.from_builtin(Status)
 
-  In this example:
+  Note that when using ``EnumFromBuiltin``, possible values taken from names of enum variants, not values.
 
-  - ``EnumFromBuiltin`` will use ``Enum.__name__`` as a enum name.
-  - ``EnumFromBuiltin`` will use ``Enum.__members__`` to get a list of possible values.
-  - ``EnumFromBuiltin`` will use ``member.name`` to get a value name:
+  In our example it will be [``ACTIVE``, ``DELETED``] and not [``active``, ``deleted``]
 
-  So this python enum:
+  By default, if custom name is not provided, ``Enum.__name__`` will be used as a enum name.
+
+  If you want to specify different name you can pass ``name`` argument to ``Enum.from_builtin`` method:
+
+  .. code-block:: python
+
+      Enum.from_builtin(Status, name='User_Status')
+
+  Lets look at the example where we have python enum with values as integers:
 
   .. code-block:: python
 
@@ -71,12 +77,6 @@ Define enum
   .. code-block:: python
 
       enum Status { ACTIVE, DELETED }
-
-  If you want to specify different name you can pass ``name`` argument to ``Enum.from_builtin`` method:
-
-  .. code-block:: python
-
-      Enum.from_builtin(Status, name='User_Status')
 
   .. note::
 
@@ -95,6 +95,9 @@ Define enum
 
 Use enum
 --------
+
+Use enum as an output type
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Lets look at the full example on how to use enum type in `hiku`:
 
@@ -134,7 +137,7 @@ Lets look at the full example on how to use enum type in `hiku`:
         ]),
     ], enums=enums)
 
-Lets decode the example above:
+In the example above:
 
 - ``Enum`` type is defined with a name and a list of possible values.
 - ``User.status`` field has type ``EnumRef['Status']`` which is a reference to the ``Status`` enum type.
@@ -161,48 +164,10 @@ We will get the following result:
     }
 
 
-Custom Enum type
-----------------
+Use enum as an input type
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can also create custom enum type by subclassing ``hiku.enum.BaseEnum`` class:
-
-.. code-block:: python
-
-    from hiku.enum import BaseEnum
-
-    class IntToStrEnum(BaseEnum):
-        _MAPPING = {1: 'one', 2: 'two', 3: 'three'}
-        _INVERTED_MAPPING = {v: k for k, v in _MAPPING.items()}
-
-        def __init__(self, name: str, values: list[int], description: str = None):
-            super().__init__(name, [_MAPPING[v] for v in values], description)
-
-        def parse(self, value: str) -> int:
-            return self._INVERTED_MAPPING[value]
-
-        def serialize(self, value: int) -> str:
-            return self._MAPPING[value]
-
-Enum serialization
-------------------
-
-- ``Enum`` values are serialized into strings. If value is not in the list of possible values, then ``hiku`` will raise an error.
-- ``EnumFromBuiltin`` values which are instances of ``Enum`` class are serialized into strings by calling **.name** on enum value. If value is not an instance of ``Enum`` class, then ``hiku`` will raise an error.
-
-You can also define custom serialization for your enum type by subclassing ``hiku.enum.BaseEnum`` class.
-
-Enum parsing
-------------
-
-- ``Enum`` parses values into strings. If value is not in the list of possible values, then ``hiku`` will raise an error.
-- ``EnumFromBuiltin`` parses values into enum values by calling **Enum(value)**. If value is not in the list of possible values, then ``hiku`` will raise an error.
-
-You can also define custom parsing for your enum type by subclassing ``hiku.enum.BaseEnum`` class.
-
-Enum as an input argument
--------------------------
-
-You can use enum as an field input argument:
+You can use enum as an input type for a field:
 
 .. code-block:: python
 
@@ -268,3 +233,45 @@ The result will be:
         "id": "2",
         "status": "DELETED",
     }]
+
+When accessing the ``status`` option in ``link_users`` resolver, it will be already parsed into enum instance, so you do not have to create an instance if enum yourself.
+
+If enum variant is invalid, hiku will raise a validation error.
+
+Custom Enum type
+----------------
+
+You can also create custom enum type by subclassing ``hiku.enum.BaseEnum`` class in order to implement custom parsing/serialization logic:
+
+.. code-block:: python
+
+    from hiku.enum import BaseEnum
+
+    class IntToStrEnum(BaseEnum):
+        _MAPPING = {1: 'one', 2: 'two', 3: 'three'}
+        _INVERTED_MAPPING = {v: k for k, v in _MAPPING.items()}
+
+        def __init__(self, name: str, values: list[int], description: str = None):
+            super().__init__(name, [_MAPPING[v] for v in values], description)
+
+        def parse(self, value: str) -> int:
+            return self._INVERTED_MAPPING[value]
+
+        def serialize(self, value: int) -> str:
+            return self._MAPPING[value]
+
+Enum serialization
+------------------
+
+- ``Enum`` values are serialized into strings. If value is not in the list of possible values, then ``hiku`` will raise an error.
+- ``EnumFromBuiltin`` values which are instances of ``Enum`` class are serialized into strings by calling **.name** on enum value. If value is not an instance of ``Enum`` class, then ``hiku`` will raise an error.
+
+You can also define custom serialization for your enum type by subclassing ``hiku.enum.BaseEnum`` class.
+
+Enum parsing
+------------
+
+- ``Enum`` parses values into strings. If value is not in the list of possible values, then ``hiku`` will raise an error.
+- ``EnumFromBuiltin`` parses values into enum values by calling **Enum(value)**. If value is not in the list of possible values, then ``hiku`` will raise an error.
+
+You can also define custom parsing for your enum type by subclassing ``hiku.enum.BaseEnum`` class.

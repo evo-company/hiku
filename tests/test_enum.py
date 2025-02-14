@@ -59,6 +59,10 @@ def test_serialize_enum_field_correct(enum, status):
                 return [status]
             elif fname == 'maybe_status':
                 return None
+            elif fname == 'maybe_statuses':
+                return [status]
+            elif fname == 'no_statuses':
+                return None
 
         for id_ in ids:
             yield [get_field(f.name, id_) for f in fields]
@@ -68,6 +72,8 @@ def test_serialize_enum_field_correct(enum, status):
             Field('id', Integer, resolve_user_fields),
             Field('status', EnumRef['UserStatus'], resolve_user_fields),
             Field('statuses', Sequence[EnumRef['UserStatus']], resolve_user_fields),
+            Field('no_statuses', Optional[Sequence[EnumRef['UserStatus']]], resolve_user_fields),
+            Field('maybe_statuses', Optional[Sequence[EnumRef['UserStatus']]], resolve_user_fields),
             Field('maybe_status', Optional[EnumRef['UserStatus']], resolve_user_fields),
         ]),
         Root([
@@ -82,6 +88,8 @@ def test_serialize_enum_field_correct(enum, status):
         status
         statuses
         maybe_status
+        maybe_statuses
+        no_statuses
       }
     }
     """
@@ -92,6 +100,8 @@ def test_serialize_enum_field_correct(enum, status):
             'status': 'ACTIVE',
             'statuses': ['ACTIVE'],
             'maybe_status': None,
+            'maybe_statuses': ['ACTIVE'],
+            'no_statuses': None,
         }
     }
 
@@ -168,16 +178,51 @@ def test_root_field_enum():
     }
 
 
+class StrStatusLowerCaseValues(PyEnum):
+    ACTIVE = "active"
+    DELETED = "deleted"
+
+
+class IntStatus(PyEnum):
+    ACTIVE = 1
+    DELETED = 2
+
+
 @pytest.mark.parametrize("enum, status", [
-    (Enum.from_builtin(Status, 'UserStatus'), Status.DELETED),
-    (Enum('UserStatus', ['ACTIVE', 'DELETED']), 'DELETED'),
+    pytest.param(
+        Enum('UserStatus', ['ACTIVE', 'DELETED']), 'DELETED',
+        id="simple hiku enum"
+    ),
+    pytest.param(
+        Enum.from_builtin(Status, 'UserStatus'), Status.DELETED,
+        id="builtin enum, keys same as values"
+    ),
+    pytest.param(
+        Enum.from_builtin(StrStatusLowerCaseValues, 'UserStatus'), StrStatusLowerCaseValues.DELETED,
+        id="builtin enum, values are lowercased keys"
+    ),
+    pytest.param(
+        Enum.from_builtin(IntStatus, 'UserStatus'), IntStatus.DELETED,
+        id="builtin enum, int values"
+    ),
 ])
 def test_parse_enum_argument(enum, status):
+    """Test that no matter what enum values are,
+    they are not used for parsing/serialization, only keys are used.
+    """
     def link_user(opt):
         if opt['status'] == status:
             return 1
         raise ValueError(
             'Unknown status: {}'.format(opt['status'])
+        )
+
+    def link_users(opt):
+        if status in opt['statuses']:
+            return [1]
+
+        raise ValueError(
+            'Unknown status: {}'.format(opt['statuses'])
         )
 
     @listify
@@ -206,23 +251,56 @@ def test_parse_enum_argument(enum, status):
                     Option('status', EnumRef['UserStatus'], default=Status.ACTIVE)
                 ]
             ),
+            Link(
+                'users',
+                Sequence[TypeRef['User']],
+                link_users,
+                requires=None,
+                options=[
+                    Option('statuses', Optional[Sequence[EnumRef['UserStatus']]], default=None)
+                ]
+            ),
         ]),
     ], enums=[enum])
 
-    result = execute(graph, read("query GetUser { user(status: DELETED) { id status } }"))
+    result = execute(
+        graph,
+        read(
+            """
+            query GetUserAndUsers { 
+                user(status: DELETED) { id status } 
+                users(statuses: [DELETED]) { id status } 
+            }
+            """
+        )
+    )
     assert result.data == {
         'user': {
             'id': 1,
             'status': 'DELETED',
-        }
+        },
+        'users': [{
+            'id': 1,
+            'status': 'DELETED',
+        }]
     }
 
 
-@pytest.mark.parametrize("enum, status", [
-    (Enum.from_builtin(Status, 'UserStatus'), Status.ACTIVE),
-    (Enum('UserStatus', ['ACTIVE', 'DELETED']), 'ACTIVE'),
+@pytest.mark.parametrize("enum, status, default", [
+    pytest.param(
+        Enum.from_builtin(Status, 'UserStatus'), Status.ACTIVE, Status.ACTIVE,
+        id="builtin enum, default is a enum value"
+    ),
+    pytest.param(
+        Enum.from_builtin(Status, 'UserStatus'), Status.ACTIVE, "ACTIVE",
+        id="builtin enum, default is a string"
+    ),
+    pytest.param(
+        Enum('UserStatus', ['ACTIVE', 'DELETED']), 'ACTIVE', "ACTIVE",
+        id="simple enum, default is a string"
+    )
 ])
-def test_parse_enum_argument_default_value(enum, status):
+def test_parse_enum_argument_default_value(enum, status, default):
     def link_user(opt):
         if opt['status'] == status:
             return 1
@@ -253,7 +331,7 @@ def test_parse_enum_argument_default_value(enum, status):
                 link_user,
                 requires=None,
                 options=[
-                    Option('status', EnumRef['UserStatus'], default=status)
+                    Option('status', EnumRef['UserStatus'], default=default)
                 ]
             ),
         ]),
