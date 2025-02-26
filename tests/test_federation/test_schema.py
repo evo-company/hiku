@@ -9,7 +9,6 @@ from hiku.federation.graph import FederatedNode, Graph
 from hiku.federation.schema import Schema
 from hiku.graph import Field, Link, Node, Root, Union
 from hiku.types import Integer, Optional, String, TypeRef
-from hiku.utils import to_immutable_dict
 
 from tests.test_federation.utils import (
     GRAPH,

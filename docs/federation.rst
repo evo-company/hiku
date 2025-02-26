@@ -4,34 +4,37 @@ Apollo Federation
 What is Apollo Federation
 -------------------------
 
-Apollo Federation is a set of open-source tools that allow you to compose multiple GraphQL services into a single data graph.
+Apollo Federation is a technology to implement distributed GraphQL by composing multiple subgraphs into one supergraph.
 
-It is a method of splitting a large GraphQL schema into smaller, more manageable schemas that can be composed together to form a single data graph.
+In the terms of Apollo Federation:
 
-Hiku includes integrated support for both Federation v1 and v2, enabling you to expose your Hiku graph as a federated subgraph.
+#. A subgraph is a standalone GraphQL server with enabled federation support. Hiku supports Apollo Federation and can be used to implement a subgraph.
+#. A supergraph is a composition of multiple subgraphs into a single data graph. To run a supergraph, you need to use special gateway (or sometimes called router) that will route requests to the appropriate subgraph and combine the results into a unified response.
 
-Although Hiku offers support for Apollo Federation v1, it is not recommended for use due to its deprecation in favor of v2.
+Hiku supports both Federation v1 and v2, but it is recommended to use v2 as v1 is deprecated.
 
 For more details about Apollo Federation v2, please refer to `Apollo GraphQL Federation v2 Docs <https://www.apollographql.com/docs/federation/federation-2/new-in-federation-2/>`_.
 
 The specification for subgraphs can be found here: `Apollo GraphQL Subgraph Spec <https://www.apollographql.com/docs/federation/subgraph-spec/>`_.
 
-How it Works in General
------------------------
+How it Works
+------------
 
-In a federated architecture, there are two main components: the router and the subgraphs. The router is tasked with composing the subgraphs into a supergraph schema. It routes requests to the appropriate subgraph and combines the results from these subgraphs into a unified response.
+In a federated architecture, there are two main components: the gateway/router and the subgraphs.
 
-Hiku is utilized to implement a subgraph.
+In order to run supergraph you need to compose one.
 
 There are two primary methods to compose a supergraph:
 
-* Through managed federation in Apollo Studio, which is done automatically.
-* Locally, using the Rover CLI, which is a manual process.
+* Using `schema registry` (managed federation in Apollo Studio is one of them), where composition happens automatically when we push new subgraph schema
+* Manually, using the Rover CLI, by providing a configuration file with subgraph URLs and routing URLs. The Rover CLI will then fetch remote services and compose schema into a file.
+
+Then you can run gateway/router with the composed schema and router should start routing requests to the appropriate subgraph and combine the results into a unified response.
 
 For more detailed information, please refer to the `Apollo GraphQL Federation Setup Guide <https://www.apollographql.com/docs/federation/quickstart/setup>`_.
 
-Guide to Setup Federation Subgraph
-----------------------------------
+Setup Federation Subgraph
+-------------------------
 
 .. note:: You can find the source code for this example `on GitHub <https://github.com/evo-company/hiku/blob/master/examples/graphql_federation_v2.py>`_.
 
@@ -71,113 +74,48 @@ Shopping Cart Service
        cart(id: ID!): ShoppingCart
    }
 
-Now let's implement the Order service using Hiku:
+Now let's implement the ``Order`` service using Hiku:
 
-.. code-block:: python
+.. literalinclude:: federation/order_service.py
+    :lines: 1-76
 
-    from flask import Flask, request, jsonify
-    from hiku.graph import Graph, Root, Field, Link, Node, Option
-    from hiku.types import ID, Integer, TypeRef, String, Optional, Sequence
-    from hiku.executors.sync import SyncExecutor
-    from hiku.federation.schema import Schema
-    from hiku.federation.directives import Key
+* Using ``hiku.federation.graph.Graph`` instead of ``hiku.graph.Graph``
+* Using ``hiku.federation.graph.FederatedNode`` instead of ``hiku.graph.Node``
+* Also using ``hiku.federation.schema.Schema`` instead of ``hiku.schema.Schema``
+* By default, the federation version is set to 2. To enable v1, you need to pass ``federation_version=1`` to the ``Schema`` constructor.
 
-    QUERY_GRAPH = Graph([
-        Node('Order', [
-            Field('id', ID, order_fields_resolver]),
-            Field('status', Integer, order_fields_resolver]),
-            Field('cartId', Integer, order_fields_resolver]),
-        ], directives=[Key('id'), Key('cartId')]),
-        Root([
-            Link(
-                'order',
-                Optional[TypeRef['Order']],
-                direct_link_by_id,
-                requires=None,
-                options=[
-                    Option('id', Integer)
-                ],
-            ),
-        ]),
-    ])
+We define the ``Order`` type with the ``@key`` directive. This directive specifies the primary key of the type.
 
-    app = Flask(__name__)
+In our case, ``id`` is the primary key of the ``Order`` type.
+``Router`` now knows, that in order for it to fetch an order, it needs to provide the ``id`` field value when requesting ``Order`` service.
+``Router`` then joins different parts of data from different subgraphs into one response using the ``Key``.
 
-    schema = Schema(SyncExecutor(), QUERY_GRAPH)
+A type can have many ``Key`` directives. We define ``cartId`` as another key.
+This will allow us to join ``Order`` and ``ShoppingCart`` types together.
 
-    @app.route('/graphql', methods={'POST'})
-    def handle_graphql():
-        data = request.get_json()
-        result = schema.execute_sync(data)
-        resp = jsonify({"data": result.data})
-        return resp
+Also we define ``resolve_reference`` function which in our case is ``resolve_order_reference``.
+A ``resolve_reference`` function works very similar to ``Link`` resolver -
+it returns a list of values that will be passed to ``Node`` as a root values.
 
-    if __name__ == '__main__':
-        app.run(host='0.0.0.0', port=4001)
+.. note:: Since we want to pass representations as is to ``Node`, we need to convert each representation to ``ImmutableDict`` because ``resolve_reference`` function must return **hashable** values just like ``Link`` resolver.
 
-Note that by default, v2 of Federation is used. To enable v1, you need to pass `federation_version=1` to the `Engine` constructor.
+Then in ``order_fields_resolver`` we fetch orders either by ``id`` or by ``cartId``.
 
-We define the `Order` type with the `@key` directive. This directive specifies the primary key of the type. So in our case, `id` is the primary key of the `Order` type. The router now knows to fetch an order it needs to provide the `id` field value. It will then join different parts of data from different subgraphs into one type using the Key. A type can have many `Key` directives, and we define `cartId` as another key. This will allow us to join `Order` and `ShoppingCart` types together.
+.. note:: In the example above, we fetch orders by one. In real-world applications, you would fetch orders in butches to avoid N+1.
 
-Next, let's implement the ShoppingCart service using Hiku:
+Next, let's implement the ``ShoppingCart`` service using Hiku:
 
-.. code-block:: python
-
-    from flask import Flask, request, jsonify
-    from hiku.graph import Graph, Root, Field, Link, Node, Option
-    from hiku.types import ID, Integer, TypeRef, String, Optional, Sequence
-    from hiku.executors.sync import SyncExecutor
-    from hiku.federation.schema import Schema
-    from hiku.federation.directives import Key
-
-    QUERY_GRAPH = Graph([
-        Node('ShoppingCart', [
-            Field('id', ID, cart_fields_resolver]),
-            Link('items', Sequence[TypeRef['ShoppingCartItem']], link_cart_items, requires='id'),
-        ]),
-        Node('ShoppingCartItem', [
-            Field('id', ID, cart_item_fields_resolver]),
-            Field('productName', String, cart_item_fields_resolver]),
-            Field('price', Integer, cart_item_fields_resolver]),
-            Field('quantity', Integer, cart_item_fields_resolver]),
-        ]),
-        Node('Order', [
-            Field('cartId', ID, order_fields_resolver]),
-            Link('cart', TypeRef['ShoppingCart'], link_order_to_cart, requires='cartId'),
-        ], directives=[Key('cartId')]),
-        Root([
-            Link(
-                'cart',
-                Optional[TypeRef['ShoppingCart']],
-                direct_link_by_id,
-                requires=None,
-                options=[
-                    Option('id', Integer)
-                ],
-            ),
-        ]),
-    ])
-
-    app = Flask(__name__)
-
-    schema = Schema(SyncExecutor(), QUERY_GRAPH)
-
-    @app.route('/graphql', methods={'POST'})
-    def handle_graphql():
-        data = request.get_json()
-        result = schema.execute_sync(data)
-        resp = jsonify({"data": result.data})
-        return resp
-
-    if __name__ == '__main__':
-        app.run(host='0.0.0.0', port=4002)
+.. literalinclude:: federation/cart_service.py
+    :lines: 1-116
 
 
-In the ShoppingCart service, we define the `ShoppingCart` and `ShoppingCartItem` types. But also, we define a stub `Order` type. This is needed because we want to extend the `Order` type with a `cart` field. In the `Order` type, we specify `cartId` as a key. This will allow us to join `Order` and `ShoppingCart` types together.
+In the ``ShoppingCart`` service, we define the ``ShoppingCart`` and ``ShoppingCartItem`` types.
+But also, we define a stub ``Order`` type. This is needed because we want to extend the ``Order`` type with a ``cart`` field.
+In the ```Order`` type, we specify ``cartId`` as a key. This will allow us to join ``Order`` and ``ShoppingCart`` types together.
 
 Now we need to compose subgraph schemas into a supergraph schema and run an instance of the router.
 
-Start the `Order` service on port 4001 and the `ShoppingCart` service on port 4002.
+Start the ``Order`` service on port 4001 and the ``ShoppingCart`` service on port 4002.
 
 Apollo Router
 -------------
