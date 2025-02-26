@@ -1,4 +1,6 @@
 import asyncio
+import inspect
+from unittest.mock import Mock
 
 import pytest
 
@@ -58,6 +60,14 @@ async def test_awaitable_check__sync_async():
     assert await executor.submit(gen)
     assert await executor.submit(gen2)
     assert (await executor.submit(coroutine)) == "smiting"
+
+
+@pytest.mark.asyncio
+async def test_awaitable_check__sync_called_once():
+    executor = AsyncIOExecutor()
+    func_mock = Mock(side_effect=func)
+    assert await executor.submit(func_mock) is None
+    func_mock.assert_called_once()
 
 
 @pytest.mark.asyncio

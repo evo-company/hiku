@@ -29,12 +29,8 @@ class AsyncIOExecutor(BaseAsyncExecutor):
     def __init__(self, deny_sync: bool = False) -> None:
         self.deny_sync = deny_sync
 
-    async def _wrapper(self, fn: Callable, *args: Any, **kwargs: Any) -> Any:
-        result = fn(*args, **kwargs)
-        if inspect.isawaitable(result):
-            return await result
-        else:
-            return result
+    async def _wrapper(self, result: Any) -> Any:
+        return result
 
     def submit(self, fn: Callable, *args: Any, **kwargs: Any) -> Task:
         loop = get_running_loop()
@@ -46,7 +42,7 @@ class AsyncIOExecutor(BaseAsyncExecutor):
                     "{!r} returned non-awaitable object {!r}".format(fn, coro)
                 )
 
-            return loop.create_task(self._wrapper(fn, *args, **kwargs))
+            return loop.create_task(self._wrapper(coro))
 
         coro = cast(Coroutine, coro)
         return loop.create_task(coro)
