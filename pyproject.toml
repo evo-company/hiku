@@ -94,6 +94,7 @@ example = "python examples/{args:graphql_flask}.py"
 [tool.pytest.ini_options]
 addopts = "--tb=native --benchmark-disable"
 testpaths = ["tests", "tests_pg"]
+asyncio_default_fixture_loop_scope = "session"
 
 filterwarnings = [
   "once::DeprecationWarning",

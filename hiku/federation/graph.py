@@ -1,4 +1,5 @@
 import typing as t
+from collections import defaultdict
 from inspect import isawaitable
 
 from hiku.federation.version import DEFAULT_FEDERATION_VERSION
@@ -40,6 +41,19 @@ class FederatedNode(Node):
             name, fields, description=description, directives=directives
         )
         self.resolve_reference = resolve_reference
+
+
+class ReferenceEntry:
+    __slots__ = ("index", "typename", "representation")
+
+    def __init__(self, index: int, typename: str, representation: dict):
+        self.index = index
+        self.typename = typename
+        self.representation = representation
+
+
+def to_reference(entry: ReferenceEntry) -> tuple[dict, type[TypeRef]]:
+    return entry.representation, TypeRef[entry.typename]
 
 
 class GraphInit(GraphTransformer):
@@ -86,17 +100,40 @@ class GraphInit(GraphTransformer):
             if not representations:
                 return []
 
-            typ = representations[0]["__typename"]
+            repr_by_type = defaultdict(list)
+            for idx, rep in enumerate(representations):
+                typename = rep["__typename"]
+                if typename not in self.type_to_resolve_reference_map:
+                    raise TypeError(
+                        'Type "{}" must have "reference_resolver"'.format(
+                            typename
+                        )
+                    )
 
-            if typ not in self.type_to_resolve_reference_map:
-                raise TypeError(
-                    'Type "{}" must have "reference_resolver"'.format(typ)
+                # store index along with representation to sort references later
+                repr_by_type[typename].append((idx, rep))
+
+            references: list[ReferenceEntry] = []
+
+            for typename, type_representations in repr_by_type.items():
+                resolve_reference = self.type_to_resolve_reference_map[typename]
+                refs = resolve_reference(
+                    [rep for idx, rep in type_representations]
                 )
+                for (idx, _), ref in zip(type_representations, refs):
+                    # store index alongside reference and type
+                    # in order to sort references later and drop index
+                    references.append(
+                        ReferenceEntry(
+                            index=idx,
+                            typename=typename,
+                            representation=ref,
+                        )
+                    )
 
-            resolve_reference = self.type_to_resolve_reference_map[typ]
-            return [
-                (r, TypeRef[typ]) for r in resolve_reference(representations)
-            ]
+            return list(
+                map(to_reference, sorted(references, key=lambda e: e.index))
+            )
 
         def _asyncify(func: t.Callable) -> t.Callable:
             async def wrapper(*args: t.Any, **kwargs: t.Any) -> t.List[t.Tuple]:

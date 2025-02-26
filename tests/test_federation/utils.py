@@ -140,3 +140,12 @@ def field_resolver(fields, ids):
 
 def link_resolver(ids):
     ...
+
+@listify
+def id_resolver(fields, ids):
+    def get_field(f, id_):
+        if f.name == 'id':
+            return id_
+
+    for id_ in ids:
+        yield [get_field(f, id_) for f in fields]
