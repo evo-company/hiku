@@ -1,17 +1,16 @@
 import typing as t
 from collections import defaultdict
 from inspect import isawaitable
+from hiku.compat import TypeAlias
 
 from hiku.federation.version import DEFAULT_FEDERATION_VERSION
+from hiku.federation.scalars import _Any, FieldSet, LinkImport
+from hiku.federation.utils import get_entity_types
 
 from hiku.engine import pass_context
-
 from hiku.directives import SchemaDirective
 from hiku.enum import BaseEnum
-from hiku.federation.utils import get_entity_types
 from hiku.scalar import Scalar
-from hiku.federation.scalars import _Any, FieldSet, LinkImport
-
 from hiku.types import Optional, Record, Sequence, String, TypeRef, UnionRef
 
 from hiku.graph import (
@@ -26,6 +25,8 @@ from hiku.graph import (
     Union,
 )
 
+RawRef: TypeAlias = t.Any
+
 
 class FederatedNode(Node):
     def __init__(
@@ -35,7 +36,9 @@ class FederatedNode(Node):
         *,
         description: t.Optional[str] = None,
         directives: t.Optional[t.Sequence[SchemaDirective]] = None,
-        resolve_reference: t.Optional[t.Callable] = None,
+        resolve_reference: t.Optional[
+            t.Callable[[list[dict]], list[RawRef]]
+        ] = None,
     ):
         super().__init__(
             name, fields, description=description, directives=directives
@@ -44,16 +47,16 @@ class FederatedNode(Node):
 
 
 class ReferenceEntry:
-    __slots__ = ("index", "typename", "representation")
+    __slots__ = ("index", "typename", "reference")
 
-    def __init__(self, index: int, typename: str, representation: dict):
+    def __init__(self, index: int, typename: str, reference: RawRef):
         self.index = index
         self.typename = typename
-        self.representation = representation
+        self.reference = reference
 
 
 def to_reference(entry: ReferenceEntry) -> tuple[dict, type[TypeRef]]:
-    return entry.representation, TypeRef[entry.typename]
+    return entry.reference, TypeRef[entry.typename]
 
 
 class GraphInit(GraphTransformer):
@@ -92,6 +95,42 @@ class GraphInit(GraphTransformer):
 
         return super(GraphInit, self).visit_node(obj)
 
+    def _group_representations(
+        self, representations: list[dict]
+    ) -> defaultdict[str, list[tuple[int, dict]]]:
+        repr_by_type = defaultdict(list)
+        for idx, rep in enumerate(representations):
+            typename = rep["__typename"]
+            if typename not in self.type_to_resolve_reference_map:
+                raise TypeError(
+                    'Type "{}" must have "reference_resolver"'.format(typename)
+                )
+
+            # store index along with representation to sort references later
+            repr_by_type[typename].append((idx, rep))
+        return repr_by_type
+
+    def _collect_reference_entries(
+        self,
+        typename: str,
+        references: list[RawRef],
+        representations: list[tuple[int, dict]],
+    ) -> t.Iterator[ReferenceEntry]:
+        for (idx, _), ref in zip(representations, references):
+            # store index alongside reference and type
+            # in order to sort references later and drop index
+            yield ReferenceEntry(
+                index=idx,
+                typename=typename,
+                reference=ref,
+            )
+
+    def _execute_resolve_reference(
+        self, typename: str, type_representations: list[tuple[int, dict]]
+    ) -> list[dict]:
+        resolve_reference = self.type_to_resolve_reference_map[typename]
+        return resolve_reference([rep for idx, rep in type_representations])
+
     def entities_link(self) -> Link:
         def entities_resolver(
             options: t.Dict,
@@ -100,60 +139,61 @@ class GraphInit(GraphTransformer):
             if not representations:
                 return []
 
-            repr_by_type = defaultdict(list)
-            for idx, rep in enumerate(representations):
-                typename = rep["__typename"]
-                if typename not in self.type_to_resolve_reference_map:
-                    raise TypeError(
-                        'Type "{}" must have "reference_resolver"'.format(
-                            typename
-                        )
-                    )
+            repr_by_type = self._group_representations(representations)
 
-                # store index along with representation to sort references later
-                repr_by_type[typename].append((idx, rep))
-
-            references: list[ReferenceEntry] = []
+            reference_entries: list[ReferenceEntry] = []
 
             for typename, type_representations in repr_by_type.items():
-                resolve_reference = self.type_to_resolve_reference_map[typename]
-                refs = resolve_reference(
-                    [rep for idx, rep in type_representations]
+                refs = self._execute_resolve_reference(
+                    typename, type_representations
                 )
-                for (idx, _), ref in zip(type_representations, refs):
-                    # store index alongside reference and type
-                    # in order to sort references later and drop index
-                    references.append(
-                        ReferenceEntry(
-                            index=idx,
-                            typename=typename,
-                            representation=ref,
-                        )
+                reference_entries.extend(
+                    self._collect_reference_entries(
+                        typename, refs, type_representations
                     )
+                )
 
             return list(
-                map(to_reference, sorted(references, key=lambda e: e.index))
+                map(
+                    to_reference,
+                    sorted(reference_entries, key=lambda e: e.index),
+                )
             )
 
-        def _asyncify(func: t.Callable) -> t.Callable:
-            async def wrapper(*args: t.Any, **kwargs: t.Any) -> t.List[t.Tuple]:
-                result = []
-                for item in func(*args, **kwargs):
-                    if isawaitable(item[0]):
-                        item[0] = await item[0]
-                    result.append(item)
-                return result
+        async def entities_resolver_async(
+            options: t.Dict,
+        ) -> t.List[t.Tuple[t.Any, t.Type[TypeRef]]]:
+            representations = options["representations"]
+            if not representations:
+                return []
 
-            return wrapper
+            repr_by_type = self._group_representations(representations)
+            reference_entries: list[ReferenceEntry] = []
+
+            for typename, type_representations in repr_by_type.items():
+                refs = self._execute_resolve_reference(
+                    typename, type_representations
+                )
+                if isawaitable(refs):
+                    refs = await refs
+
+                reference_entries.extend(
+                    self._collect_reference_entries(
+                        typename, refs, type_representations
+                    )
+                )
+
+            return list(
+                map(
+                    to_reference,
+                    sorted(reference_entries, key=lambda e: e.index),
+                )
+            )
 
         return Link(
             "_entities",
             Sequence[Optional[UnionRef["_Entity"]]],
-            (
-                _asyncify(entities_resolver)
-                if self.is_async
-                else entities_resolver
-            ),
+            (entities_resolver_async if self.is_async else entities_resolver),
             options=[
                 Option("representations", Sequence[_Any]),
             ],

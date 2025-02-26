@@ -11,7 +11,7 @@ from hiku.types import (
     TypeRef,
     Optional,
 )
-from hiku.utils import listify
+from hiku.utils import listify, to_immutable_dict
 from hiku.federation.graph import FederatedNode, Graph
 from hiku.federation.directive import Key
 
@@ -149,3 +149,11 @@ def id_resolver(fields, ids):
 
     for id_ in ids:
         yield [get_field(f, id_) for f in fields]
+
+
+def resolve_reference_direct(representations: list[dict]):
+    """Return representations as is but as immutable dicts
+    in order to be able to store them in index
+    """
+    return [to_immutable_dict(r) for r in representations]
+
