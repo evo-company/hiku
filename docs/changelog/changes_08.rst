@@ -29,6 +29,7 @@ Changes in 0.8
 - Fix: now it is possible to alias record field
 - Update pdm and migrate from pep528 to venv
 - Use ``uv`` for faster package installation
+- Add support for multiple types in ``representations`` in ``_entities`` federation field
 
   .. code-block:: python
 
