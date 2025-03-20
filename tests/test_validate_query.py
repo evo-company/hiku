@@ -13,6 +13,7 @@ from hiku.types import (
     Sequence,
     String,
     TypeRef,
+    Float,
 )
 from hiku.validate.query import validate
 
@@ -105,6 +106,13 @@ GRAPH = Graph(
                     _,
                     requires=None,
                     options=[Option("lawing", Optional[Integer], default=None)],
+                ),
+                Link(
+                    "insect",
+                    Sequence[TypeRef["hooted"]],
+                    _,
+                    requires=None,
+                    options=[Option("floating", Optional[Float], default=None)],
                 ),
             ]
         ),
@@ -418,6 +426,15 @@ def test_link_options():
             '"str" instead of Integer',
         ],
     )
+    check_errors(
+        mk("insect", options={"floating": "2"}),
+        [
+            'Invalid value for option "root.insect:floating", '
+            '"str" instead of Float'
+        ],
+    )
+    check_errors(mk("insect", options={"floating": 2.0}), [])
+    check_errors(mk("insect", options={"floating": 2}), [])
 
 
 def test_missing_options():
@@ -469,6 +486,16 @@ def test_scalar_option_type_errors():
         [
             'Invalid value for option "{field}:lawing", '
             '"Invalid" instead of String'
+        ],
+    )
+    check_option_errors([Option("lawing", Float)], {"lawing": 2}, [])
+    check_option_errors([Option("lawing", Float)], {"lawing": 2.0}, [])
+    check_option_errors(
+        [Option("lawing", Float)],
+        {"lawing": Invalid()},
+        [
+            'Invalid value for option "{field}:lawing", '
+            '"Invalid" instead of Float'
         ],
     )
 
