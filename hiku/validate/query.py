@@ -203,7 +203,7 @@ class _OptionTypeValidator:
         return None
 
     def visit_float(self, type_: FloatMeta) -> None:
-        if not isinstance(self.value, float):
+        if not isinstance(self.value, (int, float)):
             raise _OptionTypeError(self.value, type_)
         return None
 

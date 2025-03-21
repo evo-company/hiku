@@ -100,6 +100,12 @@ def _yield_options(
         ):
             scalar = graph.scalars_map[option.type_info.type_name]
             yield option.name, serialize(option.type, value, scalar.parse)
+        elif (
+            option.type_info
+            and option.type_info.type_enum is FieldType.SCALAR
+            and option.type
+        ):
+            yield option.name, option.type.parse(value)
         else:
             yield option.name, value
 

@@ -28,6 +28,14 @@ class GenericMeta(type):
     def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
         raise NotImplementedError(type(cls))
 
+    @classmethod
+    def parse(cls, value: str) -> t.Any:
+        return value
+
+    @classmethod
+    def serialize(cls, value: str) -> t.Any:
+        return value
+
 
 class AnyMeta(GenericMeta):
     def accept(cls, visitor: "AbstractTypeVisitor") -> t.Any:
@@ -80,7 +88,9 @@ class FloatMeta(GenericMeta):
 
 
 class Float(metaclass=FloatMeta):
-    pass
+    @classmethod
+    def parse(cls, value: str) -> t.Any:
+        return float(value)
 
 
 TM = t.TypeVar("TM", bound="TypingMeta")

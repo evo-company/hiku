@@ -6,7 +6,7 @@ from hiku.executors.sync import SyncExecutor
 from hiku.graph import Field, Graph, Link, Node, Nothing, Option, Root
 from hiku.scalar import DateTime, Scalar
 from hiku.schema import Schema
-from hiku.types import Integer, Optional, Sequence, TypeRef
+from hiku.types import Float, Integer, Optional, Sequence, TypeRef
 from hiku.utils import listify
 from hiku.readers.graphql import read
 from hiku.validate.graph import GraphValidationError
@@ -286,3 +286,218 @@ def test_validate_scalar_input_correct():
 
     errors = validate(graph, read(query))
     assert errors == []
+
+
+INT_VALUE = 60
+
+
+def test_parse_float_input_correct():
+    @listify
+    def resolve_user_fields(fields, ids):
+        def get_field(fname, id_):
+            if fname == "id":
+                return id_
+            if fname == "weight":
+                return INT_VALUE
+
+        for id_ in ids:
+            yield [get_field(f.name, id_) for f in fields]
+
+    def link_user(opts):
+        assert type(opts["weight"]) == float, "Must be converted to float"
+        if opts["weight"] == INT_VALUE:
+            return 1
+
+        return Nothing
+
+    graph = Graph(
+        [
+            Node(
+                "User",
+                [
+                    Field("id", Integer, resolve_user_fields),
+                    Field("weight", Float, resolve_user_fields),
+                ],
+            ),
+            Root(
+                [
+                    Link(
+                        "user",
+                        Optional[TypeRef["User"]],
+                        link_user,
+                        requires=None,
+                        options=[
+                            Option("weight", Float),
+                        ],
+                    ),
+                ]
+            ),
+        ],
+    )
+
+    query = """
+    query GetUser {
+      user(weight: %s) {
+        id
+        weight
+      }
+    }
+    """ % (
+        INT_VALUE,
+    )
+
+    result = execute(graph, read(query))
+    assert result.data == {
+        "user": {
+            "id": 1,
+            "weight": INT_VALUE,
+        }
+    }
+
+
+def test_validate_float_input_correct():
+    graph = Graph(
+        [
+            Node(
+                "User",
+                [
+                    Field("id", Integer, lambda fields, ids: None),
+                    Field("weight", Float, lambda fields, ids: None),
+                ],
+            ),
+            Root(
+                [
+                    Link(
+                        "user",
+                        Optional[TypeRef["User"]],
+                        lambda opts: None,
+                        requires=None,
+                        options=[
+                            Option("weight", Float),
+                        ],
+                    ),
+                ]
+            ),
+        ],
+    )
+
+    query = """
+    query GetUser {
+      user(weight: %s) {
+        id
+        weight
+      }
+    }
+    """ % (
+        INT_VALUE,
+    )
+
+    errors = validate(graph, read(query))
+    assert errors == []
+
+
+def test_parse_float_input_incorrect():
+    @listify
+    def resolve_user_fields(fields, ids):
+        def get_field(fname, id_):
+            if fname == "id":
+                return id_
+            if fname == "weight":
+                return INT_VALUE
+
+        for id_ in ids:
+            yield [get_field(f.name, id_) for f in fields]
+
+    def link_user(opts):
+        # assert type(opts["weight"]) == float, "Must be converted to float"
+        if opts["weight"] == INT_VALUE:
+            return 1
+
+        return Nothing
+
+    graph = Graph(
+        [
+            Node(
+                "User",
+                [
+                    Field("id", Integer, resolve_user_fields),
+                    Field("weight", Float, resolve_user_fields),
+                ],
+            ),
+            Root(
+                [
+                    Link(
+                        "user",
+                        Optional[TypeRef["User"]],
+                        link_user,
+                        requires=None,
+                        options=[
+                            Option("weight", Float),
+                        ],
+                    ),
+                ]
+            ),
+        ],
+    )
+
+    query = """
+    query GetUser {
+      user(weight: "%s") {
+        id
+        weight
+      }
+    }
+    """ % (
+        INT_VALUE,
+    )
+
+    result = execute(graph, read(query))
+    assert result.data == None
+    assert len(result.errors) == 1
+    assert (
+        result.errors[0].message
+        == 'Invalid value for option "root.user:weight", "str" instead of Float'
+    )
+
+
+def test_validate_float_input_incorrect():
+    graph = Graph(
+        [
+            Node(
+                "User",
+                [
+                    Field("id", Integer, lambda fields, ids: None),
+                    Field("weight", Float, lambda fields, ids: None),
+                ],
+            ),
+            Root(
+                [
+                    Link(
+                        "user",
+                        Optional[TypeRef["User"]],
+                        lambda opts: None,
+                        requires=None,
+                        options=[
+                            Option("weight", Float),
+                        ],
+                    ),
+                ]
+            ),
+        ],
+    )
+
+    query = """
+    query GetUser {
+      user(weight: "%s") {
+        id
+        weight
+      }
+    }
+    """ % (
+        INT_VALUE,
+    )
+
+    errors = validate(graph, read(query))
+    assert errors == [
+        'Invalid value for option "root.user:weight", "str" instead of Float'
+    ]
