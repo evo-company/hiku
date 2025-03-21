@@ -1,6 +1,11 @@
 Changes in 0.8
 ==============
 
+0.8.0rc9
+~~~~~~~~
+
+- #181 Fix float input parsing when value is int
+
 0.8.0rcX
 ~~~~~~~~
 
