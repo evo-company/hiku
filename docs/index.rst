@@ -16,6 +16,7 @@ User's Guide
   enums
   interfaces
   unions
+  inputs
   directives
   federation
   telemetry

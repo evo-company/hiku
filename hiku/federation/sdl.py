@@ -11,6 +11,7 @@ from graphql.language.printer import print_ast
 from graphql.language import ast
 from graphql.pyutils import inspect
 
+from hiku.enum import BaseEnum
 from hiku.federation.utils import get_entity_types
 from hiku.federation.version import DEFAULT_FEDERATION_VERSION
 
@@ -25,6 +26,7 @@ from hiku.federation.directive import (
 )
 from hiku.introspection.graphql import _BUILTIN_DIRECTIVES
 from hiku.graph import (
+    Input,
     Link,
     Nothing,
     GraphVisitor,
@@ -39,6 +41,7 @@ from hiku.graph import (
 from hiku.scalar import ScalarMeta
 from hiku.types import (
     EnumRefMeta,
+    InputRefMeta,
     UnionRefMeta,
     IDMeta,
     IntegerMeta,
@@ -97,6 +100,8 @@ def _encode_type(
         elif isinstance(val, TypeRefMeta):
             if input_type:
                 return f"IO{val.__type_name__}"
+            return val.__type_name__
+        elif isinstance(val, InputRefMeta):
             return val.__type_name__
         elif isinstance(val, EnumRefMeta):
             return val.__type_name__
@@ -234,6 +239,7 @@ class Exporter(GraphVisitor):
         for node in [
             self.get_schema_node(),
             *self.get_custom_directives(),
+            *self.export_inputs(),
             *self.export_data_types(),
             *[self.visit(item) for item in graph.items],
             *(
@@ -394,33 +400,21 @@ class Exporter(GraphVisitor):
             )
         return _BUILTIN_SCALARS + scalars
 
-    def export_enums(self) -> t.List[ast.EnumTypeDefinitionNode]:
-        enums = []
-        for enum in self.graph.enums:
-            enums.append(
-                ast.EnumTypeDefinitionNode(
-                    name=_name(enum.name),
-                    values=[
-                        ast.EnumValueDefinitionNode(name=_name(value.name))
-                        for value in enum.values
-                    ],
-                )
-            )
-        return enums
+    def export_inputs(
+        self,
+    ) -> t.Iterator[
+        t.Union[ast.ObjectTypeDefinitionNode, ast.InputObjectTypeDefinitionNode]
+    ]:
+        for input_ in self.graph.inputs:
+            yield self.visit_input(input_)
 
-    def export_unions(self) -> t.List[ast.UnionTypeDefinitionNode]:
-        unions = []
+    def export_enums(self) -> t.Iterator[ast.EnumTypeDefinitionNode]:
+        for enum in self.graph.enums:
+            yield self.visit_enum(enum)
+
+    def export_unions(self) -> t.Iterator[ast.UnionTypeDefinitionNode]:
         for union in self.graph.unions:
-            unions.append(
-                ast.UnionTypeDefinitionNode(
-                    name=_name(union.name),
-                    types=[
-                        ast.NamedTypeNode(name=_name(type_))
-                        for type_ in union.types
-                    ],
-                )
-            )
-        return unions
+            yield self.visit_union(union)
 
     def get_service_type(self) -> ast.ObjectTypeDefinitionNode:
         return ast.ObjectTypeDefinitionNode(
@@ -493,6 +487,38 @@ class Exporter(GraphVisitor):
             default_value=_encode_default_value(obj.default),
         )
 
+    def visit_input(self, obj: Input) -> ast.InputObjectTypeDefinitionNode:
+        return ast.InputObjectTypeDefinitionNode(
+            name=_name(obj.name),
+            fields=[
+                ast.InputValueDefinitionNode(
+                    name=_name(arg.name),
+                    type=_encode_type(arg.type),
+                    description=arg.description,
+                    default_value=_encode_default_value(arg.default),
+                )
+                for arg in obj.arguments
+            ],
+        )
+
+    def visit_enum(self, obj: BaseEnum) -> ast.EnumTypeDefinitionNode:
+        return ast.EnumTypeDefinitionNode(
+            name=_name(obj.name),
+            values=[
+                ast.EnumValueDefinitionNode(
+                    name=_name(value.name),
+                    description=value.description,
+                )
+                for value in obj.values
+            ],
+        )
+
+    def visit_union(self, obj: Union) -> ast.UnionTypeDefinitionNode:
+        return ast.UnionTypeDefinitionNode(
+            name=_name(obj.name),
+            types=[ast.NamedTypeNode(name=_name(type_)) for type_ in obj.types],
+        )
+
     def visit_schema_directive(
         self, directive: SchemaDirective
     ) -> ast.DirectiveNode:
@@ -563,6 +589,7 @@ class _StripGraph(GraphTransformer):
             obj.interfaces,
             obj.enums,
             obj.scalars,
+            obj.inputs,
         )
 
     def visit_node(self, obj: Node) -> Node:

@@ -7,6 +7,7 @@ from hiku.graph import (
     Field,
     Graph,
     GraphVisitor,
+    Input,
     Interface,
     Link,
     LinkType,
@@ -31,6 +32,7 @@ from ..types import (
     FloatMeta,
     GenericMeta,
     IDMeta,
+    InputRefMeta,
     IntegerMeta,
     MappingMeta,
     OptionalMeta,
@@ -93,6 +95,7 @@ class _AssumeRecord(AbstractTypeVisitor):
     visit_callable = _false
     visit_unionref = _false
     visit_interfaceref = _false
+    visit_inputref = _false
     visit_enumref = _false
     visit_scalar = _false
 
@@ -144,24 +147,30 @@ class _AssumeField(GraphVisitor):
 
 
 class _OptionError(TypeError):
-    def __init__(self, description: str) -> None:
+    def __init__(self, description: str, field: t.Optional[str] = None) -> None:
         self.description = description
+        self.field = field
         super(_OptionError, self).__init__(description)
 
 
 class _OptionTypeError(_OptionError):
     def __init__(self, value: OptionValue, expected: GenericMeta) -> None:
-        description = '"{}" instead of {!r}'.format(
-            type(value).__name__, expected
-        )
+        type_name = type(value).__name__
+        if value is Nothing:
+            type_name = "Nothing"
+        description = '"{}" instead of {!r}'.format(type_name, expected)
         super(_OptionTypeError, self).__init__(description)
 
 
 class _OptionTypeValidator:
     def __init__(
-        self, data_types: t.Dict[str, t.Type[Record]], value: OptionValue
+        self,
+        data_types: t.Dict[str, t.Type[Record]],
+        inputs_map: t.Dict[str, Input],
+        value: OptionValue,
     ) -> None:
         self._data_types = data_types
+        self._inputs_map = inputs_map
         self._value = [value]
 
     @property
@@ -169,7 +178,7 @@ class _OptionTypeValidator:
         return self._value[-1]
 
     @contextmanager
-    def push(self, value: OptionValue) -> t.Iterator[None]:
+    def push_value(self, value: OptionValue) -> t.Iterator[None]:
         self._value.append(value)
         try:
             yield
@@ -216,7 +225,7 @@ class _OptionTypeValidator:
         if not isinstance(self.value, collections_abc.Sequence):
             raise _OptionTypeError(self.value, type_)
         for item in self.value:
-            with self.push(item):
+            with self.push_value(item):
                 self.visit(type_.__item_type__)
 
         return None
@@ -225,9 +234,9 @@ class _OptionTypeValidator:
         if not isinstance(self.value, collections_abc.Mapping):
             raise _OptionTypeError(self.value, type_)
         for key, value in self.value.items():
-            with self.push(key):
+            with self.push_value(key):
                 self.visit(type_.__key_type__)
-            with self.push(value):
+            with self.push_value(value):
                 self.visit(type_.__value_type__)
 
         return None
@@ -247,7 +256,7 @@ class _OptionTypeValidator:
             raise _OptionError("missing fields: {}".format(fields))
 
         for key, value_type in type_.__field_types__.items():
-            with self.push(self.value[key]):
+            with self.push_value(self.value[key]):
                 self.visit(value_type)
 
         return None
@@ -266,6 +275,48 @@ class _OptionTypeValidator:
     def visit_enumref(self, type_: EnumRefMeta) -> None:
         pass
 
+    def visit_inputref(self, type_: InputRefMeta) -> None:
+        if not isinstance(self.value, collections_abc.Mapping):
+            raise _OptionTypeError(self.value, type_)
+
+        input_type = self._inputs_map[type_.__type_name__]
+
+        # check for unknown fields in the input
+        unknown = set(self.value).difference(input_type.arguments_map)
+        if unknown:
+            fields = ", ".join(sorted(map(repr, unknown)))
+            raise _OptionError("unknown fields: {}".format(fields))
+
+        non_default_args = {
+            k: v
+            for k, v in input_type.arguments_map.items()
+            # option with default value is not required
+            if v.default is Nothing
+            # option with optional type is not required
+            and not isinstance(v.type, OptionalMeta)
+        }
+        missing = set(non_default_args).difference(self.value)
+        if missing:
+            fields = ", ".join(sorted(missing))
+            raise _OptionError("missing fields: {}".format(fields))
+
+        for key, value_type in input_type.arguments_map.items():
+            value = self.value.get(key, value_type.default)
+            if isinstance(value_type.type, OptionalMeta) and value is Nothing:
+                # if value is not specified for optional argument,
+                # we can skip validation
+                continue
+            if value_type.type is None:
+                raise _OptionError("type is not specified", key)
+            with self.push_value(value):
+                try:
+                    self.visit(value_type.type)
+                except _OptionError as err:
+                    err.field = key
+                    raise err
+
+        return None
+
 
 class _ValidateOptions(GraphVisitor):
     """
@@ -280,11 +331,13 @@ class _ValidateOptions(GraphVisitor):
     def __init__(
         self,
         data_types: t.Dict[str, t.Type[Record]],
+        inputs_map: t.Dict[str, Input],
         options: t.Optional[t.Dict],
         for_: t.Tuple[t.Any, ...],
         errors: Errors,
     ) -> None:
         self._data_types = data_types
+        self._inputs_map = inputs_map
         self.options = options
         self.for_ = for_
         self.errors = errors
@@ -309,21 +362,33 @@ class _ValidateOptions(GraphVisitor):
         value = self._options.get(obj.name, obj.default)
         if value is Nothing:
             node, field = self.for_
-            self.errors.report(
-                'Required option "{}.{}:{}" is not specified'.format(
+
+            if obj.type and isinstance(obj.type, InputRefMeta):
+                error = 'Required option "{}.{}:{}" of type "{}" is not specified'.format(  # noqa: E501
+                    node, field, obj.name, obj.type.__type_name__
+                )
+            else:
+                error = 'Required option "{}.{}:{}" is not specified'.format(
                     node, field, obj.name
                 )
-            )
+            self.errors.report(error)
+
         elif obj.type is not None:
             try:
-                _OptionTypeValidator(self._data_types, value).visit(obj.type)
+                _OptionTypeValidator(
+                    self._data_types, self._inputs_map, value
+                ).visit(obj.type)
             except _OptionError as err:
                 node, field = self.for_
-                self.errors.report(
-                    'Invalid value for option "{}.{}:{}", {}'.format(
+                if err.field is not None:
+                    error = 'Invalid value for option "{}.{}:{}.{}", {}'.format(
+                        node, field, obj.name, err.field, err.description
+                    )
+                else:
+                    error = 'Invalid value for option "{}.{}:{}", {}'.format(
                         node, field, obj.name, err.description
                     )
-                )
+                self.errors.report(error)
 
         return None
 
@@ -403,7 +468,11 @@ class DefaultQueryValidator(QueryVisitor):
             if is_field:
                 for_ = (node.name or "root", obj.name)
                 _ValidateOptions(
-                    self.graph.data_types, obj.options, for_, self.errors
+                    self.graph.data_types,
+                    self.graph.inputs_map,
+                    obj.options,
+                    for_,
+                    self.errors,
                 ).visit(field)
         else:
             self.errors.report(
@@ -418,7 +487,11 @@ class DefaultQueryValidator(QueryVisitor):
         if isinstance(graph_obj, Field):
             for_ = (node.name or "root", obj.name)
             _ValidateOptions(
-                self.graph.data_types, obj.options, for_, self.errors
+                self.graph.data_types,
+                self.graph.inputs_map,
+                obj.options,
+                for_,
+                self.errors,
             ).visit(graph_obj)
 
             field_types = _AssumeRecord(self.graph.data_types).visit(
@@ -446,7 +519,11 @@ class DefaultQueryValidator(QueryVisitor):
 
             for_ = (node.name or "root", obj.name)
             _ValidateOptions(
-                self.graph.data_types, obj.options, for_, self.errors
+                self.graph.data_types,
+                self.graph.inputs_map,
+                obj.options,
+                for_,
+                self.errors,
             ).visit(graph_obj)
 
             self._type.append(linked_node)

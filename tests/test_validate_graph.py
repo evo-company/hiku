@@ -1,8 +1,8 @@
 import pytest
 
 from hiku.directives import Deprecated
-from hiku.graph import Graph, Node, Field, Root, Link, Option
-from hiku.types import Integer, TypeRef, Sequence
+from hiku.graph import Graph, Input, Node, Field, Root, Link, Option
+from hiku.types import InputRef, Integer, TypeRef, Sequence
 from hiku.validate.graph import GraphValidationError
 
 
@@ -121,6 +121,27 @@ def test_option_default_none_with_non_optional_type():
         ],
         ['Non-optional option "foo.bar:bar" must have a default value'],
     )
+
+
+def test_option_input_ref_has_default_none_but_type_non_optional():
+    with pytest.raises(GraphValidationError) as err:
+        Graph(
+            [
+                Node(
+                    "User",
+                    [
+                        Field("avatar", None, _fields_func, options=[
+                            Option("params", InputRef["ImageParams"]),
+                        ]),
+                    ],
+                ),
+            ], inputs=[
+                Input("ImageParams", [
+                    Option("width", Integer, default=None),
+                ])
+            ]
+        )
+    assert err.value.errors == ['Non-optional option "ImageParams:width" must have a default value']
 
 
 def test_link_missing_node():

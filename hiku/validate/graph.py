@@ -10,6 +10,7 @@ from ..enum import BaseEnum
 from ..graph import (
     FieldType,
     GraphVisitor,
+    Input,
     Interface,
     Root,
     Field,
@@ -57,6 +58,9 @@ class GraphValidator(GraphVisitor):
         def visit_scalar(self, obj: t.Type[Scalar]) -> str:
             return obj.__type_name__
 
+        def visit_input(self, obj: Input) -> str:
+            return obj.name
+
     _name_formatter = _NameFormatter()
     _graph_accept_types = (AbstractNode,)
     _node_accept_types = (AbstractField, AbstractLink)
@@ -90,6 +94,7 @@ class GraphValidator(GraphVisitor):
         interfaces: t.List[Interface],
         enums: t.List[BaseEnum],
         scalars: t.List[t.Type[Scalar]],
+        inputs: t.List[Input],
     ) -> None:
         validator = cls(items, unions, interfaces, enums, scalars)
         validator.visit_graph_items(items)
@@ -97,11 +102,12 @@ class GraphValidator(GraphVisitor):
         validator.visit_graph_interfaces(interfaces)
         validator.visit_graph_enums(enums)
         validator.visit_graph_scalars(scalars)
+        validator.visit_graph_inputs(inputs)
         if validator.errors.list:
             raise GraphValidationError(validator.errors.list)
 
     @contextmanager
-    def push_ctx(self, obj: t.Union[Node, Link, Field]) -> t.Any:
+    def push_ctx(self, obj: t.Union[Node, Link, Field, Input]) -> t.Any:
         self._ctx.append(obj)
         try:
             yield
@@ -161,6 +167,10 @@ class GraphValidator(GraphVisitor):
             )
 
         self._validate_description(obj)
+
+    def visit_input(self, obj: Input) -> None:
+        with self.push_ctx(obj):
+            super(GraphValidator, self).visit_input(obj)
 
     def visit_field(self, obj: Field) -> None:
         invalid = [
@@ -388,6 +398,10 @@ class GraphValidator(GraphVisitor):
     def visit_graph_unions(self, unions: t.List[Union]) -> None:
         for union in unions:
             self.visit(union)
+
+    def visit_graph_inputs(self, inputs: t.List[Input]) -> None:
+        for input_ in inputs:
+            self.visit(input_)
 
     def visit_graph_interfaces(self, interfaces: t.List[Interface]) -> None:
         for interface in interfaces:

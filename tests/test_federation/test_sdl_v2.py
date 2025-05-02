@@ -10,6 +10,7 @@ from hiku.graph import (
     Option,
     Root,
     Union,
+    Input,
 )
 from hiku.types import (
     Boolean,
@@ -20,6 +21,7 @@ from hiku.types import (
     TypeRef,
     Optional,
     UnionRef,
+    InputRef,
 )
 from hiku.scalar import Scalar
 from hiku.graph import apply
@@ -116,7 +118,11 @@ GRAPH = Graph([
     Union('Bucket', ['Cart'])
 ], enums=[
     Enum('Currency', ['UAH', 'USD'])
-], scalars=[Long])
+], scalars=[Long], inputs=[
+    Input("OrderParamsInput", [
+        Option("source", String, default="email"),
+    ])
+])
 
 
 MUTATION_GRAPH = Graph.from_graph(
@@ -128,6 +134,7 @@ MUTATION_GRAPH = Graph.from_graph(
             lambda: None,
             options=[
                 Option("id", Integer),
+                Option("params", InputRef["OrderParamsInput"]),
             ],
             requires=None,
         ),
@@ -139,6 +146,10 @@ expected_tmpl = """
     extend schema @link(url: "https://specs.apollo.dev/federation/v2.3", import: ["@key", "@external", "@extends", "@override", "@composeDirective"]) @link(url: "https://myspecs.dev/myCustomDirective/v1.0", import: ["@custom"]) @composeDirective(name: "@custom")
 
     directive @custom on OBJECT
+
+    input OrderParamsInput {
+      source: String! = "email"
+    }
 
     type Status {
       id: Int!
@@ -203,7 +214,7 @@ expected_tmpl = """
 
 expected_with_mutation_tmpl = """
     extend type Mutation {
-      saveOrder(id: Int!): SaveOrderResult!
+      saveOrder(id: Int!, params: OrderParamsInput!): SaveOrderResult!
     }
 """
 

@@ -1,5 +1,7 @@
+from dataclasses import dataclass
 import re
-from typing import Any, List, Tuple
+import typing as t
+from typing import Any, List, Tuple, TypedDict
 from collections import defaultdict
 
 from graphql import get_introspection_query
@@ -15,7 +17,7 @@ from hiku.context import create_execution_context
 from hiku.denormalize.graphql import DenormalizeGraphQL
 from hiku.engine import Context, Engine, pass_context
 from hiku.executors.sync import SyncExecutor
-from hiku.graph import Field, Graph, Interface, Link, Node, Nothing, Option, Root, Union
+from hiku.graph import Field, Graph, Input, Interface, Link, Node, Nothing, Option, Root, Union
 from hiku.introspection.graphql import GraphQLIntrospection
 from hiku.merge import QueryMerger
 from hiku.readers.graphql import read
@@ -24,6 +26,7 @@ from hiku.schema import Schema
 from hiku.sources.sqlalchemy import FieldsQuery
 from hiku.types import (
     Boolean,
+    InputRef,
     Integer,
     InterfaceRef,
     Optional,
@@ -500,7 +503,6 @@ def test_field_option_unknown():
         Option("inked", None), {"inked": 2340, "unknown": 8775}, {"inked": 2340}
     )
 
-
 def test_field_option_missing():
     graph = Graph(
         [
@@ -581,6 +583,109 @@ def test_link_option_missing():
     err.match(
         r'^Required option "nocks" for Link\(\'eclairs\', ' r"(.*) was not provided$"
     )
+
+
+def test_link_option_type_ref():
+    ...
+
+
+def test_link_option_input_ref():
+    class CreateUserOpts(TypedDict):
+        input: dict  # CreateUserInput
+
+    @dataclass(frozen=True)
+    class User:
+        id: int
+        first_name: str
+        middle_name: t.Optional[str]
+        last_name: t.Optional[str]
+        public: bool
+
+    def create_user(
+        options: CreateUserOpts,
+    ) -> User:
+        data = options["input"]
+        return User(1, data["first_name"], data.get("middle_name", "not_specified"), data["last_name"], data["public"])
+
+    def map_user(fields, users: list[User]):
+        def get_field(field, user: User):
+            if field.name == "id":
+                return user.id
+            elif field.name == "first_name":
+                return user.first_name
+            elif field.name == "middle_name":
+                return user.middle_name
+            elif field.name == "last_name":
+                return user.last_name
+            elif field.name == "public":
+                return user.public
+
+        return [
+            [get_field(field, user) for field in fields]
+            for user in users
+        ]
+
+    graph = Graph(
+        [
+            Node(
+                "User",
+                [
+                    Field("id", Integer, map_user),
+                    Field("first_name", String, map_user),
+                    Field("middle_name", Optional[String], map_user),
+                    Field("last_name", Optional[String], map_user),
+                    Field("public", Boolean, map_user),
+                ],
+            ),
+        ],
+        inputs=[
+            Input(
+                "CreateUserInput",
+                [
+                    # required option
+                    Option("first_name", String),
+                    # optional option
+                    Option("middle_name", Optional[String]),
+                    # optional option with default value
+                    Option("last_name", Optional[String], default=None),
+                    # optional option with default value(other than None)
+                    Option("public", Boolean, default=False),
+                ]
+            ),
+        ]
+    )
+
+    mutation = Graph.from_graph(graph,
+       Root([
+            Link(
+                "createUser",
+                Optional[TypeRef["User"]],
+                create_user,
+                requires=None,
+                options=[
+                    Option("input", InputRef["CreateUserInput"]),
+                ],
+            )
+        ]),
+    )
+
+    query = build([
+        M.createUser(
+            input={
+                "first_name": "John",
+                "last_name": "Doe",
+            }
+        )[Q.id, Q.first_name, Q.middle_name, Q.last_name, Q.public]
+    ])
+
+    schema = Schema(SyncExecutor(), graph, mutation=mutation)
+    result = schema.execute_sync(query)
+
+    assert result.data == {
+        "createUser": {
+            "id": 1, "first_name": "John", "middle_name": "not_specified", "last_name": "Doe", "public": False
+        }
+    }
 
 
 def test_pass_context_field():

@@ -1,11 +1,12 @@
 import pytest
 
 from hiku import query as q
-from hiku.graph import Field, Graph, Link, Node, Option, Root
+from hiku.graph import Field, Graph, Input, Link, Node, Option, Root
 from hiku.readers.graphql import read
 from hiku.types import (
     Any,
     Boolean,
+    InputRef,
     Integer,
     Mapping,
     Optional,
@@ -998,3 +999,86 @@ def test_validate_query_fragment_on_unknown_type():
     errors = validate(GRAPH, read(query))
 
     assert errors == ["Fragment on an unknown type 'Asdf'"]
+
+
+def test_input_ref_in_option():
+    inputs = [
+        Input(
+            "ImageParams", [
+                Option("width", Integer),
+                Option("height", Optional[Integer], default=None),
+            ]
+        )
+    ]
+    graph = Graph(
+        [
+            Root(
+                [
+                    Field(
+                        "image",
+                        None,
+                        None,
+                        options=[Option("params", InputRef["ImageParams"])],
+                    ),
+                ]
+            ),
+        ],
+        inputs=inputs,
+    )
+    assert (
+        validate(
+            graph,
+            q.Node(
+                [
+                    q.Field("image", options={"params": {"width": 1}}),
+                ]
+            ),
+        )
+        == []
+    )
+
+    # unknown field
+    assert (
+        validate(
+            graph,
+            q.Node(
+                [
+                    q.Field("image", options={"params": {"width": 1, "bar": 2}}),
+                ]
+            ),
+        )
+    ) == ['Invalid value for option "root.image:params", unknown fields: \'bar\'']
+
+    # missing top field
+    assert (
+        validate(
+            graph,
+            q.Node(
+                [
+                    q.Field("image", options={}),
+                ]
+            ),
+        )
+    ) == ['Required option "root.image:params" of type "ImageParams" is not specified']
+
+    # missing nested field
+    assert (
+        validate(
+            graph,
+            q.Node(
+                [
+                    q.Field("image", options={"params": {}}),
+                ]
+            ),
+        )
+    ) == ['Invalid value for option "root.image:params", missing fields: width']
+
+    # invalid type
+    assert validate(
+        graph,
+        q.Node(
+            [
+                q.Field("image", options={"params": {"width": "1"}}),
+            ]
+        ),
+    ) == ['Invalid value for option "root.image:params.width", "str" instead of Integer']
