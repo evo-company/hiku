@@ -611,7 +611,11 @@ def input_value_info(
                     "id": ident,
                     "name": ident.key,
                     "description": option_arg.description,
-                    "defaultValue": option_arg.default,
+                    "defaultValue": (
+                        option_arg.default
+                        if option_arg.default is not Nothing
+                        else None
+                    ),
                 }
                 yield [info[f.name] for f in fields]
             elif ident.name in schema.data_types:
