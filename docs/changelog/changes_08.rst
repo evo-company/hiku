@@ -1,6 +1,37 @@
 Changes in 0.8
 ==============
 
+0.8.0rc10
+~~~~~~~~
+
+- Introduce ``InputObject`` types support (https://graphql.org/learn/schema/#input-object-types) via ``hiku.graph.Input`` and ``hiku.types.InputRef``
+
+  ``Input`` is intended to supersed input objects generated from ``data_types`` Records (the one's with ``IO`` prefix).
+  More on that in :ref:`Inputs docs <inputs-doc>`.
+
+  .. code-block:: python
+
+    from hiku.graph import Input
+    from hiku.types import InputRef
+
+    Graph([
+      Node("User", [
+        Field("id", Integer),
+        Field("avatar", String, options=[
+          Option("params", InputRef["ImageParams"])
+        ])
+      ]),
+      Root([
+        Field("user", TypeRef["User"]),
+      ]),
+    ], inputs=[
+        Input("ImageParams", [
+          Option("width", Integer),
+          Option("height", Optional[Integer], default=None)
+        ])
+      ],
+    )
+
 0.8.0rc9
 ~~~~~~~~
 

@@ -8,10 +8,10 @@ import pytest
 from hiku.enum import Enum
 from hiku.directives import Deprecated, Location, SchemaDirective, schema_directive
 from hiku.executors.sync import SyncExecutor
-from hiku.graph import Graph, Interface, Root, Field, Node, Link, Union, apply, Option
+from hiku.graph import Graph, Input, Interface, Root, Field, Node, Link, Union, apply, Option
 from hiku.scalar import Scalar
 from hiku.schema import Schema
-from hiku.types import EnumRef, InterfaceRef, String, Integer, Sequence, TypeRef, Boolean, Float, Any, UnionRef
+from hiku.types import EnumRef, InterfaceRef, String, Integer, Sequence, TypeRef, Boolean, Float, Any, UnionRef, InputRef
 from hiku.types import Optional, Record
 from hiku.introspection.graphql import GraphQLIntrospection
 from tests.utils import INTROSPECTION_QUERY
@@ -348,6 +348,37 @@ def test_data_types():
         _type('IOFoo', 'INPUT_OBJECT', inputFields=[
             _ival('bar', _non_null(_INT)),
         ]),
+    ])
+
+
+def test_input():
+    inputs = [
+        Input(
+            'UserInput',
+            [
+                Option('name', String, default='John', description='Name of user'),
+            ],
+            description='User input type',
+        )
+    ]
+    query_graph = Graph([Node("User", [Field("id", Integer, _noop)]), Root([
+        Link('createUser', TypeRef["User"], _noop, options=[
+            Option('inputArg', InputRef['UserInput']),
+        ], requires=None),
+    ])], inputs=inputs)
+
+    assert introspect(query_graph) == _schema([
+        _type('User', 'OBJECT', fields=[
+            _field('id', _non_null(_INT)),
+        ]),
+        _type('Query', 'OBJECT', fields=[
+            _field('createUser', _non_null(_obj("User")), args=[
+                _ival('inputArg', _non_null(_iobj('UserInput'))),
+            ]),
+        ]),
+        _type('UserInput', 'INPUT_OBJECT', inputFields=[
+            _ival('name', _non_null(_STR), defaultValue="John", description="Name of user"),
+        ], description="User input type"),
     ])
 
 

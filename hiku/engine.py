@@ -106,6 +106,16 @@ def _yield_options(
             and option.type
         ):
             yield option.name, option.type.parse(value)
+        elif (
+            option.type_info
+            and option.type_info.type_enum is FieldType.INPUT
+            and option.type
+        ):
+            input_type = graph.inputs_map[option.type_info.type_name]
+            for arg in input_type.arguments:
+                if arg.name not in value and arg.default is not Nothing:
+                    value[arg.name] = arg.default
+            yield option.name, value
         else:
             yield option.name, value
 

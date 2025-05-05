@@ -17,6 +17,7 @@ from hiku.graph import (
     Field,
     Graph as _Graph,
     GraphTransformer,
+    Input,
     Interface,
     Link,
     Node,
@@ -232,6 +233,7 @@ class Graph(_Graph):
         interfaces: t.Optional[t.List[Interface]] = None,
         enums: t.Optional[t.List[BaseEnum]] = None,
         scalars: t.Optional[t.List[t.Type[Scalar]]] = None,
+        inputs: t.Optional[t.List[Input]] = None,
         is_async: bool = False,
     ):
         self.is_async = is_async
@@ -263,7 +265,14 @@ class Graph(_Graph):
         items = GraphInit.init(items, is_async, bool(entity_types))
 
         super().__init__(
-            items, data_types, directives, unions, interfaces, enums, scalars
+            items,
+            data_types,
+            directives,
+            unions,
+            interfaces,
+            enums,
+            scalars,
+            inputs,
         )
 
     @classmethod
@@ -283,5 +292,6 @@ class Graph(_Graph):
             interfaces=other.interfaces,
             enums=other.enums,
             scalars=other.scalars,
+            inputs=other.inputs,
             is_async=other.is_async,
         )

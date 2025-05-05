@@ -35,6 +35,7 @@ class FederationV1EntityTransformer(GraphTransformer):
             obj.interfaces,
             obj.enums,
             obj.scalars,
+            obj.inputs,
         )
 
 

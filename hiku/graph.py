@@ -22,6 +22,7 @@ from .scalar import Scalar, ScalarMeta
 
 from .types import (
     EnumRefMeta,
+    InputRefMeta,
     InterfaceRef,
     InterfaceRefMeta,
     Optional,
@@ -94,6 +95,9 @@ class Option(AbstractOption):
 
         Option('filter', TypeRef['FilterInput'])
 
+    Example with InputRef type(ref can point to Input)::
+
+        Option('filter', InputRef['FilterInput'])
     """
 
     def __init__(
@@ -111,6 +115,7 @@ class Option(AbstractOption):
         :param description: description of the option
         """
         self.name = name
+        # TODO(m.kind): make type_ non-optional
         self.type = type_
         self.default = default
         self.description = description
@@ -269,6 +274,8 @@ def get_link_type_enum(type_: TypingMeta) -> t.Tuple[Const, str]:
 class FieldType(Enum):
     # When Field is a TypeRef to Record
     RECORD = "RECORD"
+    # When Field is a InputRef to Input
+    INPUT = "INPUT"
     # When Field is a EnumRef to Enum
     ENUM = "ENUM"
     # When Field is a builtin scalar (such as String, Integer, etc)
@@ -300,6 +307,12 @@ def get_field_info(
         return FieldTypeInfo(
             type_.__type_name__,
             FieldType.RECORD,
+        )
+
+    if isinstance(type_, InputRefMeta):
+        return FieldTypeInfo(
+            type_.__type_name__,
+            FieldType.INPUT,
         )
     elif isinstance(type_, EnumRefMeta):
         return FieldTypeInfo(type_.__type_name__, FieldType.ENUM)
@@ -649,6 +662,32 @@ class Interface(AbstractBase):
         return visitor.visit_interface(self)
 
 
+class Input(AbstractBase):
+    def __init__(
+        self,
+        name: str,
+        arguments: t.Sequence[Option],
+        *,
+        description: t.Optional[str] = None,
+    ):
+        self.name = name
+        self.arguments = arguments
+        self.description = description
+        # TODO(m.kind): support directives
+
+    def __repr__(self) -> str:
+        return "{}({!r}, {!r}, ...)".format(
+            self.__class__.__name__, self.name, self.arguments
+        )
+
+    @cached_property
+    def arguments_map(self) -> OrderedDict[str, Option]:
+        return OrderedDict((f.name, f) for f in self.arguments)
+
+    def accept(self, visitor: "AbstractGraphVisitor") -> t.Any:
+        return visitor.visit_input(self)
+
+
 class Node(AbstractNode):
     """Collection of the fields and links, which describes some entity and
     relations with other entities
@@ -773,6 +812,7 @@ class Graph(AbstractGraph):
         interfaces: t.Optional[t.List[Interface]] = None,
         enums: t.Optional[t.List[BaseEnum]] = None,
         scalars: t.Optional[t.List[t.Type[Scalar]]] = None,
+        inputs: t.Optional[t.List[Input]] = None,
     ):
         """
         :param items: list of nodes
@@ -791,7 +831,12 @@ class Graph(AbstractGraph):
         if scalars is None:
             scalars = []
 
-        GraphValidator.validate(items, unions, interfaces, enums, scalars)
+        if inputs is None:
+            inputs = []
+
+        GraphValidator.validate(
+            items, unions, interfaces, enums, scalars, inputs
+        )
 
         self.items = GraphInit.init(items)
         self.unions = unions
@@ -799,6 +844,8 @@ class Graph(AbstractGraph):
         self.interfaces_types = collect_interfaces_types(self.items, interfaces)
         self.enums: t.List[BaseEnum] = enums
         self.scalars = scalars
+        self.inputs = inputs
+        # TODO: deprecate data_types inputs
         self.data_types = data_types or {}
         self.__types__ = GraphTypes.get_types(
             self.items,
@@ -854,6 +901,10 @@ class Graph(AbstractGraph):
     def scalars_map(self) -> "OrderedDict[str, t.Type[Scalar]]":
         return OrderedDict((s.__type_name__, s) for s in self.scalars)
 
+    @cached_property
+    def inputs_map(self) -> "OrderedDict[str, Input]":
+        return OrderedDict((i.name, i) for i in self.inputs)
+
     def accept(self, visitor: "AbstractGraphVisitor") -> t.Any:
         return visitor.visit_graph(self)
 
@@ -873,6 +924,7 @@ class Graph(AbstractGraph):
             interfaces=other.interfaces,
             enums=other.enums,
             scalars=other.scalars,
+            inputs=other.inputs,
         )
 
 
@@ -903,6 +955,10 @@ class AbstractGraphVisitor(ABC):
 
     @abstractmethod
     def visit_interface(self, obj: Interface) -> t.Any:
+        pass
+
+    @abstractmethod
+    def visit_input(self, obj: Input) -> t.Any:
         pass
 
     @abstractmethod
@@ -948,6 +1004,10 @@ class GraphVisitor(AbstractGraphVisitor):
     def visit_link(self, obj: Link) -> t.Any:
         for option in obj.options:
             self.visit(option)
+
+    def visit_input(self, obj: Input) -> t.Any:
+        for argument in obj.arguments:
+            self.visit(argument)
 
     def visit_node(self, obj: Node) -> t.Any:
         for item in obj.fields:
@@ -1001,6 +1061,13 @@ class GraphTransformer(AbstractGraphVisitor):
             implements=obj.implements,
         )
 
+    def visit_input(self, obj: Input) -> Input:
+        return Input(
+            obj.name,
+            [self.visit(a) for a in obj.arguments],
+            description=obj.description,
+        )
+
     def visit_union(self, obj: Union) -> Union:
         return Union(
             obj.name,
@@ -1033,6 +1100,7 @@ class GraphTransformer(AbstractGraphVisitor):
             obj.interfaces,
             obj.enums,
             obj.scalars,
+            obj.inputs,
         )
 
 

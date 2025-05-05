@@ -30,6 +30,7 @@ from ..scalar import Scalar
 from ..types import (
     EnumRefMeta,
     IDMeta,
+    InputRefMeta,
     InterfaceRefMeta,
     TypeRef,
     String,
@@ -178,6 +179,9 @@ class TypeIdent(AbstractTypeVisitor):
     def visit_interfaceref(self, obj: InterfaceRefMeta) -> t.Any:
         return NON_NULL(INTERFACE(obj.__type_name__, tuple()))
 
+    def visit_inputref(self, obj: InputRefMeta) -> t.Any:
+        return NON_NULL(INPUT_OBJECT(obj.__type_name__))
+
     def visit_enumref(self, obj: EnumRefMeta) -> t.Any:
         return NON_NULL(
             ENUM(
@@ -247,6 +251,9 @@ def root_schema_types(schema: SchemaInfo) -> t.Iterator[HashedNamedTuple]:
 
     for name in schema.nodes_map:
         yield OBJECT(name)
+
+    for input_ in schema.query_graph.inputs:
+        yield INPUT_OBJECT(input_.name)
 
     for name, type_ in schema.data_types.items():
         if isinstance(type_, RecordMeta):
@@ -318,12 +325,21 @@ def type_info(
                 "description": description,
             }
         elif isinstance(ident, INPUT_OBJECT):
-            info = {
-                "id": ident,
-                "kind": "INPUT_OBJECT",
-                "name": "IO{}".format(ident.name),
-                "description": None,
-            }
+            if ident.name in schema.query_graph.inputs_map:
+                input_ = schema.query_graph.inputs_map[ident.name]
+                info = {
+                    "id": ident,
+                    "kind": "INPUT_OBJECT",
+                    "name": ident.name,
+                    "description": input_.description,
+                }
+            elif ident.name in schema.data_types:
+                info = {
+                    "id": ident,
+                    "kind": "INPUT_OBJECT",
+                    "name": "IO{}".format(ident.name),
+                    "description": None,
+                }
         elif isinstance(ident, NON_NULL):
             info = {"id": ident, "kind": "NON_NULL"}
         elif isinstance(ident, LIST):
@@ -526,11 +542,22 @@ def type_input_object_input_fields_link(
 ) -> t.Iterator[t.List[HashedNamedTuple]]:
     for ident in ids:
         if isinstance(ident, INPUT_OBJECT):
-            data_type = schema.data_types[ident.name]
-            yield [
-                InputObjectFieldIdent(ident.name, key)
-                for key in data_type.__field_types__.keys()
-            ]
+            if ident.name in schema.query_graph.inputs_map:
+                input_ = schema.query_graph.inputs_map[ident.name]
+                yield [
+                    InputObjectFieldIdent(ident.name, key)
+                    for key in input_.arguments_map
+                ]
+            elif ident.name in schema.data_types:
+                data_type = schema.data_types[ident.name]
+                yield [
+                    InputObjectFieldIdent(ident.name, key)
+                    for key in data_type.__field_types__.keys()
+                ]
+            else:
+                raise TypeError(
+                    'Input type "{}" does not exist'.format(ident.name)
+                )
         else:
             yield []
 
@@ -577,13 +604,24 @@ def input_value_info(
             }
             yield [info[f.name] for f in fields]
         elif isinstance(ident, InputObjectFieldIdent):
-            info = {
-                "id": ident,
-                "name": ident.key,
-                "description": None,
-                "defaultValue": None,
-            }
-            yield [info[f.name] for f in fields]
+            if ident.name in schema.query_graph.inputs_map:
+                input_ = schema.query_graph.inputs_map[ident.name]
+                option_arg = input_.arguments_map[ident.key]
+                info = {
+                    "id": ident,
+                    "name": ident.key,
+                    "description": option_arg.description,
+                    "defaultValue": option_arg.default,
+                }
+                yield [info[f.name] for f in fields]
+            elif ident.name in schema.data_types:
+                info = {
+                    "id": ident,
+                    "name": ident.key,
+                    "description": None,
+                    "defaultValue": None,
+                }
+                yield [info[f.name] for f in fields]
         elif isinstance(ident, DirectiveArgIdent):
             directive = schema.directives_map[ident.name]
             arg = directive.args_map()[ident.arg]
@@ -610,9 +648,17 @@ def input_value_type_link(
             option = field.options_map[ident.name]
             yield type_ident.visit(option.type)
         elif isinstance(ident, InputObjectFieldIdent):
-            data_type = schema.data_types[ident.name]
-            field_type = data_type.__field_types__[ident.key]
-            yield type_ident.visit(field_type)
+            if ident.name in schema.query_graph.inputs_map:
+                input_ = schema.query_graph.inputs_map[ident.name]
+                option_arg = input_.arguments_map[ident.key]
+                assert (
+                    option_arg.type is not None
+                ), f"Option '{ident.name}.{ident.key}' type can not be None"
+                yield type_ident.visit(option_arg.type)
+            elif ident.name in schema.data_types:
+                data_type = schema.data_types[ident.name]
+                field_type = data_type.__field_types__[ident.key]
+                yield type_ident.visit(field_type)
         elif isinstance(ident, DirectiveArgIdent):
             directive = schema.directives_map[ident.name]
             arg = directive.args_map()[ident.arg]
@@ -1025,6 +1071,7 @@ class GraphQLIntrospection(GraphTransformer):
             interfaces=obj.interfaces,
             enums=obj.enums,
             scalars=obj.scalars,
+            inputs=obj.inputs,
         )
 
 
