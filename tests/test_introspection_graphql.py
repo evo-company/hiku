@@ -357,6 +357,7 @@ def test_input():
             'UserInput',
             [
                 Option('name', String, default='John', description='Name of user'),
+                Option('age', Optional[Integer]),
             ],
             description='User input type',
         )
@@ -378,6 +379,7 @@ def test_input():
         ]),
         _type('UserInput', 'INPUT_OBJECT', inputFields=[
             _ival('name', _non_null(_STR), defaultValue="John", description="Name of user"),
+            _ival('age', _INT),
         ], description="User input type"),
     ])
 
