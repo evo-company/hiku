@@ -1,8 +1,19 @@
 Changes in 0.8
 ==============
 
+0.8.0rc12
+~~~~~~~~~
+
+- Fix ``Optional[InputRef]`` value validation if None provided or argument not provided in query at all.
+
+
+0.8.0rc11
+~~~~~~~~~
+
+- Fix Input Object default value serialization in introspection
+
 0.8.0rc10
-~~~~~~~~
+~~~~~~~~~
 
 - Introduce ``InputObject`` types support (https://graphql.org/learn/schema/#input-object-types) via ``hiku.graph.Input`` and ``hiku.types.InputRef``
 
