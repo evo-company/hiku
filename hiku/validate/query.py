@@ -217,7 +217,12 @@ class _OptionTypeValidator:
         return None
 
     def visit_optional(self, type_: OptionalMeta) -> None:
-        if self.value is not None:
+        if (
+            # validate optional option not-None value is provided
+            self.value is not None
+            # validate optional option if value is provided in the query
+            and self.value is not Nothing
+        ):
             self.visit(type_.__type__)
         return None
 
@@ -360,7 +365,10 @@ class _ValidateOptions(GraphVisitor):
 
     def visit_option(self, obj: Option) -> None:
         value = self._options.get(obj.name, obj.default)
-        if value is Nothing:
+        optional = isinstance(obj.type, OptionalMeta)
+        if value is Nothing and not optional:
+            # if value is not specified for required argument,
+
             node, field = self.for_
 
             if obj.type and isinstance(obj.type, InputRefMeta):
