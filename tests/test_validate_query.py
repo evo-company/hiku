@@ -452,7 +452,7 @@ def test_missing_options():
     check_option_errors(
         [Option("lawing", Optional[Integer])],
         {},
-        ['Required option "{field}:lawing" is not specified'],
+        [],
     )
     check_option_errors(
         [Option("lawing", Optional[Integer], default=None)],

@@ -25,6 +25,8 @@ from itertools import chain, repeat
 from collections import defaultdict
 from collections.abc import Sequence, Mapping, Hashable
 
+from hiku.types import OptionalMeta
+
 from .cache import (
     CacheVisitor,
     CacheInfo,
@@ -85,7 +87,8 @@ def _yield_options(
     options = query_obj.options or {}
     for option in graph_obj.options:
         value = options.get(option.name, option.default)
-        if value is Nothing:
+        optional = isinstance(option.type, OptionalMeta)
+        if value is Nothing and not optional:
             raise TypeError(
                 'Required option "{}" for {!r} was not provided'.format(
                     option.name, graph_obj
@@ -111,11 +114,20 @@ def _yield_options(
             and option.type_info.type_enum is FieldType.INPUT
             and option.type
         ):
-            input_type = graph.inputs_map[option.type_info.type_name]
-            for arg in input_type.arguments:
-                if arg.name not in value and arg.default is not Nothing:
-                    value[arg.name] = arg.default
-            yield option.name, value
+            if value is Nothing and optional:
+                # if value not provided for optional option, do not add it
+                # to the options dict to notify value absence
+                continue
+
+            if value is None and optional:
+                # if value is None for optional option, return it as None
+                yield option.name, None
+            else:
+                input_type = graph.inputs_map[option.type_info.type_name]
+                for arg in input_type.arguments:
+                    if arg.name not in value and arg.default is not Nothing:
+                        value[arg.name] = arg.default
+                yield option.name, value
         else:
             yield option.name, value
 
