@@ -688,6 +688,81 @@ def test_link_option_input_ref():
     }
 
 
+def test_link_optional_option_input_ref_not_provided():
+    class CreateUserOpts(TypedDict):
+        input: dict  # CreateUserInput
+
+    @dataclass(frozen=True)
+    class User:
+        id: int
+        first_name: str
+
+    def create_user(
+        options: CreateUserOpts,
+    ) -> User | Nothing:
+        data = options.get("input")
+        if not data:
+            return Nothing
+        return User(1, data["first_name"])
+
+    def map_user(fields, users: list[User]):
+        def get_field(field, user: User):
+            if field.name == "id":
+                return user.id
+            elif field.name == "first_name":
+                return user.first_name
+
+        return [
+            [get_field(field, user) for field in fields]
+            for user in users
+        ]
+
+    graph = Graph(
+        [
+            Node(
+                "User",
+                [
+                    Field("id", Integer, map_user),
+                    Field("first_name", String, map_user),
+                ],
+            ),
+        ],
+        inputs=[
+            Input(
+                "CreateUserInput",
+                [
+                    Option("first_name", String),
+                ]
+            ),
+        ]
+    )
+
+    mutation = Graph.from_graph(graph,
+       Root([
+            Link(
+                "createUser",
+                Optional[TypeRef["User"]],
+                create_user,
+                requires=None,
+                options=[
+                    Option("input", Optional[InputRef["CreateUserInput"]]),
+                ],
+            )
+        ]),
+    )
+
+    query = build([
+        M.createUser[Q.id, Q.first_name]
+    ])
+
+    schema = Schema(SyncExecutor(), graph, mutation=mutation)
+    result = schema.execute_sync(query)
+
+    assert result.data == {
+        "createUser": None
+    }
+
+
 def test_pass_context_field():
     f = pass_context(Mock(return_value=["boiardo"]))
 
