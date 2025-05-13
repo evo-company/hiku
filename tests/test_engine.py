@@ -688,7 +688,13 @@ def test_link_option_input_ref():
     }
 
 
-def test_link_optional_option_input_ref_not_provided():
+@pytest.mark.parametrize("query_args", [
+    # when input is not provided in the query
+    {},
+    # when input is provided as None
+    {"input": None},
+])
+def test_link_optional_option_input_ref(query_args):
     class CreateUserOpts(TypedDict):
         input: dict  # CreateUserInput
 
@@ -699,7 +705,7 @@ def test_link_optional_option_input_ref_not_provided():
 
     def create_user(
         options: CreateUserOpts,
-    ) -> User | Nothing:
+    ) -> t.Union[User, Nothing]:
         data = options.get("input")
         if not data:
             return Nothing
@@ -752,15 +758,13 @@ def test_link_optional_option_input_ref_not_provided():
     )
 
     query = build([
-        M.createUser[Q.id, Q.first_name]
+        M.createUser(**query_args)[Q.id, Q.first_name]
     ])
 
     schema = Schema(SyncExecutor(), graph, mutation=mutation)
     result = schema.execute_sync(query)
 
-    assert result.data == {
-        "createUser": None
-    }
+    assert result.data == { "createUser": None }
 
 
 def test_pass_context_field():

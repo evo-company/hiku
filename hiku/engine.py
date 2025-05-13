@@ -119,11 +119,15 @@ def _yield_options(
                 # to the options dict to notify value absence
                 continue
 
-            input_type = graph.inputs_map[option.type_info.type_name]
-            for arg in input_type.arguments:
-                if arg.name not in value and arg.default is not Nothing:
-                    value[arg.name] = arg.default
-            yield option.name, value
+            if value is None and optional:
+                # if value is None for optional option, return it as None
+                yield option.name, None
+            else:
+                input_type = graph.inputs_map[option.type_info.type_name]
+                for arg in input_type.arguments:
+                    if arg.name not in value and arg.default is not Nothing:
+                        value[arg.name] = arg.default
+                yield option.name, value
         else:
             yield option.name, value
 
