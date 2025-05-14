@@ -1,4 +1,5 @@
 import typing as t
+from enum import Enum as PyEnum
 
 from math import isfinite
 from typing import (
@@ -166,6 +167,8 @@ def _encode_default_value(value: t.Any) -> Optional[ast.ValueNode]:
             filter(None, maybe_value_nodes)
         )
         return ast.ListValueNode(values=value_nodes)
+    if isinstance(value, PyEnum):
+        return ast.EnumValueNode(value=value.name)
 
     raise TypeError(f"Cannot convert value to AST: {inspect(value)}.")
 

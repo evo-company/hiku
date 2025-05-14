@@ -1,6 +1,11 @@
 Changes in 0.8
 ==============
 
+0.8.0rc13
+~~~~~~~~~
+
+- Fix using python ``Enum`` as ``Option.default`` value. SDL exporing was broken
+
 0.8.0rc12
 ~~~~~~~~~
 

@@ -1,5 +1,6 @@
 import textwrap
 from typing import Any
+from enum import Enum as PyEnum
 
 from hiku.directives import Location
 from hiku.enum import Enum
@@ -67,6 +68,11 @@ SaveOrderResultNode = Node(
     ],
 )
 
+class Currency(PyEnum):
+    UAH = "UAH"
+    USD = "USD"
+
+
 GRAPH = Graph([
     SaveOrderResultNode,
     FederatedNode('Order', [
@@ -117,10 +123,11 @@ GRAPH = Graph([
 }, directives=[Custom], unions=[
     Union('Bucket', ['Cart'])
 ], enums=[
-    Enum('Currency', ['UAH', 'USD'])
+    Enum.from_builtin(Currency, name='Currency',)
 ], scalars=[Long], inputs=[
     Input("OrderParamsInput", [
         Option("source", String, default="email"),
+        Option("currency", EnumRef["Currency"], default=Currency.UAH),
     ])
 ])
 
@@ -149,6 +156,7 @@ expected_tmpl = """
 
     input OrderParamsInput {
       source: String! = "email"
+      currency: Currency! = UAH
     }
 
     type Status {
