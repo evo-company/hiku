@@ -9,49 +9,43 @@
 
 import dataclasses
 import typing as t
-
 from abc import ABC, abstractmethod
-from enum import Enum
-from itertools import chain
-from functools import reduce, cached_property
 from collections import OrderedDict, defaultdict
+from enum import Enum
+from functools import cached_property, reduce
+from itertools import chain
 from typing import List
 
 from hiku.enum import BaseEnum
-from .scalar import Scalar, ScalarMeta
 
+from .compat import TypeAlias
+from .directives import Deprecated, SchemaDirective
+from .scalar import Scalar, ScalarMeta
 from .types import (
+    Any,
+    AnyMeta,
     EnumRefMeta,
+    GenericMeta,
     InputRefMeta,
     InterfaceRef,
     InterfaceRefMeta,
     Optional,
     OptionalMeta,
+    Record,
     RefMeta,
     Sequence,
     SequenceMeta,
     TypeRef,
-    Record,
-    Any,
-    GenericMeta,
     TypeRefMeta,
     TypingMeta,
-    AnyMeta,
     UnionRef,
     UnionRefMeta,
 )
-from .utils import (
-    const,
-    Const,
-)
-from .directives import Deprecated, SchemaDirective
-
-from .compat import TypeAlias
-
+from .utils import Const, const
 
 if t.TYPE_CHECKING:
-    from .sources.graph import SubGraph
-    from .sources.graph import BoundExpr
+    from .query import Field as QueryField
+    from .sources.graph import BoundExpr, SubGraph
 
 # TODO enum ???
 Maybe = const("Maybe")
@@ -103,7 +97,7 @@ class Option(AbstractOption):
     def __init__(
         self,
         name: str,
-        type_: t.Optional[GenericMeta],
+        type_: t.Optional[t.Union[GenericMeta, t.Type[Scalar]]],
         *,
         default: t.Any = Nothing,
         description: t.Optional[str] = None,
@@ -139,20 +133,26 @@ R = t.TypeVar("R")
 SyncAsync = t.Union[R, t.Awaitable[R]]
 
 # (fields) -> []
-RootFieldFunc = t.Callable[[t.List["Field"]], SyncAsync[List[t.Any]]]
+RootFieldFunc = t.Callable[[t.List["QueryField"]], SyncAsync[t.Iterable[t.Any]]]
+# (ctx, fields) -> []
+RootFieldFuncCtx = t.Callable[
+    [t.Any, t.List["QueryField"]], SyncAsync[t.Iterable[t.Any]]
+]
 # (fields, ids) -> [[]]
 NotRootFieldFunc = t.Callable[
-    [t.List["Field"], List[t.Any]], SyncAsync[List[List[t.Any]]]
+    [t.List["QueryField"], List[t.Any]], SyncAsync[t.Iterable[List[t.Any]]]
 ]
 # (ctx, fields, ids) -> [[]]
 NotRootFieldFuncCtx = t.Callable[
-    [t.Any, t.List["Field"], List[t.Any]], SyncAsync[List[List[t.Any]]]
+    [t.Any, t.List["QueryField"], List[t.Any]],
+    SyncAsync[t.Iterable[List[t.Any]]],
 ]
 
 
 FieldT = t.Optional[t.Union[GenericMeta, ScalarMeta]]
 FieldFunc = t.Union[
     RootFieldFunc,
+    RootFieldFuncCtx,
     NotRootFieldFunc,
     NotRootFieldFuncCtx,
     "SubGraph",

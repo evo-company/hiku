@@ -1,74 +1,79 @@
-import re
 import json
+import re
 import typing as t
-
-from functools import partial, cached_property
 from collections import OrderedDict
+from functools import cached_property, partial
 
 from ..directives import (
     Cached,
     Deprecated,
     Directive,
-    _SkipDirective,
-    _IncludeDirective,
     SchemaDirective,
+    _IncludeDirective,
+    _SkipDirective,
     get_deprecated,
 )
 from ..graph import (
+    Field,
     FieldType,
     Graph,
-    Root,
-    Node,
+    GraphTransformer,
+    GraphVisitor,
     Link,
-    Option,
-    Field,
+    Node,
     Nothing,
     NothingType,
+    Option,
+    Root,
 )
-from ..graph import GraphVisitor, GraphTransformer
 from ..scalar import Scalar
 from ..types import (
+    AbstractTypeVisitor,
+    Any,
+    AnyMeta,
+    Boolean,
+    BooleanMeta,
+    CallableMeta,
     EnumRefMeta,
+    FloatMeta,
     IDMeta,
     InputRefMeta,
-    InterfaceRefMeta,
-    TypeRef,
-    String,
-    Sequence,
-    Boolean,
-    Optional,
-    AnyMeta,
-    MappingMeta,
-    CallableMeta,
-    SequenceMeta,
-    OptionalMeta,
-    TypeRefMeta,
-    StringMeta,
     IntegerMeta,
-    FloatMeta,
-    BooleanMeta,
+    InterfaceRefMeta,
+    MappingMeta,
+    Optional,
+    OptionalMeta,
+    RecordMeta,
+    Sequence,
+    SequenceMeta,
+    String,
+    StringMeta,
+    TypeRef,
+    TypeRefMeta,
     UnionRefMeta,
 )
-from ..types import Any, RecordMeta, AbstractTypeVisitor
 from ..utils import listify
-from .types import (
-    ENUM,
-    EnumValueIdent,
-    INTERFACE,
-    SCALAR,
-    NON_NULL,
-    LIST,
-    INPUT_OBJECT,
-    OBJECT,
-    UNION,
-    DIRECTIVE,
-    FieldIdent,
-    FieldArgIdent,
-    InputObjectFieldIdent,
-    DirectiveArgIdent,
-    HashedNamedTuple,
-)
 from ..utils.serialize import serialize
+from .types import (
+    DIRECTIVE,
+    ENUM,
+    INPUT_OBJECT,
+    INTERFACE,
+    LIST,
+    NON_NULL,
+    OBJECT,
+    SCALAR,
+    UNION,
+    DirectiveArgIdent,
+    EnumValueIdent,
+    FieldArgIdent,
+    FieldIdent,
+    HashedNamedTuple,
+    InputObjectFieldIdent,
+)
+
+if t.TYPE_CHECKING:
+    from ..query import Field as QueryField
 
 _BUILTIN_DIRECTIVES: t.Tuple[
     t.Union[t.Type[Directive], t.Type[SchemaDirective]], ...
@@ -310,7 +315,7 @@ def root_schema_directives(schema: SchemaInfo) -> t.List[DIRECTIVE]:  # type: ig
 
 @listify
 def type_info(
-    schema: SchemaInfo, fields: t.List[Field], ids: t.List
+    schema: SchemaInfo, fields: "t.List[QueryField]", ids: t.List
 ) -> t.Iterator[t.List[t.Optional[t.Dict]]]:
     for ident in ids:
         if isinstance(ident, OBJECT):
@@ -472,7 +477,7 @@ def interfaces_type_link(schema: SchemaInfo, ids: t.List) -> t.Iterator:
 
 @listify
 def field_info(
-    schema: SchemaInfo, fields: t.List[Field], ids: t.List
+    schema: SchemaInfo, fields: "t.List[QueryField]", ids: t.List
 ) -> t.Iterator[t.List[t.Dict]]:
     for ident in ids:
         if ident.node in schema.nodes_map:
@@ -564,7 +569,9 @@ def type_input_object_input_fields_link(
 
 @listify
 def input_value_info(
-    schema: SchemaInfo, fields: t.List[Field], ids: t.List[HashedNamedTuple]
+    schema: SchemaInfo,
+    fields: "t.List[QueryField]",
+    ids: t.List[HashedNamedTuple],
 ) -> t.Iterator[t.List[t.Dict]]:
     for ident in ids:
         if isinstance(ident, FieldArgIdent):
@@ -674,7 +681,7 @@ def input_value_type_link(
 @listify
 def directive_value_info(
     schema: SchemaInfo,
-    fields: t.List[Field],
+    fields: "t.List[QueryField]",
     ids: t.List[DIRECTIVE],  # type: ignore[valid-type]
 ) -> t.Iterator[t.List[t.Any]]:
     for ident in ids:
@@ -703,7 +710,7 @@ def directive_args_link(
 @listify
 def enum_value_info(
     schema: SchemaInfo,
-    fields: t.List[Field],
+    fields: "t.List[QueryField]",
     ids: t.List[EnumValueIdent],  # type: ignore[valid-type]
 ) -> t.Iterator[t.List[t.Any]]:
     for ident in ids:

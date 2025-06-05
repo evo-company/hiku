@@ -1,80 +1,60 @@
 import contextlib
+import dataclasses
 import inspect
 import warnings
-import dataclasses
-
-from typing import (
-    Any,
-    Generic,
-    TypeVar,
-    Callable,
-    cast,
-    Iterator,
-    Tuple,
-    Union,
-    Dict,
-    List,
-    Set,
-    NoReturn,
-    Optional,
-    DefaultDict,
-    overload,
-)
+from collections import defaultdict
+from collections.abc import Hashable, Mapping, Sequence
 from functools import partial
 from itertools import chain, repeat
-from collections import defaultdict
-from collections.abc import Sequence, Mapping, Hashable
+from typing import (
+    Any,
+    Callable,
+    DefaultDict,
+    Dict,
+    Generic,
+    Iterator,
+    List,
+    NoReturn,
+    Optional,
+    Set,
+    Tuple,
+    TypeVar,
+    Union,
+    overload,
+)
 
 from hiku.types import OptionalMeta
 
-from .cache import (
-    CacheVisitor,
-    CacheInfo,
-    CacheSettings,
-)
-from .compat import Concatenate, ParamSpec
+from .cache import CacheInfo, CacheSettings, CacheVisitor
+from .compat import ParamSpec
 from .context import ExecutionContext
 from .executors.base import (
     BaseAsyncExecutor,
     BaseSyncExecutor,
     SyncAsyncExecutor,
 )
-from .query import (
-    Fragment,
-    Node as QueryNode,
-    Field as QueryField,
-    Link as QueryLink,
-    QueryTransformer,
-    QueryVisitor,
-)
+from .executors.queue import Queue, SubmitRes, TaskSet, Workflow
 from .graph import (
+    Field,
     FieldType,
+    Graph,
     Link,
     LinkType,
+    Many,
     Maybe,
     MaybeMany,
-    One,
-    Many,
-    Nothing,
-    Field,
-    Graph,
     Node,
+    Nothing,
+    One,
 )
-from .result import (
-    Proxy,
-    Index,
-    ROOT,
-    Reference,
-)
-from .executors.queue import (
-    Workflow,
-    Queue,
-    TaskSet,
-    SubmitRes,
-)
+from .query import Field as QueryField
+from .query import Fragment
+from .query import Link as QueryLink
+from .query import Node as QueryNode
+from .query import QueryTransformer, QueryVisitor
+from .result import ROOT, Index, Proxy, Reference
 from .utils import ImmutableDict
 from .utils.serialize import serialize
-
 
 NodePath = Tuple[Optional[str], ...]
 
@@ -998,16 +978,14 @@ R = TypeVar("R")
 P = ParamSpec("P")
 
 
-def pass_context(
-    func: Callable[P, R]
-) -> Callable[Concatenate["Context", P], R]:
+def pass_context(func: Callable[P, R]) -> Callable[P, R]:
     """Decorator to pass context to a function as a first argument.
 
     Can be used on functions for ``Field`` and ``Link``.
     Can not be used on functions with ``@define`` decorator
     """
     func.__pass_context__ = True  # type: ignore[attr-defined]
-    return cast(Callable[Concatenate["Context", P], R], func)
+    return func
 
 
 def _do_pass_context(func: Callable) -> bool:
