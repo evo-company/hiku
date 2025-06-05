@@ -7,23 +7,16 @@ Expression building blocks
 """
 
 import typing as t
-
+from collections import namedtuple
 from functools import wraps
 from itertools import chain
-from collections import namedtuple
 
 from ..compat import ParamSpec
-
-from ..query import Node as QueryNode, Link, Field, Base as QueryBase
-from ..types import (
-    Record,
-    Callable,
-    Any,
-    GenericMeta,
-)
-
-from .nodes import Symbol, Tuple, List, Keyword, Dict, Node
-
+from ..query import Base as QueryBase
+from ..query import Field, Link
+from ..query import Node as QueryNode
+from ..types import Any, Callable, GenericMeta, Record
+from .nodes import Dict, Keyword, List, Node, Symbol, Tuple
 
 THIS = "this"
 
@@ -37,7 +30,7 @@ class DotHandler:
     def __repr__(self) -> str:
         return repr(self.obj)
 
-    def __getattr__(self, name: str) -> "DotHandler":
+    def __getattr__(self, name: str) -> t.Any:
         return DotHandler(Tuple([Symbol("get"), self.obj, Symbol(name)]))
 
 
@@ -46,7 +39,7 @@ _DotHandler = DotHandler
 
 
 class _S:
-    def __getattr__(self, name: str) -> DotHandler:
+    def __getattr__(self, name: str) -> t.Any:
         return DotHandler(Symbol(name))
 
 
@@ -106,7 +99,7 @@ P = ParamSpec("P")
 
 def define(
     *types: GenericMeta, **kwargs: str
-) -> t.Callable[[t.Callable[P, T]], t.Callable[P, _Func]]:
+) -> t.Callable[[t.Callable[P, T]], t.Callable[P, t.Any]]:
     """Annotates function arguments with types.
 
     These annotations are used to type-check expressions and to analyze,
