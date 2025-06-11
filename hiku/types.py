@@ -1,13 +1,12 @@
 import typing as t
-
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from collections import OrderedDict
 from typing import TypeVar
 
 if t.TYPE_CHECKING:
-    from hiku.graph import Union, Interface
     from hiku.enum import BaseEnum
-    from hiku.scalar import ScalarMeta
+    from hiku.graph import Interface, Union
+    from hiku.scalar import Scalar, ScalarMeta
 
 
 class GenericMeta(type):
@@ -333,7 +332,7 @@ def _maybe_typeref(typ: t.Union[str, GenericMeta]) -> GenericMeta:
 
 
 class AbstractTypeVisitor(ABC):
-    def visit(self, obj: GenericMeta) -> t.Any:
+    def visit(self, obj: "t.Union[GenericMeta, t.Type[Scalar]]") -> t.Any:
         return obj.accept(self)
 
     @abstractmethod
@@ -400,6 +399,10 @@ class AbstractTypeVisitor(ABC):
     def visit_inputref(self, obj: InputRefMeta) -> t.Any:
         pass
 
+    @abstractmethod
+    def visit_scalar(self, obj: "t.Type[Scalar]") -> t.Any:
+        pass
+
 
 class TypeVisitor(AbstractTypeVisitor):
     def visit_any(self, obj: AnyMeta) -> t.Any:
@@ -449,6 +452,9 @@ class TypeVisitor(AbstractTypeVisitor):
     def visit_callable(self, obj: CallableMeta) -> t.Any:
         for arg_type in obj.__arg_types__:
             self.visit(arg_type)
+
+    def visit_scalar(self, obj: "t.Type[Scalar]") -> t.Any:
+        pass
 
 
 T = TypeVar("T", bound=GenericMeta)

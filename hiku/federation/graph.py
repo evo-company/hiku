@@ -1,21 +1,17 @@
 import typing as t
 from collections import defaultdict
 from inspect import isawaitable
+
 from hiku.compat import TypeAlias
-
-from hiku.federation.version import DEFAULT_FEDERATION_VERSION
-from hiku.federation.scalars import _Any, FieldSet, LinkImport
-from hiku.federation.utils import get_entity_types
-
-from hiku.engine import pass_context
 from hiku.directives import SchemaDirective
+from hiku.engine import pass_context
 from hiku.enum import BaseEnum
-from hiku.scalar import Scalar
-from hiku.types import Optional, Record, Sequence, String, TypeRef, UnionRef
-
+from hiku.federation.scalars import FieldSet, LinkImport, _Any
+from hiku.federation.utils import get_entity_types
+from hiku.federation.version import DEFAULT_FEDERATION_VERSION
+from hiku.graph import Field
+from hiku.graph import Graph as _Graph
 from hiku.graph import (
-    Field,
-    Graph as _Graph,
     GraphTransformer,
     Input,
     Interface,
@@ -25,6 +21,8 @@ from hiku.graph import (
     Root,
     Union,
 )
+from hiku.scalar import Scalar
+from hiku.types import Optional, Record, Sequence, String, TypeRef, UnionRef
 
 RawRef: TypeAlias = t.Any
 
@@ -219,7 +217,7 @@ class GraphInit(GraphTransformer):
         return Field(
             "_service",
             TypeRef["_Service"],
-            _async(service_resolver) if self.is_async else service_resolver,  # type: ignore[arg-type]  # noqa: E501
+            _async(service_resolver) if self.is_async else service_resolver,
         )
 
 

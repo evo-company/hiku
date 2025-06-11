@@ -1,10 +1,9 @@
 import uuid
-
 from datetime import date, datetime
-from typing import Any, Callable, Optional, TYPE_CHECKING, Type
+from typing import TYPE_CHECKING, Any, Callable, Optional, Type
 
 if TYPE_CHECKING:
-    from hiku.graph import AbstractGraphVisitor
+    from hiku.types import AbstractTypeVisitor
 
 
 def scalar(
@@ -59,7 +58,7 @@ class Scalar(metaclass=ScalarMeta):
         return value
 
     @classmethod
-    def accept(cls, visitor: "AbstractGraphVisitor") -> Any:
+    def accept(cls, visitor: "AbstractTypeVisitor") -> Any:
         return visitor.visit_scalar(cls)
 
 
