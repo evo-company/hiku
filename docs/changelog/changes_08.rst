@@ -1,6 +1,12 @@
 Changes in 0.8
 ==============
 
+0.8.0rc14
+~~~~~~~~~
+
+- Fix some broken type annotations
+
+
 0.8.0rc13
 ~~~~~~~~~
 
