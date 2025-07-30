@@ -33,6 +33,79 @@ Hook = Callable[
 
 
 class Extension:
+    """Extension class for hooking into the GraphQL execution lifecycle.
+
+    Extensions allow you to intercept and modify the execution flow at various
+    stages of query processing. Each hook is called before and after its
+    respective stage, providing opportunities for logging, monitoring,
+    validation, and more.
+
+    **Extension Lifecycle Diagram:**
+
+    ```
+    Schema Creation
+    ┌─────────────────────────────────────────────────────────────┐
+    │ on_init() - Called once during schema creation              │
+    │ • Add transformers to execution context                     │
+    │ • Setup global state, monitoring, etc.                      │
+    └─────────────────────────────────────────────────────────────┘
+
+    Query Execution (per request)
+    ┌─────────────────────────────────────────────────────────────┐
+    │ on_operation() - Wraps entire operation lifecycle           │
+    │ ┌─────────────────────────────────────────────────────────┐ │
+    │ │ on_parse() - Query parsing and AST transformation     │ │ |
+    │ │ • Parse GraphQL string to AST                         │ │ |
+    │ │ • Transform AST to Hiku query nodes                   │ │ |
+    │ └─────────────────────────────────────────────────────────┘ │
+    │ ┌─────────────────────────────────────────────────────────┐ │
+    │ │ on_validate() - Query validation                      │ │ |
+    │ │ • Validate query against schema                       │ │ |
+    │ │ • Check field existence, types, etc.                  │ │ |
+    │ │ • Set execution_context.errors if validation fails    │ │ |
+    │ └─────────────────────────────────────────────────────────┘ │
+    │ ┌─────────────────────────────────────────────────────────┐ │
+    │ │ on_execute() - Query execution                        │ │ |
+    │ │ • Execute query against data sources                  │ │ |
+    │ │ • Resolve fields and relationships                    │ │ |
+    │ │ • Set execution_context.result                        │ │ |
+    │ │ • Denormalize result                                  │ │ |
+    │ └─────────────────────────────────────────────────────────┘ │
+    └─────────────────────────────────────────────────────────────┘
+
+    **Hook execution order:**
+    1. on_init() - Schema creation (once)
+    2. on_operation() - Start of operation
+    3.   on_parse() - Query parsing
+    4.   on_validate() - Query validation
+    5.   on_execute() - Query execution
+    6. on_operation() - End of operation
+
+    **ExecutionContext fields availability:**
+    - on_init: Basic execution context
+    - on_operation:
+        before yield: query_src, variables, operation_name, context
+        after yield: all fields from execution_context
+    - on_parse:
+        before yield: all from previous hooks
+        after yield: graphql_document (AST), operation, query
+    - on_validate:
+        before yield: all from previous hooks
+        after yield: errors
+    - on_execute:
+        before yield: all from previous hooks
+        after yield: result
+
+    **Hook implementation:**
+    Each hook should be implemented as a generator function that yields once:
+    ```python
+    def on_parse(self, execution_context: ExecutionContext) -> Iterator[None]:
+        # Pre-parse logic
+        yield  # This is where parsing happens
+        # Post-parse logic
+    ```
+    """
+
     def on_init(  # type: ignore[return]
         self, execution_context: ExecutionContext
     ) -> AsyncIteratorOrIterator[None]:
@@ -46,6 +119,13 @@ class Extension:
         self, execution_context: ExecutionContext
     ) -> AsyncIteratorOrIterator[None]:
         """Called before and after the operation step.
+
+        A step happens after `on_init` hook and is active during the next hooks:
+        - on_parse
+        - on_validate
+        - on_execute
+
+        `on_operation` hook is the last hook of entrire operation lifecycle.
 
         Operation step is a step where the query is executed by schema.
 
@@ -65,9 +145,14 @@ class Extension:
     ) -> AsyncIteratorOrIterator[None]:
         """Called before and after the parsing step.
 
+        A step happens inside `on_operation` hook and before `on_validate` hook.
+
         Parse step is when query string is:
         - parsed into graphql ast and will be assigned to the
-          execution_context.graphql_document
+          execution_context.graphql_document.
+          Note that execution_context.query_src parsed only
+          if execution_context.query and execution_context.graphql_document are
+          empty.
         - graphql ast is transformed into
           hiku's query ast and Operation type is created and assigned to the
           execution_context.operation.
@@ -79,9 +164,14 @@ class Extension:
     ) -> AsyncIteratorOrIterator[None]:
         """Called before and after the validation step.
 
+        A step happens inside `on_operation` hook and before `on_execute` hook.
+
         Validation step is when hiku query is validated.
         After validation is done, if there are errors, they will be assigned
         to the execution_context.errors.
+        If there are already execution_context.errors, then validation will be
+        skipped (this can happen if errors attribute was set in any hook before
+        or in `on_validate` hook before yield.).
         """
         yield None
 
@@ -89,6 +179,9 @@ class Extension:
         self, execution_context: ExecutionContext
     ) -> AsyncIteratorOrIterator[None]:
         """Called before and after the execution step.
+
+        A step happens inside `on_operation` hook and after `on_validate` hook
+        and is the last hook inside `on_operation` hook.
 
         Execution step is when hiku query is executed by hiku engine.
 
