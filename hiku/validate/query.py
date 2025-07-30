@@ -22,7 +22,7 @@ from hiku.query import FieldBase, Fragment
 from hiku.query import Link as QueryLink
 from hiku.query import Node as QueryNode
 from hiku.query import QueryVisitor
-from hiku.scalar import ScalarMeta
+from hiku.scalar import Scalar, ScalarMeta
 
 from ..types import (
     AbstractTypeVisitor,
@@ -185,7 +185,7 @@ class _OptionTypeValidator:
         finally:
             self._value.pop()
 
-    def visit(self, type_: GenericMeta) -> None:
+    def visit(self, type_: t.Union[GenericMeta, t.Type[Scalar]]) -> None:
         type_.accept(self)  # type: ignore
 
     def visit_any(self, type_: AnyMeta) -> None:

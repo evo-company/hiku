@@ -1,4 +1,4 @@
-FROM python:3.9-slim as base
+FROM python:3.9-slim AS base
 
 WORKDIR /work
 
@@ -22,7 +22,7 @@ COPY pdm.lock .
 RUN pdm export --prod -o requirements-base.txt -f requirements && \
   uv pip install --system -r requirements-base.txt --no-deps --no-cache-dir --index-strategy unsafe-best-match
 
-FROM base as dev
+FROM base AS dev
 
 RUN pdm export -G dev -G lint -o requirements-dev.txt -f requirements && \
   uv pip install --system -r requirements-dev.txt --no-deps --no-cache-dir --index-strategy unsafe-best-match
@@ -33,12 +33,12 @@ RUN pdm export -G dev -G test -o requirements-test.txt -f requirements && \
   uv pip install --system -r requirements-test.txt --no-deps --no-cache-dir --index-strategy unsafe-best-match && \
   uv pip install tox tox-pdm
 
-FROM base as docs
+FROM base AS docs
 
 RUN pdm export -G dev -G docs -o requirements-docs.txt -f requirements && \
   uv pip install --system -r requirements-docs.txt --no-deps --no-cache-dir --index-strategy unsafe-best-match
 
-FROM base as examples
+FROM base AS examples
 
 RUN pdm export -G dev -G examples -o requirements-examples.txt -f requirements && \
   uv pip install --system -r requirements-examples.txt --no-deps --no-cache-dir --index-strategy unsafe-best-match
