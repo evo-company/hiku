@@ -262,12 +262,6 @@ class Schema(Generic[_ExecutorType]):
                     raise GraphQLError("Failed to read query: {}".format(e))
 
             execution_context.query = execution_context.operation.query
-            # save original query before merging to validate it
-            original_query = execution_context.query
-
-            merger = QueryMerger(execution_context.graph)
-            execution_context.query = merger.merge(execution_context.query)
-            execution_context.operation.query = execution_context.query
 
         op = execution_context.operation
         if op.type not in (OperationType.QUERY, OperationType.MUTATION):
@@ -275,13 +269,21 @@ class Schema(Generic[_ExecutorType]):
                 "Unsupported operation type: {!r}".format(op.type)
             )
 
+        # Validation works with original query, not merged one.
+        # Merged query only used for execution.
         with extensions_manager.validation():
             if execution_context.errors is None:
                 execution_context.errors = self._validate(
                     execution_context.graph,
-                    original_query,
+                    execution_context.query,
                     execution_context.validators,
                 )
 
             if execution_context.errors:
                 raise ValidationError(errors=execution_context.errors)
+
+        # After merge, query considered `final`, e.g. will not be changed
+        # by hiku itsef and will be used as is in execution.
+        merger = QueryMerger(execution_context.graph)
+        execution_context.query = merger.merge(execution_context.query)
+        execution_context.operation.query = execution_context.query

@@ -317,3 +317,15 @@ def test_query_merger__interfaces(src, result):
     got = print_ast(export(query)).strip()
 
     assert got == exp
+
+
+def test_query_merger__non_existing_link():
+    src = """
+    query TestQuery {
+        nonExistingLink { id }
+    }
+    """
+    with pytest.raises(KeyError) as e:
+        QueryMerger(GRAPH).merge(read(src))
+
+    assert e.value is not None
