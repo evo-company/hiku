@@ -1,6 +1,13 @@
 Changes in 0.8
 ==============
 
+0.8.0rc15
+~~~~~~~~~
+
+- Move QueryMerger after validation step in order to catch invalid queries
+  with non-existing links before query merging since QueryMerger will raise
+  KeyError in that case.
+
 0.8.0rc14
 ~~~~~~~~~
 
