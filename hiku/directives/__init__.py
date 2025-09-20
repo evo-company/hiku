@@ -73,7 +73,8 @@ class DirectiveField(dataclasses.Field, t.Generic[_T]):
 
         if sys.version_info >= (3, 10):
             kwargs["kw_only"] = False
-
+        if sys.version_info >= (3, 14):
+            kwargs["doc"] = description
         super().__init__(
             default=default_value,
             default_factory=dataclasses.MISSING,  # type: ignore
@@ -81,7 +82,6 @@ class DirectiveField(dataclasses.Field, t.Generic[_T]):
             repr=True,
             compare=True,
             hash=None,
-            doc=description,
             metadata={},
             **kwargs,
         )
@@ -229,13 +229,14 @@ class SchemaDirectiveField(dataclasses.Field, t.Generic[_T]):
 
         if sys.version_info >= (3, 10):
             kwargs["kw_only"] = False
+        if sys.version_info >= (3, 14):
+            kwargs["doc"] = description
 
         super().__init__(
             default=default_value,
             default_factory=dataclasses.MISSING,  # type: ignore
             init=True,
             repr=True,
-            doc=description,
             compare=True,
             hash=None,
             metadata={},
