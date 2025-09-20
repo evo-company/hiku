@@ -81,6 +81,7 @@ class DirectiveField(dataclasses.Field, t.Generic[_T]):
             repr=True,
             compare=True,
             hash=None,
+            doc=description,
             metadata={},
             **kwargs,
         )
@@ -234,6 +235,7 @@ class SchemaDirectiveField(dataclasses.Field, t.Generic[_T]):
             default_factory=dataclasses.MISSING,  # type: ignore
             init=True,
             repr=True,
+            doc=description,
             compare=True,
             hash=None,
             metadata={},
