@@ -7,7 +7,7 @@ env
 *.pyc
 *.pyo
 .venv
-.tox
+.tox/*
 .coverage
 .idea
 .cache

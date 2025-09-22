@@ -31,7 +31,7 @@ FROM base AS test
 
 RUN pdm export -G dev -G test -o requirements-test.txt -f requirements && \
   uv pip install --system -r requirements-test.txt --no-deps --no-cache-dir --index-strategy unsafe-best-match && \
-  uv pip install tox tox-pdm
+  uv pip install --system tox tox-pdm
 
 FROM base AS docs
 
