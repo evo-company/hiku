@@ -356,7 +356,18 @@ class GraphValidator(GraphVisitor):
 
         self._validate_description(obj)
 
-    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Any: ...
+    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Any:
+        # Check for name conflicts between scalars and nodes
+        scalar_name = obj.__type_name__
+        node_names = {node.name for node in self.items if node.name is not None}
+        
+        if scalar_name in node_names:
+            self.errors.report(
+                'Scalar "{}" conflicts with node name. '
+                'GraphQL schema cannot have scalar and type with the same name.'.format(
+                    scalar_name
+                )
+            )
 
     def visit_root(self, obj: Root) -> None:
         self.visit_node(obj)
