@@ -107,7 +107,7 @@ class ExpressionCompiler:
         _, bind, then_, else_ = node.values
         bind_sym, bind_expr = bind.values
         with self.env.push([bind_sym.name]):
-            none = py.NameConstant(None)
+            none = py.Constant(None)
             load_bind_sym = py.Name(self.env[bind_sym.name], py.Load())
             test = py.Compare(load_bind_sym, [py.IsNot()], [none])
             store_bind_sym = py.Name(self.env[bind_sym.name], py.Store())
