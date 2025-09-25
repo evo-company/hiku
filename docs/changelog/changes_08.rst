@@ -1,6 +1,11 @@
 Changes in 0.8
 ==============
 
+0.8.0rc16
+~~~~~~~~~
+
+- Fix dataclasses.Field ``doc`` param support for py3.14
+
 0.8.0rc15
 ~~~~~~~~~
 
