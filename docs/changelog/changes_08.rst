@@ -1,6 +1,12 @@
 Changes in 0.8
 ==============
 
+0.8.0rc17
+~~~~~~~~~
+
+- Support python3.14 in `expr/compiler`.
+- Add python3.13 and python3.14 to testing matrix/tox
+
 0.8.0rc16
 ~~~~~~~~~
 
