@@ -64,12 +64,12 @@ class ExpressionCompiler:
 
     def _ctx_load(self, name):
         return py.Subscript(
-            py.Name(self.ctx_var, py.Load()), py.Index(py.Str(name)), py.Load()
+            py.Name(self.ctx_var, py.Load()), py.Constant(name), py.Load()
         )
 
     def _env_load(self, name):
         return py.Subscript(
-            py.Name(self.env_var, py.Load()), py.Index(py.Str(name)), py.Load()
+            py.Name(self.env_var, py.Load()), py.Constant(name), py.Load()
         )
 
     def visit(self, node):
@@ -80,15 +80,15 @@ class ExpressionCompiler:
 
     def generic_visit(self, node):
         if node is None:
-            return py.NameConstant(node)
+            return py.Constant(node)
         elif isinstance(node, bool):
-            return py.NameConstant(node)
+            return py.Constant(node)
         elif isinstance(node, int):
-            return py.Num(node)
+            return py.Constant(node)
         elif isinstance(node, float):
-            return py.Num(node)
+            return py.Constant(node)
         elif isinstance(node, str):
-            return py.Str(node)
+            return py.Constant(node)
         else:
             raise NotImplementedError(type(node))
 
@@ -96,7 +96,7 @@ class ExpressionCompiler:
         _, obj, name = node.values
         assert isinstance(name, Symbol)
         obj_expr = self.visit(obj)
-        return py.Subscript(obj_expr, py.Index(py.Str(name.name)), py.Load())
+        return py.Subscript(obj_expr, py.Constant(name.name), py.Load())
 
     def visit_if_expr(self, node):
         args = [self.visit(val) for val in node.values[1:]]
@@ -169,6 +169,6 @@ class ExpressionCompiler:
         values = node.values[1::2]
         assert all(isinstance(k, Keyword) for k in keys), "Wrong arguments"
         return py.Dict(
-            [py.Str(key.name) for key in keys],
+            [py.Constant(key.name) for key in keys],
             [self.visit(value) for value in values],
         )
