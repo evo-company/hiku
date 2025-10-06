@@ -2,6 +2,7 @@ import pytest
 
 from hiku.directives import Deprecated
 from hiku.graph import Graph, Input, Node, Field, Root, Link, Option
+from hiku.scalar import Scalar
 from hiku.types import InputRef, Integer, TypeRef, Sequence
 from hiku.validate.graph import GraphValidationError
 
@@ -313,3 +314,26 @@ def test_graph_contain_duplicate_nodes():
         ],
         ['Node "foo" description must be a string'],
     )
+
+
+def test_scalar_node_name_conflict():
+    """Test that scalars and nodes cannot have the same name."""
+    # Define a custom scalar
+    class CoolType(Scalar):
+        pass
+
+    with pytest.raises(GraphValidationError) as err:
+        Graph(
+            [
+                Node("CoolType", [
+                    Field("id", Integer, _fields_func),
+                ]),
+                Root([]),
+            ],
+            scalars=[CoolType]
+        )
+    
+    assert err.value.errors == [
+        'Scalar "CoolType" conflicts with node name. '
+        'GraphQL schema cannot have scalar and type with the same name.'
+    ]
