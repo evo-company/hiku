@@ -571,7 +571,10 @@ def store_links(
 
         node_idx = index[node.name]
         for i, res in zip(ids, query_result):
-            node_idx[i][query_link.index_key] = field_val(graph_link, res)
+            val = field_val(graph_link, res)
+            previous_ref = node_idx[i].get(query_link.index_key, None)
+            assert previous_ref is None or val == previous_ref, (val, previous_ref)
+            node_idx[i][query_link.index_key] = val
     else:
         index.root[query_link.index_key] = field_val(graph_link, query_result)
 
