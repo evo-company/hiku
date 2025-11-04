@@ -9,7 +9,7 @@ authors = [
   { name = "Maksym Kindritskyi", email = "kindritskiy.m@gmail.com" },
 ]
 dependencies = []
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 classifiers = [
   'Development Status :: 5 - Production/Stable',
@@ -17,10 +17,11 @@ classifiers = [
   'License :: OSI Approved :: BSD License',
   'Operating System :: OS Independent',
   'Programming Language :: Python',
-  'Programming Language :: Python :: 3.9',
   'Programming Language :: Python :: 3.10',
   'Programming Language :: Python :: 3.11',
   'Programming Language :: Python :: 3.12',
+  'Programming Language :: Python :: 3.13',
+  'Programming Language :: Python :: 3.14',
   'Programming Language :: Python :: 3 :: Only',
   'Topic :: Software Development :: Libraries :: Python Modules',
 ]
@@ -111,7 +112,7 @@ source = ["hiku"]
 
 [tool.mypy]
 files = ["hiku"]
-python_version = 3.9
+python_version = "3.10"
 check_untyped_defs = true
 #disallow_any_generics = true
 #disallow_untyped_calls = true
@@ -182,9 +183,9 @@ ignore_missing_imports = true
 
 [tool.black]
 line-length = 80
-target-version = ['py39']
+target-version = ['py310']
 
 [tool.isort]
-py_version = "39"
+py_version = "310"
 profile = "black"
 line_length = 80

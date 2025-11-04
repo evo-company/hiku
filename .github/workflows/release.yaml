@@ -2,11 +2,11 @@ name: Release
 on:
   push:
     tags: ["v*"]
-    
+
 env:
   PDM_VERSION: 2.22.3
-  PYTHON_VERSION: 3.9
-  
+  PYTHON_VERSION: "3.10"
+
 jobs:
   release:
     runs-on: ubuntu-latest
