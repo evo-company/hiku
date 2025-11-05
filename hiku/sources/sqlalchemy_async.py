@@ -2,7 +2,6 @@ from typing import (
     Callable,
     Iterable,
     Any,
-    List,
 )
 
 from . import sqlalchemy as _sa
@@ -15,8 +14,8 @@ FETCH_SIZE = 100
 
 class FieldsQuery(_sa.FieldsQuery):
     async def __call__(
-        self, ctx: Context, fields_: List[Field], ids: Iterable
-    ) -> List:
+        self, ctx: Context, fields_: list[Field], ids: Iterable
+    ) -> list:
         if not ids:
             return []
 

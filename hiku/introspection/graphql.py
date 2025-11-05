@@ -75,16 +75,14 @@ from .types import (
 if t.TYPE_CHECKING:
     from ..query import Field as QueryField
 
-_BUILTIN_DIRECTIVES: t.Tuple[
-    t.Union[t.Type[Directive], t.Type[SchemaDirective]], ...
-] = (
+_BUILTIN_DIRECTIVES: tuple[type[Directive] | type[SchemaDirective], ...] = (
     _SkipDirective,
     _IncludeDirective,
     Deprecated,
     Cached,
 )
 
-BUILTIN_SCALARS: t.Tuple[SCALAR, ...] = (  # type: ignore[valid-type]
+BUILTIN_SCALARS: tuple[SCALAR, ...] = (  # type: ignore[valid-type]
     SCALAR("String"),
     SCALAR("Int"),
     SCALAR("Boolean"),
@@ -109,7 +107,7 @@ class SchemaInfo:
     def __init__(
         self,
         query_graph: Graph,
-        mutation_graph: t.Optional[Graph],
+        mutation_graph: Graph | None,
     ):
         self.query_graph = query_graph
         self.data_types = query_graph.data_types
@@ -150,7 +148,7 @@ class TypeIdent(AbstractTypeVisitor):
     def visit_any(self, obj: AnyMeta) -> HashedNamedTuple:
         return SCALAR("Any")
 
-    def visit_scalar(self, obj: t.Type[Scalar]) -> HashedNamedTuple:
+    def visit_scalar(self, obj: type[Scalar]) -> HashedNamedTuple:
         return NON_NULL(SCALAR(obj.__type_name__))
 
     def visit_mapping(self, obj: MappingMeta) -> HashedNamedTuple:
@@ -220,8 +218,8 @@ def schema_link(schema: SchemaInfo) -> None:
 
 
 def type_link(
-    schema: SchemaInfo, options: t.Dict
-) -> t.Union[HashedNamedTuple, NothingType]:
+    schema: SchemaInfo, options: dict
+) -> HashedNamedTuple | NothingType:
     name = options["name"]
     if name in schema.nodes_map:
         return OBJECT(name)
@@ -299,14 +297,14 @@ def root_schema_query_type(schema: SchemaInfo) -> HashedNamedTuple:
 
 def root_schema_mutation_type(
     schema: SchemaInfo,
-) -> t.Union[HashedNamedTuple, NothingType]:
+) -> HashedNamedTuple | NothingType:
     if schema.mutation_graph is not None:
         return OBJECT(MUTATION_ROOT_NAME)
     else:
         return Nothing
 
 
-def root_schema_directives(schema: SchemaInfo) -> t.List[DIRECTIVE]:  # type: ignore[valid-type]  # noqa: E501
+def root_schema_directives(schema: SchemaInfo) -> list[DIRECTIVE]:  # type: ignore[valid-type]  # noqa: E501
     return [
         DIRECTIVE(directive.__directive_info__.name)
         for directive in schema.directives
@@ -315,8 +313,8 @@ def root_schema_directives(schema: SchemaInfo) -> t.List[DIRECTIVE]:  # type: ig
 
 @listify
 def type_info(
-    schema: SchemaInfo, fields: "t.List[QueryField]", ids: t.List
-) -> t.Iterator[t.List[t.Optional[t.Dict]]]:
+    schema: SchemaInfo, fields: "list[QueryField]", ids: list
+) -> t.Iterator[list[dict | None]]:
     for ident in ids:
         if isinstance(ident, OBJECT):
             if ident.name in schema.nodes_map:
@@ -385,8 +383,8 @@ def type_info(
 
 @listify
 def type_fields_link(
-    schema: SchemaInfo, ids: t.List, options: t.Dict
-) -> t.Iterator[t.List[HashedNamedTuple]]:
+    schema: SchemaInfo, ids: list, options: dict
+) -> t.Iterator[list[HashedNamedTuple]]:
     for ident in ids:
         if isinstance(ident, OBJECT):
             if ident.name in schema.nodes_map:
@@ -422,8 +420,8 @@ def type_fields_link(
 
 @listify
 def type_of_type_link(
-    schema: SchemaInfo, ids: t.List
-) -> t.Iterator[t.Union[HashedNamedTuple, NothingType]]:
+    schema: SchemaInfo, ids: list
+) -> t.Iterator[HashedNamedTuple | NothingType]:
     for ident in ids:
         if isinstance(ident, (NON_NULL, LIST)):
             yield ident.of_type
@@ -432,7 +430,7 @@ def type_of_type_link(
 
 
 @listify
-def possible_types_type_link(schema: SchemaInfo, ids: t.List) -> t.Iterator:
+def possible_types_type_link(schema: SchemaInfo, ids: list) -> t.Iterator:
     if ids is None:
         yield []
 
@@ -445,7 +443,7 @@ def possible_types_type_link(schema: SchemaInfo, ids: t.List) -> t.Iterator:
 
 @listify
 def enum_values_type_link(
-    schema: SchemaInfo, ids: t.List, opts: t.Dict
+    schema: SchemaInfo, ids: list, opts: dict
 ) -> t.Iterator:
     if ids is None:
         yield []
@@ -461,7 +459,7 @@ def enum_values_type_link(
 
 
 @listify
-def interfaces_type_link(schema: SchemaInfo, ids: t.List) -> t.Iterator:
+def interfaces_type_link(schema: SchemaInfo, ids: list) -> t.Iterator:
     if ids is None:
         yield []
 
@@ -477,8 +475,8 @@ def interfaces_type_link(schema: SchemaInfo, ids: t.List) -> t.Iterator:
 
 @listify
 def field_info(
-    schema: SchemaInfo, fields: "t.List[QueryField]", ids: t.List
-) -> t.Iterator[t.List[t.Dict]]:
+    schema: SchemaInfo, fields: "list[QueryField]", ids: list
+) -> t.Iterator[list[dict]]:
     for ident in ids:
         if ident.node in schema.nodes_map:
             node = schema.nodes_map[ident.node]
@@ -507,7 +505,7 @@ def field_info(
 
 @listify
 def field_type_link(
-    schema: SchemaInfo, ids: t.List
+    schema: SchemaInfo, ids: list
 ) -> t.Iterator[HashedNamedTuple]:
     type_ident = TypeIdent(schema.query_graph)
     for ident in ids:
@@ -527,8 +525,8 @@ def field_type_link(
 
 @listify
 def field_args_link(
-    schema: SchemaInfo, ids: t.List
-) -> t.Iterator[t.List[HashedNamedTuple]]:
+    schema: SchemaInfo, ids: list
+) -> t.Iterator[list[HashedNamedTuple]]:
     for ident in ids:
         if ident.node in schema.nodes_map:
             node = schema.nodes_map[ident.node]
@@ -543,8 +541,8 @@ def field_args_link(
 
 @listify
 def type_input_object_input_fields_link(
-    schema: SchemaInfo, ids: t.List
-) -> t.Iterator[t.List[HashedNamedTuple]]:
+    schema: SchemaInfo, ids: list
+) -> t.Iterator[list[HashedNamedTuple]]:
     for ident in ids:
         if isinstance(ident, INPUT_OBJECT):
             if ident.name in schema.query_graph.inputs_map:
@@ -570,9 +568,9 @@ def type_input_object_input_fields_link(
 @listify
 def input_value_info(
     schema: SchemaInfo,
-    fields: "t.List[QueryField]",
-    ids: t.List[HashedNamedTuple],
-) -> t.Iterator[t.List[t.Dict]]:
+    fields: "list[QueryField]",
+    ids: list[HashedNamedTuple],
+) -> t.Iterator[list[dict]]:
     for ident in ids:
         if isinstance(ident, FieldArgIdent):
             node = schema.nodes_map[ident.node]
@@ -649,7 +647,7 @@ def input_value_info(
 
 @listify
 def input_value_type_link(
-    schema: SchemaInfo, ids: t.List[HashedNamedTuple]
+    schema: SchemaInfo, ids: list[HashedNamedTuple]
 ) -> t.Iterator[HashedNamedTuple]:
     type_ident = TypeIdent(schema.query_graph, input_mode=True)
     for ident in ids:
@@ -681,9 +679,9 @@ def input_value_type_link(
 @listify
 def directive_value_info(
     schema: SchemaInfo,
-    fields: "t.List[QueryField]",
-    ids: t.List[DIRECTIVE],  # type: ignore[valid-type]
-) -> t.Iterator[t.List[t.Any]]:
+    fields: "list[QueryField]",
+    ids: list[DIRECTIVE],  # type: ignore[valid-type]
+) -> t.Iterator[list[Any]]:
     for ident in ids:
         if ident.name in schema.directives_map:  # type: ignore[attr-defined]
             info = schema.directives_map[ident.name].__directive_info__  # type: ignore  # noqa: E501
@@ -696,8 +694,8 @@ def directive_value_info(
 
 
 def directive_args_link(
-    schema: SchemaInfo, ids: t.List[str]
-) -> t.List[t.List[DirectiveArgIdent]]:  # type: ignore[valid-type]
+    schema: SchemaInfo, ids: list[str]
+) -> list[list[DirectiveArgIdent]]:  # type: ignore[valid-type]
     links = []
     for ident in ids:
         directive = schema.directives_map[ident].__directive_info__
@@ -710,9 +708,9 @@ def directive_args_link(
 @listify
 def enum_value_info(
     schema: SchemaInfo,
-    fields: "t.List[QueryField]",
-    ids: t.List[EnumValueIdent],  # type: ignore[valid-type]
-) -> t.Iterator[t.List[t.Any]]:
+    fields: "list[QueryField]",
+    ids: list[EnumValueIdent],  # type: ignore[valid-type]
+) -> t.Iterator[list[t.Any]]:
     for ident in ids:
         enum = schema.query_graph.enums_map[ident.enum_name]  # type: ignore[attr-defined]  # noqa: E501
         value = enum.values_map[ident.value_name]  # type: ignore[attr-defined]
@@ -896,8 +894,8 @@ class ValidateGraph(GraphVisitor):
     _name_re = re.compile(r"^[_a-zA-Z]\w*$", re.ASCII)
 
     def __init__(self) -> None:
-        self._path: t.List[str] = []
-        self._errors: t.List[str] = []
+        self._path: list[str] = []
+        self._errors: list[str] = []
 
     def _add_error(self, name: str, description: str) -> None:
         path = ".".join(self._path + [name])
@@ -957,7 +955,7 @@ class ValidateGraph(GraphVisitor):
 class BindToSchema(GraphTransformer):
     def __init__(self, schema: SchemaInfo) -> None:
         self.schema = schema
-        self._processed: t.Dict = {}
+        self._processed: dict = {}
 
     def visit_field(self, obj: Field) -> Field:
         field = super(BindToSchema, self).visit_field(obj)
@@ -975,7 +973,7 @@ class BindToSchema(GraphTransformer):
 
 class MakeAsync(GraphTransformer):
     def __init__(self) -> None:
-        self._processed: t.Dict = {}
+        self._processed: dict = {}
 
     def visit_field(self, obj: Field) -> Field:
         field = super(MakeAsync, self).visit_field(obj)
@@ -992,8 +990,8 @@ class MakeAsync(GraphTransformer):
 
 
 def type_name_field_func(
-    node_name: str, fields: t.List[Field], ids: t.Optional[t.List] = None
-) -> t.List:
+    node_name: str, fields: list[Field], ids: list | None = None
+) -> list:
     return [[node_name] for _ in ids] if ids is not None else [node_name]
 
 
@@ -1037,7 +1035,7 @@ class GraphQLIntrospection(GraphTransformer):
     def __init__(
         self,
         query_graph: Graph,
-        mutation_graph: t.Optional[Graph] = None,
+        mutation_graph: Graph | None = None,
     ) -> None:
         """
         :param query_graph: graph, where Root node represents Query root

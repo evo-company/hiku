@@ -28,11 +28,11 @@ from ..types import GenericMeta, OptionalMeta
 
 
 class DescriptionProtocol(Protocol):
-    description: t.Optional[str]
+    description: str | None
 
 
 class GraphValidationError(TypeError):
-    def __init__(self, errors: t.List[str]) -> None:
+    def __init__(self, errors: list[str]) -> None:
         self.errors = errors
         errors_list = "\n".join("- {}".format(e) for e in errors)
         super(GraphValidationError, self).__init__("\n" + errors_list)
@@ -40,7 +40,7 @@ class GraphValidationError(TypeError):
 
 class GraphValidator(GraphVisitor):
     class _NameFormatter(GraphVisitor):
-        def visit_node(self, obj: Node) -> t.Optional[str]:
+        def visit_node(self, obj: Node) -> str | None:
             return obj.name
 
         def visit_root(self, obj: Root) -> str:
@@ -55,7 +55,7 @@ class GraphValidator(GraphVisitor):
         def visit_option(self, obj: Option) -> str:
             return ":{}".format(obj.name)
 
-        def visit_scalar(self, obj: t.Type[Scalar]) -> str:
+        def visit_scalar(self, obj: type[Scalar]) -> str:
             return obj.__type_name__
 
         def visit_input(self, obj: Input) -> str:
@@ -69,11 +69,11 @@ class GraphValidator(GraphVisitor):
 
     def __init__(
         self,
-        items: t.List[Node],
-        unions: t.List[Union],
-        interfaces: t.List[Interface],
-        enums: t.List[BaseEnum],
-        scalars: t.List[t.Type[Scalar]],
+        items: list[Node],
+        unions: list[Union],
+        interfaces: list[Interface],
+        enums: list[BaseEnum],
+        scalars: list[type[Scalar]],
     ) -> None:
         self.items = items
         self.unions = unions
@@ -84,17 +84,17 @@ class GraphValidator(GraphVisitor):
         self.scalars = scalars
         self.scalars_map = {s.__type_name__: s for s in scalars}
         self.errors = Errors()
-        self._ctx: t.List = []
+        self._ctx: list = []
 
     @classmethod
     def validate(
         cls,
-        items: t.List[Node],
-        unions: t.List[Union],
-        interfaces: t.List[Interface],
-        enums: t.List[BaseEnum],
-        scalars: t.List[t.Type[Scalar]],
-        inputs: t.List[Input],
+        items: list[Node],
+        unions: list[Union],
+        interfaces: list[Interface],
+        enums: list[BaseEnum],
+        scalars: list[type[Scalar]],
+        inputs: list[Input],
     ) -> None:
         validator = cls(items, unions, interfaces, enums, scalars)
         validator.visit_graph_items(items)
@@ -107,7 +107,7 @@ class GraphValidator(GraphVisitor):
             raise GraphValidationError(validator.errors.list)
 
     @contextmanager
-    def push_ctx(self, obj: t.Union[Node, Link, Field, Input]) -> t.Any:
+    def push_ctx(self, obj: Node | Link | Field | Input) -> t.Any:
         self._ctx.append(obj)
         try:
             yield
@@ -115,26 +115,24 @@ class GraphValidator(GraphVisitor):
             self._ctx.pop()
 
     @property
-    def ctx(self) -> t.Union[Node, Link, Field]:
+    def ctx(self) -> Node | Link | Field:
         return self._ctx[-1]
 
-    def _get_duplicates(self, names: t.Iterable[str]) -> t.List[str]:
+    def _get_duplicates(self, names: t.Iterable[str]) -> list[str]:
         counter = Counter(names)
         return [k for k, v in counter.items() if v > 1]
 
-    def _format_names(self, names: t.List[str]) -> str:
+    def _format_names(self, names: list[str]) -> str:
         return ", ".join('"{}"'.format(name) for name in names)
 
-    def _format_types(self, objects: t.List[t.Any]) -> str:
+    def _format_types(self, objects: list[t.Any]) -> str:
         return ", ".join(map(repr, set(type(obj) for obj in objects)))
 
-    def _format_path(self, obj: t.Optional[t.Any] = None) -> str:
+    def _format_path(self, obj: t.Any | None = None) -> str:
         path = self._ctx + ([obj] if obj is not None else [])
         return "".join(self._name_formatter.visit(i) for i in path)
 
-    def _validate_deprecated_duplicates(
-        self, obj: t.Union[Field, Link]
-    ) -> None:
+    def _validate_deprecated_duplicates(self, obj: Field | Link) -> None:
         deprecated_count = sum(
             (1 for d in obj.directives if isinstance(d, Deprecated))
         )
@@ -356,7 +354,7 @@ class GraphValidator(GraphVisitor):
 
         self._validate_description(obj)
 
-    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Any: ...
+    def visit_scalar(self, obj: type[Scalar]) -> t.Any: ...
 
     def visit_root(self, obj: Root) -> None:
         self.visit_node(obj)
@@ -364,7 +362,7 @@ class GraphValidator(GraphVisitor):
     def visit_graph(self, obj: Graph) -> None:
         self.visit_graph_items(obj.items)
 
-    def visit_graph_items(self, items: t.List[Node]) -> None:
+    def visit_graph_items(self, items: list[Node]) -> None:
         invalid = [
             f for f in items if not isinstance(f, self._graph_accept_types)
         ]
@@ -395,22 +393,22 @@ class GraphValidator(GraphVisitor):
                 )
             )
 
-    def visit_graph_unions(self, unions: t.List[Union]) -> None:
+    def visit_graph_unions(self, unions: list[Union]) -> None:
         for union in unions:
             self.visit(union)
 
-    def visit_graph_inputs(self, inputs: t.List[Input]) -> None:
+    def visit_graph_inputs(self, inputs: list[Input]) -> None:
         for input_ in inputs:
             self.visit(input_)
 
-    def visit_graph_interfaces(self, interfaces: t.List[Interface]) -> None:
+    def visit_graph_interfaces(self, interfaces: list[Interface]) -> None:
         for interface in interfaces:
             self.visit(interface)
 
-    def visit_graph_enums(self, enums: t.List[BaseEnum]) -> None:
+    def visit_graph_enums(self, enums: list[BaseEnum]) -> None:
         for enum in enums:
             self.visit(enum)
 
-    def visit_graph_scalars(self, scalars: t.List[t.Type[Scalar]]) -> None:
+    def visit_graph_scalars(self, scalars: list[type[Scalar]]) -> None:
         for scalar in scalars:
             self.visit(scalar)

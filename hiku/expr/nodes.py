@@ -32,7 +32,7 @@ class Keyword(Node):
 
 
 class Tuple(Node):
-    def __init__(self, values: t.List[Node]) -> None:
+    def __init__(self, values: list[Node]) -> None:
         self.values = tuple(values)
 
     def __repr__(self) -> str:
@@ -43,7 +43,7 @@ class Tuple(Node):
 
 
 class List(Node):
-    def __init__(self, values: t.List[Node]) -> None:
+    def __init__(self, values: list[Node]) -> None:
         self.values = tuple(values)
 
     def __repr__(self) -> str:
@@ -54,7 +54,7 @@ class List(Node):
 
 
 class Dict(Node):
-    def __init__(self, values: t.List[Node]):
+    def __init__(self, values: list[Node]):
         self.values = tuple(values)
 
     def __repr__(self) -> str:

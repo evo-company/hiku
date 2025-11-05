@@ -30,14 +30,12 @@ RawRef: TypeAlias = t.Any
 class FederatedNode(Node):
     def __init__(
         self,
-        name: t.Optional[str],
-        fields: t.List[t.Union[Field, Link]],
+        name: str | None,
+        fields: list[Field | Link],
         *,
-        description: t.Optional[str] = None,
-        directives: t.Optional[t.Sequence[SchemaDirective]] = None,
-        resolve_reference: t.Optional[
-            t.Callable[[list[dict]], list[RawRef]]
-        ] = None,
+        description: str | None = None,
+        directives: t.Sequence[SchemaDirective] | None = None,
+        resolve_reference: t.Callable[[list[dict]], list[RawRef]] | None = None,
     ):
         super().__init__(
             name, fields, description=description, directives=directives
@@ -59,17 +57,17 @@ def to_reference(entry: ReferenceEntry) -> tuple[dict, type[TypeRef]]:
 
 
 class GraphInit(GraphTransformer):
-    type_to_resolve_reference_map: t.Dict[str, t.Callable]
+    type_to_resolve_reference_map: dict[str, t.Callable]
     is_async: bool
     has_entity_types: bool
 
     @classmethod
     def init(
         cls,
-        items: t.List[t.Union[FederatedNode, Node]],
+        items: list[FederatedNode | Node],
         is_async: bool,
         has_entity_types: bool = False,
-    ) -> t.List[Node]:
+    ) -> list[Node]:
         self = cls()
         self.type_to_resolve_reference_map = {}
         self.is_async = is_async
@@ -132,8 +130,8 @@ class GraphInit(GraphTransformer):
 
     def entities_link(self) -> Link:
         def entities_resolver(
-            options: t.Dict,
-        ) -> t.List[t.Tuple[t.Any, t.Type[TypeRef]]]:
+            options: dict,
+        ) -> list[tuple[t.Any, type[TypeRef]]]:
             representations = options["representations"]
             if not representations:
                 return []
@@ -160,8 +158,8 @@ class GraphInit(GraphTransformer):
             )
 
         async def entities_resolver_async(
-            options: t.Dict,
-        ) -> t.List[t.Tuple[t.Any, t.Type[TypeRef]]]:
+            options: dict,
+        ) -> list[tuple[t.Any, type[TypeRef]]]:
             representations = options["representations"]
             if not representations:
                 return []
@@ -202,14 +200,14 @@ class GraphInit(GraphTransformer):
     def service_field(self) -> Field:
         @pass_context
         def service_resolver(
-            ctx: t.Dict,
-            fields: t.List,
-        ) -> t.List:
+            ctx: dict,
+            fields: list,
+        ) -> list:
             return [{"sdl": ctx["__sdl__"]}]
 
         def _async(func: t.Callable) -> t.Callable:
             @pass_context
-            async def wrapper(*args: t.Any, **kwargs: t.Any) -> t.List[t.Dict]:
+            async def wrapper(*args: t.Any, **kwargs: t.Any) -> list[dict]:
                 return func(*args, **kwargs)
 
             return wrapper
@@ -224,14 +222,14 @@ class GraphInit(GraphTransformer):
 class Graph(_Graph):
     def __init__(
         self,
-        items: t.List[t.Union[FederatedNode, Node]],
-        data_types: t.Optional[t.Dict[str, t.Type[Record]]] = None,
-        directives: t.Optional[t.Sequence[t.Type[SchemaDirective]]] = None,
-        unions: t.Optional[t.List[Union]] = None,
-        interfaces: t.Optional[t.List[Interface]] = None,
-        enums: t.Optional[t.List[BaseEnum]] = None,
-        scalars: t.Optional[t.List[t.Type[Scalar]]] = None,
-        inputs: t.Optional[t.List[Input]] = None,
+        items: list[FederatedNode | Node],
+        data_types: dict[str, type[Record]] | None = None,
+        directives: t.Sequence[type[SchemaDirective]] | None = None,
+        unions: list[Union] | None = None,
+        interfaces: list[Interface] | None = None,
+        enums: list[BaseEnum] | None = None,
+        scalars: list[type[Scalar]] | None = None,
+        inputs: list[Input] | None = None,
         is_async: bool = False,
     ):
         self.is_async = is_async

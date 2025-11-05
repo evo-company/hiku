@@ -70,7 +70,7 @@ def _compute_hash(obj: t.Any) -> int:
 
 
 class Base:
-    __attrs__: t.Tuple[str, ...] = ()
+    __attrs__: tuple[str, ...] = ()
 
     def __repr__(self) -> str:
         kwargs = ", ".join(
@@ -99,8 +99,8 @@ class Base:
 
 class FieldBase(Base):
     name: str
-    options: t.Optional[t.Dict[str, t.Any]]
-    alias: t.Optional[str]
+    options: dict[str, t.Any] | None
+    alias: str | None
 
     @cached_property
     def result_key(self) -> str:
@@ -110,7 +110,7 @@ class FieldBase(Base):
             return self.name
 
     @cached_property
-    def options_hash(self) -> t.Optional[int]:
+    def options_hash(self) -> int | None:
         if self.options:
             return _compute_hash(self.options)
         else:
@@ -140,9 +140,9 @@ class Field(FieldBase):
     def __init__(
         self,
         name: str,
-        options: t.Optional[t.Dict[str, t.Any]] = None,
-        alias: t.Optional[str] = None,
-        directives: t.Optional[t.Tuple[Directive, ...]] = None,
+        options: dict[str, t.Any] | None = None,
+        alias: str | None = None,
+        directives: tuple[Directive, ...] | None = None,
     ):
         self.name = name
         self.options = options
@@ -183,9 +183,9 @@ class Link(FieldBase):
         self,
         name: str,
         node: "Node",
-        options: t.Optional[t.Dict[str, t.Any]] = None,
-        alias: t.Optional[str] = None,
-        directives: t.Optional[t.Tuple[Directive, ...]] = None,
+        options: dict[str, t.Any] | None = None,
+        alias: str | None = None,
+        directives: tuple[Directive, ...] | None = None,
     ):
         self.name = name
         self.node = node
@@ -205,7 +205,7 @@ class Link(FieldBase):
         return visitor.visit_link(self)
 
 
-FieldOrLink: TypeAlias = t.Union[Field, Link]
+FieldOrLink: TypeAlias = Field | Link
 FieldsMap: TypeAlias = "OrderedDict[str, FieldOrLink]"
 FragmentMap: TypeAlias = "OrderedDict[str, Fragment]"
 
@@ -225,7 +225,7 @@ class Node(Base):
     def __init__(
         self,
         fields: t.Sequence[FieldOrLink],
-        fragments: t.Optional[t.Sequence["Fragment"]] = None,
+        fragments: t.Sequence["Fragment"] | None = None,
         ordered: bool = False,
     ) -> None:
         self.fields = list(fields)
@@ -261,8 +261,8 @@ class Fragment(Base):
 
     def __init__(
         self,
-        name: t.Optional[str],
-        type_name: t.Optional[str],
+        name: str | None,
+        type_name: str | None,
         node: Node,
     ) -> None:
         self.name = name  # if None, it's an inline fragment
@@ -276,7 +276,7 @@ class Fragment(Base):
         return hash(self.type_name) + hash(self.node)
 
 
-KeyT = t.Tuple[str, t.Optional[int], t.Optional[str]]
+KeyT = tuple[str, int | None, str | None]
 
 
 def field_key(field: FieldOrLink) -> KeyT:
@@ -285,10 +285,10 @@ def field_key(field: FieldOrLink) -> KeyT:
 
 def _merge(
     nodes: t.Iterable[Node],
-) -> t.Iterator[t.Union[FieldOrLink, Fragment]]:
+) -> t.Iterator[FieldOrLink | Fragment]:
     visited_fields = set()
     links = {}
-    link_directives: t.DefaultDict[t.Tuple, t.List] = defaultdict(list)
+    link_directives: defaultdict[tuple, list] = defaultdict(list)
     to_merge = OrderedDict()
     fields_iter = chain.from_iterable(e.fields for e in nodes)
     fragments_iter = chain.from_iterable(e.fragments for e in nodes)

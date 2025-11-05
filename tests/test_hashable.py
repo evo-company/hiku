@@ -1,6 +1,5 @@
 import pytest
 
-from typing import List
 from dataclasses import dataclass
 
 from hiku.builder import build, Q
@@ -338,7 +337,7 @@ def test_hint_unhashble_type_in_tuple():
 def test_hint_frozen_dataclass():
     @dataclass
     class User:
-        tags: List[str]
+        tags: list[str]
 
     GRAPH = Graph(
         [
@@ -370,7 +369,7 @@ def test_hint_frozen_dataclass():
 def test_hint_dataclass_unhashable_field():
     @dataclass(frozen=True)
     class User:
-        tags: List[str]
+        tags: list[str]
 
     GRAPH = Graph(
         [

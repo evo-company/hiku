@@ -7,7 +7,7 @@ on:
   pull_request:
 
 env:
-  PDM_VERSION: 2.22.3
+  PDM_VERSION: 2.26.1
   PYTHON_VERSION: "3.10"
 
 jobs:
@@ -26,6 +26,7 @@ jobs:
         run: pip install pdm==${{ env.PDM_VERSION }}
       - name: Install dependencies
         run: |
+          pdm use ${{ matrix.python-version }}
           pdm sync -d -G test -G dev
           pip install tox tox-pdm tox-gh-actions
       - name: Run flake8

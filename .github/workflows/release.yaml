@@ -4,7 +4,7 @@ on:
     tags: ["v*"]
 
 env:
-  PDM_VERSION: 2.22.3
+  PDM_VERSION: 2.26.1
   PYTHON_VERSION: "3.10"
 
 jobs:

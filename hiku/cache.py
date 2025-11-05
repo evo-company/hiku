@@ -10,12 +10,8 @@ from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
-    List,
-    Union,
     Deque,
     Iterator,
-    Optional,
     Callable,
     Protocol,
 )
@@ -63,12 +59,12 @@ CacheKeyFn = Callable[["Context", Hasher], None]
 
 class BaseCache(abc.ABC):
     @abc.abstractmethod
-    def get_many(self, keys: List[str]) -> Dict[str, Any]:
+    def get_many(self, keys: list[str]) -> dict[str, Any]:
         """Result must contain only keys which were cached"""
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def set_many(self, items: Dict[str, Any], ttl: int) -> None:
+    def set_many(self, items: dict[str, Any], ttl: int) -> None:
         raise NotImplementedError()
 
 
@@ -82,15 +78,15 @@ class CacheMetrics:
 @dataclass
 class CacheSettings:
     cache: BaseCache
-    cache_key: Optional[CacheKeyFn] = None
-    metrics: Optional[CacheMetrics] = None
+    cache_key: CacheKeyFn | None = None
+    metrics: CacheMetrics | None = None
 
 
 class CacheInfo:
     __slots__ = ("cache", "cache_key", "metrics", "query_name")
 
     def __init__(
-        self, cache_settings: CacheSettings, query_name: Optional[str] = None
+        self, cache_settings: CacheSettings, query_name: str | None = None
     ):
         self.cache = cache_settings.cache
         self.cache_key = cache_settings.cache_key
@@ -118,15 +114,15 @@ class CacheInfo:
         return hasher.hexdigest()
 
     def get_many(
-        self, keys: List[str], node: str, field: str
-    ) -> Dict[str, Any]:
+        self, keys: list[str], node: str, field: str
+    ) -> dict[str, Any]:
         data = self.cache.get_many(keys)
         hits = sum(1 for key in keys if key in data)
         misses = len(keys) - hits
         self._track(node, field, hits, misses)
         return data
 
-    def set_many(self, items: Dict[str, Any], ttl: int) -> None:
+    def set_many(self, items: dict[str, Any], ttl: int) -> None:
         self.cache.set_many(items, ttl)
 
 
@@ -162,9 +158,9 @@ class CacheVisitor(QueryVisitor):
         self._graph = graph
         self._node = deque([node])
         self._req: Deque[Any] = deque()
-        self._data: Deque[Dict] = deque()
-        self._to_cache: Deque[Dict] = deque()
-        self._node_idx: Deque[Dict] = deque()
+        self._data: Deque[dict] = deque()
+        self._to_cache: Deque[dict] = deque()
+        self._node_idx: Deque[dict] = deque()
 
     def visit_field(self, field: QueryField) -> None:
         if field.name == "__typename":
@@ -219,8 +215,8 @@ class CacheVisitor(QueryVisitor):
         self._node.pop()
 
     def process(
-        self, link: QueryLink, ids: List, reqs: List, ctx: "Context"
-    ) -> Dict:
+        self, link: QueryLink, ids: list, reqs: list, ctx: "Context"
+    ) -> dict:
         to_cache = {}
         for i, req in zip(ids, reqs):
             node = self._node[-1]
@@ -239,7 +235,7 @@ class CacheVisitor(QueryVisitor):
 
 
 def get_query_hash(
-    hasher: Hasher, query_link: Union[QueryLink, QueryField], req: Any
+    hasher: Hasher, query_link: QueryLink | QueryField, req: Any
 ) -> None:
     hash_visitor = HashVisitor(hasher)
     hash_visitor.visit(query_link)

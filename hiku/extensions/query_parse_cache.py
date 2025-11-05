@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Iterator, Optional
+from typing import Iterator
 
 from prometheus_client import Gauge
 
@@ -21,7 +21,7 @@ class QueryParserCache(Extension):
     :param int maxsize: Maximum size of the cache
     """
 
-    def __init__(self, maxsize: Optional[int] = None):
+    def __init__(self, maxsize: int | None = None):
         self.cached_parser = lru_cache(maxsize=maxsize)(parse_query)
 
     def on_parse(self, execution_context: ExecutionContext) -> Iterator[None]:

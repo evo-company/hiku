@@ -74,7 +74,7 @@ class Study(t.NamedTuple):
 
 class Research(t.NamedTuple):
     study: Study
-    outcome: t.Optional[str]
+    outcome: str | None
 
 
 dimension = {
@@ -143,7 +143,9 @@ inventory = {"id": "apollo-oss", "deprecatedProducts": [deprecated_product]}
 
 
 @listify
-def product_fields_resolver(fields: t.List[Field], ids: t.List[str]):
+def product_fields_resolver(
+    fields: list[Field], ids: list[str]
+) -> list[list[t.Any]]:
     def get_field(field: Field, product: dict):
         if field.name == "id":
             return product["id"]
@@ -186,7 +188,7 @@ def product_fields_resolver(fields: t.List[Field], ids: t.List[str]):
 
 
 @listify
-def link_product_dimensions(ids: t.List[str]) -> t.Iterable[Dimension]:
+def link_product_dimensions(ids: list[str]) -> t.Iterable[Dimension]:
     for product_id in ids:
         data = get_by_id(product_id, products)
         yield Dimension(
@@ -198,7 +200,7 @@ def link_product_dimensions(ids: t.List[str]) -> t.Iterable[Dimension]:
 
 @listify
 def product_dimension_fields_resolver(
-    fields: t.List[Field], dimensions: t.List[Dimension]
+    fields: list[Field], dimensions: list[Dimension]
 ):
     def get_field(field: Field, dim: Dimension):
         if field.name == "size":
@@ -216,7 +218,7 @@ def product_dimension_fields_resolver(
 
 
 @listify
-def gen_researches(researches: t.List[dict]) -> t.Iterable[Research]:
+def gen_researches(researches: list[dict]) -> t.Iterable[Research]:
     for res in researches:
         yield Research(
             Study(
@@ -228,7 +230,7 @@ def gen_researches(researches: t.List[dict]) -> t.Iterable[Research]:
 
 
 @listify
-def link_product_research(ids: t.List[str]):
+def link_product_research(ids: list[str]):
     for product_id in ids:
         data = get_by_id(product_id, products)
         yield from gen_researches(data["research"])
@@ -236,7 +238,7 @@ def link_product_research(ids: t.List[str]):
 
 @listify
 def product_research_fields_resolver(
-    fields: t.List[Field], researches: t.List[t.Union[Research, ImmutableDict]]
+    fields: list[Field], researches: list[Research | ImmutableDict]
 ):
     def get_field(field: Field, r: Research):
         if field.name == "study":
@@ -274,7 +276,9 @@ def product_research_fields_resolver(
 
 
 @listify
-def user_fields_resolver(fields: t.List[Field], emails: t.List[str]):
+def user_fields_resolver(
+    fields: list[Field], emails: list[str]
+) -> list[list[t.Any]]:
     def get_field(field: Field, u: dict):
         if field.name == "email":
             return u["email"]
@@ -300,7 +304,7 @@ def user_fields_resolver(fields: t.List[Field], emails: t.List[str]):
 
 @listify
 def deprecated_product_fields_resolver(
-    fields: t.List[Field], ids: t.List[ImmutableDict]
+    fields: list[Field], ids: list[ImmutableDict]
 ):
     def get_field(field: Field, p: dict):
         if field.name == "sku":
@@ -326,7 +330,7 @@ def deprecated_product_fields_resolver(
 
 
 @listify
-def inventory_fields_resolver(fields: t.List[Field], ids: t.List[str]):
+def inventory_fields_resolver(fields: list[Field], ids: list[str]):
     def get_field(field: Field, id_):
         if field.name == "id":
             if inventory["id"] == id_:

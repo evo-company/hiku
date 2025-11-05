@@ -2,11 +2,7 @@ import typing as t
 from enum import Enum as PyEnum
 
 from math import isfinite
-from typing import (
-    Optional,
-    Iterable,
-    List,
-)
+from typing import Iterable
 
 from graphql.language.printer import print_ast
 from graphql.language import ast
@@ -59,7 +55,7 @@ from hiku.types import (
 )
 
 
-def _name(value: t.Optional[str]) -> t.Optional[ast.NameNode]:
+def _name(value: str | None) -> ast.NameNode | None:
     return ast.NameNode(value=value) if value is not None else None
 
 
@@ -86,16 +82,16 @@ def coerce_type(x):  # type: ignore[no-untyped-def]
     return x
 
 
-def _non_null_type(val: t.Union[str, ast.Node]) -> ast.NonNullTypeNode:
+def _non_null_type(val: str | ast.Node) -> ast.NonNullTypeNode:
     return ast.NonNullTypeNode(type=coerce_type(val))
 
 
 def _encode_type(
     value: t.Any, input_type: bool = False
-) -> t.Union[ast.NonNullTypeNode, ast.NameNode]:
+) -> ast.NonNullTypeNode | ast.NameNode:
     def _encode(
-        val: t.Optional[GenericMeta],
-    ) -> t.Union[str, t.Tuple, ast.ListTypeNode]:
+        val: GenericMeta | None,
+    ) -> str | tuple | ast.ListTypeNode:
         if isinstance(val, OptionalMeta):
             return _encode(val.__type__), True
         elif isinstance(val, TypeRefMeta):
@@ -143,7 +139,7 @@ def _encode_type(
     return _non_null_type(encoded)
 
 
-def _encode_default_value(value: t.Any) -> Optional[ast.ValueNode]:
+def _encode_default_value(value: t.Any) -> ast.ValueNode | None:
     if value == Nothing:
         return None
 
@@ -163,9 +159,7 @@ def _encode_default_value(value: t.Any) -> Optional[ast.ValueNode]:
 
     if isinstance(value, Iterable) and not isinstance(value, str):
         maybe_value_nodes = (_encode_default_value(item) for item in value)
-        value_nodes: t.List[ast.ValueNode] = list(
-            filter(None, maybe_value_nodes)
-        )
+        value_nodes: list[ast.ValueNode] = list(filter(None, maybe_value_nodes))
         return ast.ListValueNode(values=value_nodes)
     if isinstance(value, PyEnum):
         return ast.EnumValueNode(value=value.name)
@@ -175,7 +169,7 @@ def _encode_default_value(value: t.Any) -> Optional[ast.ValueNode]:
 
 def schema_to_graphql_directive(
     directive: SchemaDirective,
-    skip_fields: t.Optional[t.List[str]] = None,
+    skip_fields: list[str] | None = None,
 ) -> ast.DirectiveNode:
     skip_fields = skip_fields or []
 
@@ -202,7 +196,7 @@ class Exporter(GraphVisitor):
     def __init__(
         self,
         graph: Graph,
-        mutation_graph: Optional[Graph],
+        mutation_graph: Graph | None,
         federation_version: int,
     ):
         self.graph = graph
@@ -212,7 +206,7 @@ class Exporter(GraphVisitor):
     def export_data_types(
         self,
     ) -> t.Iterator[
-        t.Union[ast.ObjectTypeDefinitionNode, ast.InputObjectTypeDefinitionNode]
+        ast.ObjectTypeDefinitionNode | ast.InputObjectTypeDefinitionNode
     ]:
         for type_name, type_ in self.graph.data_types.items():
             yield ast.ObjectTypeDefinitionNode(
@@ -236,8 +230,8 @@ class Exporter(GraphVisitor):
                 ],
             )
 
-    def visit_graph(self, graph: Graph) -> List[ast.DefinitionNode]:
-        nodes: t.List[ast.DefinitionNode] = []
+    def visit_graph(self, graph: Graph) -> list[ast.DefinitionNode]:
+        nodes: list[ast.DefinitionNode] = []
 
         for node in [
             self.get_schema_node(),
@@ -283,11 +277,11 @@ class Exporter(GraphVisitor):
                             visited.add(info.name)
                             yield directive
 
-    def get_schema_node(self) -> t.Optional[ast.SchemaExtensionNode]:
+    def get_schema_node(self) -> ast.SchemaExtensionNode | None:
         if self.federation_version == 1:
             return None
 
-        directives_in_use: List[str] = []
+        directives_in_use: list[str] = []
 
         for directive in self._iter_directives():
             info = directive.__directive_info__
@@ -297,7 +291,7 @@ class Exporter(GraphVisitor):
             ):
                 directives_in_use.append(info.name)
 
-        compose_directives_in_use: List[t.Type[FederationSchemaDirective]] = []
+        compose_directives_in_use: list[type[FederationSchemaDirective]] = []
 
         for custom_directive in self.graph.directives:
             if issubclass(custom_directive, FederationSchemaDirective):
@@ -353,7 +347,7 @@ class Exporter(GraphVisitor):
             operation_types=[],
         )
 
-    def get_custom_directives(self) -> t.List[ast.DirectiveDefinitionNode]:
+    def get_custom_directives(self) -> list[ast.DirectiveDefinitionNode]:
         directives = []
         for d in self.graph.directives:
             info = d.__directive_info__
@@ -386,7 +380,7 @@ class Exporter(GraphVisitor):
             )
         return directives
 
-    def export_scalars(self) -> t.List[ast.ScalarTypeDefinitionNode]:
+    def export_scalars(self) -> list[ast.ScalarTypeDefinitionNode]:
         scalars = []
         for scalar in self.graph.scalars:
             if hasattr(scalar, "__federation_versions__"):
@@ -406,7 +400,7 @@ class Exporter(GraphVisitor):
     def export_inputs(
         self,
     ) -> t.Iterator[
-        t.Union[ast.ObjectTypeDefinitionNode, ast.InputObjectTypeDefinitionNode]
+        ast.ObjectTypeDefinitionNode | ast.InputObjectTypeDefinitionNode
     ]:
         for input_ in self.graph.inputs:
             yield self.visit_input(input_)
@@ -451,16 +445,16 @@ class Exporter(GraphVisitor):
 
     def visit_node(
         self, obj: Node
-    ) -> t.Union[ast.ObjectTypeDefinitionNode, ast.ObjectTypeExtensionNode]:
+    ) -> ast.ObjectTypeDefinitionNode | ast.ObjectTypeExtensionNode:
         fields = [
             self.visit(field)
             for field in obj.fields
             if not field.name.startswith("_")
         ]
-        _Node: t.Union[
-            t.Type[ast.ObjectTypeDefinitionNode],
-            t.Type[ast.ObjectTypeExtensionNode],
-        ] = ast.ObjectTypeDefinitionNode
+        _Node: (
+            type[ast.ObjectTypeDefinitionNode]
+            | type[ast.ObjectTypeExtensionNode]
+        ) = ast.ObjectTypeDefinitionNode  # noqa: E501
         directives = []
         for directive in obj.directives:
             if isinstance(directive, Extends):
@@ -536,8 +530,8 @@ class Exporter(GraphVisitor):
 
 
 def get_ast(
-    graph: t.Union[Graph, FederationGraph],
-    mutation_graph: Optional[t.Union[Graph, FederationGraph]],
+    graph: Graph | FederationGraph,
+    mutation_graph: Graph | FederationGraph | None,
     federation_version: int,
 ) -> ast.DocumentNode:
     graph = _StripGraph(federation_version).visit(graph)
@@ -555,7 +549,7 @@ class _StripGraph(GraphTransformer):
         self.federation_version = federation_version
 
     def visit_root(self, obj: Root) -> Root:
-        def skip(field: t.Union[Field, Link]) -> bool:
+        def skip(field: Field | Link) -> bool:
             return field.name in ["__typename", "_entities", "_service"]
 
         return Root([self.visit(f) for f in obj.fields if not skip(f)])
@@ -596,7 +590,7 @@ class _StripGraph(GraphTransformer):
         )
 
     def visit_node(self, obj: Node) -> Node:
-        def skip(field: t.Union[Field, Link]) -> bool:
+        def skip(field: Field | Link) -> bool:
             return field.name in ["__typename"]
 
         return Node(
@@ -610,7 +604,7 @@ class _StripGraph(GraphTransformer):
 
 def print_sdl(
     graph: FederationGraph,
-    mutation_graph: Optional[Graph] = None,
+    mutation_graph: Graph | None = None,
     federation_version: int = DEFAULT_FEDERATION_VERSION,
 ) -> str:
     """Print graphql AST into a string"""

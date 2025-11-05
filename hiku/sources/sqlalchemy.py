@@ -1,13 +1,8 @@
 from functools import partial
 from collections import defaultdict
 from typing import (
-    Optional,
-    Union,
-    List,
     Any,
-    Tuple,
     Callable,
-    Dict,
     Iterable,
     Mapping,
 )
@@ -48,7 +43,7 @@ else:
 if SQLALCHEMY_VERSION >= (2, 0):
 
     def _process_select_params(
-        params: List[ColumnElement],
+        params: list[ColumnElement],
     ) -> Iterable:
         return params
 
@@ -58,7 +53,7 @@ if SQLALCHEMY_VERSION >= (2, 0):
 else:
 
     def _process_select_params(
-        params: List[ColumnElement],
+        params: list[ColumnElement],
     ) -> Iterable:
         return (params,)
 
@@ -68,7 +63,7 @@ else:
 
 def _translate_type(
     column: sqlalchemy.Column,
-) -> Optional[Union[IntegerMeta, StringMeta]]:
+) -> IntegerMeta | StringMeta | None:
     if isinstance(column.type, sqlalchemy.Integer):
         return Integer
     elif isinstance(column.type, sqlalchemy.Unicode):
@@ -97,7 +92,7 @@ class FieldsQuery:
         engine_key: str,
         from_clause: sqlalchemy.Table,
         *,
-        primary_key: Optional[sqlalchemy.Column] = None,
+        primary_key: sqlalchemy.Column | None = None,
     ) -> None:
         self.engine_key = engine_key
         self.from_clause = from_clause
@@ -133,8 +128,8 @@ class FieldsQuery:
         return column.in_(values)
 
     def select_expr(
-        self, fields_: List[QueryField], ids: Iterable
-    ) -> Tuple[Select, Callable]:
+        self, fields_: list[QueryField], ids: Iterable
+    ) -> tuple[Select, Callable]:
         columns = [self.from_clause.c[f.name] for f in fields_]
         expr = (
             sqlalchemy.select(
@@ -144,7 +139,7 @@ class FieldsQuery:
             .where(self.in_impl(self.primary_key, ids))
         )
 
-        def result_proc(rows: List[Row]) -> List:
+        def result_proc(rows: list[Row]) -> list:
             rows_map = {
                 row[self.primary_key]: [row[c] for c in columns]
                 for row in map(_process_result_row, rows)
@@ -156,7 +151,7 @@ class FieldsQuery:
         return expr, result_proc
 
     def __call__(
-        self, ctx: Context, fields_: List[QueryField], ids: List
+        self, ctx: Context, fields_: list[QueryField], ids: list
     ) -> Any:
         if not ids:
             return []
@@ -170,17 +165,17 @@ class FieldsQuery:
         return result_proc(rows)
 
 
-def _to_maybe_mapper(pairs: List[Tuple[Any, Any]], values: List) -> List:
-    mapping: Dict = dict(pairs)
+def _to_maybe_mapper(pairs: list[tuple[Any, Any]], values: list) -> list:
+    mapping: dict = dict(pairs)
     return [mapping.get(value, Nothing) for value in values]
 
 
-def _to_one_mapper(pairs: List[Tuple[Any, Any]], values: List) -> List:
+def _to_one_mapper(pairs: list[tuple[Any, Any]], values: list) -> list:
     mapping = dict(pairs)
     return [mapping[value] for value in values]
 
 
-def _to_many_mapper(pairs: List[Tuple], values: List) -> List:
+def _to_many_mapper(pairs: list[tuple], values: list) -> list:
     mapping = defaultdict(list)
     for from_value, to_value in pairs:
         mapping[from_value].append(to_value)
@@ -231,7 +226,7 @@ class LinkQuery:
     ) -> BinaryExpression:
         return column.in_(values)
 
-    def select_expr(self, ids: Iterable) -> Optional[Select]:
+    def select_expr(self, ids: Iterable) -> Select | None:
         # TODO: make this optional, but enabled by default
         filtered_ids = [i for i in set(ids) if i is not None]
         if filtered_ids:

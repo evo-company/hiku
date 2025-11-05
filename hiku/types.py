@@ -160,7 +160,7 @@ class MappingMeta(TypingMeta):
     __key_type__: GenericMeta
     __value_type__: GenericMeta
 
-    def __cls_init__(cls, params: t.Tuple[GenericMeta, GenericMeta]) -> None:
+    def __cls_init__(cls, params: tuple[GenericMeta, GenericMeta]) -> None:
         key_type, value_type = params
         cls.__key_type__ = _maybe_typeref(key_type)
         cls.__value_type__ = _maybe_typeref(value_type)
@@ -183,13 +183,11 @@ class RecordMeta(TypingMeta):
 
     def __cls_init__(
         cls,
-        field_types: t.Union[
-            t.Dict[str, GenericMeta], t.List[t.Tuple[str, GenericMeta]]
-        ],
+        field_types: dict[str, GenericMeta] | list[tuple[str, GenericMeta]],
     ) -> None:
         items: t.Iterable
         if hasattr(field_types, "items"):
-            field_types = t.cast(t.Dict[str, GenericMeta], field_types)
+            field_types = t.cast(dict[str, GenericMeta], field_types)
             items = list(field_types.items())
         else:
             items = list(field_types)
@@ -316,7 +314,7 @@ class InputRef(metaclass=InputRefMeta): ...
 
 
 RefMeta = (TypeRefMeta, UnionRefMeta, InterfaceRefMeta, EnumRefMeta)
-RefMetaTypes = t.Union[TypeRefMeta, UnionRefMeta, InterfaceRefMeta, EnumRefMeta]
+RefMetaTypes = TypeRefMeta | UnionRefMeta | InterfaceRefMeta | EnumRefMeta
 
 
 @t.overload
@@ -327,12 +325,12 @@ def _maybe_typeref(typ: str) -> TypeRefMeta: ...
 def _maybe_typeref(typ: GenericMeta) -> GenericMeta: ...
 
 
-def _maybe_typeref(typ: t.Union[str, GenericMeta]) -> GenericMeta:
+def _maybe_typeref(typ: str | GenericMeta) -> GenericMeta:
     return TypeRef[typ] if isinstance(typ, str) else typ
 
 
 class AbstractTypeVisitor(ABC):
-    def visit(self, obj: "t.Union[GenericMeta, t.Type[Scalar]]") -> t.Any:
+    def visit(self, obj: "t.Union[GenericMeta, type[Scalar]]") -> t.Any:
         return obj.accept(self)
 
     @abstractmethod
@@ -400,7 +398,7 @@ class AbstractTypeVisitor(ABC):
         pass
 
     @abstractmethod
-    def visit_scalar(self, obj: "t.Type[Scalar]") -> t.Any:
+    def visit_scalar(self, obj: "type[Scalar]") -> t.Any:
         pass
 
 
@@ -453,17 +451,17 @@ class TypeVisitor(AbstractTypeVisitor):
         for arg_type in obj.__arg_types__:
             self.visit(arg_type)
 
-    def visit_scalar(self, obj: "t.Type[Scalar]") -> t.Any:
+    def visit_scalar(self, obj: "type[Scalar]") -> t.Any:
         pass
 
 
 T = TypeVar("T", bound=GenericMeta)
 
-Types = t.Mapping[str, t.Union[t.Type[Record], "Union", "Interface"]]
+Types = t.Mapping[str, t.Union[type[Record], "Union", "Interface"]]
 
 
 @t.overload
-def get_type(types: Types, typ: TypeRefMeta) -> t.Type[Record]: ...
+def get_type(types: Types, typ: TypeRefMeta) -> type[Record]: ...
 
 
 @t.overload

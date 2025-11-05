@@ -1,6 +1,5 @@
 import enum
 
-from typing import Dict, List
 from unittest.mock import ANY
 
 import pytest
@@ -136,7 +135,7 @@ def _field_enum_directive(name, args):
     }
 
 
-def _schema(types, directives: Optional[List[Dict]] = None, with_mutation=False):
+def _schema(types, directives: list[dict] | None = None, with_mutation=False):
     names = [t['name'] for t in types]
     assert 'Query' in names, names
     return {

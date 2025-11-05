@@ -1,18 +1,16 @@
-from typing import List
-
 from hiku.graph import Graph, Node
 
 from hiku.federation.directive import FieldSet, Key
 
 
-def get_keys(graph: Graph, typename: str) -> List[FieldSet]:
+def get_keys(graph: Graph, typename: str) -> list[FieldSet]:
     """Get all 'key' directives fields"""
     node = graph.nodes_map[typename]
     return [d.fields for d in node.directives if isinstance(d, Key)]
 
 
-def get_entity_types(nodes: List[Node], federation_version: int) -> List[str]:
-    entity_nodes = set()
+def get_entity_types(nodes: list[Node], federation_version: int) -> list[str]:
+    entity_nodes: set[str] = set()
     for node in nodes:
         if node.name is not None:
             for directive in node.directives:

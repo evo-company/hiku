@@ -1,11 +1,11 @@
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable
 
 from hiku.scalar import ScalarMeta
 from hiku.types import GenericMeta, OptionalMeta, SequenceMeta
 
 
 def serialize(
-    type_: Optional[Union[GenericMeta, ScalarMeta]],
+    type_: GenericMeta | ScalarMeta | None,
     value: Any,
     callback: Callable[[Any], Any],
 ) -> Any:

@@ -1,7 +1,4 @@
-from typing import (
-    Any,
-    Optional,
-)
+from typing import Any
 
 from graphql.language import ast
 
@@ -15,7 +12,7 @@ from ..query import (
 )
 
 
-def _name(value: Any) -> Optional[ast.NameNode]:
+def _name(value: Any) -> ast.NameNode | None:
     return ast.NameNode(value=value) if value is not None else None
 
 

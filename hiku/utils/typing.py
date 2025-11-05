@@ -23,7 +23,9 @@ def is_union(annotation: object) -> bool:
 
 
 def is_optional(annotation: Type) -> bool:
-    """Returns True if the annotation is Optional[SomeType]"""
+    """Returns True if the annotation is Optional[SomeType]
+    or SomeType | None
+    """
 
     # Optionals are represented as unions
 

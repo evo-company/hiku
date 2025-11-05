@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import re
 import typing as t
-from typing import Any, List, Tuple, TypedDict
+from typing import Any, TypedDict
 from collections import defaultdict
 
 from graphql import get_introspection_query
@@ -231,8 +231,8 @@ def test_links_requires_list():
     link_song = Mock(return_value=100)
 
     def link_song_info(
-        reqs: List[ImmutableDict[str, Any]],
-    ) -> List[ImmutableDict[str, Any]]:
+        reqs: list[ImmutableDict[str, Any]],
+    ) -> list[ImmutableDict[str, Any]]:
         return reqs
 
     def song_fields(fields, song_ids):
@@ -380,7 +380,7 @@ def test_links_requires_list_sa():
 
     link_song = Mock(return_value=100)
 
-    def link_song_info(reqs: List[Tuple]):
+    def link_song_info(reqs: list[tuple]):
         return reqs
 
     def link_artist(ids):
@@ -597,8 +597,8 @@ def test_link_option_input_ref():
     class User:
         id: int
         first_name: str
-        middle_name: t.Optional[str]
-        last_name: t.Optional[str]
+        middle_name: str | None
+        last_name: str | None
         public: bool
 
     def create_user(
@@ -705,7 +705,7 @@ def test_link_optional_option_input_ref(query_args):
 
     def create_user(
         options: CreateUserOpts,
-    ) -> t.Union[User, Nothing]:
+    ) -> User | Nothing:
         data = options.get("input")
         if not data:
             return Nothing
@@ -1940,7 +1940,7 @@ def test_merge_query__fields_and_nested_fragments() -> None:
         return wrapper
 
     @_count_calls
-    def resolve_user(fields, ids) -> List[Any]:
+    def resolve_user(fields, ids) -> list[Any]:
         def get_field(f, id_) -> Any:
             if f.name == "name":
                 if f.options.get("capitalize", False):
@@ -1952,7 +1952,7 @@ def test_merge_query__fields_and_nested_fragments() -> None:
         return [[get_field(f, id_) for f in fields] for id_ in ids]
 
     @_count_calls
-    def resolve_info(fields, ids) -> List[Any]:
+    def resolve_info(fields, ids) -> list[Any]:
         def get_field(f, id_) -> Any:
             if f.name == "email":
                 return "john@example.com"
@@ -2069,7 +2069,7 @@ def test_merge_query__fields_and_nested_fragments() -> None:
 
 
 def test_merge_query__only_nested_fragments() -> None:
-    def resolve_user(fields, ids) -> List[Any]:
+    def resolve_user(fields, ids) -> list[Any]:
         def get_field(f, id_) -> Any:
             if f.name == "name":
                 if f.options.get("capitalize", False):

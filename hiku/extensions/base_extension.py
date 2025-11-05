@@ -10,11 +10,8 @@ from typing import (
     Awaitable,
     Callable,
     Iterator,
-    List,
     NamedTuple,
-    Optional,
     Sequence,
-    Type,
     TypeVar,
     Union,
 )
@@ -26,7 +23,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 AwaitableOrValue = Union[Awaitable[T], T]
-AsyncIteratorOrIterator = Union[AsyncIterator[T], Iterator[T]]
+AsyncIteratorOrIterator = AsyncIterator[T] | Iterator[T]
 Hook = Callable[
     ["Extension", "ExecutionContext"], AsyncIteratorOrIterator[None]
 ]
@@ -199,14 +196,14 @@ class ExtensionsManager:
     def __init__(
         self,
         execution_context: ExecutionContext,
-        extensions: Sequence[Union[Type[Extension], Extension]],
+        extensions: Sequence[type[Extension] | Extension],
     ):
         self.execution_context = execution_context
 
         if not extensions:
             extensions = []
 
-        init_extensions: List[Extension] = []
+        init_extensions: list[Extension] = []
 
         for extension in extensions:
             if isinstance(extension, Extension):
@@ -250,7 +247,7 @@ class ExtensionsManager:
 
 class WrappedHook(NamedTuple):
     extension: Extension
-    initialized_hook: Union[AsyncIterator[None], Iterator[None]]
+    initialized_hook: AsyncIterator[None] | Iterator[None]
     is_async: bool
 
 
@@ -260,11 +257,11 @@ class ExtensionContextManagerBase:
     def __init__(
         self,
         hook_name: str,
-        extensions: List[Extension],
+        extensions: list[Extension],
         execution_context: ExecutionContext,
     ):
         self.hook_name = hook_name
-        self.hooks: List[WrappedHook] = []
+        self.hooks: list[WrappedHook] = []
         self.default_hook: Hook = getattr(Extension, self.hook_name)
         for extension in extensions:
             hook = self.get_hook(extension, execution_context)
@@ -273,8 +270,8 @@ class ExtensionContextManagerBase:
 
     def get_hook(
         self, extension: Extension, execution_context: ExecutionContext
-    ) -> Optional[WrappedHook]:
-        hook_fn: Optional[Hook] = getattr(type(extension), self.hook_name)
+    ) -> WrappedHook | None:
+        hook_fn: Hook | None = getattr(type(extension), self.hook_name)
         hook_fn = hook_fn if hook_fn is not self.default_hook else None
 
         if hook_fn:
@@ -343,9 +340,9 @@ class ExtensionContextManagerBase:
 
     def __exit__(  # type: ignore[no-untyped-def]
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ):
         self.run_hooks_sync(is_exit=True)
 

@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 T = t.TypeVar("T", bound=t.Type)
 
 
-def wrap_dataclass(cls: t.Type[t.Any]) -> t.Type[t.Any]:
-    dclass_kwargs: t.Dict[str, bool] = {}
+def wrap_dataclass(cls: type[t.Any]) -> type[t.Any]:
+    dclass_kwargs: dict[str, bool] = {}
     dclass = dataclasses.dataclass(cls, **dclass_kwargs)
 
     return dclass
@@ -27,8 +27,8 @@ def wrap_dataclass(cls: t.Type[t.Any]) -> t.Type[t.Any]:
 BT = t.TypeVar("BT")
 
 
-def get_fields(cls: t.Type, by_type: t.Type[BT]) -> t.List[BT]:
-    fields: t.List[BT] = []
+def get_fields(cls: type, by_type: type[BT]) -> list[BT]:
+    fields: list[BT] = []
     for field in dataclasses.fields(cls):
         if isinstance(field, by_type):
             fields.append(field)
@@ -65,11 +65,11 @@ _T = t.TypeVar("_T")
 class DirectiveField(dataclasses.Field, t.Generic[_T]):
     def __init__(
         self,
-        name: t.Optional[str] = None,
+        name: str | None = None,
         description: str = "",
         default_value: t.Any = dataclasses.MISSING,
     ):
-        kwargs: t.Dict[str, t.Any] = {}
+        kwargs: dict[str, t.Any] = {}
 
         if sys.version_info >= (3, 10):
             kwargs["kw_only"] = False
@@ -95,7 +95,7 @@ class DirectiveField(dataclasses.Field, t.Generic[_T]):
 
 
 def directive_field(
-    name: t.Optional[str] = None,
+    name: str | None = None,
     description: str = "",
     default_value: t.Any = dataclasses.MISSING,
 ) -> t.Any:  # note: t.Any is a workaround for mypy
@@ -105,9 +105,9 @@ def directive_field(
 @dataclass
 class DirectiveInfo:
     name: str
-    locations: t.List[Location]
-    args: t.List[DirectiveField]
-    description: t.Optional[str] = None
+    locations: list[Location]
+    args: list[DirectiveField]
+    description: str | None = None
     repeatable: bool = False
 
 
@@ -130,8 +130,8 @@ class Directive:
 def directive(
     *,
     name: str,
-    locations: t.List[Location],
-    description: t.Optional[str] = None,
+    locations: list[Location],
+    description: str | None = None,
     repeatable: bool = False,
 ) -> t.Callable:
     """Decorator to mark class as operation directive.
@@ -221,11 +221,11 @@ class _IncludeDirective(Directive):
 class SchemaDirectiveField(dataclasses.Field, t.Generic[_T]):
     def __init__(
         self,
-        name: t.Optional[str] = None,
+        name: str | None = None,
         description: str = "",
         default_value: t.Any = dataclasses.MISSING,
     ):
-        kwargs: t.Dict[str, t.Any] = {}
+        kwargs: dict[str, t.Any] = {}
 
         if sys.version_info >= (3, 10):
             kwargs["kw_only"] = False
@@ -252,7 +252,7 @@ class SchemaDirectiveField(dataclasses.Field, t.Generic[_T]):
 
 
 def schema_directive_field(
-    name: t.Optional[str] = None,
+    name: str | None = None,
     description: str = "",
     default_value: t.Any = dataclasses.MISSING,
 ) -> t.Any:  # note: t.Any is a workaround for mypy
@@ -262,9 +262,9 @@ def schema_directive_field(
 @dataclass
 class SchemaDirectiveInfo:
     name: str
-    locations: t.List[Location]
-    args: t.List[SchemaDirectiveField]
-    description: t.Optional[str] = None
+    locations: list[Location]
+    args: list[SchemaDirectiveField]
+    description: str | None = None
     repeatable: bool = False
 
 
@@ -272,8 +272,8 @@ class SchemaDirectiveInfo:
 def schema_directive(
     *,
     name: str,
-    locations: t.List[Location],
-    description: t.Optional[str] = None,
+    locations: list[Location],
+    description: str | None = None,
     repeatable: bool = False,
 ) -> t.Callable:
     """Decorator to mark class as schema directive.
@@ -328,13 +328,13 @@ class SchemaDirective:
 class Deprecated(SchemaDirective):
     """https://spec.graphql.org/June2018/#sec--deprecated"""
 
-    reason: t.Optional[str] = schema_directive_field(
+    reason: str | None = schema_directive_field(
         description="Deprecation reason.",
         default_value=None,
     )
 
 
-def get_deprecated(field: t.Union["Field", "Link"]) -> t.Optional[Deprecated]:
+def get_deprecated(field: t.Union["Field", "Link"]) -> Deprecated | None:
     """Get deprecated directive"""
     return next(
         (d for d in field.directives if isinstance(d, Deprecated)), None

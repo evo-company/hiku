@@ -1,4 +1,4 @@
-from typing import Iterator, List
+from typing import Iterator
 
 from hiku.context import ExecutionContext
 from hiku.extensions.base_extension import Extension
@@ -24,7 +24,7 @@ class _QueryDepthValidator(QueryValidator):
         self._current_depth = 0
         self._final_depth = 0
 
-    def validate(self, query: Node, graph: Graph) -> List[str]:
+    def validate(self, query: Node, graph: Graph) -> list[str]:
         depth = self.calculate(query)
         if depth > self.max_depth:
             return [

@@ -58,13 +58,13 @@ class Denormalize(QueryVisitor):
         self._enums = graph.enums_map
         self._result = result
         self._index = result.__idx__
-        self._type: t.Deque[
-            t.Union[t.Type[Record], Union, Interface, BaseEnum]
-        ] = deque([self._types["__root__"]])
+        self._type: deque[type[Record] | Union | Interface | BaseEnum] = deque(
+            [self._types["__root__"]]
+        )
         self._data = deque([result])
-        self._res: t.Deque = deque()
+        self._res: deque[dict[str, t.Any]] = deque()
 
-    def process(self, query: Node) -> t.Dict:
+    def process(self, query: Node) -> dict:
         assert not self._res, self._res
         self._res.append({})
         self.visit(query)

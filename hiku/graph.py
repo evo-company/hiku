@@ -14,7 +14,6 @@ from collections import OrderedDict, defaultdict
 from enum import Enum
 from functools import cached_property, reduce
 from itertools import chain
-from typing import List
 
 from hiku.enum import BaseEnum
 
@@ -97,10 +96,10 @@ class Option(AbstractOption):
     def __init__(
         self,
         name: str,
-        type_: t.Optional[t.Union[GenericMeta, t.Type[Scalar]]],
+        type_: GenericMeta | type[Scalar] | None,
         *,
         default: t.Any = Nothing,
-        description: t.Optional[str] = None,
+        description: str | None = None,
     ):
         """
         :param name: name of the option
@@ -133,23 +132,23 @@ R = t.TypeVar("R")
 SyncAsync = t.Union[R, t.Awaitable[R]]
 
 # (fields) -> []
-RootFieldFunc = t.Callable[[t.List["QueryField"]], SyncAsync[t.Iterable[t.Any]]]
+RootFieldFunc = t.Callable[[list["QueryField"]], SyncAsync[t.Iterable[t.Any]]]
 # (ctx, fields) -> []
 RootFieldFuncCtx = t.Callable[
-    [t.Any, t.List["QueryField"]], SyncAsync[t.Iterable[t.Any]]
+    [t.Any, list["QueryField"]], SyncAsync[t.Iterable[t.Any]]
 ]
 # (fields, ids) -> [[]]
 NotRootFieldFunc = t.Callable[
-    [t.List["QueryField"], List[t.Any]], SyncAsync[t.Iterable[List[t.Any]]]
+    [list["QueryField"], list[t.Any]], SyncAsync[t.Iterable[list[t.Any]]]
 ]
 # (ctx, fields, ids) -> [[]]
 NotRootFieldFuncCtx = t.Callable[
-    [t.Any, t.List["QueryField"], List[t.Any]],
-    SyncAsync[t.Iterable[List[t.Any]]],
+    [t.Any, list["QueryField"], list[t.Any]],
+    SyncAsync[t.Iterable[list[t.Any]]],
 ]
 
 
-FieldT = t.Optional[t.Union[GenericMeta, ScalarMeta]]
+FieldT = GenericMeta | ScalarMeta | None
 FieldFunc = t.Union[
     RootFieldFunc,
     RootFieldFuncCtx,
@@ -193,10 +192,10 @@ class Field(AbstractField):
     Data loading protocol::
 
         # root node fields
-        def func(fields) -> List[T]
+        def func(fields) -> list[T]
 
         # non-root node fields
-        def func(fields, ids) -> List[List[T]]
+        def func(fields, ids) -> list[list[T]]
 
     Where:
 
@@ -211,10 +210,10 @@ class Field(AbstractField):
         type_: FieldT,
         func: FieldFunc,
         *,
-        options: t.Optional[t.Sequence[Option]] = None,
-        description: t.Optional[str] = None,
-        directives: t.Optional[t.List[SchemaDirective]] = None,
-        deprecated: t.Optional[str] = None,
+        options: t.Sequence[Option] | None = None,
+        description: str | None = None,
+        directives: list[SchemaDirective] | None = None,
+        deprecated: str | None = None,
     ):
         """
         :param str name: name of the field
@@ -256,7 +255,7 @@ class AbstractLink(AbstractBase, ABC):
     pass
 
 
-def get_link_type_enum(type_: TypingMeta) -> t.Tuple[Const, str]:
+def get_link_type_enum(type_: TypingMeta) -> tuple[Const, str]:
     if isinstance(type_, RefMeta):
         return One, type_.__type_name__
     elif isinstance(type_, OptionalMeta):
@@ -291,8 +290,8 @@ class FieldTypeInfo:
 
 
 def get_field_info(
-    type_: t.Optional[t.Union[GenericMeta, ScalarMeta]]
-) -> t.Optional[FieldTypeInfo]:
+    type_: GenericMeta | ScalarMeta | None,
+) -> FieldTypeInfo | None:
     if not type_:
         return None
 
@@ -358,8 +357,8 @@ def get_link_type(type_: GenericMeta) -> LinkTypeInfo:
 
 
 def collect_interfaces_types(
-    items: t.List["Node"], interfaces: t.List["Interface"]
-) -> t.Dict[str, t.List[str]]:
+    items: list["Node"], interfaces: list["Interface"]
+) -> dict[str, list[str]]:
     interfaces_types = defaultdict(list)
     for item in items:
         if item.name is not None and item.implements:
@@ -374,7 +373,7 @@ def collect_interfaces_types(
 
 
 LT = t.TypeVar("LT", bound=t.Hashable)
-LR = t.TypeVar("LR", bound=t.Optional[t.Hashable])
+LR = t.TypeVar("LR", bound=t.Hashable | None)
 
 MaybeLink = t.Union[LR, NothingType]
 RootLinkT = t.Union[
@@ -388,22 +387,22 @@ RootLinkT = t.Union[
 
 LinkT = t.Union[
     # (ids) -> []
-    t.Callable[[List[LT]], SyncAsync[LR]],
+    t.Callable[[list[LT]], SyncAsync[LR]],
     # (ids, opts) -> []
-    t.Callable[[List[LT], t.Any], SyncAsync[LR]],
+    t.Callable[[list[LT], t.Any], SyncAsync[LR]],
     # (ctx, ids) -> []
-    t.Callable[[t.Any, List[LT]], SyncAsync[LR]],
+    t.Callable[[t.Any, list[LT]], SyncAsync[LR]],
     # (ctx, ids, opts) -> []
-    t.Callable[[t.Any, List[LT], t.Dict], SyncAsync[LR]],
+    t.Callable[[t.Any, list[LT], dict], SyncAsync[LR]],
 ]
 
 RootLinkOne = RootLinkT[LR]
 RootLinkMaybe = RootLinkT[MaybeLink[LR]]
-RootLinkMany = RootLinkT[List[LR]]  # type: ignore[type-var]
+RootLinkMany = RootLinkT[list[LR]]  # type: ignore[type-var]
 
-LinkOne = LinkT[LT, List[LR]]  # type: ignore[type-var]
-LinkMaybe = LinkT[LT, List[MaybeLink[LR]]]  # type: ignore[type-var]
-LinkMany = LinkT[LT, List[List[LR]]]  # type: ignore[type-var]
+LinkOne = LinkT[LT, list[LR]]  # type: ignore[type-var]
+LinkMaybe = LinkT[LT, list[MaybeLink[LR]]]  # type: ignore[type-var]
+LinkMany = LinkT[LT, list[list[LR]]]  # type: ignore[type-var]
 
 LinkFunc = t.Union[
     RootLinkOne,
@@ -414,9 +413,9 @@ LinkFunc = t.Union[
     LinkMany,
 ]
 
-LinkOneFunc = t.Union[RootLinkOne, LinkOne]
-LinkMaybeFunc = t.Union[RootLinkMaybe, LinkMaybe]
-LinkManyFunc = t.Union[RootLinkMany, LinkMany]
+LinkOneFunc = RootLinkOne | LinkOne
+LinkMaybeFunc = RootLinkMaybe | LinkMaybe
+LinkManyFunc = RootLinkMany | LinkMany
 
 
 class Link(AbstractLink):
@@ -473,21 +472,21 @@ class Link(AbstractLink):
         def func() -> T
 
         # ... if type is Optional[TypeRef['foo']]
-        def func() -> Union[T, Nothing]
+        def func() -> T | Nothing
 
         # ... if type is Sequence[TypeRef['foo']]
-        def func() -> List[T]
+        def func() -> list[T]
 
         # From non-root node and requires is not None:
 
         # ... if type is TypeRef['foo']
-        def func(ids) -> List[T]
+        def func(ids) -> list[T]
 
         # ... if type is Optional[TypeRef['foo']]
-        def func(ids) -> List[Union[T, Nothing]]
+        def func(ids) -> list[T | Nothing]
 
         # ... if type is Sequence[TypeRef['foo']]
-        def func(ids) -> List[List[T]]
+        def func(ids) -> list[list[T]]
 
     See also :py:const:`hiku.graph.Nothing`.
 
@@ -495,7 +494,7 @@ class Link(AbstractLink):
     additional positional argument::
 
         # many to many link with options
-        def func(ids, options) -> List[List[T]]
+        def func(ids, options) -> list[list[T]]
 
     Where ``options`` is a mapping ``str: value`` of provided in the query
     options.
@@ -505,56 +504,56 @@ class Link(AbstractLink):
     def __init__(
         self,
         name: str,
-        type_: t.Type[TypeRef],
+        type_: type[TypeRef],
         func: LinkOneFunc,
         *,
-        requires: t.Optional[t.Union[str, t.List[str]]],
-        options: t.Optional[t.Sequence[Option]] = None,
-        description: t.Optional[str] = None,
-        directives: t.Optional[t.List[SchemaDirective]] = None,
-        deprecated: t.Optional[str] = None,
+        requires: str | list[str] | None,
+        options: t.Sequence[Option] | None = None,
+        description: str | None = None,
+        directives: list[SchemaDirective] | None = None,
+        deprecated: str | None = None,
     ): ...
 
     @t.overload
     def __init__(
         self,
         name: str,
-        type_: t.Type[t.Union[UnionRef, InterfaceRef]],
+        type_: type[UnionRef | InterfaceRef],
         func: LinkOneFunc,
         *,
-        requires: t.Optional[t.Union[str, t.List[str]]],
-        options: t.Optional[t.Sequence[Option]] = None,
-        description: t.Optional[str] = None,
-        directives: t.Optional[t.List[SchemaDirective]] = None,
-        deprecated: t.Optional[str] = None,
+        requires: str | list[str] | None,
+        options: t.Sequence[Option] | None = None,
+        description: str | None = None,
+        directives: list[SchemaDirective] | None = None,
+        deprecated: str | None = None,
     ): ...
 
     @t.overload
     def __init__(
         self,
         name: str,
-        type_: t.Type[Optional],
+        type_: type[Optional],
         func: LinkMaybeFunc,
         *,
-        requires: t.Optional[t.Union[str, t.List[str]]],
-        options: t.Optional[t.Sequence[Option]] = None,
-        description: t.Optional[str] = None,
-        directives: t.Optional[t.List[SchemaDirective]] = None,
-        deprecated: t.Optional[str] = None,
+        requires: str | list[str] | None,
+        options: t.Sequence[Option] | None = None,
+        description: str | None = None,
+        directives: list[SchemaDirective] | None = None,
+        deprecated: str | None = None,
     ): ...
 
     @t.overload
     def __init__(
         self,
         name: str,
-        type_: t.Type[Sequence],
+        type_: type[Sequence],
         func: LinkManyFunc,
         *,
-        requires: t.Optional[t.Union[str, t.List[str]]],
-        options: t.Optional[t.Sequence[Option]] = None,
-        description: t.Optional[str] = None,
-        directives: t.Optional[t.List[SchemaDirective]] = None,
-        deprecated: t.Optional[str] = None,
+        requires: str | list[str] | None,
+        options: t.Sequence[Option] | None = None,
+        description: str | None = None,
+        directives: list[SchemaDirective] | None = None,
+        deprecated: str | None = None,
     ): ...
 
     def __init__(  # type: ignore[no-untyped-def]
@@ -620,9 +619,9 @@ class Union(AbstractBase):
     def __init__(
         self,
         name: str,
-        types: t.List[str],
+        types: list[str],
         *,
-        description: t.Optional[str] = None,
+        description: str | None = None,
     ):
         self.name = name
         self.types = types
@@ -641,9 +640,9 @@ class Interface(AbstractBase):
     def __init__(
         self,
         name: str,
-        fields: t.Sequence[t.Union["Field", "Link"]],
+        fields: t.Sequence[Field | Link],
         *,
-        description: t.Optional[str] = None,
+        description: str | None = None,
     ):
         self.name = name
         self.fields = fields
@@ -668,7 +667,7 @@ class Input(AbstractBase):
         name: str,
         arguments: t.Sequence[Option],
         *,
-        description: t.Optional[str] = None,
+        description: str | None = None,
     ):
         self.name = name
         self.arguments = arguments
@@ -707,12 +706,12 @@ class Node(AbstractNode):
 
     def __init__(
         self,
-        name: t.Optional[str],
-        fields: t.List[t.Union[Field, Link]],
+        name: str | None,
+        fields: list[Field | Link],
         *,
-        description: t.Optional[str] = None,
-        directives: t.Optional[t.Sequence[SchemaDirective]] = None,
-        implements: t.Optional[t.Sequence[str]] = None,
+        description: str | None = None,
+        directives: t.Sequence[SchemaDirective] | None = None,
+        implements: t.Sequence[str] | None = None,
     ):
         """
         :param name: name of the node (None if Root node)
@@ -724,7 +723,7 @@ class Node(AbstractNode):
         self.name = name
         self.fields = fields
         self.description = description
-        self.directives: t.Tuple[SchemaDirective, ...] = tuple(directives or ())
+        self.directives: tuple[SchemaDirective, ...] = tuple(directives or ())
         self.implements = tuple(implements or [])
 
     def __repr__(self) -> str:
@@ -767,7 +766,7 @@ class Root(Node):
 
     def __init__(
         self,
-        items: t.List[t.Union[Field, Link]],
+        items: list[Field | Link],
     ):
         """
         :param items: list of fields, links and singleton nodes
@@ -805,14 +804,14 @@ class Graph(AbstractGraph):
 
     def __init__(
         self,
-        items: t.List[Node],
-        data_types: t.Optional[t.Dict[str, t.Type[Record]]] = None,
-        directives: t.Optional[t.Sequence[t.Type[SchemaDirective]]] = None,
-        unions: t.Optional[t.List[Union]] = None,
-        interfaces: t.Optional[t.List[Interface]] = None,
-        enums: t.Optional[t.List[BaseEnum]] = None,
-        scalars: t.Optional[t.List[t.Type[Scalar]]] = None,
-        inputs: t.Optional[t.List[Input]] = None,
+        items: list[Node],
+        data_types: dict[str, type[Record]] | None = None,
+        directives: t.Sequence[type[SchemaDirective]] | None = None,
+        unions: list[Union] | None = None,
+        interfaces: list[Interface] | None = None,
+        enums: list[BaseEnum] | None = None,
+        scalars: list[type[Scalar]] | None = None,
+        inputs: list[Input] | None = None,
     ):
         """
         :param items: list of nodes
@@ -842,7 +841,7 @@ class Graph(AbstractGraph):
         self.unions = unions
         self.interfaces = interfaces
         self.interfaces_types = collect_interfaces_types(self.items, interfaces)
-        self.enums: t.List[BaseEnum] = enums
+        self.enums: list[BaseEnum] = enums
         self.scalars = scalars
         self.inputs = inputs
         # TODO: deprecate data_types inputs
@@ -854,14 +853,14 @@ class Graph(AbstractGraph):
             self.enums,
             self.data_types,
         )
-        self.directives: t.Tuple[t.Type[SchemaDirective], ...] = tuple(
+        self.directives: tuple[type[SchemaDirective], ...] = tuple(
             directives or ()
         )
 
     def __repr__(self) -> str:
         return "{}({!r})".format(self.__class__.__name__, self.items)
 
-    def iter_root(self) -> t.Iterator[t.Union[Field, Link]]:
+    def iter_root(self) -> t.Iterator[Field | Link]:
         """Iterate over nodes, and yield fields from all root nodes."""
         for node in self.items:
             if node.name is None:
@@ -878,7 +877,7 @@ class Graph(AbstractGraph):
         return Root(list(self.iter_root()))
 
     @cached_property
-    def nodes(self) -> t.List[Node]:
+    def nodes(self) -> list[Node]:
         return list(self.iter_nodes())
 
     @cached_property
@@ -898,7 +897,7 @@ class Graph(AbstractGraph):
         return OrderedDict((e.name, e) for e in self.enums)
 
     @cached_property
-    def scalars_map(self) -> "OrderedDict[str, t.Type[Scalar]]":
+    def scalars_map(self) -> "OrderedDict[str, type[Scalar]]":
         return OrderedDict((s.__type_name__, s) for s in self.scalars)
 
     @cached_property
@@ -909,7 +908,7 @@ class Graph(AbstractGraph):
         return visitor.visit_graph(self)
 
     @classmethod
-    def from_graph(cls: t.Type[G], other: G, root: Root) -> G:
+    def from_graph(cls: type[G], other: G, root: Root) -> G:
         """Create graph from other graph, with new root node.
         Useful for creating mutation graph from query graph.
 
@@ -966,7 +965,7 @@ class AbstractGraphVisitor(ABC):
         pass
 
     @abstractmethod
-    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Any:
+    def visit_scalar(self, obj: type[Scalar]) -> t.Any:
         pass
 
     @abstractmethod
@@ -991,7 +990,7 @@ class GraphVisitor(AbstractGraphVisitor):
     def visit_enum(self, obj: "BaseEnum") -> t.Any:
         pass
 
-    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Any:
+    def visit_scalar(self, obj: type[Scalar]) -> t.Any:
         pass
 
     def visit_option(self, obj: "Option") -> t.Any:
@@ -1085,7 +1084,7 @@ class GraphTransformer(AbstractGraphVisitor):
     def visit_enum(self, obj: BaseEnum) -> BaseEnum:
         return obj
 
-    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Type[Scalar]:
+    def visit_scalar(self, obj: type[Scalar]) -> type[Scalar]:
         return obj
 
     def visit_root(self, obj: Root) -> Root:
@@ -1104,7 +1103,7 @@ class GraphTransformer(AbstractGraphVisitor):
         )
 
 
-def apply(graph: G, transformers: List[GraphTransformer]) -> G:
+def apply(graph: G, transformers: list[GraphTransformer]) -> G:
     """Helper function to apply graph transformations
 
     Example:
@@ -1119,7 +1118,7 @@ def apply(graph: G, transformers: List[GraphTransformer]) -> G:
 
 class GraphInit(GraphTransformer):
     @classmethod
-    def init(cls, items: t.List[Node]) -> t.List[Node]:
+    def init(cls, items: list[Node]) -> list[Node]:
         self = cls()
         return [self.visit(i) for i in items]
 
@@ -1141,12 +1140,12 @@ class GraphInit(GraphTransformer):
 class GraphTypes(GraphVisitor):
     def _visit_graph(
         self,
-        items: t.List[Node],
-        unions: t.List[Union],
-        interfaces: t.List[Interface],
-        enums: t.List[BaseEnum],
-        data_types: t.Dict[str, t.Type[Record]],
-    ) -> t.Dict[str, t.Type[Record]]:
+        items: list[Node],
+        unions: list[Union],
+        interfaces: list[Interface],
+        enums: list[BaseEnum],
+        data_types: dict[str, type[Record]],
+    ) -> dict[str, type[Record]]:
         types = OrderedDict(data_types)
         roots = []
         for item in items:
@@ -1172,31 +1171,31 @@ class GraphTypes(GraphVisitor):
     @classmethod
     def get_types(
         cls,
-        items: t.List[Node],
-        unions: t.List[Union],
-        interfaces: t.List[Interface],
-        enums: t.List[BaseEnum],
-        data_types: t.Dict[str, t.Type[Record]],
-    ) -> t.Dict[str, t.Type[Record]]:
+        items: list[Node],
+        unions: list[Union],
+        interfaces: list[Interface],
+        enums: list[BaseEnum],
+        data_types: dict[str, type[Record]],
+    ) -> dict[str, type[Record]]:
         return cls()._visit_graph(items, unions, interfaces, enums, data_types)
 
-    def visit_graph(self, obj: Graph) -> t.Dict[str, t.Type[Record]]:
+    def visit_graph(self, obj: Graph) -> dict[str, type[Record]]:
         return self._visit_graph(
             obj.items, obj.unions, obj.interfaces, obj.enums, obj.data_types
         )
 
-    def visit_node(self, obj: Node) -> t.Type[Record]:
+    def visit_node(self, obj: Node) -> type[Record]:
         return Record[[(f.name, self.visit(f)) for f in obj.fields]]
 
-    def visit_root(self, obj: Root) -> t.Type[Record]:
+    def visit_root(self, obj: Root) -> type[Record]:
         return Record[[(f.name, self.visit(f)) for f in obj.fields]]
 
     def visit_link(
         self, obj: Link
-    ) -> t.Union[t.Type[TypeRef], t.Type[Optional], t.Type[Sequence]]:
+    ) -> type[TypeRef] | type[Optional] | type[Sequence]:
         return obj.type
 
-    def visit_field(self, obj: Field) -> t.Union[FieldT, AnyMeta]:
+    def visit_field(self, obj: Field) -> FieldT | AnyMeta:
         return obj.type or Any
 
     def visit_union(self, obj: Union) -> Union:
@@ -1208,5 +1207,5 @@ class GraphTypes(GraphVisitor):
     def visit_interface(self, obj: Interface) -> Interface:
         return obj
 
-    def visit_scalar(self, obj: t.Type[Scalar]) -> t.Type[Scalar]:
+    def visit_scalar(self, obj: type[Scalar]) -> type[Scalar]:
         return obj

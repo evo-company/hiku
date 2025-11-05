@@ -1,5 +1,6 @@
 import typing as t
 from collections import abc as collections_abc
+from collections import OrderedDict
 from contextlib import contextmanager
 from dataclasses import dataclass
 
@@ -54,8 +55,8 @@ OptionValue = t.Union[
 
 @dataclass
 class Path:
-    parent: t.Optional["Path"]
-    path: t.Union[str, t.Tuple[str, str]]
+    parent: t.Union["Path", None]
+    path: str | tuple[str, str]
 
     def add(self, node_name: str, obj_name: str) -> "Path":
         return Path(self, (node_name, obj_name))
@@ -70,7 +71,7 @@ class Path:
 
 class _AssumeRecord(AbstractTypeVisitor):
     def __init__(
-        self, data_types: t.Dict[str, t.Type[Record]], _nested: bool = False
+        self, data_types: dict[str, type[Record]], _nested: bool = False
     ):
         self._data_types = data_types
         self._nested = _nested
@@ -99,21 +100,21 @@ class _AssumeRecord(AbstractTypeVisitor):
     visit_enumref = _false
     visit_scalar = _false
 
-    def visit_optional(self, obj: OptionalMeta) -> t.Optional[t.OrderedDict]:
+    def visit_optional(self, obj: OptionalMeta) -> OrderedDict | None:
         if not self._nested:
             return self._get_nested().visit(obj.__type__)
         return None
 
-    def visit_sequence(self, obj: SequenceMeta) -> t.Optional[t.OrderedDict]:
+    def visit_sequence(self, obj: SequenceMeta) -> OrderedDict | None:
         if not self._nested:
             return self._get_nested().visit(obj.__item_type__)
         return None
 
-    def visit_record(self, obj: RecordMeta) -> t.OrderedDict:
+    def visit_record(self, obj: RecordMeta) -> OrderedDict:
         # return fields alongside type definitions
         return obj.__field_types__
 
-    def visit_typeref(self, obj: TypeRefMeta) -> t.OrderedDict:
+    def visit_typeref(self, obj: TypeRefMeta) -> OrderedDict:
         return self.visit(self._data_types[obj.__type_name__])
 
 
@@ -147,7 +148,7 @@ class _AssumeField(GraphVisitor):
 
 
 class _OptionError(TypeError):
-    def __init__(self, description: str, field: t.Optional[str] = None) -> None:
+    def __init__(self, description: str, field: str | None = None) -> None:
         self.description = description
         self.field = field
         super(_OptionError, self).__init__(description)
@@ -165,8 +166,8 @@ class _OptionTypeError(_OptionError):
 class _OptionTypeValidator:
     def __init__(
         self,
-        data_types: t.Dict[str, t.Type[Record]],
-        inputs_map: t.Dict[str, Input],
+        data_types: dict[str, type[Record]],
+        inputs_map: dict[str, Input],
         value: OptionValue,
     ) -> None:
         self._data_types = data_types
@@ -185,7 +186,7 @@ class _OptionTypeValidator:
         finally:
             self._value.pop()
 
-    def visit(self, type_: t.Union[GenericMeta, t.Type[Scalar]]) -> None:
+    def visit(self, type_: GenericMeta | type[Scalar]) -> None:
         type_.accept(self)  # type: ignore
 
     def visit_any(self, type_: AnyMeta) -> None:
@@ -335,10 +336,10 @@ class _ValidateOptions(GraphVisitor):
 
     def __init__(
         self,
-        data_types: t.Dict[str, t.Type[Record]],
-        inputs_map: t.Dict[str, Input],
-        options: t.Optional[t.Dict],
-        for_: t.Tuple[t.Any, ...],
+        data_types: dict[str, type[Record]],
+        inputs_map: dict[str, Input],
+        options: dict | None,
+        for_: tuple[t.Any, ...],
         errors: Errors,
     ) -> None:
         self._data_types = data_types
@@ -410,8 +411,8 @@ class _ValidateOptions(GraphVisitor):
 class _RecordFieldsValidator(QueryVisitor):
     def __init__(
         self,
-        data_types: t.Dict[str, t.Type[Record]],
-        field_types: t.OrderedDict,
+        data_types: dict[str, type[Record]],
+        field_types: OrderedDict,
         errors: Errors,
     ) -> None:
         self._data_types = data_types
@@ -466,7 +467,7 @@ class DefaultQueryValidator(QueryVisitor):
         self._type = [graph.root]
         self._path: Path = Path(None, "root")
         self.errors = Errors()
-        self._visited_fields: t.Dict[Path, t.Dict] = {}
+        self._visited_fields: dict[Path, dict] = {}
 
     def visit_field(self, obj: QueryField) -> None:
         node = self._type[-1]
@@ -622,7 +623,7 @@ class DefaultQueryValidator(QueryVisitor):
         is_union_link = isinstance(self._type[-1], Union)
         is_interface_link = isinstance(self._type[-1], Interface)
 
-        fields: t.Dict = self._visited_fields.setdefault(self._path, {})
+        fields: dict = self._visited_fields.setdefault(self._path, {})
 
         for field in obj.fields:
             if field.name == "__typename":
@@ -692,7 +693,7 @@ class DefaultQueryValidator(QueryVisitor):
             self.visit(fr)
 
 
-def validate(graph: Graph, query: QueryNode) -> t.List[str]:
+def validate(graph: Graph, query: QueryNode) -> list[str]:
     query_validator = DefaultQueryValidator(graph)
     query_validator.visit(query)
     return query_validator.errors.list

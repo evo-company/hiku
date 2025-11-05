@@ -1,9 +1,6 @@
 from functools import partial
 from typing import (
     NoReturn,
-    List,
-    Tuple,
-    Union,
     Callable,
     Iterator,
     cast,
@@ -46,14 +43,14 @@ from ..expr.checker import check, fn_types
 from ..expr.compiler import ExpressionCompiler
 
 
-FieldGroup = Tuple[Field, Union[QueryField, QueryLink]]
-Expr: TypeAlias = Union[_Func, DotHandler]
+FieldGroup = tuple[Field, QueryField | QueryLink]
+Expr: TypeAlias = _Func | DotHandler
 
 
 def _create_result_proc(
-    engine_query: Query, procs: List[Callable], options: List
-) -> Callable[[], List[List]]:
-    def result_proc() -> List[List]:
+    engine_query: Query, procs: list[Callable], options: list
+) -> Callable[[], list[list]]:
+    def result_proc() -> list[list]:
         sq_result = engine_query.result()
         return [
             [
@@ -158,12 +155,12 @@ class SubGraph:
 
     def __call__(
         self,
-        fields: List[FieldGroup],
-        ids: List,
+        fields: list[FieldGroup],
+        ids: list,
         queue: Queue,
         ctx: Context,
         task_set: TaskSet,
-    ) -> Callable[[], List[List]]:
+    ) -> Callable[[], list[list]]:
         path = tuple(["this"])
         this_graph_link = Link(THIS, Sequence[TypeRef[self.node]], None, requires=None)  # type: ignore # noqa: E501
 

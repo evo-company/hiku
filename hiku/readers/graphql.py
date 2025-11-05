@@ -6,7 +6,7 @@ Support for queries encoded using GraphQL syntax.
 
 """
 
-from typing import Any, cast, Dict, Iterator, List, Optional, Set, Union
+from typing import Any, cast, Iterator
 
 from graphql.language import ast
 from graphql.language.parser import parse
@@ -63,13 +63,13 @@ class NodeVisitor:
 
 
 class OperationGetter(NodeVisitor):
-    def __init__(self, operation_name: Optional[str] = None):
-        self._operations: Dict[Optional[str], ast.OperationDefinitionNode] = {}
+    def __init__(self, operation_name: str | None = None):
+        self._operations: dict[str | None, ast.OperationDefinitionNode] = {}
         self._operation_name = operation_name
 
     @classmethod
     def get(
-        cls, doc: ast.DocumentNode, operation_name: Optional[str] = None
+        cls, doc: ast.DocumentNode, operation_name: str | None = None
     ) -> ast.OperationDefinitionNode:
         self = cls(operation_name=operation_name)
         self.visit(doc)
@@ -109,7 +109,7 @@ class OperationGetter(NodeVisitor):
 
 class FragmentsCollector(NodeVisitor):
     def __init__(self) -> None:
-        self.fragments_map: Dict[str, ast.FragmentDefinitionNode] = {}
+        self.fragments_map: dict[str, ast.FragmentDefinitionNode] = {}
 
     def visit_operation_definition(
         self, obj: ast.OperationDefinitionNode
@@ -127,15 +127,15 @@ class FragmentsCollector(NodeVisitor):
 
 
 class SelectionSetVisitMixin:
-    def transform_fragment(self, name: str) -> Optional[Fragment]:
+    def transform_fragment(self, name: str) -> Fragment | None:
         raise NotImplementedError(type(self))
 
     @property
-    def query_variables(self) -> Optional[Dict]:
+    def query_variables(self) -> dict | None:
         raise NotImplementedError(type(self))
 
     @property
-    def query_name(self) -> Optional[str]:
+    def query_name(self) -> str | None:
         raise NotImplementedError(type(self))
 
     def lookup_variable(self, name: str) -> Any:
@@ -151,12 +151,12 @@ class SelectionSetVisitMixin:
 
     def visit_selection_set(
         self, obj: ast.SelectionSetNode
-    ) -> Iterator[Union[Field, Link]]:
+    ) -> Iterator[Field | Link]:
         for i in obj.selections:
             for j in self.visit(i):  # type: ignore[attr-defined]
                 yield j
 
-    def _should_skip(self, obj: ast.SelectionNode) -> Optional[bool]:
+    def _should_skip(self, obj: ast.SelectionNode) -> bool | None:
         if not obj.directives:
             return None
 
@@ -196,10 +196,10 @@ class SelectionSetVisitMixin:
 
     def _get_directive(
         self, name: str, obj: ast.SelectionNode
-    ) -> Optional[ast.DirectiveNode]:
+    ) -> ast.DirectiveNode | None:
         return next((d for d in obj.directives if d.name.value == name), None)
 
-    def _is_cached(self, obj: ast.SelectionNode) -> Optional[Cached]:
+    def _is_cached(self, obj: ast.SelectionNode) -> Cached | None:
         if not obj.directives:
             return None
 
@@ -226,12 +226,12 @@ class SelectionSetVisitMixin:
 
     def _collect_fields(
         self,
-        obj: Union[
-            ast.OperationDefinitionNode,
-            ast.FieldNode,
-            ast.InlineFragmentNode,
-            ast.FragmentDefinitionNode,
-        ],
+        obj: (
+            ast.OperationDefinitionNode
+            | ast.FieldNode
+            | ast.InlineFragmentNode
+            | ast.FragmentDefinitionNode
+        ),  # noqa: E501
         ordered: bool = False,
     ) -> Node:
         assert obj.selection_set is not None
@@ -247,11 +247,11 @@ class SelectionSetVisitMixin:
 
         return Node(fields, fragments, ordered=ordered)
 
-    def visit_field(self, obj: ast.FieldNode) -> Iterator[Union[Field, Link]]:
+    def visit_field(self, obj: ast.FieldNode) -> Iterator[Field | Link]:
         if self._should_skip(obj):
             return
 
-        directives: List[Directive] = []
+        directives: list[Directive] = []
         cached = self._is_cached(obj)
         if cached is not None:
             directives.append(cached)
@@ -306,15 +306,15 @@ class SelectionSetVisitMixin:
     def visit_enum_value(self, obj: ast.EnumValueNode) -> str:
         return obj.value
 
-    def visit_list_value(self, obj: ast.ListValueNode) -> List:
+    def visit_list_value(self, obj: ast.ListValueNode) -> list:
         return [self.visit(i) for i in obj.values]  # type: ignore[attr-defined]
 
-    def visit_object_value(self, obj: ast.ObjectValueNode) -> Dict:
+    def visit_object_value(self, obj: ast.ObjectValueNode) -> dict:
         return {f.name.value: self.visit(f.value) for f in obj.fields}  # type: ignore[attr-defined] # noqa: E501
 
     def visit_fragment_spread(
         self, obj: ast.FragmentSpreadNode
-    ) -> Iterator[Optional[Fragment]]:
+    ) -> Iterator[Fragment | None]:
         if self._should_skip(obj):
             return
 
@@ -322,7 +322,7 @@ class SelectionSetVisitMixin:
 
     def visit_inline_fragment(
         self, obj: ast.InlineFragmentNode
-    ) -> Iterator[Optional[Fragment]]:
+    ) -> Iterator[Fragment | None]:
         if self._should_skip(obj):
             return
 
@@ -335,18 +335,18 @@ class SelectionSetVisitMixin:
 
 class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
     query_name: str = ""
-    query_variables: Dict = {}
+    query_variables: dict = {}
 
     def __init__(
-        self, document: ast.DocumentNode, query_name: str, query_variables: Dict
+        self, document: ast.DocumentNode, query_name: str, query_variables: dict
     ):
         collector = FragmentsCollector()
         collector.visit(document)
         self.query_name = query_name
         self.query_variables = query_variables
         self.fragments_map = collector.fragments_map
-        self.cache: Dict[str, Node] = {}
-        self.pending_fragments: Set[str] = set()
+        self.cache: dict[str, Node] = {}
+        self.pending_fragments: set[str] = set()
 
     def transform_fragment(self, name: str) -> Fragment:
         if name not in self.fragments_map:
@@ -379,12 +379,14 @@ class FragmentsTransformer(SelectionSetVisitMixin, NodeVisitor):
 
 
 class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
-    query_name: Optional[str] = None
-    query_variables: Optional[Dict[str, Any]] = None
+    query_name: str | None = None
+    query_variables: dict[str, Any] | None = None
     fragments_transformer = None
 
     def __init__(
-        self, document: ast.DocumentNode, variables: Optional[Dict] = None
+        self,
+        document: ast.DocumentNode,
+        variables: dict[str, Any] | None = None,
     ):
         self.document = document
         self.variables = variables
@@ -394,7 +396,7 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
         cls,
         document: ast.DocumentNode,
         op: ast.OperationDefinitionNode,
-        variables: Optional[Dict] = None,
+        variables: dict[str, Any] | None = None,
     ) -> Node:
         visitor = cls(document, variables)
         return visitor.visit(op)
@@ -443,15 +445,15 @@ class GraphQLTransformer(SelectionSetVisitMixin, NodeVisitor):
 
 
 def get_operation(
-    doc: ast.DocumentNode, operation_name: Optional[str]
+    doc: ast.DocumentNode, operation_name: str | None = None
 ) -> ast.OperationDefinitionNode:
     return OperationGetter.get(doc, operation_name=operation_name)
 
 
 def read(
     src: str,
-    variables: Optional[Dict] = None,
-    operation_name: Optional[str] = None,
+    variables: dict[str, Any] | None = None,
+    operation_name: str | None = None,
 ) -> Node:
     """Reads a query from the GraphQL document
 
@@ -479,9 +481,9 @@ def read(
 
 
 def read_operation(
-    src: Union[str, ast.DocumentNode],
-    variables: Optional[Union[Dict, ImmutableDict]] = None,
-    operation_name: Optional[str] = None,
+    src: str | ast.DocumentNode,
+    variables: dict[str, Any] | ImmutableDict | None = None,
+    operation_name: str | None = None,
 ) -> Operation:
     """Reads an operation from the GraphQL document
 
@@ -505,7 +507,7 @@ def read_operation(
     op = get_operation(doc, operation_name=operation_name)
     query = GraphQLTransformer.transform(doc, op, variables)
     type_ = cast(
-        Optional[OperationType],
+        OperationType | None,
         (OperationType._value2member_map_.get(op.operation)),
     )
     name = op.name.value if op.name else None

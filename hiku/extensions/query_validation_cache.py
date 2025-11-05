@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Iterator, Optional
+from typing import Iterator
 
 from hiku.context import ExecutionContext
 from hiku.schema import _run_validation
@@ -12,7 +12,7 @@ class QueryValidationCache(Extension):
     :param int maxsize: Maximum size of the cache
     """
 
-    def __init__(self, maxsize: Optional[int] = None):
+    def __init__(self, maxsize: int | None = None):
         self.cached_validator = lru_cache(maxsize=maxsize)(_run_validation)
 
     def on_validate(
