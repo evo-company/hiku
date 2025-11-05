@@ -525,7 +525,7 @@ def field_type_link(
 
 @listify
 def field_args_link(
-    schema: SchemaInfo, ids: list
+    schema: SchemaInfo, ids: list, opts: dict
 ) -> t.Iterator[list[HashedNamedTuple]]:
     for ident in ids:
         if ident.node in schema.nodes_map:
@@ -541,7 +541,7 @@ def field_args_link(
 
 @listify
 def type_input_object_input_fields_link(
-    schema: SchemaInfo, ids: list
+    schema: SchemaInfo, ids: list, opts: dict
 ) -> t.Iterator[list[HashedNamedTuple]]:
     for ident in ids:
         if isinstance(ident, INPUT_OBJECT):
@@ -601,17 +601,25 @@ def input_value_info(
                     )
                 else:
                     default = json.dumps(option.default)
+
+            deprecated = None
+            if isinstance(field, (Field, Link)):
+                deprecated = get_deprecated(field)
+
             info = {
                 "id": ident,
                 "name": option.name,
                 "description": option.description,
                 "defaultValue": default,
+                "isDeprecated": bool(deprecated),
+                "deprecationReason": deprecated and deprecated.reason,
             }
             yield [info[f.name] for f in fields]
         elif isinstance(ident, InputObjectFieldIdent):
             if ident.name in schema.query_graph.inputs_map:
                 input_ = schema.query_graph.inputs_map[ident.name]
-                option_arg = input_.arguments_map[ident.key]
+                option_arg: Option = input_.arguments_map[ident.key]
+                deprecated = get_deprecated(option_arg)
                 info = {
                     "id": ident,
                     "name": ident.key,
@@ -621,6 +629,8 @@ def input_value_info(
                         if option_arg.default is not Nothing
                         else None
                     ),
+                    "isDeprecated": bool(deprecated),
+                    "deprecationReason": deprecated and deprecated.reason,
                 }
                 yield [info[f.name] for f in fields]
             elif ident.name in schema.data_types:
@@ -629,6 +639,8 @@ def input_value_info(
                     "name": ident.key,
                     "description": None,
                     "defaultValue": None,
+                    "isDeprecated": False,
+                    "deprecationReason": None,
                 }
                 yield [info[f.name] for f in fields]
         elif isinstance(ident, DirectiveArgIdent):
@@ -639,6 +651,8 @@ def input_value_info(
                 "name": arg.field_name,
                 "description": arg.description,
                 "defaultValue": arg.default_value,
+                "isDeprecated": False,
+                "deprecationReason": None,
             }
             yield [info[f.name] for f in fields]
         else:
@@ -694,7 +708,7 @@ def directive_value_info(
 
 
 def directive_args_link(
-    schema: SchemaInfo, ids: list[str]
+    schema: SchemaInfo, ids: list[str], opts: dict
 ) -> list[list[DirectiveArgIdent]]:  # type: ignore[valid-type]
     links = []
     for ident in ids:
@@ -772,6 +786,10 @@ GRAPH = Graph(
                     Sequence[TypeRef["__InputValue"]],
                     type_input_object_input_fields_link,
                     requires="id",
+                    options=[
+                        # TODO: support this
+                        Option("includeDeprecated", Boolean, default=False)
+                    ],
                 ),
                 # NON_NULL and LIST only
                 Link(
@@ -793,6 +811,10 @@ GRAPH = Graph(
                     Sequence[TypeRef["__InputValue"]],
                     field_args_link,
                     requires="id",
+                    options=[
+                        # TODO: support this
+                        Option("includeDeprecated", Boolean, default=False)
+                    ],
                 ),
                 Link("type", TypeRef["__Type"], field_type_link, requires="id"),
                 Field("isDeprecated", Boolean, field_info),
@@ -812,6 +834,8 @@ GRAPH = Graph(
                     requires="id",
                 ),
                 Field("defaultValue", String, input_value_info),
+                Field("isDeprecated", Boolean, input_value_info),
+                Field("deprecationReason", String, input_value_info),
             ],
         ),
         Node(
@@ -825,6 +849,10 @@ GRAPH = Graph(
                     Sequence[TypeRef["__InputValue"]],
                     directive_args_link,
                     requires="name",
+                    options=[
+                        # TODO: support this
+                        Option("includeDeprecated", Boolean, default=False)
+                    ],
                 ),
             ],
         ),

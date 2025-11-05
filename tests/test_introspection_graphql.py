@@ -152,7 +152,12 @@ def _schema(types, directives: list[dict] | None = None, with_mutation=False):
                       _ival('if', _non_null(_BOOL), description=ANY),
                   ]),
               _directive(
-                  'deprecated', ['FIELD_DEFINITION', 'ENUM_VALUE'], [
+                  'deprecated', [
+                    'FIELD_DEFINITION',
+                    'ARGUMENT_DEFINITION',
+                    'INPUT_FIELD_DEFINITION',
+                    'ENUM_VALUE',
+                  ], [
                       _ival('reason', _STR, description=ANY)
                   ]),
               _directive(

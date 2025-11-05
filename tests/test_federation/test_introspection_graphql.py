@@ -120,7 +120,12 @@ def _schema(types, with_mutation=False) -> dict:
                     ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'], [
                         _ival('if', _non_null(_BOOL), description=ANY),
                     ]),
-                _directive('deprecated', ['FIELD_DEFINITION', 'ENUM_VALUE'], [
+                _directive('deprecated', [
+                    'FIELD_DEFINITION',
+                    'ARGUMENT_DEFINITION',
+                    'INPUT_FIELD_DEFINITION',
+                    'ENUM_VALUE',
+                ], [
                     _ival('reason', _STR, description=ANY)
                 ]),
                 _directive('cached', ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'], [

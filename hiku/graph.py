@@ -100,18 +100,29 @@ class Option(AbstractOption):
         *,
         default: t.Any = Nothing,
         description: str | None = None,
+        directives: list[SchemaDirective] | None = None,
+        deprecated: str | None = None,
     ):
         """
         :param name: name of the option
         :param type_: type of the option or ``None``
         :param default: default option value
         :param description: description of the option
+        :param directives: list of directives for the option
+        :param deprecated: deprecation reason
         """
+        if directives is None:
+            directives = []
+
+        if deprecated is not None:
+            directives.append(Deprecated(deprecated))
+
         self.name = name
         # TODO(m.kind): make type_ non-optional
         self.type = type_
         self.default = default
         self.description = description
+        self.directives = directives
         self.type_info = get_field_info(type_)
 
     def __repr__(self) -> str:

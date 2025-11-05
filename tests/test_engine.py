@@ -2204,7 +2204,9 @@ def test_denormalize_introspection() -> str:
 
     graph = GraphQLIntrospection(graph).visit(graph)
 
-    query = read(get_introspection_query())
+    query = read(get_introspection_query(
+        input_value_deprecation=True
+    ))
     query = QueryMerger(graph).merge(query)
 
     result = execute(graph, query)
