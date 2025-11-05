@@ -1,11 +1,11 @@
-FROM python:3.9-slim AS base
+FROM python:3.10-slim AS base
 
 WORKDIR /work
 
 ENV PIP_VERSION=23.1.2
-ENV PDM_VERSION=2.22.3
+ENV PDM_VERSION=2.26.1
 ENV UV_VERSION=0.5.31
-ENV PYTHON_VERSION=3.9
+ENV PYTHON_VERSION=3.10
 
 RUN apt-get update && apt-get install -y libpq-dev && \
   # install base python deps

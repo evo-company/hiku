@@ -1,20 +1,16 @@
-from typing import Generic, List, Optional, Sequence, Type, Union, cast
+from typing import Generic, Sequence, cast
 from hiku.cache import CacheSettings
 from hiku.context import ExecutionContext, ExecutionContextFinal
 from hiku.engine import _ExecutorType
 from hiku.federation.introspection import FederatedGraphQLIntrospection
 from hiku.federation.sdl import print_sdl
 from hiku.graph import GraphTransformer
+from hiku.graph import Union
 from hiku.schema import Schema as BaseSchema
 from hiku.extensions.base_extension import Extension, ExtensionsManager
 from hiku.federation.graph import Graph
 from hiku.federation.version import DEFAULT_FEDERATION_VERSION
 from hiku.federation.utils import get_entity_types
-
-from hiku.graph import (
-    GraphTransformer,
-    Union as GraphUnion,
-)
 
 
 class FederationV1EntityTransformer(GraphTransformer):
@@ -23,7 +19,7 @@ class FederationV1EntityTransformer(GraphTransformer):
         unions = []
         for u in obj.unions:
             if u.name == "_Entity" and entities:
-                unions.append(GraphUnion("_Entity", entities))
+                unions.append(Union("_Entity", entities))
             else:
                 unions.append(u)
 
@@ -54,16 +50,14 @@ class Schema(BaseSchema, Generic[_ExecutorType]):
         self,
         executor: _ExecutorType,
         graph: Graph,
-        mutation: Optional[Graph] = None,
+        mutation: Graph | None = None,
         batching: bool = False,
         introspection: bool = True,
-        extensions: Optional[
-            Sequence[Union[Extension, Type[Extension]]]
-        ] = None,
-        cache: Optional[CacheSettings] = None,
+        extensions: Sequence[Extension | type[Extension]] | None = None,
+        cache: CacheSettings | None = None,
         federation_version: int = DEFAULT_FEDERATION_VERSION,
     ):
-        transformers: List[GraphTransformer] = []
+        transformers: list[GraphTransformer] = []
         if federation_version == 1:
             transformers.append(FederationV1EntityTransformer())
 

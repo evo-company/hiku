@@ -23,7 +23,7 @@ from hiku.types import (
 
 
 def get_ref_type(
-    types: Types, type_: t.Union[t.Type[Record], RefMetaTypes], name: str
+    types: Types, type_: type[Record] | RefMetaTypes, name: str
 ) -> RefMetaTypes:
     if isinstance(type_, RecordMeta):
         type_ = type_.__field_types__[name]
@@ -52,7 +52,7 @@ def get_ref_type(
 
 
 def is_match_type(
-    type_: t.Union[t.Type[Record], RefMetaTypes], fragment: Fragment
+    type_: type[Record] | RefMetaTypes, fragment: Fragment
 ) -> bool:
     if fragment.type_name is None:
         return True
@@ -67,7 +67,7 @@ class QueryMerger(QueryVisitor):
     def __init__(self, graph: Graph):
         self.graph = graph
         self._types = graph.__types__
-        self._type: t.Deque[t.Union[t.Type[Record], RefMetaTypes]] = deque(
+        self._type: deque[type[Record] | RefMetaTypes] = deque(
             [self._types["__root__"]]
         )
 
@@ -83,7 +83,7 @@ class QueryMerger(QueryVisitor):
     @property
     def parent_type(
         self,
-    ) -> t.Union[t.Type[Record], RefMetaTypes]:
+    ) -> type[Record] | RefMetaTypes:
         return self._type[-1]
 
     @contextmanager
@@ -104,9 +104,9 @@ class QueryMerger(QueryVisitor):
     def _collect_fields(
         self,
         node: Node,
-        fields: t.Dict[str, Field],
-        links: t.Dict[str, t.List[Link]],
-        fragments: t.List[Fragment],
+        fields: dict[str, Field],
+        links: dict[str, list[Link]],
+        fragments: list[Fragment],
     ) -> None:
         """Collect fields, links and fragments from the node.
 
@@ -123,7 +123,7 @@ class QueryMerger(QueryVisitor):
             elif isinstance(field, Link):
                 links.setdefault(name, []).append(field)
 
-        fragments_to_process: t.List[Fragment] = []
+        fragments_to_process: list[Fragment] = []
         for fr in node.fragments:
             if is_match_type(self.parent_type, fr):
                 self._expand_fragment(fr, fields, links, fragments_to_process)
@@ -141,14 +141,14 @@ class QueryMerger(QueryVisitor):
         self,
         fragment: Fragment,
         interface: Interface,
-        fields: t.Dict[str, Field],
-        links: t.Dict[str, t.List[Link]],
-    ) -> t.Optional[Fragment]:
+        fields: dict[str, Field],
+        links: dict[str, list[Link]],
+    ) -> Fragment | None:
         """For interface fragment, we collect/extract fields that are
         declared in the interface. The rest of the fields are left in
         the fragment.
         """
-        fragment_fields: t.List[FieldOrLink] = []
+        fragment_fields: list[FieldOrLink] = []
 
         for field in fragment.node.fields:
             name = field.alias or field.name
@@ -172,10 +172,10 @@ class QueryMerger(QueryVisitor):
 
     def _merge_fragments(
         self,
-        fragments_to_process: t.List[Fragment],
-        fields: t.Dict[str, Field],
-        links: t.Dict[str, t.List[Link]],
-        fragments: t.List[Fragment],
+        fragments_to_process: list[Fragment],
+        fields: dict[str, Field],
+        links: dict[str, list[Link]],
+        fragments: list[Fragment],
     ) -> None:
         """Merge fragments. Depending on the type of the parent type,
         the fragments are merged differently.
@@ -183,9 +183,7 @@ class QueryMerger(QueryVisitor):
         For example for interfaces/unions we apply diffrent logic when
         collecting fields and links.
         """
-        fragments_by_type: t.DefaultDict[str, t.List[Fragment]] = defaultdict(
-            list
-        )
+        fragments_by_type: defaultdict[str, list[Fragment]] = defaultdict(list)
 
         for fragment in fragments_to_process:
             if fragment.type_name is None or (
@@ -211,9 +209,7 @@ class QueryMerger(QueryVisitor):
         for frs in fragments_by_type.values():
             fragments.append(self._merge_same_type_fragments(frs))
 
-    def _merge_same_type_fragments(
-        self, fragments: t.List[Fragment]
-    ) -> Fragment:
+    def _merge_same_type_fragments(self, fragments: list[Fragment]) -> Fragment:
         return fragments[0].copy(
             node=self._merge_nodes([fr.node for fr in fragments]),
         )
@@ -221,9 +217,9 @@ class QueryMerger(QueryVisitor):
     def _expand_fragment(
         self,
         fragment: Fragment,
-        fields: t.Dict[str, Field],
-        links: t.Dict[str, t.List[Link]],
-        fragments: t.List[Fragment],
+        fields: dict[str, Field],
+        links: dict[str, list[Link]],
+        fragments: list[Fragment],
     ) -> None:
         """Given a fragment, expand it and collect fields, links and fragments.
         Fragment is disposed.
@@ -246,19 +242,19 @@ class QueryMerger(QueryVisitor):
         for fr in fragment.node.fragments:
             fragments.append(fr)
 
-    def _merge_nodes(self, nodes: t.List[Node]) -> Node:
+    def _merge_nodes(self, nodes: list[Node]) -> Node:
         """Collect fields from multiple nodes and return new node with them"""
         assert isinstance(nodes, Sequence), type(nodes)
         ordered = any(n.ordered for n in nodes)
 
-        fields_map: t.Dict[str, Field] = {}
-        links_map: t.Dict[str, t.List[Link]] = {}
-        fragments: t.List[Fragment] = []
+        fields_map: dict[str, Field] = {}
+        links_map: dict[str, list[Link]] = {}
+        fragments: list[Fragment] = []
 
         for node in nodes:
             self._collect_fields(node, fields_map, links_map, fragments)
 
-        fields: t.List[FieldOrLink] = []
+        fields: list[FieldOrLink] = []
         for field in fields_map.values():
             fields.append(field)
 
@@ -267,11 +263,11 @@ class QueryMerger(QueryVisitor):
 
         return Node(fields=fields, fragments=fragments, ordered=ordered)
 
-    def _merge_links(self, links: t.List[Link]) -> Link:
+    def _merge_links(self, links: list[Link]) -> Link:
         """Recursively merge link node fields and return new link"""
         link = links[0]
 
-        directives: t.List[Directive] = []
+        directives: list[Directive] = []
         for link in links:
             directives.extend(link.directives)
 

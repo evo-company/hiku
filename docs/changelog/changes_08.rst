@@ -1,6 +1,11 @@
 Changes in 0.8
 ==============
 
+0.8.0rc18
+~~~~~~~~~
+
+- Drop support for python3.9.
+
 0.8.0rc17
 ~~~~~~~~~
 
@@ -86,7 +91,7 @@ Changes in 0.8
 - ``Schema`` returns ``ExecutionResult`` dataclass with ``data``, ``errors`` and ``result`` fields. ``data`` already denormalized but access to `Proxy` object at ``result`` field is retained.
 - ``Endpoint`` now is much simpler under the hood and it basically delegates execution to schema, only providing support for batching.
 - Drop custom ``validate`` function for federation since we now have better support for ``_entities`` and ``_service`` fields and their corresponding types.
-- Add new ``M`` query builder that indicates that this is a ``mutation``. It must be used to build a ``mutation`` query that will be passed to 
+- Add new ``M`` query builder that indicates that this is a ``mutation``. It must be used to build a ``mutation`` query that will be passed to
   ``Schema.execute`` method which will then infer that this is a mutation query Node.
 - Drop ``hiku.federation.validate.validate``
 - Drop ``hiku.federation.denormalize``

@@ -1,14 +1,14 @@
 import uuid
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Any, Callable, Optional, Type
+from typing import TYPE_CHECKING, Any, Callable
 
 if TYPE_CHECKING:
     from hiku.types import AbstractTypeVisitor
 
 
 def scalar(
-    name: Optional[str] = None, description: Optional[str] = None
-) -> Callable[[Type["Scalar"]], Type["Scalar"]]:
+    name: str | None = None, description: str | None = None
+) -> Callable[[type["Scalar"]], type["Scalar"]]:
     """
     Use @scalar decorator to set custom name and description for
     the scalar type.
@@ -17,7 +17,7 @@ def scalar(
     you do not need to set custom name and description for the scalar type.
     """
 
-    def _scalar(cls: Type["Scalar"]) -> Type["Scalar"]:
+    def _scalar(cls: type["Scalar"]) -> type["Scalar"]:
         cls.__type_name__ = name or cls.__name__
         cls.__description__ = description
         return cls
@@ -31,7 +31,7 @@ class ScalarMeta(type):
     """
 
     __type_name__: str
-    __description__: Optional[str]
+    __description__: str | None
 
     def __new__(cls, *args: Any, **kwargs: Any):  # type: ignore[no-untyped-def]
         instance = super().__new__(cls, *args, **kwargs)

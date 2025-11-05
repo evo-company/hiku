@@ -1,5 +1,5 @@
 from contextvars import ContextVar
-from typing import Iterator, Optional, Type
+from typing import Iterator
 
 from prometheus_client.metrics import MetricWrapperBase
 
@@ -17,9 +17,9 @@ class PrometheusMetrics(Extension):
         self,
         name: str,
         *,
-        metric: Optional[MetricWrapperBase] = None,
-        ctx_var: Optional[ContextVar] = None,
-        transformer_cls: Type[GraphMetricsBase] = GraphMetrics,
+        metric: MetricWrapperBase | None = None,
+        ctx_var: ContextVar | None = None,
+        transformer_cls: type[GraphMetricsBase] = GraphMetrics,
     ):
         self._name = name
         self._metric = metric
@@ -48,8 +48,8 @@ class PrometheusMetricsAsync(PrometheusMetrics):
         self,
         name: str,
         *,
-        metric: Optional[MetricWrapperBase] = None,
-        ctx_var: Optional[ContextVar] = None,
+        metric: MetricWrapperBase | None = None,
+        ctx_var: ContextVar | None = None,
     ):
         super().__init__(
             name,

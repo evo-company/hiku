@@ -1,4 +1,4 @@
-from typing import Any, Optional, List, Dict, Union, overload, TypedDict
+from typing import Any, overload, TypedDict
 
 from abc import ABC
 from asyncio import gather
@@ -13,21 +13,21 @@ class GraphQLErrorObject(TypedDict):
 
 class GraphQLRequest(TypedDict, total=False):
     query: str
-    variables: Optional[Dict[Any, Any]]
-    operationName: Optional[str]
+    variables: dict[str, Any] | None
+    operationName: str | None
 
 
 class GraphQLResponse(TypedDict, total=False):
-    data: Optional[Dict[str, object]]
-    errors: Optional[List[GraphQLErrorObject]]
-    extensions: Optional[Dict[str, object]]
+    data: dict[str, object] | None
+    errors: list[GraphQLErrorObject] | None
+    extensions: dict[str, object] | None
 
 
-BatchedRequest = List[GraphQLRequest]
-BatchedResponse = List[GraphQLResponse]
+BatchedRequest = list[GraphQLRequest]
+BatchedResponse = list[GraphQLResponse]
 
-SingleOrBatchedRequest = Union[GraphQLRequest, BatchedRequest]
-SingleOrBatchedResponse = Union[GraphQLResponse, BatchedResponse]
+SingleOrBatchedRequest = GraphQLRequest | BatchedRequest
+SingleOrBatchedResponse = GraphQLResponse | BatchedResponse
 
 
 class BaseGraphQLEndpoint(ABC):
@@ -54,7 +54,7 @@ class BaseGraphQLEndpoint(ABC):
 
 class BaseSyncGraphQLEndpoint(BaseGraphQLEndpoint):
     def dispatch(
-        self, data: GraphQLRequest, context: Optional[Dict] = None
+        self, data: GraphQLRequest, context: dict[str, Any] | None = None
     ) -> GraphQLResponse:
         """
         Dispatch graphql request to graph
@@ -82,7 +82,7 @@ class BaseSyncGraphQLEndpoint(BaseGraphQLEndpoint):
 
 class BaseAsyncGraphQLEndpoint(BaseGraphQLEndpoint):
     async def dispatch(
-        self, data: GraphQLRequest, context: Optional[Dict] = None
+        self, data: GraphQLRequest, context: dict[str, Any] | None = None
     ) -> GraphQLResponse:
         """Dispatch graphql request to graph
 
@@ -110,16 +110,18 @@ class BaseAsyncGraphQLEndpoint(BaseGraphQLEndpoint):
 class GraphQLEndpoint(BaseSyncGraphQLEndpoint):
     @overload
     def dispatch(
-        self, data: GraphQLRequest, context: Optional[Dict] = None
+        self, data: GraphQLRequest, context: dict[str, Any] | None = None
     ) -> GraphQLResponse: ...
 
     @overload
     def dispatch(
-        self, data: BatchedRequest, context: Optional[Dict] = None
+        self, data: BatchedRequest, context: dict[str, Any] | None = None
     ) -> BatchedResponse: ...
 
     def dispatch(
-        self, data: SingleOrBatchedRequest, context: Optional[Dict] = None
+        self,
+        data: SingleOrBatchedRequest,
+        context: dict[str, Any] | None = None,
     ) -> SingleOrBatchedResponse:
         if isinstance(data, list):
             if not self.batching:
@@ -144,16 +146,18 @@ class BatchGraphQLEndpoint(GraphQLEndpoint):
 class AsyncGraphQLEndpoint(BaseAsyncGraphQLEndpoint):
     @overload
     async def dispatch(
-        self, data: GraphQLRequest, context: Optional[Dict] = None
+        self, data: GraphQLRequest, context: dict[str, Any] | None = None
     ) -> GraphQLResponse: ...
 
     @overload
     async def dispatch(
-        self, data: BatchedRequest, context: Optional[Dict] = None
+        self, data: BatchedRequest, context: dict[str, Any] | None = None
     ) -> BatchedResponse: ...
 
     async def dispatch(
-        self, data: SingleOrBatchedRequest, context: Optional[Dict] = None
+        self,
+        data: SingleOrBatchedRequest,
+        context: dict[str, Any] | None = None,
     ) -> SingleOrBatchedResponse:
         if isinstance(data, list):
             return list(

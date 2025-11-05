@@ -1,13 +1,7 @@
 from dataclasses import dataclass
 from typing import (
-    Optional,
-    Dict,
-    Union,
     Any,
-    List,
-    Type,
     Sequence,
-    Tuple,
     cast,
     Generic,
 )
@@ -38,7 +32,7 @@ from hiku.validate.query import validate
 
 
 class ValidationError(Exception):
-    def __init__(self, errors: List[str]) -> None:
+    def __init__(self, errors: list[str]) -> None:
         super().__init__("{} errors".format(len(errors)))
         self.errors = errors
 
@@ -46,8 +40,8 @@ class ValidationError(Exception):
 def _run_validation(
     graph: Graph,
     query: Node,
-    validators: Optional[Tuple[QueryValidator, ...]] = None,
-) -> List[str]:
+    validators: tuple[QueryValidator, ...] | None = None,
+) -> list[str]:
     errors = validate(graph, query)
     for validator in validators or ():
         errors.extend(validator.validate(query, graph))
@@ -57,15 +51,15 @@ def _run_validation(
 
 @dataclass
 class ExecutionResult:
-    data: Optional[Dict[str, Any]]
-    errors: Optional[List[GraphQLError]]
-    result: Optional[Proxy]
+    data: dict[str, Any] | None
+    errors: list[GraphQLError] | None
+    result: Proxy | None
 
 
 class Schema(Generic[_ExecutorType]):
     engine: Engine[_ExecutorType]
     graph: Graph
-    mutation: Optional[Graph]
+    mutation: Graph | None
     batching: bool
     introspection: bool
 
@@ -75,14 +69,12 @@ class Schema(Generic[_ExecutorType]):
         self,
         executor: _ExecutorType,
         graph: Graph,
-        mutation: Optional[Graph] = None,
+        mutation: Graph | None = None,
         batching: bool = False,
         introspection: bool = True,
-        extensions: Optional[
-            Sequence[Union[Extension, Type[Extension]]]
-        ] = None,
-        transformers: Optional[List[GraphTransformer]] = None,
-        cache: Optional[CacheSettings] = None,
+        extensions: Sequence[Extension | type[Extension]] | None = None,
+        transformers: list[GraphTransformer] | None = None,
+        cache: CacheSettings | None = None,
     ):
         self.engine = Engine(
             executor=executor,
@@ -115,10 +107,10 @@ class Schema(Generic[_ExecutorType]):
 
     def execute_sync(
         self: "Schema[BaseSyncExecutor]",
-        query: Union[str, Node],
-        variables: Optional[Dict] = None,
-        operation_name: Optional[str] = None,
-        context: Optional[Dict] = None,
+        query: str | Node,
+        variables: dict[str, Any] | None = None,
+        operation_name: str | None = None,
+        context: dict[str, Any] | None = None,
     ) -> ExecutionResult:
         if isinstance(query, Node):
             execution_context = create_execution_context(
@@ -170,10 +162,10 @@ class Schema(Generic[_ExecutorType]):
 
     async def execute(
         self: "Schema[BaseAsyncExecutor]",
-        query: Union[str, Node],
-        variables: Optional[Dict] = None,
-        operation_name: Optional[str] = None,
-        context: Optional[Dict] = None,
+        query: str | Node,
+        variables: dict[str, Any] | None = None,
+        operation_name: str | None = None,
+        context: dict[str, Any] | None = None,
     ) -> ExecutionResult:
         if isinstance(query, Node):
             execution_context = create_execution_context(
@@ -227,8 +219,8 @@ class Schema(Generic[_ExecutorType]):
         self,
         graph: Graph,
         query: Node,
-        validators: Optional[Tuple[QueryValidator, ...]] = None,
-    ) -> List[str]:
+        validators: tuple[QueryValidator, ...] | None = None,
+    ) -> list[str]:
         return _run_validation(graph, query, validators)
 
     def _init_execution_context(

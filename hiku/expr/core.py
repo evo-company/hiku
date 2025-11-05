@@ -24,7 +24,7 @@ _Func = namedtuple("_Func", "expr, args")
 
 
 class DotHandler:
-    def __init__(self, obj: t.Union[Symbol, Tuple]) -> None:
+    def __init__(self, obj: Symbol | Tuple) -> None:
         self.obj = obj
 
     def __repr__(self) -> str:
@@ -49,14 +49,14 @@ S = _S()
 
 
 def _to_expr(
-    obj: t.Union[DotHandler, _Func, t.List, t.Dict, Node],
-    fn_reg: t.Set[t.Callable],
+    obj: DotHandler | _Func | list | dict | Node,
+    fn_reg: set[Callable],
 ) -> Node:
     if isinstance(obj, DotHandler):
         return obj.obj
     elif isinstance(obj, _Func):
         fn_reg.add(obj.expr)
-        values: t.List[Node] = [Symbol(obj.expr.__def_name__)]
+        values: list[Node] = [Symbol(obj.expr.__def_name__)]
         values.extend(_to_expr(arg, fn_reg) for arg in obj.args)
         return Tuple(values)
     elif isinstance(obj, list):
@@ -72,17 +72,15 @@ def _to_expr(
         return obj
 
 
-def to_expr(
-    obj: t.Union[DotHandler, _Func]
-) -> t.Tuple[Node, t.Tuple[t.Callable, ...]]:
-    functions: t.Set[t.Callable] = set([])
+def to_expr(obj: DotHandler | _Func) -> tuple[Node, tuple[Callable, ...]]:
+    functions: set[Callable] = set([])
     node = _to_expr(obj, functions)
     return node, tuple(functions)
 
 
 def _query_to_types(
     obj: QueryBase,
-) -> t.Union[t.Type[Any], t.Type[Record]]:
+) -> type[Any] | type[Record]:
     if isinstance(obj, QueryNode):
         return Record[[(f.name, _query_to_types(f)) for f in obj.fields]]
     elif isinstance(obj, Link):
@@ -185,7 +183,7 @@ def if_(test: t.Any, then: t.Any, else_: t.Any) -> None:
 
 
 @define(Any, Any, Any, _name="if_some")
-def if_some(bind: t.List, then: _Func, else_: t.Any) -> None:
+def if_some(bind: list, then: _Func, else_: t.Any) -> None:
     """Used to unpack values with ``Optional`` types and using them safely in
     expressions.
 

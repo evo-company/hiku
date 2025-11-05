@@ -1,5 +1,3 @@
-from typing import List
-
 from .query import Node, Field, Link
 
 
@@ -56,7 +54,7 @@ Q = Handle()
 M = Handle(mutation=True)
 
 
-def build(items: List[Handle]) -> Node:
+def build(items: list[Handle]) -> Node:
     """Builds a query or mutation
 
     Example:

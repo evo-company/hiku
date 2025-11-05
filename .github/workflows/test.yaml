@@ -7,15 +7,15 @@ on:
   pull_request:
 
 env:
-  PDM_VERSION: 2.22.3
-  PYTHON_VERSION: 3.9
+  PDM_VERSION: 2.26.1
+  PYTHON_VERSION: "3.10"
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14.0-rc.3"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -26,6 +26,7 @@ jobs:
         run: pip install pdm==${{ env.PDM_VERSION }}
       - name: Install dependencies
         run: |
+          pdm use ${{ matrix.python-version }}
           pdm sync -d -G test -G dev
           pip install tox tox-pdm tox-gh-actions
       - name: Run flake8

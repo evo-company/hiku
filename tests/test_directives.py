@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import List
 
 from hiku.directives import (
     Directive, Location, SchemaDirective, directive,
@@ -22,7 +21,7 @@ def test_directive_has_info():
     )
     class Custom(Directive):
         from_: str = directive_field(name='from')
-        options: List[Options] = directive_field()
+        options: list[Options] = directive_field()
 
     custom = Custom(
         from_='some text',

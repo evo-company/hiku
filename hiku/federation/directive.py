@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, List, Optional, TypeVar
+from typing import Any, Callable, TypeVar
 from typing_extensions import dataclass_transform
 
 from hiku.directives import (
@@ -23,23 +23,23 @@ LinkPurpose = Enum("link__Purpose", ["SECURITY", "EXECUTION"])  # type: ignore[m
 
 @dataclass
 class ComposeOptions:
-    import_url: Optional[str]
+    import_url: str | None
 
 
 @dataclass
 class FederationSchemaDirectiveInfo(SchemaDirectiveInfo):
-    compose_options: Optional[ComposeOptions] = None
+    compose_options: ComposeOptions | None = None
 
 
 @dataclass_transform(field_specifiers=(SchemaDirectiveField,))
 def schema_directive(
     *,
     name: str,
-    locations: List[Location],
-    description: Optional[str] = None,
+    locations: list[Location],
+    description: str | None = None,
     repeatable: bool = False,
     compose: bool = False,
-    import_url: Optional[str] = None,
+    import_url: str | None = None,
 ) -> Callable[..., T]:
     """Decorator to mark class as federated schema directive.
     A class with a @schema_directive decorator will become a dataclass.
@@ -335,15 +335,15 @@ class Link(FederationSchemaDirective):
     """
 
     url: str = schema_directive_field()
-    as_: Optional[str] = schema_directive_field(
+    as_: str | None = schema_directive_field(
         "as",
         default_value=None,
     )
-    for_: Optional[LinkPurpose] = schema_directive_field(
+    for_: LinkPurpose | None = schema_directive_field(
         "for",
         default_value=None,
     )
-    import_: Optional[List[Optional[LinkImport]]] = schema_directive_field(
+    import_: list[LinkImport | None] | None = schema_directive_field(
         "import",
         default_value=None,
     )

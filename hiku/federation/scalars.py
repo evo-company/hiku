@@ -1,10 +1,10 @@
-from typing import Any, Callable, List, Type
+from typing import Any, Callable
 
 from hiku.scalar import Scalar, scalar
 
 
-def federation_version(versions: List[int]) -> Callable[[Type], Type]:
-    def decorator(cls: Type[_Scalar]) -> Type[_Scalar]:
+def federation_version(versions: list[int]) -> Callable[[type], type]:
+    def decorator(cls: type[_Scalar]) -> type[_Scalar]:
         cls.__federation_versions__ = versions
         return cls
 
@@ -14,7 +14,7 @@ def federation_version(versions: List[int]) -> Callable[[Type], Type]:
 class _Scalar(Scalar):
     """Implements dummy `parse` and `serialize` methods for scalars."""
 
-    __federation_versions__: List[int]
+    __federation_versions__: list[int]
 
     @classmethod
     def parse(cls, value: str) -> Any:

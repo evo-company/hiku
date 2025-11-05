@@ -3,14 +3,9 @@ from collections import defaultdict
 from typing import (
     Callable,
     Any,
-    Dict,
-    DefaultDict,
-    List,
-    Optional,
     Iterable,
-    Set,
-    Union,
     Protocol,
+    Union,
 )
 
 from hiku.executors.base import BaseExecutor
@@ -58,20 +53,20 @@ class Queue:
         """
         A dictionary of futures sets associated with each task set.
         """
-        self._futures: Dict[TaskSet, Set[SubmitRes]] = {}
+        self._futures: dict[TaskSet, set[SubmitRes]] = {}
         """
         A dictionary of forked task sets associated with each task set.
         """
-        self._forks: Dict[TaskSet, Set[TaskSet]] = {}
+        self._forks: dict[TaskSet, set[TaskSet]] = {}
         """
         A dictionary of callbacks associated with each future or task set.
         """
-        self._callbacks: DefaultDict[Union[SubmitRes, TaskSet], List] = (
-            defaultdict(list)
+        self._callbacks: defaultdict[SubmitRes | TaskSet, list] = defaultdict(
+            list
         )
 
     @property
-    def __futures__(self) -> List[SubmitRes]:
+    def __futures__(self) -> list[SubmitRes]:
         return list(chain.from_iterable(self._futures.values()))
 
     def progress(self, done: Iterable) -> None:
@@ -127,7 +122,7 @@ class Queue:
         self._futures[task_set].add(fut)
         return fut
 
-    def fork(self, from_: Optional["TaskSet"]) -> "TaskSet":
+    def fork(self, from_: Union["TaskSet", None]) -> "TaskSet":
         """
         Forked task sets represent child task sets of a parent task set.
 

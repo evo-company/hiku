@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Iterator
+from typing import Callable, Iterator
 
 from hiku.context import ExecutionContext
 from hiku.extensions.base_extension import Extension
@@ -7,7 +7,7 @@ from hiku.extensions.base_extension import Extension
 class CustomContext(Extension):
     def __init__(
         self,
-        get_context: Callable[[ExecutionContext], Dict],
+        get_context: Callable[[ExecutionContext], dict],
     ):
         self.get_context = get_context
 

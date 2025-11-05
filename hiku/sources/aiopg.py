@@ -2,9 +2,7 @@ from typing import (
     Callable,
     Iterable,
     Any,
-    List,
     Iterator,
-    Tuple,
 )
 
 import sqlalchemy
@@ -20,8 +18,8 @@ from ..query import Field
 FETCH_SIZE = 100
 
 
-def _uniq_fields(fields: List[Field]) -> Iterator[Field]:
-    visited = set()
+def _uniq_fields(fields: list[Field]) -> Iterator[Field]:
+    visited: set[str] = set()
     for f in fields:
         if f.name not in visited:
             visited.add(f.name)
@@ -35,8 +33,8 @@ class FieldsQuery(_sa.FieldsQuery):
         return column == any_(values)
 
     def select_expr(
-        self, fields_: List[Field], ids: Iterable
-    ) -> Tuple[Select, Callable]:
+        self, fields_: list[Field], ids: Iterable
+    ) -> tuple[Select, Callable]:
         result_columns = [self.from_clause.c[f.name] for f in fields_]
         # aiopg requires unique columns to be passed to select,
         # otherwise it will raise an error
@@ -54,7 +52,7 @@ class FieldsQuery(_sa.FieldsQuery):
             .where(self.in_impl(self.primary_key, ids))
         )
 
-        def result_proc(rows: List[_sa.Row]) -> List:
+        def result_proc(rows: list[_sa.Row]) -> list:
             rows_map = {
                 row[self.primary_key]: [row[c] for c in result_columns]
                 for row in map(_sa._process_result_row, rows)
@@ -66,8 +64,8 @@ class FieldsQuery(_sa.FieldsQuery):
         return expr, result_proc
 
     async def __call__(
-        self, ctx: Context, fields_: List[Field], ids: Iterable
-    ) -> List:
+        self, ctx: Context, fields_: list[Field], ids: Iterable
+    ) -> list:
         if not ids:
             return []
 

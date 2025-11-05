@@ -3,7 +3,6 @@ from typing import (
     Callable,
     Any,
     TYPE_CHECKING,
-    Union,
 )
 
 
@@ -33,4 +32,4 @@ class BaseAsyncExecutor(BaseExecutor):
         raise NotImplementedError
 
 
-SyncAsyncExecutor = Union[BaseSyncExecutor, BaseAsyncExecutor]
+SyncAsyncExecutor = BaseSyncExecutor | BaseAsyncExecutor

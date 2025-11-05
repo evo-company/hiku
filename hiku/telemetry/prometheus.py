@@ -2,7 +2,6 @@ import contextvars
 import time
 from abc import abstractmethod
 from functools import partial, update_wrapper, wraps
-from typing import Dict, Optional
 
 from prometheus_client import Summary
 
@@ -51,13 +50,13 @@ class GraphMetricsBase(GraphTransformer):
         name,
         *,
         metric=None,
-        ctx_var: Optional[contextvars.ContextVar] = None,
+        ctx_var: contextvars.ContextVar | None = None,
     ):
         self._name = name
         self._metric = metric or _get_default_metric()
         self._ctx = ctx_var
         self._node = None
-        self._wrappers: Dict = {}
+        self._wrappers: dict = {}
 
     @abstractmethod
     def field_wrapper(self, observe, func):

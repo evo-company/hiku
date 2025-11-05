@@ -1,6 +1,6 @@
 import enum
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from graphql.language import ast
 
@@ -25,7 +25,7 @@ class Operation:
     __slots__ = ("type", "query", "name")
 
     def __init__(
-        self, type_: OperationType, query: "Node", name: Optional[str] = None
+        self, type_: OperationType, query: "Node", name: str | None = None
     ):
         #: type of the operation
         self.type = type_

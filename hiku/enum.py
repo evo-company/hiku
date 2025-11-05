@@ -5,11 +5,9 @@ import enum
 from typing import (
     Any,
     Generic,
-    Optional,
     Sequence,
     TYPE_CHECKING,
     TypeVar,
-    Union,
 )
 
 if TYPE_CHECKING:
@@ -19,16 +17,16 @@ if TYPE_CHECKING:
 @dataclasses.dataclass
 class EnumValue:
     name: str
-    description: Optional[str] = None
-    deprecation_reason: Optional[str] = None
+    description: str | None = None
+    deprecation_reason: str | None = None
 
 
 class BaseEnum(abc.ABC):
     def __init__(
         self,
         name: str,
-        values: Sequence[Union[str, EnumValue]],
-        description: Optional[str] = None,
+        values: Sequence[str | EnumValue],
+        description: str | None = None,
     ):
         self.name = name
         self.description = description
@@ -79,8 +77,8 @@ class Enum(BaseEnum):
     def from_builtin(
         cls,
         enum_cls: EM,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
     ) -> "EnumFromBuiltin":
         return EnumFromBuiltin(enum_cls, name or enum_cls.__name__, description)
 
@@ -111,9 +109,7 @@ class EnumFromBuiltin(BaseEnum, Generic[E]):
         enum = Enum.from_builtin(MyEnum, "MyCustomEnum")
     """
 
-    def __init__(
-        self, enum_cls: EM, name: str, description: Optional[str] = None
-    ):
+    def __init__(self, enum_cls: EM, name: str, description: str | None = None):
         super().__init__(name, [v for v in enum_cls.__members__], description)
         self.enum_cls = enum_cls
 

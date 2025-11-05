@@ -53,16 +53,16 @@ from tests.base import check_result
 
 class InMemoryCache(BaseCache):
     def __init__(self) -> None:
-        self._store: t.Dict[str, t.Any] = {}
+        self._store: dict[str, t.Any] = {}
 
-    def get_many(self, keys: t.List[str]) -> t.Dict[str, t.Any]:
+    def get_many(self, keys: list[str]) -> dict[str, t.Any]:
         result = {}
         for key in keys:
             if key in self._store:
                 result[key] = self._store[key]
         return result
 
-    def set_many(self, items: t.Dict[str, t.Any], ttl: int) -> None:
+    def set_many(self, items: dict[str, t.Any], ttl: int) -> None:
         self._store.update(items)
 
 
@@ -638,7 +638,7 @@ def assert_deep_equal(got, exp):
         assert got == exp
 
 
-def get_field(query: QueryNode, path: t.List[str]) -> FieldOrLink:
+def get_field(query: QueryNode, path: list[str]) -> FieldOrLink:
     node = query
     path_size = len(path)
 

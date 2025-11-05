@@ -4,7 +4,6 @@ from typing import (
     Callable,
     TYPE_CHECKING,
     TypeVar,
-    List,
     Iterator,
 )
 
@@ -22,15 +21,15 @@ T = TypeVar("T")
 P = ParamSpec("P")
 
 
-def listify(func: Callable[P, Iterator[T]]) -> Callable[P, List[T]]:
+def listify(func: Callable[P, Iterator[T]]) -> Callable[P, list[T]]:
     @wraps(func)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> List[T]:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> list[T]:
         return list(func(*args, **kwargs))
 
     return wrapper
 
 
-def empty_field(fields: List["Field"], ids: Any) -> Any:
+def empty_field(fields: list["Field"], ids: Any) -> Any:
     return [[None]] * len(ids)
 
 

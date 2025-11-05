@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Union
 
 from graphql.language import ast
 
@@ -10,7 +10,7 @@ from hiku.extensions.base_validator import QueryValidator
 from hiku.query import Node
 from hiku.graph import Graph, GraphTransformer
 
-_type_names: Dict[OperationType, str] = {
+_type_names: dict[OperationType, str] = {
     OperationType.QUERY: QUERY_ROOT_NAME,
     OperationType.MUTATION: MUTATION_ROOT_NAME,
 }
@@ -19,28 +19,28 @@ _type_names: Dict[OperationType, str] = {
 @dataclass
 class ExecutionContext:
     query_src: str
-    variables: Optional[Dict[str, Any]]
-    context: Dict
-    graphql_document: Optional[ast.DocumentNode] = None
-    query: Optional[Node] = None
-    query_graph: Optional[Graph] = None
-    mutation_graph: Optional[Graph] = None
-    operation: Optional["Operation"] = None
+    variables: dict[str, Any] | None
+    context: dict
+    graphql_document: ast.DocumentNode | None = None
+    query: Node | None = None
+    query_graph: Graph | None = None
+    mutation_graph: Graph | None = None
+    operation: Union["Operation", None] = None
     """Operation name from request's json operationName"""
-    request_operation_name: Optional[str] = None
-    result: Optional[Proxy] = None
+    request_operation_name: str | None = None
+    result: Proxy | None = None
     """If errors is list, validation was performed"""
-    errors: Optional[List[str]] = None
+    errors: list[str] | None = None
 
-    validators: Tuple[QueryValidator, ...] = field(
+    validators: tuple[QueryValidator, ...] = field(
         default_factory=lambda: tuple()
     )
-    transformers: Tuple["GraphTransformer", ...] = field(
+    transformers: tuple["GraphTransformer", ...] = field(
         default_factory=lambda: tuple()
     )
 
     @property
-    def operation_name(self) -> Optional[str]:
+    def operation_name(self) -> str | None:
         if self.request_operation_name is not None:
             return self.request_operation_name
 
@@ -92,16 +92,16 @@ class ExecutionContextFinal(ExecutionContext):
     operation: "Operation"  # type: ignore[misc]
     query: Node  # type: ignore[misc]
     query_graph: Graph  # type: ignore[misc]
-    mutation_graph: Optional[Graph] = None
+    mutation_graph: Graph | None = None
 
 
 def create_execution_context(
-    query: Union[str, Node, None] = None,
-    variables: Optional[Dict] = None,
-    operation_name: Optional[str] = None,
-    query_graph: Optional[Graph] = None,
-    mutation_graph: Optional[Graph] = None,
-    context: Optional[Dict] = None,
+    query: str | Node | None = None,
+    variables: dict[str, Any] | None = None,
+    operation_name: str | None = None,
+    query_graph: Graph | None = None,
+    mutation_graph: Graph | None = None,
+    context: dict | None = None,
     **kwargs: Any,
 ) -> ExecutionContext:
     query_src = None

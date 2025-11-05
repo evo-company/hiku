@@ -1,7 +1,4 @@
-from typing import (
-    Callable,
-    Optional,
-)
+from typing import Callable
 
 from hiku.graph import Field, Graph
 from hiku.introspection.graphql import GraphQLIntrospection
@@ -32,7 +29,7 @@ class BaseFederatedGraphQLIntrospection(GraphQLIntrospection):
     def __init__(
         self,
         query_graph: Graph,
-        mutation_graph: Optional[Graph] = None,
+        mutation_graph: Graph | None = None,
     ) -> None:
         super().__init__(query_graph, mutation_graph)
         self.schema.is_field_hidden = _is_field_hidden_wrapper(  # type: ignore

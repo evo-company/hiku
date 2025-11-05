@@ -9,17 +9,10 @@ from itertools import chain, repeat
 from typing import (
     Any,
     Callable,
-    DefaultDict,
-    Dict,
     Generic,
     Iterator,
-    List,
     NoReturn,
-    Optional,
-    Set,
-    Tuple,
     TypeVar,
-    Union,
     overload,
 )
 
@@ -56,14 +49,14 @@ from .result import ROOT, Index, Proxy, Reference
 from .utils import ImmutableDict
 from .utils.serialize import serialize
 
-NodePath = Tuple[Optional[str], ...]
+NodePath = tuple[str | None, ...]
 
 
 def _yield_options(
     graph: Graph,
-    graph_obj: Union[Link, Field],
-    query_obj: Union[QueryField, QueryLink],
-) -> Iterator[Tuple[str, Any]]:
+    graph_obj: Link | Field,
+    query_obj: QueryField | QueryLink,
+) -> Iterator[tuple[str, Any]]:
     options = query_obj.options or {}
     for option in graph_obj.options:
         value = options.get(option.name, option.default)
@@ -114,9 +107,9 @@ def _yield_options(
 
 def _get_options(
     graph: Graph,
-    graph_obj: Union[Link, Field],
-    query_obj: Union[QueryField, QueryLink],
-) -> Dict:
+    graph_obj: Link | Field,
+    query_obj: QueryField | QueryLink,
+) -> dict:
     return dict(_yield_options(graph, graph_obj, query_obj))
 
 
@@ -187,7 +180,7 @@ class InitOptions(QueryTransformer):
 @dataclasses.dataclass
 class FieldInfo:
     graph_field: Field
-    query_field: Union[QueryField, QueryLink]
+    query_field: QueryField | QueryLink
 
 
 @dataclasses.dataclass
@@ -203,12 +196,12 @@ class SplitQuery(QueryVisitor):
 
     def __init__(self, graph_node: Node) -> None:
         self._node = graph_node
-        self._fields: List[Tuple[Callable, FieldInfo]] = []
-        self._links: List[LinkInfo] = []
+        self._fields: list[tuple[Callable, FieldInfo]] = []
+        self._links: list[LinkInfo] = []
 
     def split(
         self, query_node: QueryNode
-    ) -> Tuple[List[Tuple[Callable, FieldInfo]], List[LinkInfo]]:
+    ) -> tuple[list[tuple[Callable, FieldInfo]], list[LinkInfo]]:
         for item in query_node.fields:
             self.visit(item)
 
@@ -255,13 +248,13 @@ class SplitQuery(QueryVisitor):
 class GroupQuery(QueryVisitor):
     def __init__(self, node: Node) -> None:
         self._node = node
-        self._funcs: List[Callable] = []
-        self._groups: List[Union[List[FieldInfo], LinkInfo]] = []
+        self._funcs: list[Callable] = []
+        self._groups: list[list[FieldInfo] | LinkInfo] = []
         self._current_func = None
 
     def group(
         self, node: QueryNode
-    ) -> List[Tuple[Callable, Union[List[FieldInfo], LinkInfo]]]:
+    ) -> list[tuple[Callable, list[FieldInfo] | LinkInfo]]:
         for item in node.fields:
             self.visit(item)
         return list(zip(self._funcs, self._groups))
@@ -295,8 +288,8 @@ class GroupQuery(QueryVisitor):
 
 def _check_store_fields(
     node: Node,
-    fields: List[Union[QueryField, QueryLink]],
-    ids: Optional[Any],
+    fields: list[QueryField | QueryLink],
+    ids: Any | None,
     result: Any,
 ) -> None:
     if node.name is not None:
@@ -342,8 +335,8 @@ def _is_hashable(obj: Any) -> bool:
 def update_index(
     index: Index,
     node: Node,
-    ids: List,
-    entries: List[Dict],
+    ids: list,
+    entries: list[dict],
 ) -> None:
     """Update index with data from cache"""
     for idx, entry in zip(ids, entries):
@@ -358,8 +351,8 @@ def update_index(
 def store_fields(
     index: Index,
     node: Node,
-    query_fields: List[Union[QueryField, QueryLink]],
-    ids: Optional[Any],
+    query_fields: list[QueryField | QueryLink],
+    ids: Any | None,
     query_result: Any,
 ) -> None:
     if inspect.isgenerator(query_result):
@@ -389,14 +382,14 @@ Req = TypeVar("Req")
 
 def link_reqs(
     index: Index, node: Node, link: Link, ids: Any
-) -> Union[List[ImmutableDict[str, Req]], List[Req], Req]:
+) -> list[ImmutableDict[str, Req]] | list[Req] | Req:
     """For a given link, find link `requires` values by ids."""
     if node.name is not None:
         assert ids is not None
         node_idx = index[node.name]
 
         if isinstance(link.requires, list):
-            reqs: List[ImmutableDict[str, Req]] = []
+            reqs: list[ImmutableDict[str, Req]] = []
             for i in ids:
                 req: ImmutableDict = ImmutableDict(
                     (r, node_idx[i][r]) for r in link.requires
@@ -410,7 +403,7 @@ def link_reqs(
         return index.root[link.requires]
 
 
-def link_ref_maybe(graph_link: Link, ident: Any) -> Optional[Reference]:
+def link_ref_maybe(graph_link: Link, ident: Any) -> Reference | None:
     if ident is Nothing:
         return None
     else:
@@ -430,15 +423,15 @@ def link_ref_one(graph_link: Link, ident: Any) -> Reference:
     return Reference(graph_link.node, ident)
 
 
-def link_ref_many(graph_link: Link, idents: List) -> List[Reference]:
+def link_ref_many(graph_link: Link, idents: list) -> list[Reference]:
     if graph_link.type_info.type_enum in (LinkType.UNION, LinkType.INTERFACE):
         return [Reference(i[1].__type_name__, i[0]) for i in idents]
     return [Reference(graph_link.node, i) for i in idents]
 
 
 def link_ref_maybe_many(
-    graph_link: Link, idents: List
-) -> List[Optional[Reference]]:
+    graph_link: Link, idents: list
+) -> list[Reference | None]:
     if graph_link.type_info.type_enum in (LinkType.UNION, LinkType.INTERFACE):
         return [
             Reference(i[1].__type_name__, i[0]) if i is not Nothing else None
@@ -450,7 +443,7 @@ def link_ref_maybe_many(
     ]
 
 
-_LINK_REF_MAKER: Dict[Any, Callable] = {
+_LINK_REF_MAKER: dict[Any, Callable] = {
     Maybe: link_ref_maybe,
     One: link_ref_one,
     Many: link_ref_many,
@@ -580,7 +573,7 @@ def store_links(
 
 def link_result_to_ids(
     from_list: bool, link_type: Any, result: Any
-) -> List:  # Const
+) -> list:  # Const
     if from_list:
         if link_type is Maybe:
             return [i for i in result if i is not Nothing]
@@ -605,7 +598,7 @@ def link_result_to_ids(
     raise TypeError(repr([from_list, link_type]))
 
 
-Dep = Union[SubmitRes, TaskSet]
+Dep = SubmitRes | TaskSet
 
 
 class Query(Workflow):
@@ -616,7 +609,7 @@ class Query(Workflow):
         graph: Graph,
         query: QueryNode,
         ctx: "Context",
-        cache: Optional[CacheInfo] = None,
+        cache: CacheInfo | None = None,
     ) -> None:
         self._queue = queue
         self._task_set = task_set
@@ -625,9 +618,11 @@ class Query(Workflow):
         self._ctx = ctx
         self._index = Index()
         self._cache = cache
-        self._in_progress: DefaultDict = defaultdict(int)
-        self._done_callbacks: DefaultDict = defaultdict(list)
-        self._path_callback: Dict[Tuple, Callable] = {}
+        self._in_progress: defaultdict[NodePath, int] = defaultdict(int)
+        self._done_callbacks: defaultdict[NodePath, list[Callable]] = (
+            defaultdict(list)
+        )  # noqa: E501
+        self._path_callback: dict[NodePath, Callable] = {}
 
     def _track(self, path: NodePath) -> None:
         self._in_progress[path] += 1
@@ -669,7 +664,7 @@ class Query(Workflow):
 
         # recursively and sequentially schedule fields and links
         def proc(
-            steps: List[Tuple[Callable, Union[List[FieldInfo], LinkInfo]]]
+            steps: list[tuple[Callable, list[FieldInfo] | LinkInfo]]
         ) -> None:
             step_func, step_item = steps.pop(0)
             if isinstance(step_item, list):
@@ -705,13 +700,13 @@ class Query(Workflow):
 
         fields, links = SplitQuery(node).split(query)
 
-        to_func: Dict[str, Callable] = {}
-        from_func: DefaultDict[Callable, List[FieldInfo]] = defaultdict(list)
+        to_func: dict[str, Callable] = {}
+        from_func: defaultdict[Callable, list[FieldInfo]] = defaultdict(list)
         for func, field_info in fields:
             to_func[field_info.graph_field.name] = func
             from_func[func].append(field_info)
 
-        to_dep: Dict[Callable, Dep] = {}
+        to_dep: dict[Callable, Dep] = {}
         for func, func_fields_info in from_func.items():
             self._track(path)
             to_dep[func] = self._schedule_fields(
@@ -734,10 +729,10 @@ class Query(Workflow):
             )
             if graph_link.requires:
                 if isinstance(graph_link.requires, list):
-                    done_link_deps: Set = set()
+                    done_link_deps: set = set()
 
                     def add_done_dep_callback(
-                        done_deps: Set,
+                        done_deps: set,
                         dep: Dep,
                         req: Any,
                         graph_link: Link,
@@ -771,7 +766,7 @@ class Query(Workflow):
         graph_link: Link,
         query_link: QueryLink,
         ids: Any,
-        result: List,
+        result: list,
     ) -> None:
         """Store Link.func result in index and Call `process_node` to schedule
         Link's fields and links"""
@@ -826,12 +821,12 @@ class Query(Workflow):
         path: NodePath,
         node: Node,
         func: Callable,
-        fields_info: List[FieldInfo],
-        ids: Optional[Any],
-    ) -> Union[SubmitRes, TaskSet]:
+        fields_info: list[FieldInfo],
+        ids: Any | None,
+    ) -> SubmitRes | TaskSet:
         query_fields = [f.query_field for f in fields_info]
 
-        dep: Union[TaskSet, SubmitRes]
+        dep: TaskSet | SubmitRes
         if hasattr(func, "__subquery__"):
             assert ids is not None
             dep = self._queue.fork(self._task_set)
@@ -863,8 +858,8 @@ class Query(Workflow):
         node: Node,
         graph_link: Link,
         query_link: QueryLink,
-        ids: List[Any],
-        reqs: List[Any],
+        ids: list[Any],
+        reqs: list[Any],
     ) -> SubmitRes:
         assert self._cache is not None
         key_info = []
@@ -1023,14 +1018,14 @@ class Engine(Generic[_ExecutorType]):
     def __init__(
         self,
         executor: _ExecutorType,
-        cache: Optional[CacheSettings] = None,
+        cache: CacheSettings | None = None,
     ) -> None:
         self.executor = executor
         self.cache_settings = cache
 
     def _prepare_workflow(
         self, execution_context: ExecutionContext
-    ) -> Tuple[Queue, Query]:
+    ) -> tuple[Queue, Query]:
         graph = execution_context.graph
         query = execution_context.query
         ctx = execution_context.context

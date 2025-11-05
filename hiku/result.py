@@ -66,7 +66,7 @@ class Index(defaultdict):
         super(Index, self).__init__(lambda: defaultdict(dict))
 
     @cached_property
-    def root(self) -> t.Dict:
+    def root(self) -> dict:
         return self[ROOT.node][ROOT.ident]
 
     def finish(self) -> None:
@@ -90,14 +90,14 @@ class Proxy:
 
     def __getitem__(self, item: str) -> t.Any:
         try:
-            field: t.Union[Field, Link] = self.__node__.result_map[item]
+            field: Field | Link = self.__node__.result_map[item]
         except KeyError:
             raise KeyError(
                 "Field {!r} wasn't requested in the query".format(item)
             )
 
         try:
-            obj: t.Dict = self.__idx__[self.__ref__.node][self.__ref__.ident]
+            obj: dict = self.__idx__[self.__ref__.node][self.__ref__.ident]
         except KeyError:
             raise AssertionError(
                 "Object {}[{!r}] is missing in the index".format(
@@ -138,9 +138,9 @@ class Proxy:
 
 
 def _denormalize_type(
-    type_: t.Union[GenericMeta, ScalarMeta],
+    type_: GenericMeta | ScalarMeta,
     result: t.Any,
-    query_obj: t.Union[FieldBase, Fragment],
+    query_obj: FieldBase | Fragment,
 ) -> t.Any:
     if isinstance(query_obj, Field):
         return result
@@ -170,7 +170,7 @@ def _denormalize_type(
 
 def _denormalize(
     graph: Graph,
-    graph_obj: t.Union[GraphNode, GraphField, GraphLink],
+    graph_obj: GraphNode | GraphField | GraphLink,
     result: t.Any,
     query_obj: QueryBase,
 ) -> t.Any:
@@ -225,7 +225,7 @@ def _denormalize(
             return _denormalize(graph, graph_obj, result, query_obj.node)
 
 
-def denormalize(graph: Graph, result: Proxy) -> t.Dict:
+def denormalize(graph: Graph, result: Proxy) -> dict:
     """Transforms normalized result (graph) into simple hierarchical structure
 
     This hierarchical structure will follow query structure.
