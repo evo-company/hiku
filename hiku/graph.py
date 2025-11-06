@@ -1,9 +1,9 @@
 """
-    hiku.graph
-    ~~~~~~~~~~
+hiku.graph
+~~~~~~~~~~
 
-    Graphs are defined by nodes, fields and links. Simple functions
-    are used to fetch any data from any data source.
+Graphs are defined by nodes, fields and links. Simple functions
+are used to fetch any data from any data source.
 
 """
 

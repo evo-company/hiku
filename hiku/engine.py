@@ -664,7 +664,7 @@ class Query(Workflow):
 
         # recursively and sequentially schedule fields and links
         def proc(
-            steps: list[tuple[Callable, list[FieldInfo] | LinkInfo]]
+            steps: list[tuple[Callable, list[FieldInfo] | LinkInfo]],
         ) -> None:
             step_func, step_item = steps.pop(0)
             if isinstance(step_item, list):

@@ -991,8 +991,8 @@ class BindToSchema(GraphTransformer):
         field = super(BindToSchema, self).visit_field(obj)
         func = self._processed.get(obj.func)
         if func is None:
-            func = self._processed[obj.func] = partial(obj.func, self.schema)  # type: ignore[misc]  # noqa: E501
-        field.func = func
+            func = self._processed[obj.func] = partial(obj.func, self.schema)  # type: ignore[arg-type]  # noqa: E501
+        field.func = func  # type: ignore[assignment]
         return field
 
     def visit_link(self, obj: Link) -> Link:

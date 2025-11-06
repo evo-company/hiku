@@ -48,30 +48,30 @@ excludes = ["tests", "**/.*.*"]
 [tool.pdm.dev-dependencies]
 test = [
   "astor>=0.8.1",
-  "pytest>=7.4.2",
-  "pytest-cov>=4.1.0",
-  "pytest-asyncio>=0.21.1",
-  "faker>=18.13.0",
-  "pytest-benchmark[histogram]>=4.0.0",
+  "pytest>=8.4.2",
+  "pytest-cov>=7.0.0",
+  "pytest-asyncio>=1.2.0",
+  "faker>=37.12.0",
+  "pytest-benchmark[histogram]>=5.2.1",
   "asyncpg>=0.28.0",                    # for tests_pg
   "greenlet>=3.0.0",                    # for tests_pg
 ]
 dev = [
-  "graphql-core>=3.2.3",       # for graphql support
+  "graphql-core>=3.2.7",       # for graphql support
   "sqlalchemy<2",
   "aiopg>=1.4.0",              # for async postgresql support
-  "prometheus-client>=0.17.1", # for prometheus metrics
-  "sentry-sdk>=1.31.0",        # for sentry tracing
-  "typing-extensions>=4.7.1",
-  "mypy>=1.4.1",
-  "black>=23.3.0",
-  "flake8>=5.0.4",
+  "prometheus-client>=0.23.1", # for prometheus metrics
+  "sentry-sdk>=2.43.0",        # for sentry tracing
+  "typing-extensions>=4.15.0",
+  "mypy>=1.18.2",
+  "black>=25.9.0",
+  "flake8>=7.3.0",
 ]
 docs = [
-    "sphinx>=7.1.2",
-    "furo>=2024.8.6",
+    "sphinx<9,>=8.1.3",
+    "furo>=2025.9.25",
     "sphinx-inline-tabs>=2023.4.21",
-    "sphinx-autobuild>=2021.3.14",
+    "sphinx-autobuild>=2024.10.03",
 ]
 examples = ["flask>=2.2.5", "aiohttp>=3.8.6"]
 
