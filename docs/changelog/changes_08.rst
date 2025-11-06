@@ -4,6 +4,9 @@ Changes in 0.8
 0.8.0rcXX
 ~~~~~~~~~
 
+0.8.0rc19
+~~~~~~~~~
+
 - [Graphql Spec 2025] Add support for ``@deprecated`` directive on ``hiku.graph.Option``
 - [Graphql Spec 2025] Add `isDeprecated` and `deprecationReason` fields to introspection for ``hiku.graph.Option``
 
