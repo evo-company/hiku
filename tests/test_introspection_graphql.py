@@ -4,6 +4,8 @@ from unittest.mock import ANY
 
 import pytest
 
+from graphql import get_introspection_query
+
 from hiku.enum import Enum
 from hiku.directives import Deprecated, Location, SchemaDirective, schema_directive
 from hiku.executors.sync import SyncExecutor
@@ -13,7 +15,6 @@ from hiku.schema import Schema
 from hiku.types import EnumRef, InterfaceRef, String, Integer, Sequence, TypeRef, Boolean, Float, Any, UnionRef, InputRef
 from hiku.types import Optional, Record
 from hiku.introspection.graphql import GraphQLIntrospection
-from tests.utils import INTROSPECTION_QUERY
 
 
 def _noop():
@@ -24,11 +25,19 @@ def _non_null(t):
     return {'kind': 'NON_NULL', 'name': None, 'ofType': t}
 
 
-_INT = {'kind': 'SCALAR', 'name': 'Int', 'ofType': None}
-_STR = {'kind': 'SCALAR', 'name': 'String', 'ofType': None}
-_BOOL = {'kind': 'SCALAR', 'name': 'Boolean', 'ofType': None}
-_FLOAT = {'kind': 'SCALAR', 'name': 'Float', 'ofType': None}
-_ANY = {'kind': 'SCALAR', 'name': 'Any', 'ofType': None}
+def _scalar(name):
+    return {
+        'kind': 'SCALAR',
+        'name': name,
+        'ofType': None
+    }
+
+
+_INT = _scalar('Int')
+_STR = _scalar('String')
+_BOOL = _scalar('Boolean')
+_FLOAT = _scalar('Float')
+_ANY = _scalar('Any')
 
 
 def _obj(name):
@@ -54,14 +63,6 @@ def _interface(name):
 def _enum(name):
     return {
         'kind': 'ENUM',
-        'name': name,
-        'ofType': None
-    }
-
-
-def _scalar(name):
-    return {
-        'kind': 'SCALAR',
         'name': name,
         'ofType': None
     }
@@ -123,6 +124,7 @@ def _directive(name, locs, args = None):
         'description': ANY,
         'locations': locs,
         'args': args or [],
+        'isRepeatable': False,
     }
 
 
@@ -167,6 +169,7 @@ def _schema(types, directives: list[dict] | None = None, with_mutation=False):
             ] + (directives or []),
             'mutationType': {'name': 'Mutation'} if with_mutation else None,
             'queryType': {'name': 'Query'},
+            'subscriptionType': None,
             'types': SCALARS + types
         }
     }
@@ -178,6 +181,8 @@ def _ival(name, type_, **kwargs):
         'type': type_,
         'description': None,
         'defaultValue': None,
+        'deprecationReason': None,
+        'isDeprecated': False,
     }
     data.update(kwargs)
     return data
@@ -199,7 +204,14 @@ def execute(query_str, query_graph, mutation_graph=None):
 
 
 def introspect(query_graph, mutation_graph=None):
-    return execute(INTROSPECTION_QUERY, query_graph, mutation_graph)
+    return execute(
+        get_introspection_query(
+            input_value_deprecation=True,
+            directive_is_repeatable=True,
+        ),
+        query_graph,
+        mutation_graph,
+    )
 
 
 def test_introspection_query():

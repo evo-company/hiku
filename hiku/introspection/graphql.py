@@ -703,6 +703,7 @@ def directive_value_info(
                 "name": info.name,
                 "description": info.description,
                 "locations": [loc.value for loc in info.locations],
+                "isRepeatable": info.repeatable,
             }
             yield [data[f.name] for f in fields]
 
@@ -854,6 +855,7 @@ GRAPH = Graph(
                         Option("includeDeprecated", Boolean, default=False)
                     ],
                 ),
+                Field("isRepeatable", Boolean, directive_value_info),
             ],
         ),
         Node(

@@ -45,6 +45,7 @@ def test_link_with_sequence_to_optional_type_ref():
     (Mapping, FieldTypeInfo('Mapping', FieldType.SCALAR, required=True)),
     (Optional[String], FieldTypeInfo('String', FieldType.SCALAR, required=False)),
     (Sequence[String], FieldTypeInfo('String', FieldType.SCALAR, required=True)),
+    (Sequence[Optional[String]], FieldTypeInfo('String', FieldType.SCALAR, required=False)),
 
     # None
     (None, None),

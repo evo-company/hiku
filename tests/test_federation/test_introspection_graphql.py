@@ -1,5 +1,7 @@
 from unittest.mock import ANY
 
+from graphql import get_introspection_query
+
 from hiku.executors.sync import SyncExecutor
 from hiku.federation.directive import Key
 from hiku.federation.graph import FederatedNode, Graph
@@ -7,101 +9,31 @@ from hiku.federation.schema import Schema
 from hiku.graph import Field, Root
 from hiku.types import Integer, TypeRef
 from .utils import GRAPH
-from ..test_introspection_graphql import SCALARS
-from ..utils import INTROSPECTION_QUERY
+from ..test_introspection_graphql import (
+    SCALARS,
+    _INT,
+    _STR,
+    _BOOL,
+    _noop,
+    _non_null,
+    _scalar,
+    _obj,
+    _union,
+    _seq_of,
+    _field,
+    _type,
+    _directive,
+    _ival,
+)
 
 
-def _noop():
-    raise NotImplementedError
-
-
-def _non_null(t):
-    return {'kind': 'NON_NULL', 'name': None, 'ofType': t}
-
-
-def _scalar(name):
-    return {'kind': 'SCALAR', 'name': name, 'ofType': None}
-
-
-_INT = _scalar('Int')
-_STR = _scalar('String')
-_BOOL = _scalar('Boolean')
-_FLOAT = _scalar('Float')
-_ANY = _scalar('Any')
 _FIELDSET = _scalar('_FieldSet')
-
-
-def _obj(name):
-    return {'kind': 'OBJECT', 'name': name, 'ofType': None}
-
-
-def _iobj(name):
-    return {'kind': 'INPUT_OBJECT', 'name': name, 'ofType': None}
-
-
-def _union(name):
-    return {'kind': 'UNION', 'name': name, 'ofType': None}
-
-
-def _seq_of(_type):
-    return {'kind': 'NON_NULL', 'name': None,
-            'ofType': {'kind': 'LIST', 'name': None,
-                       'ofType': {'kind': 'NON_NULL', 'name': None,
-                                  'ofType': _type}}}
 
 
 def _seq_of_nullable(_type):
     return {'kind': 'NON_NULL', 'name': None,
             'ofType': {'kind': 'LIST', 'name': None,
                        'ofType': _type}}
-
-
-def _field(name, type_, **kwargs):
-    data = {
-        'args': [],
-        'deprecationReason': None,
-        'description': None,
-        'isDeprecated': False,
-        'name': name,
-        'type': type_
-    }
-    data.update(kwargs)
-    return data
-
-
-def _type(name, kind, **kwargs):
-    data = {
-        'description': None,
-        'enumValues': [],
-        'fields': [],
-        'inputFields': [],
-        'interfaces': [],
-        'kind': kind,
-        'name': name,
-        'possibleTypes': [],
-    }
-    data.update(**kwargs)
-    return data
-
-
-def _directive(name, locs, args=None):
-    return {
-        'name': name,
-        'description': ANY,
-        'locations': locs,
-        'args': args or [],
-    }
-
-
-def _ival(name, type_, **kwargs):
-    data = {
-        'name': name,
-        'type': type_,
-        'description': None,
-        'defaultValue': None,
-    }
-    data.update(kwargs)
-    return data
 
 
 def _schema(types, with_mutation=False) -> dict:
@@ -134,6 +66,7 @@ def _schema(types, with_mutation=False) -> dict:
             ],
             'mutationType': {'name': 'Mutation'} if with_mutation else None,
             'queryType': {'name': 'Query'},
+            'subscriptionType': None,
             'types': SCALARS + types
         }
     }
@@ -150,7 +83,13 @@ def execute(graph, query_string):
 
 
 def introspect(query_graph, ):
-    return execute(query_graph, INTROSPECTION_QUERY)
+    return execute(
+        query_graph,
+        get_introspection_query(
+            input_value_deprecation=True,
+            directive_is_repeatable=True,
+        ),
+    )
 
 
 def execute_v2(graph, query_string):
@@ -163,7 +102,13 @@ def execute_v2(graph, query_string):
 
 
 def introspect_v2(query_graph):
-    return execute_v2(query_graph, INTROSPECTION_QUERY)
+    return execute_v2(
+        query_graph,
+        get_introspection_query(
+            input_value_deprecation=True,
+            directive_is_repeatable=True,
+        ),
+    )
 
 
 def test_federated_introspection_v1():
