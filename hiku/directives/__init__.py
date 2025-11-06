@@ -342,7 +342,7 @@ class Deprecated(SchemaDirective):
 
 
 def get_deprecated(
-    obj: t.Union["Field", "Link", "Option"]
+    obj: t.Union["Field", "Link", "Option"],
 ) -> Deprecated | None:
     """Get deprecated directive"""
     return next((d for d in obj.directives if isinstance(d, Deprecated)), None)
