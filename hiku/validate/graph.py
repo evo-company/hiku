@@ -5,13 +5,14 @@ from itertools import chain
 from contextlib import contextmanager
 from collections import Counter
 
-from ..directives import Deprecated
+from ..directives import Deprecated, get_deprecated
 from ..enum import BaseEnum
 from ..graph import (
     FieldType,
     GraphVisitor,
     Input,
     Interface,
+    Nothing,
     Root,
     Field,
     Node,
@@ -168,7 +169,24 @@ class GraphValidator(GraphVisitor):
 
     def visit_input(self, obj: Input) -> None:
         with self.push_ctx(obj):
-            super(GraphValidator, self).visit_input(obj)
+            for option in obj.arguments:
+                self.visit_option(option)
+
+                # According to Graphql Spec 2025, Input argument if deprecated,
+                # must have a default value
+                deprecated = get_deprecated(option)
+                if (
+                    deprecated
+                    and option.type_info
+                    and option.type_info.required
+                    and (option.default is Nothing or option.default is None)
+                ):
+                    self.errors.report(
+                        'Required input field "{}" cannot be deprecated. '
+                        "Add default value or make it optional".format(
+                            self._format_path(option)
+                        ),
+                    )
 
     def visit_field(self, obj: Field) -> None:
         invalid = [
