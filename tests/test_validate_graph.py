@@ -144,6 +144,31 @@ def test_option_input_ref_has_default_none_but_type_non_optional():
     assert err.value.errors == ['Non-optional option "ImageParams:width" must have a default value']
 
 
+def test_deprecated_input_argument_with_required_type_must_have_default_value():
+    with pytest.raises(GraphValidationError) as err:
+        Graph(
+            [
+                Node(
+                    "User",
+                    [
+                        Field("avatar", None, _fields_func, options=[
+                            Option("params", InputRef["ImageParams"]),
+                        ]),
+                    ],
+                ),
+            ], inputs=[
+                Input("ImageParams", [
+                    Option("width", Integer, deprecated="do not use"),
+                ])
+            ]
+        )
+
+    assert err.value.errors == [
+        'Required input field "ImageParams:width" cannot be deprecated. '
+        'Add default value or make it optional'
+    ]
+
+
 def test_link_missing_node():
     check_errors(
         [

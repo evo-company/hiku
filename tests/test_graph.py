@@ -37,14 +37,15 @@ def test_link_with_sequence_to_optional_type_ref():
 
 @pytest.mark.parametrize("field_type, type_info", [
     # scalars
-    (String, FieldTypeInfo('String', FieldType.SCALAR)),
-    (Integer, FieldTypeInfo('Integer', FieldType.SCALAR)),
-    (Float, FieldTypeInfo('Float', FieldType.SCALAR)),
-    (ID, FieldTypeInfo('ID', FieldType.SCALAR)),
-    (Any, FieldTypeInfo('Any', FieldType.SCALAR)),
-    (Mapping, FieldTypeInfo('Mapping', FieldType.SCALAR)),
-    (Optional[String], FieldTypeInfo('String', FieldType.SCALAR)),
-    (Sequence[String], FieldTypeInfo('String', FieldType.SCALAR)),
+    (String, FieldTypeInfo('String', FieldType.SCALAR, required=True)),
+    (Integer, FieldTypeInfo('Integer', FieldType.SCALAR, required=True)),
+    (Float, FieldTypeInfo('Float', FieldType.SCALAR, required=True)),
+    (ID, FieldTypeInfo('ID', FieldType.SCALAR, required=True)),
+    (Any, FieldTypeInfo('Any', FieldType.SCALAR, required=True)),
+    (Mapping, FieldTypeInfo('Mapping', FieldType.SCALAR, required=True)),
+    (Optional[String], FieldTypeInfo('String', FieldType.SCALAR, required=False)),
+    (Sequence[String], FieldTypeInfo('String', FieldType.SCALAR, required=True)),
+    (Sequence[Optional[String]], FieldTypeInfo('String', FieldType.SCALAR, required=False)),
 
     # None
     (None, None),
@@ -52,19 +53,19 @@ def test_link_with_sequence_to_optional_type_ref():
     (Sequence, None),
 
     # records
-    (TypeRef['UserRecord'], FieldTypeInfo('UserRecord', FieldType.RECORD)),
-    (Optional[TypeRef['UserRecord']], FieldTypeInfo('UserRecord', FieldType.RECORD)),
-    (Sequence[TypeRef['UserRecord']], FieldTypeInfo('UserRecord', FieldType.RECORD)),
+    (TypeRef['UserRecord'], FieldTypeInfo('UserRecord', FieldType.RECORD, required=True)),
+    (Optional[TypeRef['UserRecord']], FieldTypeInfo('UserRecord', FieldType.RECORD, required=False)),
+    (Sequence[TypeRef['UserRecord']], FieldTypeInfo('UserRecord', FieldType.RECORD, required=True)),
 
     # enums
-    (EnumRef['UserRecord'], FieldTypeInfo('UserRecord', FieldType.ENUM)),
-    (Optional[EnumRef['UserRecord']], FieldTypeInfo('UserRecord', FieldType.ENUM)),
-    (Sequence[EnumRef['UserRecord']], FieldTypeInfo('UserRecord', FieldType.ENUM)),
+    (EnumRef['UserRecord'], FieldTypeInfo('UserRecord', FieldType.ENUM, required=True)),
+    (Optional[EnumRef['UserRecord']], FieldTypeInfo('UserRecord', FieldType.ENUM, required=False)),
+    (Sequence[EnumRef['UserRecord']], FieldTypeInfo('UserRecord', FieldType.ENUM, required=True)),
 
     # custom scalars
-    (DateTime, FieldTypeInfo('DateTime', FieldType.CUSTOM_SCALAR)),
-    (Optional[DateTime], FieldTypeInfo('DateTime', FieldType.CUSTOM_SCALAR)),
-    (Sequence[DateTime], FieldTypeInfo('DateTime', FieldType.CUSTOM_SCALAR)),
+    (DateTime, FieldTypeInfo('DateTime', FieldType.CUSTOM_SCALAR, required=True)),
+    (Optional[DateTime], FieldTypeInfo('DateTime', FieldType.CUSTOM_SCALAR, required=False)),
+    (Sequence[DateTime], FieldTypeInfo('DateTime', FieldType.CUSTOM_SCALAR, required=True)),
 ])
 def test_field_type(field_type, type_info):
     info = get_field_info(field_type)

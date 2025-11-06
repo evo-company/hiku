@@ -100,18 +100,29 @@ class Option(AbstractOption):
         *,
         default: t.Any = Nothing,
         description: str | None = None,
+        directives: list[SchemaDirective] | None = None,
+        deprecated: str | None = None,
     ):
         """
         :param name: name of the option
         :param type_: type of the option or ``None``
         :param default: default option value
         :param description: description of the option
+        :param directives: list of directives for the option
+        :param deprecated: deprecation reason
         """
+        if directives is None:
+            directives = []
+
+        if deprecated is not None:
+            directives.append(Deprecated(deprecated))
+
         self.name = name
         # TODO(m.kind): make type_ non-optional
         self.type = type_
         self.default = default
         self.description = description
+        self.directives = directives
         self.type_info = get_field_info(type_)
 
     def __repr__(self) -> str:
@@ -287,39 +298,51 @@ class FieldType(Enum):
 class FieldTypeInfo:
     type_name: str
     type_enum: FieldType
+    required: bool
 
 
 def get_field_info(
     type_: GenericMeta | ScalarMeta | None,
+    required: bool = True,
 ) -> FieldTypeInfo | None:
     if not type_:
         return None
 
     if isinstance(type_, OptionalMeta):
-        return get_field_info(getattr(type_, "__type__", None))
+        return get_field_info(getattr(type_, "__type__", None), required=False)
 
     if isinstance(type_, SequenceMeta):
         # if type not passed to Sequence[]
-        return get_field_info(getattr(type_, "__item_type__", None))
+        return get_field_info(
+            getattr(type_, "__item_type__", None), required=required
+        )
 
     if isinstance(type_, TypeRefMeta):
         return FieldTypeInfo(
             type_.__type_name__,
             FieldType.RECORD,
+            required=required,
         )
 
     if isinstance(type_, InputRefMeta):
         return FieldTypeInfo(
             type_.__type_name__,
             FieldType.INPUT,
+            required=required,
         )
     elif isinstance(type_, EnumRefMeta):
-        return FieldTypeInfo(type_.__type_name__, FieldType.ENUM)
+        return FieldTypeInfo(
+            type_.__type_name__, FieldType.ENUM, required=required
+        )
     elif isinstance(type_, ScalarMeta):
-        return FieldTypeInfo(type_.__type_name__, FieldType.CUSTOM_SCALAR)
+        return FieldTypeInfo(
+            type_.__type_name__, FieldType.CUSTOM_SCALAR, required=required
+        )
 
     if isinstance(type_, GenericMeta):
-        return FieldTypeInfo(type_.__name__, FieldType.SCALAR)
+        return FieldTypeInfo(
+            type_.__name__, FieldType.SCALAR, required=required
+        )
 
     return None
 

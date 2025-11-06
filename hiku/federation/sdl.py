@@ -482,20 +482,13 @@ class Exporter(GraphVisitor):
             ),
             type=_encode_type(obj.type, input_type=True),
             default_value=_encode_default_value(obj.default),
+            directives=[self.visit(d) for d in obj.directives],
         )
 
     def visit_input(self, obj: Input) -> ast.InputObjectTypeDefinitionNode:
         return ast.InputObjectTypeDefinitionNode(
             name=_name(obj.name),
-            fields=[
-                ast.InputValueDefinitionNode(
-                    name=_name(arg.name),
-                    type=_encode_type(arg.type),
-                    description=arg.description,
-                    default_value=_encode_default_value(arg.default),
-                )
-                for arg in obj.arguments
-            ],
+            fields=[self.visit(arg) for arg in obj.arguments],
         )
 
     def visit_enum(self, obj: BaseEnum) -> ast.EnumTypeDefinitionNode:

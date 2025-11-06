@@ -11,7 +11,7 @@ from typing_extensions import dataclass_transform
 from hiku.utils.typing import builtin_to_introspection_type
 
 if TYPE_CHECKING:
-    from hiku.graph import Field, Link
+    from hiku.graph import Field, Link, Option
 
 
 T = t.TypeVar("T", bound=t.Type)
@@ -322,11 +322,18 @@ class SchemaDirective:
 
 @schema_directive(
     name="deprecated",
-    locations=[Location.FIELD_DEFINITION, Location.ENUM_VALUE],
-    description="Marks the field or enum value as deprecated",
+    locations=[
+        Location.FIELD_DEFINITION,
+        Location.ARGUMENT_DEFINITION,
+        Location.INPUT_FIELD_DEFINITION,
+        Location.ENUM_VALUE,
+    ],
+    description=(
+        "Marks the field, argument, input field or enum value as deprecated"
+    ),
 )
 class Deprecated(SchemaDirective):
-    """https://spec.graphql.org/June2018/#sec--deprecated"""
+    """https://spec.graphql.org/September2025/#sec--deprecated"""
 
     reason: str | None = schema_directive_field(
         description="Deprecation reason.",
@@ -334,8 +341,8 @@ class Deprecated(SchemaDirective):
     )
 
 
-def get_deprecated(field: t.Union["Field", "Link"]) -> Deprecated | None:
+def get_deprecated(
+    obj: t.Union["Field", "Link", "Option"]
+) -> Deprecated | None:
     """Get deprecated directive"""
-    return next(
-        (d for d in field.directives if isinstance(d, Deprecated)), None
-    )
+    return next((d for d in obj.directives if isinstance(d, Deprecated)), None)
