@@ -4,6 +4,11 @@ Changes in 0.8
 0.8.0rcXX
 ~~~~~~~~~
 
+0.8.0rc21
+~~~~~~~~~
+
+- Fix prometheus metrics wrapper key which caused metrics to be lost in some cases
+
 0.8.0rc20
 ~~~~~~~~~
 
