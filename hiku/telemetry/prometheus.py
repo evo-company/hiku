@@ -93,6 +93,16 @@ class GraphMetricsBase(GraphTransformer):
         return [graph_name, node_name, field_name]
 
     def _wrap_field(self, node_name, func):
+        """Creates a wrapped field function that
+        observes time spent in the field.
+
+        Args:
+            node_name: Name of the node.
+            func: Field function to wrap.
+
+        Returns:
+            Wrapped field function.
+        """
         observe = self._observe_fields(node_name)
         wrapper = self.field_wrapper(observe, func)
         if _do_pass_context(func):
@@ -104,6 +114,16 @@ class GraphMetricsBase(GraphTransformer):
         return wrapper
 
     def _wrap_link(self, node_name, link_name, func):
+        """Creates a wrapped link function that observes time spent in the link.
+
+        Args:
+            node_name: Name of the node.
+            link_name: Name of the link.
+            func: Link function to wrap.
+
+        Returns:
+            Wrapped link function.
+        """
         observe = self._observe_fields(node_name)
         wrapper = self.link_wrapper(observe, func)
 
@@ -120,6 +140,16 @@ class GraphMetricsBase(GraphTransformer):
         return wrapper
 
     def _wrap_subquery(self, node_name, subquery):
+        """Creates a wrapped subquery function that observes
+        time spent in the subquery.
+
+        Args:
+            node_name: Name of the node.
+            subquery: Subquery function to wrap.
+
+        Returns:
+            Wrapped subquery function.
+        """
         observe = self._observe_fields(node_name)
         wrapper = self.subquery_wrapper(observe, subquery)
         wrapper = _subquery_field_names(wrapper)
@@ -134,6 +164,19 @@ class GraphMetricsBase(GraphTransformer):
             self._node = None
 
     def visit_field(self, obj):
+        """Wrap field function to observe time spent in the field.
+
+        If field function if already wrapped and cached in self._wrappers,
+        it will be used instead of creating a new wrapper.
+
+        Field.func is replaced with the wrapped function.
+
+        Args:
+            obj: Field object to wrap.
+
+        Returns:
+            Field with wrapped function.
+        """
         obj = super().visit_field(obj)
         node_name = self.root_name if self._node is None else self._node.name
         if isinstance(obj.func, CheckedExpr):
@@ -141,15 +184,16 @@ class GraphMetricsBase(GraphTransformer):
         else:
             func = obj.func
 
-        wrapper = self._wrappers.get(func)
+        wrapper_key = (node_name, func)
+        wrapper = self._wrappers.get(wrapper_key)
         if wrapper is None:
             if isinstance(obj.func, CheckedExpr):
-                wrapper = self._wrappers[func] = self._wrap_subquery(
+                wrapper = self._wrappers[wrapper_key] = self._wrap_subquery(
                     node_name,
                     func,
                 )
             else:
-                wrapper = self._wrappers[func] = self._wrap_field(
+                wrapper = self._wrappers[wrapper_key] = self._wrap_field(
                     node_name,
                     func,
                 )
