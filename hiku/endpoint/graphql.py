@@ -2,6 +2,7 @@ from typing import Any, overload, TypedDict
 
 from abc import ABC
 from asyncio import gather
+from collections.abc import Mapping
 
 from hiku.error import GraphQLError
 from hiku.schema import ExecutionResult, Schema
@@ -70,7 +71,9 @@ class BaseSyncGraphQLEndpoint(BaseGraphQLEndpoint):
         :param dict context: context for operation
         :return: :py:class:`dict` graphql response: data or errors
         """
-        assert "query" in data, "query is required"
+        if not (isinstance(data, Mapping) and "query" in data):
+            raise GraphQLError("Invalid body, query is required")
+
         result = self.schema.execute_sync(
             query=data["query"],
             variables=data.get("variables"),
@@ -97,7 +100,9 @@ class BaseAsyncGraphQLEndpoint(BaseGraphQLEndpoint):
         :param dict context: context for operation
         :return: :py:class:`dict` graphql response: data or errors
         """
-        assert "query" in data, "query is required"
+        if not (isinstance(data, Mapping) and "query" in data):
+            raise GraphQLError("Invalid body, query is required")
+
         result = await self.schema.execute(
             query=data["query"],
             variables=data.get("variables"),
