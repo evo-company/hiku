@@ -14,6 +14,7 @@ from hiku.schema import Schema
 from hiku.types import String
 from hiku.types import Record
 from hiku.types import TypeRef
+from hiku.error import GraphQLError
 
 
 @pytest.fixture(name="sync_graph")
@@ -37,6 +38,20 @@ def test_endpoint(sync_graph):
     endpoint = GraphQLEndpoint(Schema(SyncExecutor(), sync_graph))
     result = endpoint.dispatch({"query": "{answer}"})
     assert result == {"data": {"answer": "42"}}
+
+
+@pytest.mark.parametrize("inputs", [
+    ["asdf"],
+    None,
+    "query",
+    1,
+    {"a": 1},
+    {"operationName": "asdf"},
+])
+def test_endpoint_raises(sync_graph, inputs):
+    endpoint = GraphQLEndpoint(Schema(SyncExecutor(), sync_graph))
+    with pytest.raises(GraphQLError):
+        endpoint.dispatch(inputs)
 
 
 def test_batch_endpoint(sync_graph):
@@ -66,6 +81,21 @@ async def test_async_endpoint(async_graph):
         {"query": "{answer}"}, context={"default_answer": "52"}
     )
     assert result == {"data": {"answer": "52"}}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("inputs", [
+    ["asdf"],
+    None,
+    "query",
+    1,
+    {"a": 1},
+    {"operationName": "asdf"},
+])
+async def test_async_endpoint_raises(async_graph, inputs):
+    endpoint = AsyncGraphQLEndpoint(Schema(AsyncIOExecutor(), async_graph))
+    with pytest.raises(GraphQLError):
+        await endpoint.dispatch(inputs)
 
 
 @pytest.mark.asyncio
