@@ -4,6 +4,11 @@ Changes in 0.8
 0.8.0rcXX
 ~~~~~~~~~
 
+0.8.0rc22
+~~~~~~~~~
+
+- Replace AssertionError with GraphQLError for invalid inputs
+
 0.8.0rc21
 ~~~~~~~~~
 
