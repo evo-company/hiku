@@ -2,8 +2,12 @@ import typing as t
 from collections import defaultdict
 from inspect import isawaitable
 
+from graphql import parse as gql_parse
+from graphql.language import ast as gql_ast
+
 from hiku.compat import TypeAlias
 from hiku.directives import SchemaDirective
+from hiku.federation.directive import Requires
 from hiku.engine import pass_context
 from hiku.enum import BaseEnum
 from hiku.federation.scalars import FieldSet, LinkImport, _Any
@@ -89,8 +93,66 @@ class GraphInit(GraphTransformer):
     def visit_node(self, obj: Node) -> Node:
         if hasattr(obj, "resolve_reference") and obj.name is not None:
             self.type_to_resolve_reference_map[obj.name] = obj.resolve_reference
+            self._validate_link_requires(obj)
 
         return super(GraphInit, self).visit_node(obj)
+
+    @staticmethod
+    def _field_set_names(field_set: str) -> set[str]:
+        """Extract top-level field names from a GraphQL FieldSet string."""
+        doc = gql_parse(f"{{ {field_set} }}")
+        op = t.cast(gql_ast.OperationDefinitionNode, doc.definitions[0])
+        return {
+            sel.name.value
+            for sel in op.selection_set.selections
+            if isinstance(sel, gql_ast.FieldNode)
+        }
+
+    def _validate_link_requires(self, node: Node) -> None:
+        """Raise ValueError if a Link's SDL @requires omits fields that are
+        transitively required through its internal requires chain.
+        """
+        for graph_field in node.fields:
+            if not isinstance(graph_field, Link):
+                continue
+            link = graph_field
+            if not link.requires:
+                continue
+
+            # Collect field names declared in the Link's SDL @requires
+            declared: set[str] = set()
+            for d in link.directives:
+                if isinstance(d, Requires):
+                    declared.update(self._field_set_names(str(d.fields)))
+
+            # Collect field names transitively required by fields
+            # in Link.requires
+            link_requires = (
+                link.requires
+                if isinstance(link.requires, list)
+                else [link.requires]
+            )
+            missing: set[str] = set()
+            for req_name in link_requires:
+                sibling = node.fields_map.get(req_name)
+                if not isinstance(sibling, Field):
+                    continue
+                for d in sibling.directives:
+                    if isinstance(d, Requires):
+                        for field_name in self._field_set_names(str(d.fields)):
+                            if field_name not in declared:
+                                missing.add(field_name)
+
+            if missing:
+                suggested = " ".join(sorted(declared | missing))
+                raise ValueError(
+                    f"Link {link.name!r} in node {node.name!r} declares "
+                    f"requires={link.requires!r}, but the following fields "
+                    f"are transitively required and missing from the Link's "
+                    f"@requires directive: {sorted(missing)!r}. "
+                    f"Update the directive to: Requires({suggested!r})"
+                )
+                suggested = " ".join(sorted(declared | missing))
 
     def _group_representations(
         self, representations: list[dict]

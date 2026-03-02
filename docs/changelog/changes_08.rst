@@ -4,6 +4,12 @@ Changes in 0.8
 0.8.0rcXX
 ~~~~~~~~~
 
+- Validate transitive ``@requires`` on ``FederatedNode`` links at graph construction time.
+  If a ``Link`` declares ``requires=["a", "b"]`` and field ``b`` has ``@requires(fields="c")``,
+  the ``Link``'s SDL ``@requires`` directive must also include ``c``. A ``ValueError`` is now
+  raised at ``Graph()`` construction time with a suggested fix, making this class of
+  federation bug impossible to deploy undetected.
+
 0.8.0rc22
 ~~~~~~~~~
 
