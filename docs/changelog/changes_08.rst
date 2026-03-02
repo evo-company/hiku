@@ -4,6 +4,10 @@ Changes in 0.8
 0.8.0rcXX
 ~~~~~~~~~
 
+- Fix typing for federation ``FieldSet`` directives so ``Key(...)``, ``Provides(...)``,
+  and ``Requires(...)`` accept plain strings in type-checked code while preserving
+  ``_FieldSet`` schema metadata.
+
 - Validate transitive ``@requires`` on ``FederatedNode`` links at graph construction time.
   If a ``Link`` declares ``requires=["a", "b"]`` and field ``b`` has ``@requires(fields="c")``,
   the ``Link``'s SDL ``@requires`` directive must also include ``c``. A ``ValueError`` is now

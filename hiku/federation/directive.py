@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, TypeVar, overload, cast
 from typing_extensions import dataclass_transform
 
 from hiku.directives import (
@@ -112,6 +112,16 @@ class Key(FederationSchemaDirective):
         default_value=True,
     )
 
+    @overload
+    def __init__(self, fields: str, resolvable: bool = True) -> None: ...
+
+    @overload
+    def __init__(self, fields: FieldSet, resolvable: bool = True) -> None: ...
+
+    def __init__(self, fields: str | FieldSet, resolvable: bool = True):
+        self.fields = cast(FieldSet, fields)
+        self.resolvable = resolvable
+
 
 @schema_directive(
     name="provides",
@@ -134,6 +144,15 @@ class Provides(FederationSchemaDirective):
         ),
     )
 
+    @overload
+    def __init__(self, fields: str) -> None: ...
+
+    @overload
+    def __init__(self, fields: FieldSet) -> None: ...
+
+    def __init__(self, fields: str | FieldSet):
+        self.fields = cast(FieldSet, fields)
+
 
 @schema_directive(
     name="requires",
@@ -153,6 +172,15 @@ class Requires(FederationSchemaDirective):
             "The required input fieldset from a base type for a " "resolver"
         ),
     )
+
+    @overload
+    def __init__(self, fields: str) -> None: ...
+
+    @overload
+    def __init__(self, fields: FieldSet) -> None: ...
+
+    def __init__(self, fields: str | FieldSet):
+        self.fields = cast(FieldSet, fields)
 
 
 @schema_directive(
