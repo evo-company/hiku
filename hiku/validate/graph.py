@@ -104,6 +104,7 @@ class GraphValidator(GraphVisitor):
         validator.visit_graph_enums(enums)
         validator.visit_graph_scalars(scalars)
         validator.visit_graph_inputs(inputs)
+        validator._validate_scalar_name_collisions(scalars, items, unions, interfaces, enums, inputs)
         if validator.errors.list:
             raise GraphValidationError(validator.errors.list)
 
@@ -430,3 +431,78 @@ class GraphValidator(GraphVisitor):
     def visit_graph_scalars(self, scalars: list[type[Scalar]]) -> None:
         for scalar in scalars:
             self.visit(scalar)
+
+    def _validate_scalar_name_collisions(
+        self,
+        scalars: list[type[Scalar]],
+        items: list[Node],
+        unions: list[Union],
+        interfaces: list[Interface],
+        enums: list[BaseEnum],
+        inputs: list[Input],
+    ) -> None:
+        """Validate that scalars don't have name collisions with other types.
+        
+        GraphQL schema cannot have a scalar and a type with the same name.
+        """
+        scalar_names = {s.__type_name__ for s in scalars}
+        
+        # Check collisions with nodes
+        node_names = {item.name for item in items if item.name is not None}
+        collisions = scalar_names & node_names
+        if collisions:
+            for name in sorted(collisions):
+                self.errors.report(
+                    'Scalar "{}" has the same name as node "{}". '
+                    "GraphQL schema cannot have a scalar and a type with the same name.".format(
+                        name, name
+                    )
+                )
+        
+        # Check collisions with unions
+        union_names = {u.name for u in unions}
+        collisions = scalar_names & union_names
+        if collisions:
+            for name in sorted(collisions):
+                self.errors.report(
+                    'Scalar "{}" has the same name as union "{}". '
+                    "GraphQL schema cannot have a scalar and a type with the same name.".format(
+                        name, name
+                    )
+                )
+        
+        # Check collisions with interfaces
+        interface_names = {i.name for i in interfaces}
+        collisions = scalar_names & interface_names
+        if collisions:
+            for name in sorted(collisions):
+                self.errors.report(
+                    'Scalar "{}" has the same name as interface "{}". '
+                    "GraphQL schema cannot have a scalar and a type with the same name.".format(
+                        name, name
+                    )
+                )
+        
+        # Check collisions with enums
+        enum_names = {e.name for e in enums}
+        collisions = scalar_names & enum_names
+        if collisions:
+            for name in sorted(collisions):
+                self.errors.report(
+                    'Scalar "{}" has the same name as enum "{}". '
+                    "GraphQL schema cannot have a scalar and a type with the same name.".format(
+                        name, name
+                    )
+                )
+        
+        # Check collisions with inputs
+        input_names = {i.name for i in inputs}
+        collisions = scalar_names & input_names
+        if collisions:
+            for name in sorted(collisions):
+                self.errors.report(
+                    'Scalar "{}" has the same name as input "{}". '
+                    "GraphQL schema cannot have a scalar and a type with the same name.".format(
+                        name, name
+                    )
+                )
