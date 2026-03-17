@@ -14,7 +14,6 @@ from hiku.engine import Engine
 from hiku.endpoint.graphql import AsyncGraphQLEndpoint
 from hiku.executors.asyncio import AsyncIOExecutor
 
-
 log = logging.getLogger(__name__)
 
 

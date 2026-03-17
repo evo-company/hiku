@@ -4,28 +4,28 @@ Development
 Tools
 ~~~~~
 
-- ``pdm`` package manager - https://pdm.fming.dev/
+- ``uv`` package manager - https://docs.astral.sh/uv/
 - ``lets`` task runner https://lets-cli.org to run project tests, build docs and so on.
 
 Setup development
 ~~~~~~~~~~~~~~~~~
 
-1. Install ``pdm`` package manager - https://pdm.fming.dev/
-2. Run ``pdm sync`` to install dependencies
+1. Install ``uv`` - https://docs.astral.sh/uv/getting-started/installation/
+2. Run ``uv sync --group test`` to install the default development environment plus test tools
 
-Run unit tests using pdm
+Run unit tests using uv
 
 .. code-block:: bash
 
-    $ pdm run test
+    $ uv run pytest tests
 
-Run integration tests (with real postgress) using pdm.
+Run integration tests (with real postgres) using uv.
 Postgres in this case accessed via localhost.
 
 .. code-block:: bash
 
     $ docker compose up -d postgres
-    $ pdm run test-pg-local
+    $ uv run pytest tests_pg --pg-host=localhost
     $ docker compose down
 
 Or you can use lets task runner to run unit + integration tests (all-on-one) in docker
@@ -38,26 +38,24 @@ Run linters, formatters and other checks
 
 .. code-block:: bash
 
-    $ pdm run flake
-    $ pdm run black
-    $ pdm run mypy
-
-Or you can run ``pdm check`` - it will reformat code, run linters and test in one command.
+    $ uv run flake8
+    $ uv run black hiku examples
+    $ uv run mypy
 
 Build docs
 Docs will be available at ``docs/build``
 
 .. code-block:: bash
 
-    $ pdm run docs
+    $ uv run sphinx-build -b html docs docs/build
 
 
-Setup PDM with IDE
-~~~~~~~~~~~~~~~~~~
+Setup uv with IDE
+~~~~~~~~~~~~~~~~~
 
-PDM supports ``venv`` so in order to setup PDM with IDE you need to create a new virtual environment and point your IDE to it.
+uv creates a project-local virtual environment in ``.venv``.
 
-Run ``pdm sync``. It will create ``.venv`` directory with virtual environment.
+Run ``uv sync``. It will create the ``.venv`` directory with the virtual environment.
 
 Point your IDE to this virtual environment and you are good to go.
 
@@ -66,8 +64,6 @@ In PyCharm you can also mark some directories as excluded to speed up indexing a
 #. Open PyCharm Settings -> Project Structure
 #. Mark ``.venv`` as Excluded
 #. Mark ``.venv/lib/<python_version>/site-packages`` both as `Excluded` (to exclude files from search) and `Sources` (to enable autocompletion)
-
-Pdm also provides how-to guides on how to configure other IDE/editors https://pdm-project.org/latest/usage/venv/
 
 Integrate with ``pyright``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -89,10 +85,14 @@ Release process
 
 Hiku supports semver versioning.
 
-#. Update the version number in the ``hiku/__init__.py`` file.
 #. Update the changelog in the `docs/changelog/changes_0X.rst` file.
 #. Merge changes into master.
-#. Run `lets release <version> -m 'your release message'`. This will create and push annotated tag. When new tag pushed, new release action on GitHub will publish new package to `pypi`.
+#. Run `lets release <version> -m 'your release message'`. This updates version in ``pyproject.toml``, creates and pushes an annotated tag. When the new tag is pushed, the release action on GitHub publishes the package to `pypi`.
+
+.. note::
+
+    ``lets release`` command will bump version automatically if you pass ``rc`` as a version.
+    For example ``lets release rc -m 'your release message'`` will bump version to ``0.x.xrcX``.
 
 Documentation release
 ~~~~~~~~~~~~~~~~~~~~~

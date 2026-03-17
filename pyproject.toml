@@ -1,9 +1,9 @@
 [project]
 name = "hiku"
-dynamic = ["version"]
+version = "0.8.0rc22"
 description = "Library to implement Graph APIs"
 readme = { file = "README.rst", content-type = "text/x-rst" }
-license = { text = "BSD-3-Clause" }
+license = "BSD-3-Clause"
 authors = [
   { name = "Vladimir Magamedov", email = "vladimir@magamedov.com" },
   { name = "Maksym Kindritskyi", email = "kindritskiy.m@gmail.com" },
@@ -32,20 +32,10 @@ Repository = "https://github.com/evo-company/hiku"
 Homepage = "https://github.com/evo-company/hiku"
 
 [build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
 
-[tool.pdm]
-
-[tool.pdm.version]
-source = "file"
-path = "hiku/__init__.py"
-
-[tool.pdm.build]
-includes = ["hiku", "hiku/pytyped"]
-excludes = ["tests", "**/.*.*"]
-
-[tool.pdm.dev-dependencies]
+[dependency-groups]
 test = [
   "astor>=0.8.1",
   "pytest>=8.4.2",
@@ -53,44 +43,41 @@ test = [
   "pytest-asyncio>=1.2.0",
   "faker>=37.12.0",
   "pytest-benchmark[histogram]>=5.2.1",
-  "asyncpg>=0.28.0",                    # for tests_pg
-  "greenlet>=3.0.0",                    # for tests_pg
+  "asyncpg>=0.28.0",
+  "greenlet>=3.0.0",
+  "tox>=4.31.0",
+  "tox-gh-actions>=3.4.0",
 ]
 dev = [
-  "graphql-core>=3.2.7",       # for graphql support
+  "graphql-core>=3.2.7",
   "sqlalchemy<2",
-  "aiopg>=1.4.0",              # for async postgresql support
-  "prometheus-client>=0.23.1", # for prometheus metrics
-  "sentry-sdk>=2.43.0",        # for sentry tracing
+  "aiopg>=1.4.0",
+  "prometheus-client>=0.23.1",
+  "sentry-sdk>=2.43.0",
   "typing-extensions>=4.15.0",
   "mypy>=1.18.2",
   "black>=25.9.0",
   "flake8>=7.3.0",
 ]
 docs = [
-    "sphinx<9,>=8.1.3",
-    "furo>=2025.9.25",
-    "sphinx-inline-tabs>=2023.4.21",
-    "sphinx-autobuild>=2024.10.03",
+  "sphinx<9,>=8.1.3",
+  "furo>=2025.9.25",
+  "sphinx-inline-tabs>=2023.4.21",
+  "sphinx-autobuild>=2024.10.03",
 ]
 examples = ["flask>=2.2.5", "aiohttp>=3.8.6"]
 
-[tool.pdm.resolution.overrides]
-importlib-metadata = ">=4.3"
+[tool.uv]
+default-groups = ["dev"]
 
-[tool.pdm.scripts]
-bench = "pytest --benchmark-enable {args:tests}"
-test = "pytest {args:tests}"
-test-pg = "pytest {args:tests_pg}"
-test-pg-local = "pytest --pg-host=localhost {args:tests_pg}"
-test-all = { composite = ["test", "test-pg"] }
-fmt = "black hiku examples"
-mypy = "mypy"
-flake = "flake8"
-docs = "sphinx-build -b html docs docs/build"
-docs-dev = "sphinx-autobuild -b html docs docs/build"
-check = { composite = ["fmt", "test", "mypy", "flake"] }
-example = "python examples/{args:graphql_flask}.py"
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["hiku*"]
+
+[tool.setuptools.package-data]
+hiku = ["py.typed"]
 
 [tool.pytest.ini_options]
 addopts = "--tb=native --benchmark-disable"

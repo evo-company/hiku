@@ -21,7 +21,6 @@ from hiku.types import (
 from hiku.executors.sync import SyncExecutor
 from hiku.utils import listify
 
-
 log = logging.getLogger(__name__)
 
 

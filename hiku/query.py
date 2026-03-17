@@ -48,7 +48,6 @@ from collections.abc import Sequence
 from .directives import Directive
 from .compat import TypeAlias
 
-
 T = t.TypeVar("T", bound="Base")
 
 

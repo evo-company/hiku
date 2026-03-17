@@ -4,7 +4,7 @@ on:
     tags: ["v*"]
 
 env:
-  PDM_VERSION: 2.26.1
+  UV_VERSION: 0.10.11
   PYTHON_VERSION: "3.10"
 
 jobs:
@@ -42,7 +42,9 @@ jobs:
           body_path: .changelog.md
           draft: false
           prerelease: ${{ steps.check_version.outputs.PRERELEASE }}
-      - name: Set up PDM
-        run: pip install pdm==${{ env.PDM_VERSION }}
+      - name: Set up uv
+        run: pip install uv==${{ env.UV_VERSION }}
+      - name: Build distributions
+        run: uv build
       - name: Publish package distributions to PyPI
-        run: pdm publish -u "__token__" -P ${{ secrets.TWINE_PASSWORD }}
+        run: uv publish --token ${{ secrets.TWINE_PASSWORD }}

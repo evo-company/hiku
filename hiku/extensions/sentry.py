@@ -29,7 +29,7 @@ class SentryTracing(Extension):
 
         with configure_scope() as scope:
             if scope.span:
-                self.gql_span = scope.span.start_child(
+                self.gql_span = scope.span.start_child(  # type: ignore
                     op="gql", description=name
                 )
             else:

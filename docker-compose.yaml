@@ -9,11 +9,10 @@ services:
       - ./tests_pg:/work/tests_pg
       - ./examples:/work/examples
       - ./docs:/work/docs
-      - ./Readme.rst:/work/Readme.rst
+      - ./README.rst:/work/README.rst
       - ./scripts:/work/scripts
       - ./.flake8:/work/.flake8
       - ./pyproject.toml:/work/pyproject.toml
-      - ./pdm.lock:/work/pdm.lock
       - ./tox.ini:/work/tox.ini
       - ./.tox:/work/.tox
       - ./.local:/work/.local
@@ -21,6 +20,7 @@ services:
     environment:
       PYTHONPATH: .
       PYTHONBUFFERED: 1
+      UV_CACHE_DIR: /tmp/uv-cache
       PYTHONWARNINGS: |
         ignore::DeprecationWarning
 
@@ -31,7 +31,7 @@ services:
   docs:
     <<: *base
     image: hiku-docs
-    command: pdm run docs
+    command: sphinx-build -b html docs docs/build
 
   examples-base: &examples-base
     <<: *base
@@ -67,13 +67,13 @@ services:
     <<: *test-base
     depends_on:
       - postgres
-    command: pdm run test-all
+    command: pytest tests tests_pg
 
   test-pg:
     <<: *test-base
     depends_on:
       - postgres
-    command: pdm run test-pg
+    command: pytest tests_pg
 
   postgres:
     image: postgres:13-alpine

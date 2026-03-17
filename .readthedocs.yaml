@@ -5,8 +5,8 @@ build:
   tools:
     python: "3.10"
   commands:
-    - pip install pdm==2.26.1
-    - pdm sync -G dev -G docs
-    - pdm run docs
+    - pip install uv==0.10.11
+    - uv sync --group docs
+    - uv run sphinx-build -b html docs docs/build
     - mkdir -p _readthedocs
     - mv docs/build _readthedocs/html

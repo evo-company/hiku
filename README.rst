@@ -112,9 +112,10 @@ Output:
 Contributing
 ~~~~~~~~~~~~
 
-Use Tox_ in order to test and lint your changes.
+Use uv_ and Tox_ in order to install dependencies, run checks, and test your changes.
 
 .. _Tox: https://tox.readthedocs.io/
+.. _uv: https://docs.astral.sh/uv/
 .. |project| image:: https://img.shields.io/badge/evo-company%2Fhiku-blueviolet.svg?logo=github
 .. _project: https://github.com/evo-company/hiku
 .. |documentation| image:: https://img.shields.io/badge/docs-hiku.rtfd.io-blue.svg
