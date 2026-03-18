@@ -42,6 +42,7 @@ test = [
   "pytest-asyncio>=1.2.0",
   "faker>=37.12.0",
   "pytest-benchmark[histogram]>=5.2.1",
+  "pytest-memray>=1.7.0",
   "asyncpg>=0.28.0",
   "greenlet>=3.0.0",
   "tox>=4.31.0",
@@ -57,6 +58,7 @@ dev = [
   "mypy>=1.18.2",
   "black>=25.9.0",
   "flake8>=7.3.0",
+  "codeflash>=0.20.3",
 ]
 docs = [
   "sphinx<9,>=8.1.3",
@@ -175,3 +177,11 @@ target-version = ['py310']
 py_version = "310"
 profile = "black"
 line_length = 80
+
+[tool.codeflash]
+# All paths are relative to this pyproject.toml's directory.
+module-root = "hiku"
+tests-root = "tests"
+benchmarks-root = "tests/benchmarks/store"
+ignore-paths = []
+formatter-cmds = ["black $file"]

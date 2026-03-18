@@ -1,0 +1,60 @@
+name: Benchmark
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  UV_VERSION: "0.10.11"
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up uv
+        run: pip install uv==${{ env.UV_VERSION }}
+
+      - name: Install dependencies
+        run: uv sync --group test --python ${{ env.PYTHON_VERSION }}
+
+      - name: Run benchmarks
+        run: uv run pytest tests/benchmarks --benchmark-enable --benchmark-json=benchmark-results.json
+
+      - name: Store benchmark result
+        if: github.event_name == 'push'
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: pytest
+          output-file-path: benchmark-results.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          benchmark-data-dir-path: dev/bench
+
+      - name: Compare benchmark result
+        if: github.event_name == 'pull_request'
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: pytest
+          output-file-path: benchmark-results.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+          comment-always: true
+          # Alert if 10% worse
+          alert-threshold: "110%"
+          fail-on-alert: false
+          benchmark-data-dir-path: dev/bench
+
