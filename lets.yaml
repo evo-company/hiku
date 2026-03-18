@@ -81,6 +81,14 @@ commands:
     depends: [_build-test]
     cmd: docker compose run --rm test-base tests/benchmarks --benchmark-enable $@
 
+  bench-local:
+    description: Run benchmarks
+    cmd: uv run pytest tests/benchmarks --benchmark-enable $@
+
+  bench-compare:
+    description: Run benchmarks
+    cmd: uv run pytest tests/benchmarks --benchmark-enable --benchmark-json=benchmark-results.json $@
+
   flake:
     description: Run flake8
     depends: [_build-dev]
