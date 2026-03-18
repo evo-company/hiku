@@ -29,6 +29,21 @@ jobs:
       - name: Run unit tests
         run: uv run tox run -- --cov-report=term
 
+  memray:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+      - name: Set up uv
+        run: pip install uv==${{ env.UV_VERSION }}
+      - name: Install dependencies
+        run: uv sync --group test --python 3.12
+      - name: Run tests with memray
+        run: uv run pytest tests --memray -v
+
   lint:
     runs-on: ubuntu-latest
     steps:
