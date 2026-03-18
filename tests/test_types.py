@@ -43,8 +43,15 @@ def _make_big_graph(n_nodes: int = 100, fields_per_node: int = 20) -> Graph:
     return Graph(nodes + [root])
 
 
+def test_type_cache_deduplication():
+    assert Optional[String] is Optional[String]
+    assert Sequence[Integer] is Sequence[Integer]
+    assert Optional[String] is not Optional[Integer]
+
+
 @pytest.mark.limit_memory("5 MB")
 def test_graph_init_memory():
+    TypingMeta.__cache__.clear()
     tracemalloc.start()
     try:
         _make_big_graph(100, 20)
@@ -52,6 +59,7 @@ def test_graph_init_memory():
         _, peak = tracemalloc.get_traced_memory()
     finally:
         tracemalloc.stop()
+        TypingMeta.__cache__.clear()
 
     stats = snapshot.statistics("lineno")
     print(f"\nPeak: {peak / 1024 / 1024:.2f} MB  (limit 5 MB)")

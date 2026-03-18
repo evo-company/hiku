@@ -97,6 +97,7 @@ TM = t.TypeVar("TM", bound="TypingMeta")
 
 class TypingMeta(GenericMeta, type):
     __final__ = False
+    __cache__: dict = {}
 
     def __cls_init__(cls: TM, parameters: t.Any) -> None:
         raise NotImplementedError(type(cls))
@@ -107,9 +108,22 @@ class TypingMeta(GenericMeta, type):
     def __getitem__(cls: TM, parameters: t.Any) -> TM:
         if cls.__final__:
             raise TypeError("Cannot substitute parameters in {!r}".format(cls))
+
+        try:
+            cache_key = (cls, parameters)
+            cached = cls.__cache__.get(cache_key)
+            if cached is not None:
+                return cached
+        except TypeError:
+            cache_key = None  # unhashable parameters
+
         type_ = cls.__class__(cls.__name__, cls.__bases__, dict(cls.__dict__))
         type_.__cls_init__(parameters)
         type_.__final__ = True
+
+        if cache_key is not None:
+            cls.__cache__[cache_key] = type_
+
         return type_
 
     def __repr__(self) -> str:
