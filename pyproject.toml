@@ -182,6 +182,6 @@ line_length = 80
 # All paths are relative to this pyproject.toml's directory.
 module-root = "hiku"
 tests-root = "tests"
-benchmarks-root = ".benchmarks"
+benchmarks-root = "tests/benchmarks/store"
 ignore-paths = []
 formatter-cmds = ["black $file"]
