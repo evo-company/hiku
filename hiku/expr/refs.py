@@ -4,7 +4,6 @@ from ..types import OptionalMeta, get_type
 
 from .nodes import NodeVisitor
 
-
 # TODO: revisit this
 _CONTAINER_TYPES = (
     OptionalMeta,

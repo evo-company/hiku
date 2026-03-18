@@ -7,7 +7,6 @@ from typing import (
 
 from hiku.compat import TypeAlias
 
-
 # Mark everything that _namedtuple creates as HashedNamedTuple,
 # so it will be easier to refactor types later
 HashedNamedTuple: TypeAlias = NamedTuple

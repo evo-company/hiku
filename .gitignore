@@ -12,6 +12,7 @@ env
 .idea
 .cache
 .pytest_cache
+.uv-cache
 .vscode
 .benchmarks
 todo

@@ -1,1 +1,6 @@
-__version__ = "0.8.0rc22"
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("hiku")
+except PackageNotFoundError:
+    __version__ = "0.0.0.dev0"

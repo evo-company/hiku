@@ -9,7 +9,6 @@ from hiku.engine import Engine
 from hiku.executors.sync import SyncExecutor
 from hiku.endpoint.graphql import GraphQLEndpoint
 
-
 log = logging.getLogger(__name__)
 
 

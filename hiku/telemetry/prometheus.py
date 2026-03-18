@@ -9,7 +9,6 @@ from ..graph import GraphTransformer
 from ..engine import pass_context, _do_pass_context
 from ..sources.graph import CheckedExpr
 
-
 _METRIC = None
 
 

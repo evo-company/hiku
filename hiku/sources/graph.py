@@ -42,7 +42,6 @@ from ..expr.core import (
 from ..expr.checker import check, fn_types
 from ..expr.compiler import ExpressionCompiler
 
-
 FieldGroup = tuple[Field, QueryField | QueryLink]
 Expr: TypeAlias = _Func | DotHandler
 

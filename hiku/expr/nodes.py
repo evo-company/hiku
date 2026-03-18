@@ -1,6 +1,5 @@
 import typing as t
 
-
 VisitorT = t.Union["NodeTransformer", "NodeVisitor"]
 
 

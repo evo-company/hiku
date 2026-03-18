@@ -5,7 +5,6 @@ from typing import (
     TYPE_CHECKING,
 )
 
-
 if TYPE_CHECKING:
     from hiku.result import Proxy
     from hiku.executors.queue import (
