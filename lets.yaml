@@ -81,6 +81,25 @@ commands:
     depends: [_build-test]
     cmd: docker compose run --rm test-base tests/benchmarks --benchmark-enable $@
 
+  bench-local:
+    description: Run benchmarks
+    cmd: uv run pytest tests/benchmarks --benchmark-enable $@
+
+  bench-baseline:
+    description: Run benchmarks ans save baseline
+    cmd: uv run pytest tests/benchmarks --benchmark-enable --benchmark-store=baseline $@
+
+  bench-store:
+    description: Run benchmarks and save with name
+    usage: |
+      Usage: lets bench-store <name> [test]
+      Example: lets bench-store baseline
+    cmd: uv run pytest tests/benchmarks --benchmark-enable --benchmark-store=${LETSOPT_NAME} $LETSOPT_TEST
+
+  bench-compare:
+    description: Run benchmarks and compare with baseline
+    cmd: uv run pytest tests/benchmarks --benchmark-enable --benchmark-compare $@
+
   flake:
     description: Run flake8
     depends: [_build-dev]
