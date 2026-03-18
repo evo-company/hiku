@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1773840845245,
+  "lastUpdate": 1773841066290,
   "repoUrl": "https://github.com/evo-company/hiku",
   "entries": {
     "Benchmark": [
@@ -158,6 +158,86 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00001184102828402894",
             "extra": "mean: 203.92589460001602 usec\nrounds: 1000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "kindritskiy.m@gmail.com",
+            "name": "Kindritskiy Maksym",
+            "username": "kindermax"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "400bf10ffd6d62268b0c92cb811aa45bdb86d013",
+          "message": "Merge pull request #208 from evo-company/codeflash/setup-github-actions-1773831995823\n\nAdd CodeFlash GitHub Actions workflow",
+          "timestamp": "2026-03-18T15:37:09+02:00",
+          "tree_id": "6cd23df7c0cec2bcbedf98f0c85bf97f6eed83e0",
+          "url": "https://github.com/evo-company/hiku/commit/400bf10ffd6d62268b0c92cb811aa45bdb86d013"
+        },
+        "date": 1773841065390,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_graph_init.py::test_graph_init_speed",
+            "value": 48.854727846507444,
+            "unit": "iter/sec",
+            "range": "stddev: 0.002808429389872338",
+            "extra": "mean: 20.468848033332943 msec\nrounds: 100"
+          },
+          {
+            "name": "tests/benchmarks/test_read_graphql.py::test_field",
+            "value": 16914.235966097334,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000015121067084612808",
+            "extra": "mean: 59.12179551026641 usec\nrounds: 3252"
+          },
+          {
+            "name": "tests/benchmarks/test_read_graphql.py::test_link",
+            "value": 8356.372808953496,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000015592537515071548",
+            "extra": "mean: 119.6691462746304 usec\nrounds: 5852"
+          },
+          {
+            "name": "tests/benchmarks/test_read_graphql.py::test_link_fragment",
+            "value": 6618.342838654941,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00001836445793803896",
+            "extra": "mean: 151.09522494957847 usec\nrounds: 4441"
+          },
+          {
+            "name": "tests/benchmarks/test_schema.py::test_federated_schema",
+            "value": 3038.961039514058,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000016082393301493972",
+            "extra": "mean: 329.05982899994797 usec\nrounds: 1000"
+          },
+          {
+            "name": "tests/benchmarks/test_schema.py::test_schema",
+            "value": 3067.955123143077,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000015199713760255052",
+            "extra": "mean: 325.9500089999733 usec\nrounds: 1000"
+          },
+          {
+            "name": "tests/benchmarks/test_schema.py::test_schema_with_parse_cache",
+            "value": 4685.773724354495,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000012750847363553566",
+            "extra": "mean: 213.41192699990188 usec\nrounds: 1000"
+          },
+          {
+            "name": "tests/benchmarks/test_schema.py::test_schema_with_all_caches",
+            "value": 4812.518504853159,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00001769250237073969",
+            "extra": "mean: 207.79140880010232 usec\nrounds: 1000"
           }
         ]
       }
