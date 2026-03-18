@@ -1,0 +1,4 @@
+recursive-include hiku *.js
+recursive-include hiku *.jsx
+recursive-include hiku *.css
+recursive-include hiku *.html

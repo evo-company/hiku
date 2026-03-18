@@ -1,0 +1,50 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  UV_VERSION: 0.10.11
+  PYTHON_VERSION: "3.10"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Check prerelease
+        id: check_version
+        run: |
+          if [[ "${{ github.ref }}" =~ ^refs/tags/v[0-9.]+rc[0-9]+$ ]]; then
+            echo "PRERELEASE=true" >> $GITHUB_OUTPUT
+          else
+            echo "PRERELEASE=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Get Changelog
+        id: get-changelog
+        run: |
+          tags=$(git tag --sort=-version:refname | head -n 2 | awk '{print $1}')
+          tag_from=$(echo "$tags" | sed -n '2p')
+          tag_to=$(echo "$tags" | sed -n '1p')
+          git log --oneline --decorate "${tag_from}..${tag_to}" | tail -n +2 | awk '{print "* "$0}' > .changelog.md
+      - name: Create Release
+        uses: actions/create-release@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          body_path: .changelog.md
+          draft: false
+          prerelease: ${{ steps.check_version.outputs.PRERELEASE }}
+      - name: Set up uv
+        run: pip install uv==${{ env.UV_VERSION }}
+      - name: Build distributions
+        run: uv build
+      - name: Publish package distributions to PyPI
+        run: uv publish --token ${{ secrets.TWINE_PASSWORD }}

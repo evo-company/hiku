@@ -1,0 +1,19 @@
+/* fixes https://github.com/rtfd/sphinx_rtd_theme/issues/381 */
+
+.rst-content .highlight > pre, .rst-content .linenodiv > pre {
+    line-height: normal;
+}
+
+/* customizations */
+
+.ui.tabular.menu {
+    font-size: 13px;
+}
+
+.ui.tabular.menu .item {
+    padding: .3em 1em;
+}
+
+.ui.attached.segment {
+    padding: 0.5em;
+}

@@ -1,0 +1,12 @@
+services:
+  products:
+    build:
+      context: .
+      dockerfile: examples/federation-compatibility/federation.Dockerfile
+    ports:
+      - 4001:4001
+    working_dir: /work
+    volumes:
+      - ./hiku/:/work/hiku
+      - ./examples/federation-compatibility/server.py:/work/server.py
+    command: python3 server.py

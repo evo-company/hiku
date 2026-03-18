@@ -1,0 +1,156 @@
+shell: bash
+
+env:
+  CURRENT_UID:
+    sh: echo "`id -u`:`id -g`"
+
+commands:
+  release:
+    description: |
+      Update version in pyproject.toml
+      Create new annotated tag
+      Push changes to remote
+    options: |
+      Usage: lets release <version> --message=<message>
+      Options:
+        <version>       Set version (rc will bump version automatically)
+        --message=<message>, -m    Release message
+      Example:
+        lets release 0.7.1     --message="Added federation"
+        lets release 0.7.2rc1  --message="Added feature"
+        lets release rc        --message="Added feature"
+    cmd: ./scripts/release.sh ${LETSOPT_VERSION} "${LETSOPT_MESSAGE}"
+
+  _build-base:
+    description: Build base docker image
+    cmd: docker build -t hiku-base -f Dockerfile --target base .
+
+  _build-examples:
+    description: Build docker image for examples
+    depends: [_build-base]
+    cmd: docker build -t hiku-examples -f Dockerfile --target examples .
+
+  _build-docs:
+    description: Build docker image for docs
+    depends: [_build-base]
+    cmd: docker build -t hiku-docs -f Dockerfile --target docs .
+
+  _build-test:
+    description: Build docker image for test
+    depends: [_build-base]
+    cmd: docker build -t hiku-test -f Dockerfile --target test . --progress=plain
+
+  _build-dev:
+    description: Build docker image for dev
+    depends: [_build-base]
+    cmd: docker build -t hiku-dev -f Dockerfile --target dev .
+
+  docs:
+    description: Build docs
+    depends: [_build-docs]
+    cmd: docker compose run --rm docs
+
+  docs-local:
+    description: Build docs using uv
+    cmd: uv run sphinx-build -b html docs docs/build
+
+  check:
+    description: Run checks
+    cmd: |
+      uv run flake8
+      uv run black hiku examples
+      uv run mypy
+
+  test:
+    description: Run tests
+    depends: [_build-test]
+    cmd: [docker compose, run, --rm, test]
+
+  test-pg:
+    description: Run tests with pg
+    depends: [_build-test]
+    cmd: [docker compose, run, --rm, test-pg]
+
+  test-tox:
+    description: Run tests using tox
+    depends: [_build-test]
+    cmd: docker compose run --rm test tox
+
+  bench:
+    description: Run benchmarks
+    depends: [_build-test]
+    cmd: docker compose run --rm test-base tests/benchmarks --benchmark-enable $@
+
+  bench-local:
+    description: Run benchmarks
+    cmd: uv run pytest tests/benchmarks --benchmark-enable $@
+
+  bench-baseline:
+    description: Run benchmarks ans save baseline
+    cmd: uv run pytest tests/benchmarks --benchmark-enable --benchmark-store=baseline $@
+
+  bench-store:
+    description: Run benchmarks and save with name
+    usage: |
+      Usage: lets bench-store <name> [test]
+      Example: lets bench-store baseline
+    cmd: uv run pytest tests/benchmarks --benchmark-enable --benchmark-store=${LETSOPT_NAME} $LETSOPT_TEST
+
+  bench-compare:
+    description: Run benchmarks and compare with baseline
+    cmd: uv run pytest tests/benchmarks --benchmark-enable --benchmark-compare $@
+
+  flake:
+    description: Run flake8
+    depends: [_build-dev]
+    cmd: docker compose run --rm dev flake8
+
+  black:
+    description: Run flake8
+    depends: [_build-dev]
+    cmd: docker compose run --rm dev black hiku examples
+
+  mypy:
+    description: Run mypy
+    depends: [_build-dev]
+    cmd: docker compose run --rm dev mypy $LETS_COMMAND_ARGS
+
+  examples-federation:
+    description: Run federation app from examples
+    depends: [_build-examples]
+    cmd: docker compose up examples-federation
+
+  examples-federation-v2:
+    description: Run federation 2 app from examples
+    depends: [_build-examples]
+    cmd: docker compose up examples-federation-v2
+
+  examples-flask:
+    description: Run flask app from examples
+    depends: [_build-examples]
+    cmd: docker compose up examples-flask
+
+  examples-aiohttp:
+    description: Run aiohttp app from examples
+    depends: [_build-examples]
+    cmd: docker compose up examples-aiohttp
+
+  federation-compatibility-test:
+    description: Run federation compatibility test
+    depends: [_build-examples]
+    cmd: |
+      echo "Dumping schema..."
+      docker compose run --rm federation-compatibility-server dump
+      export APOLLO_ELV2_LICENSE=accept
+
+      echo "Running compatibility test..."
+      npx -y @apollo/federation-subgraph-compatibility docker \
+        --compose ./examples/federation-compatibility/docker-compose.yml \
+        --path /graphql \
+        --schema ./examples/federation-compatibility/products.graphql \
+        --failOnRequired \
+        --debug
+      
+  lock:
+    description: Lock dependencies
+    cmd: uv lock
