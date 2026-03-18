@@ -23,22 +23,23 @@ jobs:
       CODEFLASH_API_KEY: ${{ secrets.CODEFLASH_API_KEY }}
     
     steps:
-        - name: Checkout
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-        fetch-depth: 0
-        - name: Set up Python 3.10
+          fetch-depth: 0
+      - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
-        python-version: "3.10"
-        - name: Install required system packages
+          python-version: "3.10"
+      - name: Install required system packages
         run: |
-        sudo apt-get update
-        sudo apt-get install -y libpq-dev build-essential
-        - name: Upgrade pip
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev build-essential
+      - name: Upgrade pip
         run: python -m pip install --upgrade pip==23.1.2
-        - name: Install uv (dependency manager)
+      - name: Install uv (dependency manager)
         run: pip install uv==0.10.11
-        - name: Install Python dependencies
+      - name: Install Python dependencies
+        run: uv sync --group test --python 3.10
       - name: ⚡️Codeflash Optimization
         run: uv run codeflash
