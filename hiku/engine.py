@@ -129,20 +129,32 @@ class InitOptions(QueryTransformer):
                 self._path.pop()
 
     def visit_node(self, obj: QueryNode) -> QueryNode:
-        fields = []
-        fragments = []
+        fields: list[QueryField | QueryLink] | None = None
+        for idx, f in enumerate(obj.fields):
+            item = f if f.name == "__typename" else self.visit(f)
+            if fields is not None:
+                fields.append(item)
+            elif item is not f:
+                fields = list(obj.fields[:idx])
+                fields.append(item)
 
-        for f in obj.fields:
-            if f.name == "__typename":
-                fields.append(f)
-            else:
-                fields.append(self.visit(f))
-
-        for fr in obj.fragments:
+        fragments: list[Fragment] | None = None
+        for idx, fr in enumerate(obj.fragments):
             with self.enter_path(self._graph.nodes_map[fr.type_name]):
-                fragments.append(self.visit(fr))
+                item = self.visit(fr)
+            if fragments is not None:
+                fragments.append(item)
+            elif item is not fr:
+                fragments = list(obj.fragments[:idx])
+                fragments.append(item)
 
-        return obj.copy(fields=fields, fragments=fragments)
+        if fields is None and fragments is None:
+            return obj
+
+        return obj.copy(
+            fields=obj.fields if fields is None else fields,
+            fragments=obj.fragments if fragments is None else fragments,
+        )
 
     def visit_field(self, obj: QueryField) -> QueryField:
         graph_obj = self._path[-1].fields_map[obj.name]
@@ -150,6 +162,12 @@ class InitOptions(QueryTransformer):
             return obj.copy(options=_get_options(self._graph, graph_obj, obj))
         else:
             return obj
+
+    def visit_fragment(self, obj: Fragment) -> Fragment:
+        node = self.visit(obj.node)
+        if node is obj.node:
+            return obj
+        return obj.copy(node=node)
 
     def visit_link(self, obj: QueryLink) -> QueryLink:
         graph_obj = self._path[-1].fields_map[obj.name]
@@ -174,6 +192,8 @@ class InitOptions(QueryTransformer):
             if graph_obj.options
             else None
         )
+        if options is None and node is obj.node:
+            return obj
         return obj.copy(node=node, options=options)
 
 

@@ -15,7 +15,7 @@ from hiku import query as q
 from hiku.builder import Q, M, build
 from hiku.context import create_execution_context
 from hiku.denormalize.graphql import DenormalizeGraphQL
-from hiku.engine import Context, Engine, pass_context
+from hiku.engine import Context, Engine, InitOptions, pass_context
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import Field, Graph, Input, Interface, Link, Node, Nothing, Option, Root, Union
 from hiku.introspection.graphql import GraphQLIntrospection
@@ -67,6 +67,158 @@ def execute(graph, query_, ctx=None):
 def execute_schema(graph, query):
     schema = Schema(SyncExecutor(), graph)
     return schema.execute_sync(query)
+
+
+def test_init_options_returns_same_query_without_options():
+    graph = Graph(
+        [
+            Node(
+                "a",
+                [
+                    Field("b", None, Mock()),
+                ],
+            ),
+            Root(
+                [
+                    Link("c", TypeRef["a"], lambda: 1, requires=None),
+                ]
+            ),
+        ]
+    )
+    query = build([Q.c[Q.b]])
+
+    transformed = InitOptions(graph).visit(query)
+
+    assert transformed is query
+    assert transformed.fields[0] is query.fields[0]
+    assert transformed.fields[0].node is query.fields[0].node
+
+
+def test_init_options_returns_same_query_with_fragment_without_options():
+    graph = Graph(
+        [
+            Node(
+                "a",
+                [
+                    Field("b", None, Mock()),
+                ],
+            ),
+            Root(
+                [
+                    Link("c", TypeRef["a"], lambda: 1, requires=None),
+                ]
+            ),
+        ]
+    )
+    query = q.Node(
+        [
+            q.Link(
+                "c",
+                q.Node(
+                    [],
+                    [q.Fragment(None, "a", q.Node([q.Field("b")]))],
+                ),
+            ),
+        ]
+    )
+
+    transformed = InitOptions(graph).visit(query)
+
+    assert transformed is query
+    assert transformed.fields[0] is query.fields[0]
+    assert transformed.fields[0].node is query.fields[0].node
+    assert (
+        transformed.fields[0].node.fragments[0]
+        is query.fields[0].node.fragments[0]
+    )
+
+
+def test_init_options_copies_field_when_options_are_normalized():
+    graph = Graph(
+        [
+            Root(
+                [
+                    Field(
+                        "a",
+                        None,
+                        Mock(),
+                        options=[Option("limit", None, default=1)],
+                    ),
+                ]
+            ),
+        ]
+    )
+    query = build([Q.a])
+
+    transformed = InitOptions(graph).visit(query)
+
+    assert transformed is not query
+    assert transformed.fields[0] is not query.fields[0]
+    assert transformed.fields[0].options == {"limit": 1}
+    assert query.fields[0].options is None
+
+
+def test_init_options_copies_link_when_options_are_normalized():
+    graph = Graph(
+        [
+            Node(
+                "a",
+                [
+                    Field("b", None, Mock()),
+                ],
+            ),
+            Root(
+                [
+                    Link(
+                        "c",
+                        TypeRef["a"],
+                        lambda options: 1,
+                        requires=None,
+                        options=[Option("limit", None, default=1)],
+                    ),
+                ]
+            ),
+        ]
+    )
+    query = build([Q.c[Q.b]])
+
+    transformed = InitOptions(graph).visit(query)
+
+    assert transformed is not query
+    assert transformed.fields[0] is not query.fields[0]
+    assert transformed.fields[0].node is query.fields[0].node
+    assert transformed.fields[0].options == {"limit": 1}
+
+
+def test_init_options_copies_parent_when_child_changes():
+    graph = Graph(
+        [
+            Node(
+                "a",
+                [
+                    Field(
+                        "b",
+                        None,
+                        Mock(),
+                        options=[Option("limit", None, default=1)],
+                    ),
+                ],
+            ),
+            Root(
+                [
+                    Link("c", TypeRef["a"], lambda: 1, requires=None),
+                ]
+            ),
+        ]
+    )
+    query = build([Q.c[Q.b]])
+
+    transformed = InitOptions(graph).visit(query)
+
+    assert transformed is not query
+    assert transformed.fields[0] is not query.fields[0]
+    assert transformed.fields[0].node is not query.fields[0].node
+    assert transformed.fields[0].node.fields[0].options == {"limit": 1}
 
 
 def test_context():
