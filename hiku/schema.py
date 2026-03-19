@@ -49,7 +49,7 @@ def _run_validation(
     return errors
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ExecutionResult:
     data: dict[str, Any] | None
     errors: list[GraphQLError] | None

@@ -21,12 +21,12 @@ T = TypeVar("T", bound="FederationSchemaDirective")
 LinkPurpose = Enum("link__Purpose", ["SECURITY", "EXECUTION"])  # type: ignore[misc]  # noqa: E501
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class ComposeOptions:
     import_url: str | None
 
 
-@dataclass
+@dataclass(slots=True)
 class FederationSchemaDirectiveInfo(SchemaDirectiveInfo):
     compose_options: ComposeOptions | None = None
 

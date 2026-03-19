@@ -271,7 +271,7 @@ class Exporter(GraphVisitor):
                     yield directive
 
                 for field in node.fields:
-                    for directive in (field.directives or []):
+                    for directive in field.directives or []:
                         info = directive.__directive_info__
                         if info.name not in visited:
                             visited.add(info.name)
