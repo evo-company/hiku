@@ -348,4 +348,7 @@ def get_deprecated(
     if obj.directives is None:
         return None
 
-    return next((d for d in obj.directives if isinstance(d, Deprecated)), None)
+    for d in obj.directives:
+        if isinstance(d, Deprecated):
+            return d
+    return None
