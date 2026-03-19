@@ -1,6 +1,6 @@
 import typing as t
 from abc import ABC, abstractmethod
-from collections import OrderedDict
+
 from typing import TypeVar
 
 if t.TYPE_CHECKING:
@@ -193,20 +193,21 @@ class Mapping(metaclass=MappingMeta):
 
 
 class RecordMeta(TypingMeta):
-    __field_types__: OrderedDict
+    __field_types__: dict[str, GenericMeta]
+
+    def __getitem__(cls, parameters: t.Any) -> "RecordMeta":
+        if isinstance(parameters, dict):
+            parameters = tuple(parameters.items())
+        elif not isinstance(parameters, tuple):
+            parameters = tuple(parameters)
+        return super().__getitem__(parameters)
 
     def __cls_init__(
         cls,
-        field_types: dict[str, GenericMeta] | list[tuple[str, GenericMeta]],
+        field_types: tuple[tuple[str, GenericMeta], ...],
     ) -> None:
-        items: t.Iterable
-        if hasattr(field_types, "items"):
-            field_types = t.cast(dict[str, GenericMeta], field_types)
-            items = list(field_types.items())
-        else:
-            items = list(field_types)
-        cls.__field_types__ = OrderedDict(
-            (key, _maybe_typeref(val)) for key, val in items
+        cls.__field_types__ = dict(
+            (key, _maybe_typeref(val)) for key, val in field_types
         )
 
     def __cls_repr__(self) -> str:
@@ -217,7 +218,7 @@ class RecordMeta(TypingMeta):
 
 
 class Record(metaclass=RecordMeta):
-    __field_types__: OrderedDict
+    __field_types__: dict[str, GenericMeta]
 
 
 class CallableMeta(TypingMeta):
