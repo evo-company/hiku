@@ -111,11 +111,14 @@ class Option(AbstractOption):
         :param directives: list of directives for the option
         :param deprecated: deprecation reason
         """
-        if directives is None:
-            directives = []
-
         if deprecated is not None:
-            directives.append(Deprecated(deprecated))
+            if directives is None:
+                directives = [Deprecated(deprecated)]
+            else:
+                directives = list(directives)
+                directives.append(Deprecated(deprecated))
+        elif directives is None:
+            directives = ()
 
         self.name = name
         # TODO(m.kind): make type_ non-optional
@@ -235,11 +238,14 @@ class Field(AbstractField):
         :param directives: list of directives for the field
         :param deprecated: deprecation reason
         """
-        if directives is None:
-            directives = []
-
         if deprecated is not None:
-            directives.append(Deprecated(deprecated))
+            if directives is None:
+                directives = [Deprecated(deprecated)]
+            else:
+                directives = list(directives)
+                directives.append(Deprecated(deprecated))
+        elif directives is None:
+            directives = ()
 
         self.name = name
         self.type = type_
@@ -294,14 +300,31 @@ class FieldType(Enum):
     CUSTOM_SCALAR = "CUSTOM_SCALAR"
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True, slots=True)
 class FieldTypeInfo:
     type_name: str
     type_enum: FieldType
     required: bool
 
 
+_field_info_cache: dict[tuple, FieldTypeInfo | None] = {}
+_FIELD_INFO_SENTINEL = object()
+
+
 def get_field_info(
+    type_: GenericMeta | ScalarMeta | None,
+    required: bool = True,
+) -> FieldTypeInfo | None:
+    cache_key = (id(type_), required)
+    cached = _field_info_cache.get(cache_key, _FIELD_INFO_SENTINEL)
+    if cached is not _FIELD_INFO_SENTINEL:
+        return cached
+    result = _get_field_info(type_, required)
+    _field_info_cache[cache_key] = result
+    return result
+
+
+def _get_field_info(
     type_: GenericMeta | ScalarMeta | None,
     required: bool = True,
 ) -> FieldTypeInfo | None:
@@ -353,7 +376,7 @@ class LinkType(Enum):
     UNION = "UNION"
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True, slots=True)
 class LinkTypeInfo:
     type_name: str
     type_enum: LinkType
@@ -604,11 +627,14 @@ class Link(AbstractLink):
         """
         type_enum, node = get_link_type_enum(type_)
 
-        if directives is None:
-            directives = []
-
         if deprecated is not None:
-            directives.append(Deprecated(deprecated))
+            if directives is None:
+                directives = [Deprecated(deprecated)]
+            else:
+                directives = list(directives)
+                directives.append(Deprecated(deprecated))
+        elif directives is None:
+            directives = ()
 
         self.name = name
         self.type = type_
@@ -1169,7 +1195,7 @@ class GraphTypes(GraphVisitor):
         enums: list[BaseEnum],
         data_types: dict[str, type[Record]],
     ) -> dict[str, type[Record]]:
-        types = OrderedDict(data_types)
+        types = dict(data_types)
         roots = []
         for item in items:
             if item.name is not None:
