@@ -134,8 +134,11 @@ class GraphValidator(GraphVisitor):
         return "".join(self._name_formatter.visit(i) for i in path)
 
     def _validate_deprecated_duplicates(self, obj: Field | Link) -> None:
+        if obj.directives is None:
+            return
+
         deprecated_count = sum(
-            (1 for d in obj.directives if isinstance(d, Deprecated))
+            1 for d in obj.directives if isinstance(d, Deprecated)
         )
         if deprecated_count > 1:
             self.errors.report(

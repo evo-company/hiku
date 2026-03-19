@@ -49,7 +49,7 @@ def test_type_cache_deduplication():
     assert Optional[String] is not Optional[Integer]
 
 
-@pytest.mark.limit_memory("5 MB")
+@pytest.mark.limit_memory("1.6 MB")
 def test_graph_init_memory():
     TypingMeta.__cache__.clear()
     tracemalloc.start()

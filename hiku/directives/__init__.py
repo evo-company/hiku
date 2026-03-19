@@ -345,4 +345,7 @@ def get_deprecated(
     obj: t.Union["Field", "Link", "Option"],
 ) -> Deprecated | None:
     """Get deprecated directive"""
+    if obj.directives is None:
+        return None
+
     return next((d for d in obj.directives if isinstance(d, Deprecated)), None)

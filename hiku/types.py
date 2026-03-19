@@ -195,12 +195,12 @@ class Mapping(metaclass=MappingMeta):
 class RecordMeta(TypingMeta):
     __field_types__: dict[str, GenericMeta]
 
-    def __getitem__(cls, parameters: t.Any) -> "RecordMeta":
+    def __getitem__(cls, parameters: t.Any) -> "type[Record]":
         if isinstance(parameters, dict):
             parameters = tuple(parameters.items())
         elif not isinstance(parameters, tuple):
             parameters = tuple(parameters)
-        return super().__getitem__(parameters)
+        return super().__getitem__(parameters)  # type: ignore[return-value]
 
     def __cls_init__(
         cls,
