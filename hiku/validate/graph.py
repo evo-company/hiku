@@ -130,16 +130,25 @@ class GraphValidator(GraphVisitor):
         return ", ".join(map(repr, set(type(obj) for obj in objects)))
 
     def _format_path(self, obj: t.Any | None = None) -> str:
-        path = self._ctx + ([obj] if obj is not None else [])
-        return "".join(self._name_formatter.visit(i) for i in path)
+        path_ctx = self._ctx
+        if obj is None:
+            # build list of name parts directly to avoid creating an intermediate
+            # list of objects via concatenation and avoid generator overhead
+            return "".join([self._name_formatter.visit(i) for i in path_ctx])
+        # avoid allocating path_ctx + [obj]; only build list of string parts
+        parts = [self._name_formatter.visit(i) for i in path_ctx]
+        parts.append(self._name_formatter.visit(obj))
+        return "".join(parts)
 
     def _validate_deprecated_duplicates(self, obj: Field | Link) -> None:
         if obj.directives is None:
             return
 
-        deprecated_count = sum(
-            1 for d in obj.directives if isinstance(d, Deprecated)
-        )
+        deprecated_count = 0
+        for d in obj.directives:
+            if isinstance(d, Deprecated):
+                deprecated_count += 1
+
         if deprecated_count > 1:
             self.errors.report(
                 'Deprecated directive must be used only once for "{}", found {}'.format(  # noqa: E501
