@@ -41,10 +41,9 @@ from .graph import (
     One,
 )
 from .query import Field as QueryField
-from .query import Fragment
+from .query import Fragment, QueryTransformer, QueryVisitor
 from .query import Link as QueryLink
 from .query import Node as QueryNode
-from .query import QueryTransformer, QueryVisitor
 from .result import ROOT, Index, Proxy, Reference
 from .utils import ImmutableDict
 from .utils.serialize import serialize
@@ -129,6 +128,8 @@ class InitOptions(QueryTransformer):
                 self._path.pop()
 
     def visit_node(self, obj: QueryNode) -> QueryNode:
+        # Copy-on-write: fields/fragments stay None until a child actually
+        # changes, then we bulk-copy prior items and append the rest.
         fields: list[QueryField | QueryLink] | None = None
         for idx, f in enumerate(obj.fields):
             item = f if f.name == "__typename" else self.visit(f)
@@ -600,8 +601,9 @@ def link_result_to_ids(
         elif link_type is One:
             if any(i is Nothing for i in result):
                 raise TypeError(
-                    "Non-optional link should not return Nothing: "
-                    "{!r}".format(result)
+                    "Non-optional link should not return Nothing: {!r}".format(
+                        result
+                    )
                 )
             return result
         elif link_type is Many or link_type is MaybeMany:
@@ -1022,7 +1024,7 @@ class Context(Mapping):
             return self.__mapping[item]
         except KeyError:
             raise KeyError(
-                "Key {!r} is not specified " "in the query context".format(item)
+                "Key {!r} is not specified in the query context".format(item)
             )
 
 
