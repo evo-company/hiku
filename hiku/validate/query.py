@@ -110,7 +110,7 @@ class _AssumeRecord(AbstractTypeVisitor):
             return self._get_nested().visit(obj.__item_type__)
         return None
 
-    def visit_record(self, obj: RecordMeta) -> OrderedDict:
+    def visit_record(self, obj: RecordMeta) -> dict[str, GenericMeta]:
         # return fields alongside type definitions
         return obj.__field_types__
 

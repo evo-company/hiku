@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from hiku.graph import AbstractGraphVisitor
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True, slots=True)
 class EnumValue:
     name: str
     description: str | None = None

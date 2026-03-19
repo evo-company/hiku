@@ -86,15 +86,15 @@ commands:
     cmd: uv run pytest tests/benchmarks --benchmark-enable $@
 
   bench-baseline:
-    description: Run benchmarks ans save baseline
-    cmd: uv run pytest tests/benchmarks --benchmark-enable --benchmark-store=baseline $@
+    description: Run benchmarks and save baseline
+    cmd: uv run pytest tests/benchmarks --benchmark-enable --benchmark-save=baseline
 
   bench-store:
     description: Run benchmarks and save with name
     usage: |
       Usage: lets bench-store <name> [test]
       Example: lets bench-store baseline
-    cmd: uv run pytest tests/benchmarks --benchmark-enable --benchmark-store=${LETSOPT_NAME} $LETSOPT_TEST
+    cmd: uv run pytest tests/benchmarks --benchmark-enable --benchmark-save=${LETSOPT_NAME} $LETSOPT_TEST
 
   bench-compare:
     description: Run benchmarks and compare with baseline

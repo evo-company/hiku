@@ -271,7 +271,7 @@ class Exporter(GraphVisitor):
                     yield directive
 
                 for field in node.fields:
-                    for directive in field.directives:
+                    for directive in field.directives or []:
                         info = directive.__directive_info__
                         if info.name not in visited:
                             visited.add(info.name)
@@ -435,7 +435,7 @@ class Exporter(GraphVisitor):
             name=_name(obj.name),
             type=_encode_type(obj.type),
             arguments=[self.visit(o) for o in obj.options],
-            directives=[self.visit(d) for d in obj.directives],
+            directives=[self.visit(d) for d in (obj.directives or [])],
             description=(
                 _encode_default_value(obj.description)
                 if obj.description
@@ -482,7 +482,7 @@ class Exporter(GraphVisitor):
             ),
             type=_encode_type(obj.type, input_type=True),
             default_value=_encode_default_value(obj.default),
-            directives=[self.visit(d) for d in obj.directives],
+            directives=[self.visit(d) for d in (obj.directives or [])],
         )
 
     def visit_input(self, obj: Input) -> ast.InputObjectTypeDefinitionNode:

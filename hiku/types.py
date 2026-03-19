@@ -1,6 +1,6 @@
 import typing as t
 from abc import ABC, abstractmethod
-from collections import OrderedDict
+
 from typing import TypeVar
 
 if t.TYPE_CHECKING:
@@ -97,6 +97,7 @@ TM = t.TypeVar("TM", bound="TypingMeta")
 
 class TypingMeta(GenericMeta, type):
     __final__ = False
+    __cache__: dict = {}
 
     def __cls_init__(cls: TM, parameters: t.Any) -> None:
         raise NotImplementedError(type(cls))
@@ -107,9 +108,22 @@ class TypingMeta(GenericMeta, type):
     def __getitem__(cls: TM, parameters: t.Any) -> TM:
         if cls.__final__:
             raise TypeError("Cannot substitute parameters in {!r}".format(cls))
+
+        try:
+            cache_key = (cls, parameters)
+            cached = cls.__cache__.get(cache_key)
+            if cached is not None:
+                return cached
+        except TypeError:
+            cache_key = None  # unhashable parameters
+
         type_ = cls.__class__(cls.__name__, cls.__bases__, dict(cls.__dict__))
         type_.__cls_init__(parameters)
         type_.__final__ = True
+
+        if cache_key is not None:
+            cls.__cache__[cache_key] = type_
+
         return type_
 
     def __repr__(self) -> str:
@@ -179,20 +193,21 @@ class Mapping(metaclass=MappingMeta):
 
 
 class RecordMeta(TypingMeta):
-    __field_types__: OrderedDict
+    __field_types__: dict[str, GenericMeta]
+
+    def __getitem__(cls, parameters: t.Any) -> "type[Record]":
+        if isinstance(parameters, dict):
+            parameters = tuple(parameters.items())
+        elif not isinstance(parameters, tuple):
+            parameters = tuple(parameters)
+        return super().__getitem__(parameters)  # type: ignore[return-value]
 
     def __cls_init__(
         cls,
-        field_types: dict[str, GenericMeta] | list[tuple[str, GenericMeta]],
+        field_types: tuple[tuple[str, GenericMeta], ...],
     ) -> None:
-        items: t.Iterable
-        if hasattr(field_types, "items"):
-            field_types = t.cast(dict[str, GenericMeta], field_types)
-            items = list(field_types.items())
-        else:
-            items = list(field_types)
-        cls.__field_types__ = OrderedDict(
-            (key, _maybe_typeref(val)) for key, val in items
+        cls.__field_types__ = dict(
+            (key, _maybe_typeref(val)) for key, val in field_types
         )
 
     def __cls_repr__(self) -> str:
@@ -203,7 +218,7 @@ class RecordMeta(TypingMeta):
 
 
 class Record(metaclass=RecordMeta):
-    __field_types__: OrderedDict
+    __field_types__: dict[str, GenericMeta]
 
 
 class CallableMeta(TypingMeta):

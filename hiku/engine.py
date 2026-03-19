@@ -177,13 +177,13 @@ class InitOptions(QueryTransformer):
         return obj.copy(node=node, options=options)
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True, slots=True)
 class FieldInfo:
     graph_field: Field
     query_field: QueryField | QueryLink
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True, slots=True)
 class LinkInfo:
     graph_link: Link
     query_link: QueryLink

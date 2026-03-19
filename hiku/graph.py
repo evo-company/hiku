@@ -12,7 +12,7 @@ import typing as t
 from abc import ABC, abstractmethod
 from collections import OrderedDict, defaultdict
 from enum import Enum
-from functools import cached_property, reduce
+from functools import cached_property, lru_cache, reduce
 from itertools import chain
 
 from hiku.enum import BaseEnum
@@ -111,6 +111,7 @@ class Option(AbstractOption):
         :param directives: list of directives for the option
         :param deprecated: deprecation reason
         """
+
         if directives is None:
             directives = []
 
@@ -215,6 +216,8 @@ class Field(AbstractField):
 
     """
 
+    directives: list[SchemaDirective]
+
     def __init__(
         self,
         name: str,
@@ -235,6 +238,7 @@ class Field(AbstractField):
         :param directives: list of directives for the field
         :param deprecated: deprecation reason
         """
+
         if directives is None:
             directives = []
 
@@ -294,13 +298,14 @@ class FieldType(Enum):
     CUSTOM_SCALAR = "CUSTOM_SCALAR"
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True, slots=True)
 class FieldTypeInfo:
     type_name: str
     type_enum: FieldType
     required: bool
 
 
+@lru_cache(maxsize=10)
 def get_field_info(
     type_: GenericMeta | ScalarMeta | None,
     required: bool = True,
@@ -353,7 +358,7 @@ class LinkType(Enum):
     UNION = "UNION"
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True, slots=True)
 class LinkTypeInfo:
     type_name: str
     type_enum: LinkType
@@ -1169,8 +1174,8 @@ class GraphTypes(GraphVisitor):
         enums: list[BaseEnum],
         data_types: dict[str, type[Record]],
     ) -> dict[str, type[Record]]:
-        types = OrderedDict(data_types)
-        roots = []
+        types = dict(data_types)
+        roots: list[type[Record]] = []
         for item in items:
             if item.name is not None:
                 types[item.name] = self.visit(item)

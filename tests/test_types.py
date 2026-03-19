@@ -1,8 +1,6 @@
-import tracemalloc
-
 import pytest
 
-from hiku.graph import Field, Graph, Link, Node, Root
+from hiku.graph import Field, Graph, Link, Node, Root, get_field_info
 from hiku.types import Integer, Optional, Sequence, String, TypeRef, TypingMeta
 
 
@@ -43,27 +41,21 @@ def _make_big_graph(n_nodes: int = 100, fields_per_node: int = 20) -> Graph:
     return Graph(nodes + [root])
 
 
-@pytest.mark.limit_memory("5 MB")
+def test_type_cache_deduplication():
+    assert Optional[String] is Optional[String]
+    assert Sequence[Integer] is Sequence[Integer]
+    assert Optional[String] is not Optional[Integer]
+
+
+@pytest.mark.limit_memory("1.5 MB")
 def test_graph_init_memory():
-    tracemalloc.start()
+    TypingMeta.__cache__.clear()
+    get_field_info.cache_clear()
     try:
         _make_big_graph(100, 20)
-        snapshot = tracemalloc.take_snapshot()
-        _, peak = tracemalloc.get_traced_memory()
     finally:
-        tracemalloc.stop()
-
-    stats = snapshot.statistics("lineno")
-    print(f"\nPeak: {peak / 1024 / 1024:.2f} MB  (limit 5 MB)")
-    print("Top allocators:")
-    for stat in stats[:10]:
-        print(f"  {stat}")
-
-    limit = 5 * 1024 * 1024  # 5 MB
-    assert peak < limit, (
-        f"Peak memory {peak / 1024 / 1024:.2f} MB exceeds "
-        f"{limit / 1024 / 1024:.0f} MB — type caching may be broken"
-    )
+        TypingMeta.__cache__.clear()
+        get_field_info.cache_clear()
 
 
 def test_sequence_to_type_ref():

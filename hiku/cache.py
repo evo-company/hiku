@@ -68,14 +68,14 @@ class BaseCache(abc.ABC):
         raise NotImplementedError()
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class CacheMetrics:
     name: str
     hits_counter: Counter = RESULT_CACHE_HITS
     misses_counter: Counter = RESULT_CACHE_MISSES
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class CacheSettings:
     cache: BaseCache
     cache_key: CacheKeyFn | None = None

@@ -26,11 +26,11 @@ def get_ref_type(
     types: Types, type_: type[Record] | RefMetaTypes, name: str
 ) -> RefMetaTypes:
     if isinstance(type_, RecordMeta):
-        type_ = type_.__field_types__[name]
-        if isinstance(type_, TypeRefMeta):
-            return type_
+        field_type = type_.__field_types__[name]
+        if isinstance(field_type, TypeRefMeta):
+            return field_type
 
-        return get_ref_type(types, type_, name)
+        return get_ref_type(types, field_type, name)  # type: ignore[arg-type]
     elif isinstance(type_, OptionalMeta):
         assert isinstance(type_.__type__, RefMeta), type_.__type__
         return type_.__type__
