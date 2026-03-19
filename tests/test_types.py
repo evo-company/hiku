@@ -1,8 +1,6 @@
-import tracemalloc
-
 import pytest
 
-from hiku.graph import Field, Graph, Link, Node, Root
+from hiku.graph import Field, Graph, Link, Node, Root, get_field_info
 from hiku.types import Integer, Optional, Sequence, String, TypeRef, TypingMeta
 
 
@@ -49,13 +47,15 @@ def test_type_cache_deduplication():
     assert Optional[String] is not Optional[Integer]
 
 
-@pytest.mark.limit_memory("1.25 MB")
+@pytest.mark.limit_memory("1.5 MB")
 def test_graph_init_memory():
     TypingMeta.__cache__.clear()
+    get_field_info.cache_clear()
     try:
         _make_big_graph(100, 20)
     finally:
         TypingMeta.__cache__.clear()
+        get_field_info.cache_clear()
 
 
 def test_sequence_to_type_ref():

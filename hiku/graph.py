@@ -12,7 +12,7 @@ import typing as t
 from abc import ABC, abstractmethod
 from collections import OrderedDict, defaultdict
 from enum import Enum
-from functools import cached_property, reduce
+from functools import cached_property, lru_cache, reduce
 from itertools import chain
 
 from hiku.enum import BaseEnum
@@ -305,6 +305,7 @@ class FieldTypeInfo:
     required: bool
 
 
+@lru_cache(maxsize=10)
 def get_field_info(
     type_: GenericMeta | ScalarMeta | None,
     required: bool = True,
