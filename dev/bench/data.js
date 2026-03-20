@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774020781836,
+  "lastUpdate": 1774024356011,
   "repoUrl": "https://github.com/evo-company/hiku",
   "entries": {
     "Benchmark": [
@@ -839,6 +839,154 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.00001387809146700216",
             "extra": "mean: 214.1095384000579 usec\nrounds: 1000"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "m.kindritskiy@smartweb.com.ua",
+            "name": "m.kindritskiy"
+          },
+          "committer": {
+            "email": "m.kindritskiy@smartweb.com.ua",
+            "name": "m.kindritskiy"
+          },
+          "distinct": true,
+          "id": "474346ebf71673319ba24f0bd2906b4e73e6029a",
+          "message": "add lets test-memray",
+          "timestamp": "2026-03-20T18:31:31+02:00",
+          "tree_id": "47b479ad5c326ad35fe1dab6a7253536e20fb415",
+          "url": "https://github.com/evo-company/hiku/commit/474346ebf71673319ba24f0bd2906b4e73e6029a"
+        },
+        "date": 1774024355626,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "tests/benchmarks/test_engine_execute.py::test_engine_execute_shallow",
+            "value": 3221.506978518485,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0001407922798206032",
+            "extra": "mean: 310.4137307999508 usec\nrounds: 1000"
+          },
+          {
+            "name": "tests/benchmarks/test_engine_execute.py::test_engine_execute_medium",
+            "value": 1957.4830239791615,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0000254808597148286",
+            "extra": "mean: 510.8601135999664 usec\nrounds: 1000"
+          },
+          {
+            "name": "tests/benchmarks/test_engine_execute.py::test_engine_execute_deep",
+            "value": 467.8753320687365,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00040259486034094203",
+            "extra": "mean: 2.1373214860002236 msec\nrounds: 500"
+          },
+          {
+            "name": "tests/benchmarks/test_engine_execute.py::test_engine_execute_wide",
+            "value": 1490.3269952303726,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000020368742675239617",
+            "extra": "mean: 670.993683399945 usec\nrounds: 1000"
+          },
+          {
+            "name": "tests/benchmarks/test_engine_execute.py::test_engine_execute_deep_cached",
+            "value": 587.6249282429634,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0003210435558536312",
+            "extra": "mean: 1.701765789599949 msec\nrounds: 500"
+          },
+          {
+            "name": "tests/benchmarks/test_engine_execute.py::test_engine_execute_deep_inline_fragments",
+            "value": 438.1348016077079,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00037288066448120234",
+            "extra": "mean: 2.2824025764001474 msec\nrounds: 500"
+          },
+          {
+            "name": "tests/benchmarks/test_engine_execute.py::test_engine_execute_deep_named_fragments",
+            "value": 362.4067532099019,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0005713763375498637",
+            "extra": "mean: 2.7593304792000137 msec\nrounds: 500"
+          },
+          {
+            "name": "tests/benchmarks/test_graph_init.py::test_graph_init_speed",
+            "value": 63.82107709638885,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00299109093676031",
+            "extra": "mean: 15.668804813333093 msec\nrounds: 100"
+          },
+          {
+            "name": "tests/benchmarks/test_is_hashable.py::test_is_hashable_hashable",
+            "value": 355333.9661251506,
+            "unit": "iter/sec",
+            "range": "stddev: 2.0526417042657615e-7",
+            "extra": "mean: 2.8142539000839406 usec\nrounds: 1000"
+          },
+          {
+            "name": "tests/benchmarks/test_is_hashable.py::test_is_hashable_unhashable",
+            "value": 727702.9982277224,
+            "unit": "iter/sec",
+            "range": "stddev: 1.796043517683578e-7",
+            "extra": "mean: 1.374186999964877 usec\nrounds: 1000"
+          },
+          {
+            "name": "tests/benchmarks/test_is_hashable.py::test_is_hashable_mixed_list",
+            "value": 312107.9241714764,
+            "unit": "iter/sec",
+            "range": "stddev: 2.8455480955639357e-7",
+            "extra": "mean: 3.2040199000221037 usec\nrounds: 1000"
+          },
+          {
+            "name": "tests/benchmarks/test_read_graphql.py::test_field",
+            "value": 17212.945675337694,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000010692241525684235",
+            "extra": "mean: 58.09580875124568 usec\nrounds: 5119"
+          },
+          {
+            "name": "tests/benchmarks/test_read_graphql.py::test_link",
+            "value": 8434.34051300271,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00001523113567573308",
+            "extra": "mean: 118.56291531725104 usec\nrounds: 5928"
+          },
+          {
+            "name": "tests/benchmarks/test_read_graphql.py::test_link_fragment",
+            "value": 6653.7348764576445,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000019451417476748572",
+            "extra": "mean: 150.29153078193974 usec\nrounds: 4938"
+          },
+          {
+            "name": "tests/benchmarks/test_schema.py::test_federated_schema",
+            "value": 3126.1865323754596,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000015213801368525117",
+            "extra": "mean: 319.8785451999697 usec\nrounds: 1000"
+          },
+          {
+            "name": "tests/benchmarks/test_schema.py::test_schema",
+            "value": 3118.775254012807,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00014359484037473487",
+            "extra": "mean: 320.63868620008407 usec\nrounds: 1000"
+          },
+          {
+            "name": "tests/benchmarks/test_schema.py::test_schema_with_parse_cache",
+            "value": 4901.598027616443,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00001239119337786294",
+            "extra": "mean: 204.01509759997225 usec\nrounds: 1000"
+          },
+          {
+            "name": "tests/benchmarks/test_schema.py::test_schema_with_all_caches",
+            "value": 5033.978934953794,
+            "unit": "iter/sec",
+            "range": "stddev: 0.000011910929912110511",
+            "extra": "mean: 198.65001680011574 usec\nrounds: 1000"
           }
         ]
       }
