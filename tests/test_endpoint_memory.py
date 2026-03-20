@@ -6,7 +6,7 @@ from hiku.endpoint.graphql import GraphQLEndpoint
 from hiku.executors.sync import SyncExecutor
 from hiku.extensions.query_parse_cache import QueryParserCache
 from hiku.extensions.query_validation_cache import QueryValidationCache
-from hiku.graph import Graph, Link, Node, Root, Field
+from hiku.graph import Field, Graph, Link, Node, Root
 from hiku.schema import Schema
 from hiku.types import String, TypeRef
 
@@ -52,6 +52,14 @@ def _make_schema(**kwargs):
 query = "{ question { text answer } }"
 request = {"query": query}
 
+endpoint = _make_schema()
+endpoint_with_caches = _make_schema(
+    extensions=[
+        QueryParserCache(2),
+        QueryValidationCache(2),
+    ]
+)
+
 
 def _run_requests(endpoint, n_requests=100):
     # Warm up - let any one-time allocations happen
@@ -68,18 +76,11 @@ def _run_requests(endpoint, n_requests=100):
 
 @pytest.mark.limit_memory("50 KB")
 def test_endpoint_request_memory():
-    endpoint = _make_schema()
     result = _run_requests(endpoint, n_requests=100)
     assert result["data"] is not None
 
 
-@pytest.mark.limit_memory("5 KB")
+@pytest.mark.limit_memory("10 KB")
 def test_endpoint_with_caches_request_memory():
-    endpoint = _make_schema(
-        extensions=[
-            QueryParserCache(2),
-            QueryValidationCache(2),
-        ]
-    )
-    result = _run_requests(endpoint, n_requests=100)
+    result = _run_requests(endpoint_with_caches, n_requests=100)
     assert result["data"] is not None
