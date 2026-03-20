@@ -47,6 +47,7 @@ test = [
   "greenlet>=3.0.0",
   "tox>=4.31.0",
   "tox-gh-actions>=3.4.0",
+  "pytest-codspeed>=4.3.0",
 ]
 dev = [
   "graphql-core>=3.2.7",
