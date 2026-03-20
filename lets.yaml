@@ -76,6 +76,10 @@ commands:
     depends: [_build-test]
     cmd: docker compose run --rm test tox
 
+  test-memray:
+    description: Run tests with memray memory profiling
+    cmd: uv run pytest tests --memray $@
+
   bench:
     description: Run benchmarks
     depends: [_build-test]
