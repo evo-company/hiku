@@ -1,9 +1,11 @@
 import pytest
 
 from hiku.directives import Deprecated
-from hiku.graph import Graph, Input, Node, Field, Root, Link, Option
+from hiku.graph import Graph, Input, Node, Field, Root, Link, Option, Union, Interface
 from hiku.types import InputRef, Integer, TypeRef, Sequence
 from hiku.validate.graph import GraphValidationError
+from hiku.scalar import Scalar
+from hiku.enum import BaseEnum
 
 
 def _fields_func(fields, ids):
@@ -14,9 +16,24 @@ def _link_func(ids):
     pass
 
 
-def check_errors(graph_items, errors):
+def check_errors(
+    graph_items,
+    errors,
+    scalars=None,
+    unions=None,
+    interfaces=None,
+    enums=None,
+    inputs=None,
+):
     with pytest.raises(GraphValidationError) as err:
-        Graph(graph_items)
+        Graph(
+            graph_items,
+            scalars=scalars,
+            unions=unions,
+            interfaces=interfaces,
+            enums=enums,
+            inputs=inputs,
+        )
     assert err.value.errors == errors
 
 
@@ -337,4 +354,114 @@ def test_graph_contain_duplicate_nodes():
             Node("foo", [], description=tuple("foo")),
         ],
         ['Node "foo" description must be a string'],
+    )
+
+
+def test_scalar_and_node_same_name():
+    class CoolType(Scalar):
+        pass
+
+    check_errors(
+        [
+            Node("CoolType", []),
+        ],
+        [
+            'Scalar "CoolType" has the same name as node "CoolType". '
+            "GraphQL schema cannot have a scalar and a type with the same name."
+        ],
+        scalars=[CoolType],
+    )
+
+
+def test_scalar_and_union_same_name():
+    class CoolType(Scalar):
+        pass
+
+    check_errors(
+        [
+            Node("User", []),
+        ],
+        [
+            'Scalar "CoolType" has the same name as union "CoolType". '
+            "GraphQL schema cannot have a scalar and a type with the same name."
+        ],
+        scalars=[CoolType],
+        unions=[Union("CoolType", ["User"])],
+    )
+
+
+def test_scalar_and_interface_same_name():
+    class CoolType(Scalar):
+        pass
+
+    check_errors(
+        [
+            Node("User", []),
+        ],
+        [
+            'Scalar "CoolType" has the same name as interface "CoolType". '
+            "GraphQL schema cannot have a scalar and a type with the same name."
+        ],
+        scalars=[CoolType],
+        interfaces=[Interface("CoolType", [])],
+    )
+
+
+def test_scalar_and_enum_same_name():
+    class CoolType(Scalar):
+        pass
+
+    class CoolTypeEnum(BaseEnum):
+        name = "CoolType"
+        values = ["VALUE1", "VALUE2"]
+
+    check_errors(
+        [
+            Node("User", []),
+        ],
+        [
+            'Scalar "CoolType" has the same name as enum "CoolType". '
+            "GraphQL schema cannot have a scalar and a type with the same name."
+        ],
+        scalars=[CoolType],
+        enums=[CoolTypeEnum],
+    )
+
+
+def test_scalar_and_input_same_name():
+    class CoolType(Scalar):
+        pass
+
+    check_errors(
+        [
+            Node("User", []),
+        ],
+        [
+            'Scalar "CoolType" has the same name as input "CoolType". '
+            "GraphQL schema cannot have a scalar and a type with the same name."
+        ],
+        scalars=[CoolType],
+        inputs=[Input("CoolType", [])],
+    )
+
+
+def test_multiple_scalar_collisions():
+    class CoolType(Scalar):
+        pass
+
+    class AnotherType(Scalar):
+        pass
+
+    check_errors(
+        [
+            Node("CoolType", []),
+            Node("AnotherType", []),
+        ],
+        [
+            'Scalar "AnotherType" has the same name as node "AnotherType". '
+            "GraphQL schema cannot have a scalar and a type with the same name.",
+            'Scalar "CoolType" has the same name as node "CoolType". '
+            "GraphQL schema cannot have a scalar and a type with the same name.",
+        ],
+        scalars=[CoolType, AnotherType],
     )
