@@ -1,7 +1,7 @@
 Hiku
 ====
 
-|project|_ |documentation|_ |version|_ |tag|_ |license|_
+|project|_ |documentation|_ |version|_ |tag|_ |license|_ |codspeed|_
 
 Hiku is a library to implement Graph APIs. Essential GraphQL support included.
 
@@ -126,3 +126,5 @@ Use uv_ and Tox_ in order to install dependencies, run checks, and test your cha
 .. _tag: https://pypi.org/project/hiku/#history
 .. |license| image:: https://img.shields.io/pypi/l/hiku.svg
 .. _license: https://github.com/evo-company/hiku/blob/master/LICENSE.txt
+.. |codspeed| image:: https://img.shields.io/endpoint?url=https://codspeed.io/badge.json
+.. _codspeed: https://codspeed.io/evo-company/hiku?utm_source=badge
