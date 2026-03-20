@@ -82,7 +82,7 @@ include = ["hiku*"]
 hiku = ["py.typed"]
 
 [tool.pytest.ini_options]
-addopts = "--tb=native --benchmark-disable --memray"
+addopts = "--tb=native --benchmark-disable"
 testpaths = ["tests", "tests_pg"]
 asyncio_default_fixture_loop_scope = "session"
 
