@@ -19,6 +19,12 @@ Run unit tests using uv
 
     $ uv run pytest tests
 
+Run benchmarks using uv
+
+.. code-block:: bash
+
+    $ uv run pytest tests/benchmarks --benchmark-enable
+
 Run integration tests (with real postgres) using uv.
 Postgres in this case accessed via localhost.
 
@@ -27,6 +33,12 @@ Postgres in this case accessed via localhost.
     $ docker compose up -d postgres
     $ uv run pytest tests_pg --pg-host=localhost
     $ docker compose down
+
+Run tests with memray
+
+.. code-block:: bash
+
+    $ uv run pytest tests --memray
 
 Or you can use lets task runner to run unit + integration tests (all-on-one) in docker
 
@@ -49,6 +61,11 @@ Docs will be available at ``docs/build``
 
     $ uv run sphinx-build -b html docs docs/build
 
+Run examples
+
+.. code-block:: bash
+
+    $ uv run --group examples python examples/graphql_aiohttp.py
 
 Setup uv with IDE
 ~~~~~~~~~~~~~~~~~

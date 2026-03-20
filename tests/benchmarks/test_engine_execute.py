@@ -20,19 +20,10 @@ from hiku.graph import Field, Graph, Link, Node, Root
 from hiku.schema import Schema
 from hiku.types import Integer, Sequence, String, TypeRef
 
-
-# ---------------------------------------------------------------------------
-# Data dimensions
-# ---------------------------------------------------------------------------
-
 N_COMPANIES = 3
 N_DEPTS_PER_COMPANY = 3
 N_EMPLOYEES_PER_DEPT = 5
 
-
-# ---------------------------------------------------------------------------
-# Resolvers — minimal work, deterministic output
-# ---------------------------------------------------------------------------
 
 def resolve_company(fields, ids):
     def get(f, id_):
@@ -94,10 +85,6 @@ def resolve_profile(fields, ids):
     return [[get(f, i) for f in fields] for i in ids]
 
 
-# ---------------------------------------------------------------------------
-# Link functions
-# ---------------------------------------------------------------------------
-
 def link_companies():
     return list(range(1, N_COMPANIES + 1))
 
@@ -120,66 +107,78 @@ def link_profile(emp_ids):
     return [eid * 10 for eid in emp_ids]
 
 
-# ---------------------------------------------------------------------------
-# Graph fixture
-# ---------------------------------------------------------------------------
-
 @pytest.fixture(name="graph")
 def graph_fixture():
-    return Graph([
-        Node("Company", [
-            Field("id", Integer, resolve_company),
-            Field("name", String, resolve_company),
-            Field("founded", Integer, resolve_company),
-            Field("revenue", Integer, resolve_company),
-            Link(
-                "departments",
-                Sequence[TypeRef["Department"]],
-                link_departments,
-                requires="id",
+    return Graph(
+        [
+            Node(
+                "Company",
+                [
+                    Field("id", Integer, resolve_company),
+                    Field("name", String, resolve_company),
+                    Field("founded", Integer, resolve_company),
+                    Field("revenue", Integer, resolve_company),
+                    Link(
+                        "departments",
+                        Sequence[TypeRef["Department"]],
+                        link_departments,
+                        requires="id",
+                    ),
+                ],
             ),
-        ]),
-        Node("Department", [
-            Field("id", Integer, resolve_department),
-            Field("name", String, resolve_department),
-            Field("budget", Integer, resolve_department),
-            Field("floor", Integer, resolve_department),
-            Link(
-                "employees",
-                Sequence[TypeRef["Employee"]],
-                link_employees,
-                requires="id",
+            Node(
+                "Department",
+                [
+                    Field("id", Integer, resolve_department),
+                    Field("name", String, resolve_department),
+                    Field("budget", Integer, resolve_department),
+                    Field("floor", Integer, resolve_department),
+                    Link(
+                        "employees",
+                        Sequence[TypeRef["Employee"]],
+                        link_employees,
+                        requires="id",
+                    ),
+                ],
             ),
-        ]),
-        Node("Employee", [
-            Field("id", Integer, resolve_employee),
-            Field("name", String, resolve_employee),
-            Field("email", String, resolve_employee),
-            Field("role", String, resolve_employee),
-            Field("salary", Integer, resolve_employee),
-            Link(
-                "profile",
-                TypeRef["Profile"],
-                link_profile,
-                requires="id",
+            Node(
+                "Employee",
+                [
+                    Field("id", Integer, resolve_employee),
+                    Field("name", String, resolve_employee),
+                    Field("email", String, resolve_employee),
+                    Field("role", String, resolve_employee),
+                    Field("salary", Integer, resolve_employee),
+                    Link(
+                        "profile",
+                        TypeRef["Profile"],
+                        link_profile,
+                        requires="id",
+                    ),
+                ],
             ),
-        ]),
-        Node("Profile", [
-            Field("id", Integer, resolve_profile),
-            Field("bio", String, resolve_profile),
-            Field("avatar", String, resolve_profile),
-            Field("website", String, resolve_profile),
-            Field("joined_at", String, resolve_profile),
-        ]),
-        Root([
-            Link(
-                "companies",
-                Sequence[TypeRef["Company"]],
-                link_companies,
-                requires=None,
+            Node(
+                "Profile",
+                [
+                    Field("id", Integer, resolve_profile),
+                    Field("bio", String, resolve_profile),
+                    Field("avatar", String, resolve_profile),
+                    Field("website", String, resolve_profile),
+                    Field("joined_at", String, resolve_profile),
+                ],
             ),
-        ]),
-    ])
+            Root(
+                [
+                    Link(
+                        "companies",
+                        Sequence[TypeRef["Company"]],
+                        link_companies,
+                        requires=None,
+                    ),
+                ]
+            ),
+        ]
+    )
 
 
 @pytest.fixture(name="schema")
@@ -198,10 +197,6 @@ def schema_cached_fixture(graph):
         ],
     )
 
-
-# ---------------------------------------------------------------------------
-# Queries
-# ---------------------------------------------------------------------------
 
 QUERY_SHALLOW = """
 {
@@ -375,6 +370,7 @@ fragment ProfileFull on Profile {
 # ---------------------------------------------------------------------------
 # Benchmarks
 # ---------------------------------------------------------------------------
+
 
 def test_engine_execute_shallow(benchmark, schema):
     """1 level: root -> companies (2 fields, 3 items)."""
