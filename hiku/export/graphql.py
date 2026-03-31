@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from typing import Any
 
 from graphql.language import ast
@@ -5,10 +6,10 @@ from graphql.language import ast
 from hiku.query import Fragment
 
 from ..query import (
-    QueryVisitor,
     Field,
-    Node,
     Link,
+    Node,
+    QueryVisitor,
 )
 
 
@@ -41,6 +42,9 @@ def _encode(value: Any) -> ast.ValueNode:
 
 
 class Exporter(QueryVisitor):
+    def visit(self, obj: Any) -> Any:
+        return obj.accept(self)
+
     def visit_field(self, obj: Field) -> ast.FieldNode:
         arguments = None
         if obj.options:
@@ -94,12 +98,55 @@ class Exporter(QueryVisitor):
         return ast.SelectionSetNode(selections=selections)
 
 
+class FragmentsCollector(QueryVisitor):
+    def __init__(self) -> None:
+        self.fragments: OrderedDict[str, Fragment] = OrderedDict()
+
+    def collect(self, obj: Node) -> list[Fragment]:
+        self.visit(obj)
+        return list(self.fragments.values())
+
+    def visit_node(self, obj: Node) -> None:
+        for field in obj.fields:
+            self.visit(field)
+
+        for fragment in obj.fragments:
+            self.visit(fragment)
+
+    def visit_field(self, obj: Field) -> None:
+        return None
+
+    def visit_link(self, obj: Link) -> None:
+        self.visit(obj.node)
+
+    def visit_fragment(self, obj: Fragment) -> None:
+        if obj.name is not None:
+            if obj.name in self.fragments:
+                return
+            self.fragments[obj.name] = obj
+
+        self.visit(obj.node)
+
+
 def export(query: Node) -> ast.DocumentNode:
+    exporter = Exporter()
+    fragments = FragmentsCollector().collect(query)
+
     return ast.DocumentNode(
         definitions=[
             ast.OperationDefinitionNode(
                 operation=ast.OperationType.QUERY,
-                selection_set=Exporter().visit(query),
+                selection_set=exporter.visit(query),
             )
+        ]
+        + [
+            ast.FragmentDefinitionNode(
+                name=_name(fragment.name),
+                type_condition=ast.NamedTypeNode(
+                    name=_name(fragment.type_name),
+                ),
+                selection_set=exporter.visit(fragment.node),
+            )
+            for fragment in fragments
         ]
     )
