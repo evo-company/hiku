@@ -133,6 +133,212 @@ def test_init_options_returns_same_query_with_fragment_without_options():
     )
 
 
+def test_init_options_supports_interface_typed_fragment():
+    graph = Graph(
+        [
+            Node(
+                "Audio",
+                [
+                    Field("id", Integer, Mock()),
+                ],
+                implements=["Media"],
+            ),
+            Root(
+                [
+                    Link(
+                        "media",
+                        InterfaceRef["Media"],
+                        lambda: (1, TypeRef["Audio"]),
+                        requires=None,
+                    ),
+                ]
+            ),
+        ],
+        interfaces=[
+            Interface(
+                "Media",
+                [Field("id", Integer, Mock())],
+            ),
+        ],
+    )
+    query = q.Node(
+        [
+            q.Link(
+                "media",
+                q.Node(
+                    [],
+                    [
+                        q.Fragment(
+                            "MediaFields",
+                            "Media",
+                            q.Node([q.Field("id")]),
+                        )
+                    ],
+                ),
+            ),
+        ]
+    )
+
+    transformed = InitOptions(graph).visit(query)
+
+    assert transformed is query
+
+
+def test_init_options_supports_named_union_fragment_after_query_merge():
+    graph = Graph(
+        [
+            Node(
+                "SimpleContext",
+                [
+                    Field("maybeCompanyId", String, Mock()),
+                    Field("maybeOrderId", String, Mock()),
+                ],
+            ),
+            Node(
+                "SimpleAction",
+                [
+                    Field("id", Integer, Mock()),
+                    Field("title", String, Mock()),
+                ],
+            ),
+            Node(
+                "ChooseOrderAction",
+                [
+                    Field("id", Integer, Mock()),
+                    Field("title", String, Mock()),
+                ],
+            ),
+            Node(
+                "ChatNode",
+                [
+                    Link(
+                        "actions",
+                        Sequence[UnionRef["ChatBotAction"]],
+                        Mock(),
+                        requires=None,
+                    ),
+                ],
+            ),
+            Node(
+                "ChooseOrdersUpdate",
+                [
+                    Link(
+                        "node",
+                        TypeRef["ChatNode"],
+                        Mock(),
+                        requires=None,
+                    ),
+                ],
+            ),
+            Node(
+                "ContactOperatorUpdate",
+                [
+                    Link(
+                        "context",
+                        TypeRef["SimpleContext"],
+                        Mock(),
+                        requires=None,
+                    ),
+                    Link(
+                        "node",
+                        TypeRef["ChatNode"],
+                        Mock(),
+                        requires=None,
+                    ),
+                ],
+            ),
+            Node(
+                "ChatHistory",
+                [
+                    Link(
+                        "lastUpdate",
+                        Optional[UnionRef["ChatBotUpdate"]],
+                        Mock(),
+                        requires=None,
+                    ),
+                ],
+            ),
+            Node(
+                "SupportChat",
+                [
+                    Link(
+                        "history",
+                        TypeRef["ChatHistory"],
+                        Mock(),
+                        requires=None,
+                    ),
+                ],
+            ),
+            Root(
+                [
+                    Link(
+                        "supportChat",
+                        TypeRef["SupportChat"],
+                        Mock(),
+                        requires=None,
+                    ),
+                ]
+            ),
+        ],
+        unions=[
+            Union(
+                "ChatBotAction",
+                [
+                    "SimpleAction",
+                    "ChooseOrderAction",
+                ],
+            ),
+            Union(
+                "ChatBotUpdate",
+                ["ChooseOrdersUpdate", "ContactOperatorUpdate"],
+            ),
+        ],
+    )
+    src = """
+    query ChatHistoryQuery__uaprom__0(
+      $ticketCommentAfterCursor: String! = ""
+      $ticketCommentPerPage: Int! = 0
+    ) {
+      supportChat {
+        history {
+          lastUpdate {
+            __typename
+            ... on ChooseOrdersUpdate {
+              node {
+                ...l
+              }
+            }
+            ... on ContactOperatorUpdate {
+              context {
+                ...b
+              }
+              node {
+                ...l
+              }
+            }
+          }
+        }
+      }
+    }
+
+    fragment b on SimpleContext { maybeCompanyId maybeOrderId }
+    fragment c on SimpleAction { id title }
+    fragment d on ChooseOrderAction { id title }
+    fragment k on ChatBotAction { __typename ...c ...d }
+    fragment l on ChatNode {
+      __typename
+      actions {
+        ...k
+      }
+    }
+    """
+    query = QueryMerger(graph).merge(read(src))
+
+    transformed = InitOptions(graph).visit(query)
+
+    assert transformed is query
+
+
 def test_init_options_copies_field_when_options_are_normalized():
     graph = Graph(
         [
