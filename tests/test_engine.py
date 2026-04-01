@@ -133,6 +133,266 @@ def test_init_options_returns_same_query_with_fragment_without_options():
     )
 
 
+def test_init_options_supports_interface_typed_fragment():
+    graph = Graph(
+        [
+            Node(
+                "Audio",
+                [
+                    Field("id", Integer, Mock()),
+                ],
+                implements=["Media"],
+            ),
+            Root(
+                [
+                    Link(
+                        "media",
+                        InterfaceRef["Media"],
+                        lambda: (1, TypeRef["Audio"]),
+                        requires=None,
+                    ),
+                ]
+            ),
+        ],
+        interfaces=[
+            Interface(
+                "Media",
+                [Field("id", Integer, Mock())],
+            ),
+        ],
+    )
+    query = q.Node(
+        [
+            q.Link(
+                "media",
+                q.Node(
+                    [],
+                    [
+                        q.Fragment(
+                            "MediaFields",
+                            "Media",
+                            q.Node([q.Field("id")]),
+                        )
+                    ],
+                ),
+            ),
+        ]
+    )
+
+    transformed = InitOptions(graph).visit(query)
+
+    assert transformed is query
+
+
+def test_init_options_supports_named_union_fragment():
+    graph = Graph(
+        [
+            Node(
+                "PlayTrackAction",
+                [
+                    Field("id", Integer, Mock()),
+                ],
+            ),
+            Node(
+                "PlaylistEntry",
+                [
+                    Link(
+                        "actions",
+                        Sequence[UnionRef["PlaylistAction"]],
+                        Mock(),
+                        requires=None,
+                    ),
+                ],
+            ),
+            Root(
+                [
+                    Link(
+                        "playlistEntry",
+                        TypeRef["PlaylistEntry"],
+                        Mock(),
+                        requires=None,
+                    ),
+                ]
+            ),
+        ],
+        unions=[
+            Union(
+                "PlaylistAction",
+                [
+                    "PlayTrackAction",
+                ],
+            ),
+        ],
+    )
+    query = q.Node(
+        [
+            q.Link(
+                "playlistEntry",
+                q.Node(
+                    [
+                        q.Link(
+                            "actions",
+                            q.Node(
+                                [],
+                                [
+                                    q.Fragment(
+                                        "ActionFields",
+                                        "PlaylistAction",
+                                        q.Node([q.Field("__typename")]),
+                                    )
+                                ],
+                            ),
+                        )
+                    ]
+                ),
+            )
+        ]
+    )
+
+    transformed = InitOptions(graph).visit(query)
+
+    assert transformed is query
+
+
+def test_init_options_supports_named_union_fragment_after_query_merge():
+    graph = Graph(
+        [
+            Node(
+                "PlaylistContext",
+                [
+                    Field("artistId", String, Mock()),
+                    Field("albumId", String, Mock()),
+                ],
+            ),
+            Node(
+                "PlayTrackAction",
+                [
+                    Field("id", Integer, Mock()),
+                    Field("title", String, Mock()),
+                ],
+            ),
+            Node(
+                "ChooseTrackAction",
+                [
+                    Field("id", Integer, Mock()),
+                    Field("title", String, Mock()),
+                ],
+            ),
+            Node(
+                "PlaylistEntry",
+                [
+                    Link(
+                        "actions",
+                        Sequence[UnionRef["PlaylistAction"]],
+                        Mock(),
+                        requires=None,
+                    ),
+                ],
+            ),
+            Node(
+                "ChooseTracksUpdate",
+                [
+                    Link(
+                        "node",
+                        TypeRef["PlaylistEntry"],
+                        Mock(),
+                        requires=None,
+                    ),
+                ],
+            ),
+            Node(
+                "ContactCuratorUpdate",
+                [
+                    Link(
+                        "context",
+                        TypeRef["PlaylistContext"],
+                        Mock(),
+                        requires=None,
+                    ),
+                    Link(
+                        "node",
+                        TypeRef["PlaylistEntry"],
+                        Mock(),
+                        requires=None,
+                    ),
+                ],
+            ),
+            Node(
+                "PlaylistGuide",
+                [
+                    Link(
+                        "lastUpdate",
+                        Optional[UnionRef["PlaylistUpdate"]],
+                        Mock(),
+                        requires=None,
+                    ),
+                ],
+            ),
+            Root(
+                [
+                    Link(
+                        "playlistGuide",
+                        TypeRef["PlaylistGuide"],
+                        Mock(),
+                        requires=None,
+                    ),
+                ]
+            ),
+        ],
+        unions=[
+            Union(
+                "PlaylistAction",
+                [
+                    "PlayTrackAction",
+                    "ChooseTrackAction",
+                ],
+            ),
+            Union(
+                "PlaylistUpdate",
+                ["ChooseTracksUpdate", "ContactCuratorUpdate"],
+            ),
+        ],
+    )
+    src = """
+    query PlaylistUpdateQuery__router__0 {
+      playlistGuide {
+        lastUpdate {
+          __typename
+          ... on ChooseTracksUpdate {
+            node {
+              ...l
+            }
+          }
+          ... on ContactCuratorUpdate {
+            context {
+              ...b
+            }
+            node {
+              ...l
+            }
+          }
+        }
+      }
+    }
+
+    fragment b on PlaylistContext { artistId albumId }
+    fragment c on PlayTrackAction { id title }
+    fragment d on ChooseTrackAction { id title }
+    fragment k on PlaylistAction { __typename ...c ...d }
+    fragment l on PlaylistEntry {
+      __typename
+      actions {
+        ...k
+      }
+    }
+    """
+    query = QueryMerger(graph).merge(read(src))
+
+    transformed = InitOptions(graph).visit(query)
+
+    assert transformed is query
+
+
 def test_init_options_copies_field_when_options_are_normalized():
     graph = Graph(
         [
