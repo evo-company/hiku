@@ -184,6 +184,76 @@ def test_init_options_supports_interface_typed_fragment():
     assert transformed is query
 
 
+def test_init_options_supports_named_union_fragment():
+    graph = Graph(
+        [
+            Node(
+                "SimpleAction",
+                [
+                    Field("id", Integer, Mock()),
+                ],
+            ),
+            Node(
+                "ChatNode",
+                [
+                    Link(
+                        "actions",
+                        Sequence[UnionRef["ChatBotAction"]],
+                        Mock(),
+                        requires=None,
+                    ),
+                ],
+            ),
+            Root(
+                [
+                    Link(
+                        "chat",
+                        TypeRef["ChatNode"],
+                        Mock(),
+                        requires=None,
+                    ),
+                ]
+            ),
+        ],
+        unions=[
+            Union(
+                "ChatBotAction",
+                [
+                    "SimpleAction",
+                ],
+            ),
+        ],
+    )
+    query = q.Node(
+        [
+            q.Link(
+                "chat",
+                q.Node(
+                    [
+                        q.Link(
+                            "actions",
+                            q.Node(
+                                [],
+                                [
+                                    q.Fragment(
+                                        "ActionFields",
+                                        "ChatBotAction",
+                                        q.Node([q.Field("__typename")]),
+                                    )
+                                ],
+                            ),
+                        )
+                    ]
+                ),
+            )
+        ]
+    )
+
+    transformed = InitOptions(graph).visit(query)
+
+    assert transformed is query
+
+
 def test_init_options_supports_named_union_fragment_after_query_merge():
     graph = Graph(
         [

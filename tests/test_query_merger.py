@@ -291,48 +291,46 @@ def test_query_merger(src, result):
                         __typename
                         ... on ChooseOrdersUpdate {
                             node {
-                                ...ChatBotNodeFragment
+                                __typename
+                                actions {
+                                    __typename
+                                    ... on SimpleAction {
+                                        id
+                                        title
+                                    }
+                                    ... on ChooseOrderAction {
+                                        id
+                                        title
+                                    }
+                                }
                             }
                         }
                         ... on ContactOperatorUpdate {
                             context {
-                                ...SimpleContextFragment
+                                maybeCompanyId
+                                maybeOrderId
                             }
                             node {
-                                ...ChatBotNodeFragment
+                                __typename
+                                actions {
+                                    __typename
+                                    ... on SimpleAction {
+                                        id
+                                        title
+                                    }
+                                    ... on ChooseOrderAction {
+                                        id
+                                        title
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
         }
-
-        fragment ChatBotNodeFragment on ChatNode {
-            __typename
-            actions {
-                __typename
-                ...ChatBotActionFragment
-            }
-        }
-
-        fragment ChatBotActionFragment on ChatBotAction {
-            __typename
-            ... on SimpleAction {
-                id
-                title
-            }
-            ... on ChooseOrderAction {
-                id
-                title
-            }
-        }
-
-        fragment SimpleContextFragment on SimpleContext {
-            maybeCompanyId
-            maybeOrderId
-        }
         """,
-            id="original-style reduced production query keeps action fragment",
+            id="original-style reduced production query normalizes wrapper fragments",
         ),
         pytest.param(
             """
@@ -398,9 +396,55 @@ def test_query_merger(src, result):
                         __typename
                         ... on ChooseOrdersUpdate {
                             node {
-                                ...l
+                                __typename
+                                actions {
+                                    __typename
+                                    ...c
+                                    ...d
+                                }
                             }
                         }
+                        ... on ContactOperatorUpdate {
+                            context {
+                                maybeCompanyId
+                                maybeOrderId
+                            }
+                            node {
+                                __typename
+                                actions {
+                                    __typename
+                                    ...c
+                                    ...d
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        fragment c on SimpleAction {
+            id
+            title
+        }
+
+        fragment d on ChooseOrderAction {
+            id
+            title
+        }
+        """,
+            id="apollo-router-style reduced production query normalizes wrapper fragments",
+        ),
+        pytest.param(
+            """
+        query ChatHistoryQuery__uaprom__1(
+            $ticketCommentAfterCursor: String! = ""
+            $ticketCommentPerPage: Int! = 0
+        ) {
+            supportChat {
+                history {
+                    lastUpdate {
+                        __typename
                         ... on ContactOperatorUpdate {
                             context {
                                 ...b
@@ -414,17 +458,9 @@ def test_query_merger(src, result):
             }
         }
 
-        fragment l on ChatNode {
-            __typename
-            actions {
-                ...k
-            }
-        }
-
-        fragment k on ChatBotAction {
-            __typename
-            ...c
-            ...d
+        fragment b on SimpleContext {
+            maybeCompanyId
+            maybeOrderId
         }
 
         fragment c on SimpleAction {
@@ -437,12 +473,55 @@ def test_query_merger(src, result):
             title
         }
 
-        fragment b on SimpleContext {
-            maybeCompanyId
-            maybeOrderId
+        fragment k on ChatBotAction {
+            __typename
+            ...c
+            ...d
+        }
+
+        fragment l on ChatNode {
+            __typename
+            actions {
+                ...k
+            }
         }
         """,
-            id="apollo-router-style reduced production query keeps action fragment",
+            """
+        {
+            supportChat {
+                history {
+                    lastUpdate {
+                        __typename
+                        ... on ContactOperatorUpdate {
+                            context {
+                                maybeCompanyId
+                                maybeOrderId
+                            }
+                            node {
+                                __typename
+                                actions {
+                                    __typename
+                                    ...c
+                                    ...d
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        fragment c on SimpleAction {
+            id
+            title
+        }
+
+        fragment d on ChooseOrderAction {
+            id
+            title
+        }
+        """,
+            id="apollo-router-style reduced production query without chooseorders still normalizes wrapper fragments",
         ),
     ],
 )

@@ -8,6 +8,7 @@ from hiku.directives import Directive
 from hiku.graph import Graph, Interface
 from hiku.query import FieldOrLink, Link, Field, Fragment, Node, QueryVisitor
 from hiku.types import (
+    InterfaceRef,
     InterfaceRefMeta,
     OptionalMeta,
     Record,
@@ -15,8 +16,10 @@ from hiku.types import (
     RefMeta,
     RefMetaTypes,
     SequenceMeta,
+    TypeRef,
     TypeRefMeta,
     Types,
+    UnionRef,
     UnionRefMeta,
     get_type,
 )
@@ -91,8 +94,40 @@ class QueryMerger(QueryVisitor):
         ref_type = get_ref_type(self._types, self._type[-1], obj.name)
 
         self._type.append(ref_type)
-        yield
-        self._type.pop()
+        try:
+            yield
+        finally:
+            self._type.pop()
+
+    @contextmanager
+    def _with_fragment_type(self, fragment: Fragment) -> t.Iterator[None]:
+        type_ = self._resolve_fragment_type(fragment.type_name)
+        if type_ is None:
+            yield
+            return
+
+        self._type.append(type_)
+        try:
+            yield
+        finally:
+            self._type.pop()
+
+    def _resolve_fragment_type(
+        self, type_name: str | None
+    ) -> type[Record] | RefMetaTypes | None:
+        if type_name is None:
+            return None
+        if type_name in ("Query", "Mutation"):
+            return self._types["__root__"]
+        if type_name in self.graph.nodes_map:
+            return TypeRef[type_name]
+        if type_name in self.graph.interfaces_map:
+            return InterfaceRef[type_name]
+        if type_name in self.graph.unions_map:
+            return UnionRef[type_name]
+        if type_name in self._types:
+            return self._types[type_name]
+        return None
 
     def visit_node(self, node: Node) -> Node:
         return self._merge_nodes([node])
@@ -210,9 +245,10 @@ class QueryMerger(QueryVisitor):
             fragments.append(self._merge_same_type_fragments(frs))
 
     def _merge_same_type_fragments(self, fragments: list[Fragment]) -> Fragment:
-        return fragments[0].copy(
-            node=self._merge_nodes([fr.node for fr in fragments]),
-        )
+        fragment = fragments[0]
+        with self._with_fragment_type(fragment):
+            node = self._merge_nodes([fr.node for fr in fragments])
+        return fragment.copy(node=node)
 
     def _expand_fragment(
         self,

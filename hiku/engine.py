@@ -127,6 +127,19 @@ class InitOptions(QueryTransformer):
             if type_ is not None:
                 self._path.pop()
 
+    def _resolve_fragment_type(self, type_name: str | None) -> Any | None:
+        if type_name is None:
+            return None
+        if type_name in ("Query", "Mutation"):
+            return self._graph.root
+        if type_name in self._graph.nodes_map:
+            return self._graph.nodes_map[type_name]
+        if type_name in self._graph.interfaces_map:
+            return self._graph.interfaces_map[type_name]
+        if type_name in self._graph.unions_map:
+            return self._graph.unions_map[type_name]
+        raise KeyError(type_name)
+
     def visit_node(self, obj: QueryNode) -> QueryNode:
         # Copy-on-write: fields/fragments stay None until a child actually
         # changes, then we bulk-copy prior items and append the rest.
@@ -141,7 +154,7 @@ class InitOptions(QueryTransformer):
 
         fragments: list[Fragment] | None = None
         for idx, fr in enumerate(obj.fragments):
-            with self.enter_path(self._graph.nodes_map[fr.type_name]):
+            with self.enter_path(self._resolve_fragment_type(fr.type_name)):
                 item = self.visit(fr)
             if fragments is not None:
                 fragments.append(item)
