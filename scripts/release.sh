@@ -16,15 +16,17 @@ if [ -z "${MESSAGE}" ]; then
   echo "MESSAGE is not set"
   exit 1
 fi
-echo "Releasing ${VERSION}"
 
 if [[ "${VERSION}" == "rc" ]]; then
   uv version --bump rc
+  VERSION=$(uv version --short)
 else
   uv version ${VERSION}
 fi
 
+echo "Releasing ${VERSION}"
+
 git add pyproject.toml
-git commit -m "Release ${VERSION}"
+git commit -m "release ${version}"
 git tag -a v${VERSION} -m "${MESSAGE}"
 git push origin master --tags
