@@ -4,6 +4,9 @@ Changes in 0.8
 0.8.0rcXX
 ~~~~~~~~~
 
+0.8.0rc24
+~~~~~~~~~
+
 - Fix typing for federation ``FieldSet`` directives so ``Key(...)``, ``Provides(...)``,
   and ``Requires(...)`` accept plain strings in type-checked code while preserving
   ``_FieldSet`` schema metadata.
@@ -13,6 +16,14 @@ Changes in 0.8
   the ``Link``'s SDL ``@requires`` directive must also include ``c``. A ``ValueError`` is now
   raised at ``Graph()`` construction time with a suggested fix, making this class of
   federation bug impossible to deploy undetected.
+
+- Fix query exporter to collect and export fragment definitions so exported queries remain
+  valid when fragments are referenced indirectly.
+
+- Normalize fragment types in query merger and init options to avoid fragment type mismatches
+  when merging queries that use abstract fragments.
+
+- Optimize ``InitOptions`` copying during engine setup to reduce initialization overhead.
 
 0.8.0rc22
 ~~~~~~~~~
