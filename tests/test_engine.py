@@ -188,17 +188,17 @@ def test_init_options_supports_named_union_fragment():
     graph = Graph(
         [
             Node(
-                "SimpleAction",
+                "PlayTrackAction",
                 [
                     Field("id", Integer, Mock()),
                 ],
             ),
             Node(
-                "ChatNode",
+                "PlaylistEntry",
                 [
                     Link(
                         "actions",
-                        Sequence[UnionRef["ChatBotAction"]],
+                        Sequence[UnionRef["PlaylistAction"]],
                         Mock(),
                         requires=None,
                     ),
@@ -207,8 +207,8 @@ def test_init_options_supports_named_union_fragment():
             Root(
                 [
                     Link(
-                        "chat",
-                        TypeRef["ChatNode"],
+                        "playlistEntry",
+                        TypeRef["PlaylistEntry"],
                         Mock(),
                         requires=None,
                     ),
@@ -217,9 +217,9 @@ def test_init_options_supports_named_union_fragment():
         ],
         unions=[
             Union(
-                "ChatBotAction",
+                "PlaylistAction",
                 [
-                    "SimpleAction",
+                    "PlayTrackAction",
                 ],
             ),
         ],
@@ -227,7 +227,7 @@ def test_init_options_supports_named_union_fragment():
     query = q.Node(
         [
             q.Link(
-                "chat",
+                "playlistEntry",
                 q.Node(
                     [
                         q.Link(
@@ -237,7 +237,7 @@ def test_init_options_supports_named_union_fragment():
                                 [
                                     q.Fragment(
                                         "ActionFields",
-                                        "ChatBotAction",
+                                        "PlaylistAction",
                                         q.Node([q.Field("__typename")]),
                                     )
                                 ],
@@ -258,82 +258,71 @@ def test_init_options_supports_named_union_fragment_after_query_merge():
     graph = Graph(
         [
             Node(
-                "SimpleContext",
+                "PlaylistContext",
                 [
-                    Field("maybeCompanyId", String, Mock()),
-                    Field("maybeOrderId", String, Mock()),
+                    Field("artistId", String, Mock()),
+                    Field("albumId", String, Mock()),
                 ],
             ),
             Node(
-                "SimpleAction",
-                [
-                    Field("id", Integer, Mock()),
-                    Field("title", String, Mock()),
-                ],
-            ),
-            Node(
-                "ChooseOrderAction",
+                "PlayTrackAction",
                 [
                     Field("id", Integer, Mock()),
                     Field("title", String, Mock()),
                 ],
             ),
             Node(
-                "ChatNode",
+                "ChooseTrackAction",
+                [
+                    Field("id", Integer, Mock()),
+                    Field("title", String, Mock()),
+                ],
+            ),
+            Node(
+                "PlaylistEntry",
                 [
                     Link(
                         "actions",
-                        Sequence[UnionRef["ChatBotAction"]],
+                        Sequence[UnionRef["PlaylistAction"]],
                         Mock(),
                         requires=None,
                     ),
                 ],
             ),
             Node(
-                "ChooseOrdersUpdate",
+                "ChooseTracksUpdate",
                 [
                     Link(
                         "node",
-                        TypeRef["ChatNode"],
+                        TypeRef["PlaylistEntry"],
                         Mock(),
                         requires=None,
                     ),
                 ],
             ),
             Node(
-                "ContactOperatorUpdate",
+                "ContactCuratorUpdate",
                 [
                     Link(
                         "context",
-                        TypeRef["SimpleContext"],
+                        TypeRef["PlaylistContext"],
                         Mock(),
                         requires=None,
                     ),
                     Link(
                         "node",
-                        TypeRef["ChatNode"],
+                        TypeRef["PlaylistEntry"],
                         Mock(),
                         requires=None,
                     ),
                 ],
             ),
             Node(
-                "ChatHistory",
+                "PlaylistGuide",
                 [
                     Link(
                         "lastUpdate",
-                        Optional[UnionRef["ChatBotUpdate"]],
-                        Mock(),
-                        requires=None,
-                    ),
-                ],
-            ),
-            Node(
-                "SupportChat",
-                [
-                    Link(
-                        "history",
-                        TypeRef["ChatHistory"],
+                        Optional[UnionRef["PlaylistUpdate"]],
                         Mock(),
                         requires=None,
                     ),
@@ -342,8 +331,8 @@ def test_init_options_supports_named_union_fragment_after_query_merge():
             Root(
                 [
                     Link(
-                        "supportChat",
-                        TypeRef["SupportChat"],
+                        "playlistGuide",
+                        TypeRef["PlaylistGuide"],
                         Mock(),
                         requires=None,
                     ),
@@ -352,50 +341,45 @@ def test_init_options_supports_named_union_fragment_after_query_merge():
         ],
         unions=[
             Union(
-                "ChatBotAction",
+                "PlaylistAction",
                 [
-                    "SimpleAction",
-                    "ChooseOrderAction",
+                    "PlayTrackAction",
+                    "ChooseTrackAction",
                 ],
             ),
             Union(
-                "ChatBotUpdate",
-                ["ChooseOrdersUpdate", "ContactOperatorUpdate"],
+                "PlaylistUpdate",
+                ["ChooseTracksUpdate", "ContactCuratorUpdate"],
             ),
         ],
     )
     src = """
-    query ChatHistoryQuery__uaprom__0(
-      $ticketCommentAfterCursor: String! = ""
-      $ticketCommentPerPage: Int! = 0
-    ) {
-      supportChat {
-        history {
-          lastUpdate {
-            __typename
-            ... on ChooseOrdersUpdate {
-              node {
-                ...l
-              }
+    query PlaylistUpdateQuery__router__0 {
+      playlistGuide {
+        lastUpdate {
+          __typename
+          ... on ChooseTracksUpdate {
+            node {
+              ...l
             }
-            ... on ContactOperatorUpdate {
-              context {
-                ...b
-              }
-              node {
-                ...l
-              }
+          }
+          ... on ContactCuratorUpdate {
+            context {
+              ...b
+            }
+            node {
+              ...l
             }
           }
         }
       }
     }
 
-    fragment b on SimpleContext { maybeCompanyId maybeOrderId }
-    fragment c on SimpleAction { id title }
-    fragment d on ChooseOrderAction { id title }
-    fragment k on ChatBotAction { __typename ...c ...d }
-    fragment l on ChatNode {
+    fragment b on PlaylistContext { artistId albumId }
+    fragment c on PlayTrackAction { id title }
+    fragment d on ChooseTrackAction { id title }
+    fragment k on PlaylistAction { __typename ...c ...d }
+    fragment l on PlaylistEntry {
       __typename
       actions {
         ...k

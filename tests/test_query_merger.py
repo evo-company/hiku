@@ -230,98 +230,94 @@ def test_query_merger(src, result):
     [
         pytest.param(
             """
-        query QueryMergerMy {
-            supportChat {
-                history {
-                    lastUpdate {
-                        __typename
-                        ...ChatBotUpdate
-                    }
+        query PlaylistUpdateQuery {
+            playlistGuide {
+                lastUpdate {
+                    __typename
+                    ...PlaylistUpdate
                 }
             }
         }
 
-        fragment SimpleContextFragment on SimpleContext {
-            maybeCompanyId
-            maybeOrderId
+        fragment PlaylistContextFragment on PlaylistContext {
+            artistId
+            albumId
         }
 
-        fragment ChatBotActionFragment on ChatBotAction {
+        fragment PlaylistActionFragment on PlaylistAction {
             __typename
-            ... on SimpleAction {
+            ... on PlayTrackAction {
                 id
                 title
             }
-            ... on ChooseOrderAction {
+            ... on ChooseTrackAction {
                 id
                 title
             }
         }
 
-        fragment ChatBotNodeFragment on ChatNode {
+        fragment PlaylistEntryFragment on PlaylistEntry {
             __typename
             actions {
                 __typename
-                ...ChatBotActionFragment
+                ...PlaylistActionFragment
             }
         }
 
-        fragment ChatBotUpdate on ChatBotUpdate {
+        fragment PlaylistUpdate on PlaylistUpdate {
             __typename
-            ... on ChooseOrdersUpdate {
+            ... on ChooseTracksUpdate {
                 node {
-                    ...ChatBotNodeFragment
+                    ...PlaylistEntryFragment
                 }
             }
-            ... on ContactOperatorUpdate {
+            ... on ContactCuratorUpdate {
                 context {
-                    ...SimpleContextFragment
+                    ...PlaylistContextFragment
                 }
                 node {
-                    ...ChatBotNodeFragment
+                    ...PlaylistEntryFragment
                 }
             }
         }
         """,
             """
         {
-            supportChat {
-                history {
-                    lastUpdate {
-                        __typename
-                        ... on ChooseOrdersUpdate {
-                            node {
+            playlistGuide {
+                lastUpdate {
+                    __typename
+                    ... on ChooseTracksUpdate {
+                        node {
+                            __typename
+                            actions {
                                 __typename
-                                actions {
-                                    __typename
-                                    ... on SimpleAction {
-                                        id
-                                        title
-                                    }
-                                    ... on ChooseOrderAction {
-                                        id
-                                        title
-                                    }
+                                ... on PlayTrackAction {
+                                    id
+                                    title
+                                }
+                                ... on ChooseTrackAction {
+                                    id
+                                    title
                                 }
                             }
                         }
-                        ... on ContactOperatorUpdate {
-                            context {
-                                maybeCompanyId
-                                maybeOrderId
-                            }
-                            node {
+                    }
+                    ... on ContactCuratorUpdate {
+                        context {
+                            artistId
+                            albumId
+                        }
+                        node {
+                            __typename
+                            actions {
                                 __typename
-                                actions {
-                                    __typename
-                                    ... on SimpleAction {
-                                        id
-                                        title
-                                    }
-                                    ... on ChooseOrderAction {
-                                        id
-                                        title
-                                    }
+                                ... on PlayTrackAction {
+                                    id
+                                    title
+                                }
+                                ... on ChooseTrackAction {
+                                    id
+                                    title
                                 }
                             }
                         }
@@ -330,58 +326,53 @@ def test_query_merger(src, result):
             }
         }
         """,
-            id="original-style reduced production query normalizes wrapper fragments",
+            id="original-style playlist query normalizes wrapper fragments",
         ),
         pytest.param(
             """
-        query ChatHistoryQuery__uaprom__0(
-            $ticketCommentAfterCursor: String! = ""
-            $ticketCommentPerPage: Int! = 0
-        ) {
-            supportChat {
-                history {
-                    lastUpdate {
-                        __typename
-                        ... on ChooseOrdersUpdate {
-                            node {
-                                ...l
-                            }
+        query PlaylistUpdateQuery__router__0 {
+            playlistGuide {
+                lastUpdate {
+                    __typename
+                    ... on ChooseTracksUpdate {
+                        node {
+                            ...l
                         }
-                        ... on ContactOperatorUpdate {
-                            context {
-                                ...b
-                            }
-                            node {
-                                ...l
-                            }
+                    }
+                    ... on ContactCuratorUpdate {
+                        context {
+                            ...b
+                        }
+                        node {
+                            ...l
                         }
                     }
                 }
             }
         }
 
-        fragment b on SimpleContext {
-            maybeCompanyId
-            maybeOrderId
+        fragment b on PlaylistContext {
+            artistId
+            albumId
         }
 
-        fragment c on SimpleAction {
+        fragment c on PlayTrackAction {
             id
             title
         }
 
-        fragment d on ChooseOrderAction {
+        fragment d on ChooseTrackAction {
             id
             title
         }
 
-        fragment k on ChatBotAction {
+        fragment k on PlaylistAction {
             __typename
             ...c
             ...d
         }
 
-        fragment l on ChatNode {
+        fragment l on PlaylistEntry {
             __typename
             actions {
                 ...k
@@ -390,32 +381,30 @@ def test_query_merger(src, result):
         """,
             """
         {
-            supportChat {
-                history {
-                    lastUpdate {
-                        __typename
-                        ... on ChooseOrdersUpdate {
-                            node {
+            playlistGuide {
+                lastUpdate {
+                    __typename
+                    ... on ChooseTracksUpdate {
+                        node {
+                            __typename
+                            actions {
                                 __typename
-                                actions {
-                                    __typename
-                                    ...c
-                                    ...d
-                                }
+                                ...c
+                                ...d
                             }
                         }
-                        ... on ContactOperatorUpdate {
-                            context {
-                                maybeCompanyId
-                                maybeOrderId
-                            }
-                            node {
+                    }
+                    ... on ContactCuratorUpdate {
+                        context {
+                            artistId
+                            albumId
+                        }
+                        node {
+                            __typename
+                            actions {
                                 __typename
-                                actions {
-                                    __typename
-                                    ...c
-                                    ...d
-                                }
+                                ...c
+                                ...d
                             }
                         }
                     }
@@ -423,63 +412,58 @@ def test_query_merger(src, result):
             }
         }
 
-        fragment c on SimpleAction {
+        fragment c on PlayTrackAction {
             id
             title
         }
 
-        fragment d on ChooseOrderAction {
+        fragment d on ChooseTrackAction {
             id
             title
         }
         """,
-            id="apollo-router-style reduced production query normalizes wrapper fragments",
+            id="apollo-router-style playlist query normalizes wrapper fragments",
         ),
         pytest.param(
             """
-        query ChatHistoryQuery__uaprom__1(
-            $ticketCommentAfterCursor: String! = ""
-            $ticketCommentPerPage: Int! = 0
-        ) {
-            supportChat {
-                history {
-                    lastUpdate {
-                        __typename
-                        ... on ContactOperatorUpdate {
-                            context {
-                                ...b
-                            }
-                            node {
-                                ...l
-                            }
+        query PlaylistUpdateQuery__router__1 {
+            playlistGuide {
+                lastUpdate {
+                    __typename
+                    ... on ContactCuratorUpdate {
+                        context {
+                            ...b
+                        }
+                        node {
+                            ...l
                         }
                     }
                 }
             }
         }
 
-        fragment b on SimpleContext {
-            maybeCompanyId
-            maybeOrderId
+        fragment b on PlaylistContext {
+            artistId
+            albumId
         }
 
-        fragment c on SimpleAction {
+        fragment c on PlayTrackAction {
             id
             title
         }
 
-        fragment d on ChooseOrderAction {
+        fragment d on ChooseTrackAction {
             id
             title
         }
 
-        fragment k on ChatBotAction {
+        fragment k on PlaylistAction {
             __typename
             ...c
             ...d
         }
 
-        fragment l on ChatNode {
+        fragment l on PlaylistEntry {
             __typename
             actions {
                 ...k
@@ -488,22 +472,20 @@ def test_query_merger(src, result):
         """,
             """
         {
-            supportChat {
-                history {
-                    lastUpdate {
-                        __typename
-                        ... on ContactOperatorUpdate {
-                            context {
-                                maybeCompanyId
-                                maybeOrderId
-                            }
-                            node {
+            playlistGuide {
+                lastUpdate {
+                    __typename
+                    ... on ContactCuratorUpdate {
+                        context {
+                            artistId
+                            albumId
+                        }
+                        node {
+                            __typename
+                            actions {
                                 __typename
-                                actions {
-                                    __typename
-                                    ...c
-                                    ...d
-                                }
+                                ...c
+                                ...d
                             }
                         }
                     }
@@ -511,17 +493,17 @@ def test_query_merger(src, result):
             }
         }
 
-        fragment c on SimpleAction {
+        fragment c on PlayTrackAction {
             id
             title
         }
 
-        fragment d on ChooseOrderAction {
+        fragment d on ChooseTrackAction {
             id
             title
         }
         """,
-            id="apollo-router-style reduced production query without chooseorders still normalizes wrapper fragments",
+            id="apollo-router-style playlist query without choosetracks still normalizes wrapper fragments",
         ),
     ],
 )
@@ -531,85 +513,74 @@ def test_query_merger_my(src, result):
     graph = Graph(
         [
             Node(
-                "SimpleAction",
+                "PlayTrackAction",
                 [
                     Field("id", Integer, mock_resolve),
                     Field("title", String, mock_resolve),
                 ],
             ),
             Node(
-                "ChooseOrderAction",
+                "ChooseTrackAction",
                 [
                     Field("id", Integer, mock_resolve),
                     Field("title", String, mock_resolve),
                 ],
             ),
             Node(
-                "ChatNode",
+                "PlaylistEntry",
                 [
                     Field("__typename", String, mock_resolve),
                     Link(
                         "actions",
-                        Sequence[UnionRef["ChatBotAction"]],
+                        Sequence[UnionRef["PlaylistAction"]],
                         mock_resolve,
                         requires=None,
                     ),
                 ],
             ),
             Node(
-                "SimpleContext",
+                "PlaylistContext",
                 [
-                    Field("maybeCompanyId", String, mock_resolve),
-                    Field("maybeOrderId", String, mock_resolve),
+                    Field("artistId", String, mock_resolve),
+                    Field("albumId", String, mock_resolve),
                 ],
             ),
             Node(
-                "ChooseOrdersUpdate",
+                "ChooseTracksUpdate",
                 [
                     Field("__typename", String, mock_resolve),
                     Link(
                         "node",
-                        TypeRef["ChatNode"],
+                        TypeRef["PlaylistEntry"],
                         mock_resolve,
                         requires=None,
                     ),
                 ],
             ),
             Node(
-                "ContactOperatorUpdate",
+                "ContactCuratorUpdate",
                 [
                     Field("__typename", String, mock_resolve),
                     Link(
                         "context",
-                        TypeRef["SimpleContext"],
+                        TypeRef["PlaylistContext"],
                         mock_resolve,
                         requires=None,
                     ),
                     Link(
                         "node",
-                        TypeRef["ChatNode"],
+                        TypeRef["PlaylistEntry"],
                         mock_resolve,
                         requires=None,
                     ),
                 ],
             ),
             Node(
-                "ChatHistory",
+                "PlaylistGuide",
                 [
                     Link(
                         "lastUpdate",
-                        UnionRef["ChatBotUpdate"],
-                        mock_resolve,
-                        requires=None,
-                    ),
-                ],
-            ),
-            Node(
-                "SupportChat",
-                [
-                    Link(
-                        "history",
-                        TypeRef["ChatHistory"],
+                        UnionRef["PlaylistUpdate"],
                         mock_resolve,
                         requires=None,
                     ),
@@ -618,8 +589,8 @@ def test_query_merger_my(src, result):
             Root(
                 [
                     Link(
-                        "supportChat",
-                        TypeRef["SupportChat"],
+                        "playlistGuide",
+                        TypeRef["PlaylistGuide"],
                         mock_resolve,
                         requires=None,
                     ),
@@ -628,15 +599,15 @@ def test_query_merger_my(src, result):
         ],
         unions=[
             Union(
-                "ChatBotAction",
+                "PlaylistAction",
                 [
-                    "SimpleAction",
-                    "ChooseOrderAction",
+                    "PlayTrackAction",
+                    "ChooseTrackAction",
                 ],
             ),
             Union(
-                "ChatBotUpdate",
-                ["ChooseOrdersUpdate", "ContactOperatorUpdate"],
+                "PlaylistUpdate",
+                ["ChooseTracksUpdate", "ContactCuratorUpdate"],
             ),
         ],
     )
