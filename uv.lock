@@ -1227,7 +1227,7 @@ wheels = [
 
 [[package]]
 name = "hiku"
-version = "0.8.0rc22"
+version = "0.8.0rc24"
 source = { editable = "." }
 
 [package.dev-dependencies]
