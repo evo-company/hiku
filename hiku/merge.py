@@ -221,9 +221,16 @@ class QueryMerger(QueryVisitor):
         fragments_by_type: defaultdict[str, list[Fragment]] = defaultdict(list)
 
         for fragment in fragments_to_process:
-            if fragment.type_name is None or (
-                isinstance(self.parent_type, TypeRefMeta)
-                and fragment.type_name == self.parent_type.__type_name__
+            if (
+                fragment.type_name is None
+                or (
+                    isinstance(self.parent_type, TypeRefMeta)
+                    and fragment.type_name == self.parent_type.__type_name__
+                )
+                or (
+                    fragment.type_name in ("Query", "Mutation")
+                    and self.parent_type == self._types["__root__"]
+                )
             ):
                 self._collect_fields(fragment.node, fields, links, fragments)
             elif isinstance(self.parent_type, InterfaceRefMeta):

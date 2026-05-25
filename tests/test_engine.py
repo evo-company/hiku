@@ -2065,6 +2065,90 @@ def test_merge_query__fragments():
 
 
 @pytest.mark.parametrize(
+    "query,expected",
+    [
+        pytest.param(
+            """
+            query SomeQuery {
+              ...SomeFragment
+            }
+
+            fragment SomeFragment on Query {
+               someField
+            }
+            """,
+            {"someField": "hello"},
+            id="named fragment on Query",
+        ),
+        pytest.param(
+            """
+            query SomeQuery {
+              ... on Query { someField }
+            }
+            """,
+            {"someField": "hello"},
+            id="inline fragment on Query",
+        ),
+        pytest.param(
+            """
+            query SomeQuery { ...A }
+            fragment A on Query { ...B }
+            fragment B on Query { someField otherField }
+            """,
+            {"someField": "hello", "otherField": "world"},
+            id="nested fragments on Query",
+        ),
+        pytest.param(
+            """
+            query SomeQuery {
+              otherField
+              ...F
+            }
+            fragment F on Query { someField }
+            """,
+            {"someField": "hello", "otherField": "world"},
+            id="root field plus fragment on Query",
+        ),
+    ],
+)
+def test_root_fragment_on_query(query, expected):
+    graph = Graph(
+        [
+            Root(
+                [
+                    Field("someField", String, lambda fields: ["hello"]),
+                    Field("otherField", String, lambda fields: ["world"]),
+                ]
+            ),
+        ]
+    )
+
+    data = execute_schema(graph, query).data
+    assert data == expected
+
+
+def test_root_fragment_on_mutation():
+    graph = Graph(
+        [Root([Field("someField", String, lambda fields: ["hello"])])]
+    )
+    mutation_graph = Graph(
+        [Root([Field("someField", String, lambda fields: ["done"])])]
+    )
+    schema = Schema(SyncExecutor(), graph, mutation=mutation_graph)
+
+    query = """
+    mutation SomeMutation {
+      ...SomeFragment
+    }
+
+    fragment SomeFragment on Mutation {
+       someField
+    }
+    """
+    assert schema.execute_sync(query).data == {"someField": "done"}
+
+
+@pytest.mark.parametrize(
     "query",
     [
         pytest.param(
