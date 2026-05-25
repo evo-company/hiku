@@ -214,6 +214,44 @@ GRAPH = Graph(
         """,
             id="fields + aliases + fragments",
         ),
+        pytest.param(
+            """
+        query SomeQuery {
+            ...SomeFragment
+        }
+        fragment SomeFragment on Query {
+            context { user { id } }
+        }
+        """,
+            """
+        { context { user { id } } }
+        """,
+            id="root fragment on Query",
+        ),
+        pytest.param(
+            """
+        query SomeQuery {
+            ... on Query { context { user { id } } }
+        }
+        """,
+            """
+        { context { user { id } } }
+        """,
+            id="root inline fragment on Query",
+        ),
+        pytest.param(
+            """
+        query SomeQuery {
+            ...A
+        }
+        fragment A on Query { ...B }
+        fragment B on Query { context { user { id } } }
+        """,
+            """
+        { context { user { id } } }
+        """,
+            id="nested root fragments on Query",
+        ),
     ],
 )
 def test_query_merger(src, result):
