@@ -4,6 +4,14 @@ Changes in 0.8
 0.8.0rcXX
 ~~~~~~~~~
 
+0.8.0rc25
+~~~~~~~~~
+
+- Add ``QueryAliasesValidator`` extension to limit the number of aliases in a
+  query. If the count of aliases exceeds ``max_aliases`` the request is
+  rejected with a validation error. Each client app should configure its own
+  limit via extensions.
+
 0.8.0rc24
 ~~~~~~~~~
 
