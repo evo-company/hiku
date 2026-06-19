@@ -121,6 +121,22 @@ which says that query depth is too big.
         extensions=[QueryDepthValidator(max_depth=10)],
     )
 
+QueryAliasesValidator
+~~~~~~~~~~~~~~~~~~~~~
+
+``QueryAliasesValidator`` limits the number of aliases used in a query. Repeating
+a field under many aliases is a common way to amplify the cost of a single
+request, so each client app should configure its own ``max_aliases`` limit. If
+the count of aliases is greater than ``max_aliases``, it returns an error and the
+request is rejected.
+
+.. code-block:: python
+
+    schema = Schema(
+        graph,
+        extensions=[QueryAliasesValidator(max_aliases=10)],
+    )
+
 PrometheusMetrics
 ~~~~~~~~~~~~~~~~~
 
