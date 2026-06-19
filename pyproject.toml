@@ -1,6 +1,6 @@
 [project]
 name = "hiku"
-version = "0.8.0rc25"
+version = "0.8.0rc26"
 description = "Library to implement Graph APIs"
 readme = { file = "README.rst", content-type = "text/x-rst" }
 license = "BSD-3-Clause"
