@@ -4,6 +4,11 @@ Changes in 0.8
 0.8.0rcXX
 ~~~~~~~~~
 
+0.8.0rc28
+~~~~~~~~~
+
+- Fix ``QueryAliasesValidator`` to not count collided fragment field aliases
+
 0.8.0rc27
 ~~~~~~~~~
 
