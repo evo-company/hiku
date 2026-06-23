@@ -22,7 +22,7 @@ class _QueryAliasesValidator(QueryValidator):
 
     def __init__(self, max_aliases: int) -> None:
         self.max_aliases = max_aliases
-        self._counts: dict[str, int] = {}
+        self._aliases: dict[str, set[str]] = {}
 
     def validate(self, query: Node, graph: Graph) -> list[str]:
         try:
@@ -32,14 +32,14 @@ class _QueryAliasesValidator(QueryValidator):
         return []
 
     def visit_node(self, obj: Node) -> None:
-        parent_counts = self._counts
-        self._counts = defaultdict(int)
+        parent_aliases = self._aliases
+        self._aliases = defaultdict(set)
         try:
             super().visit_node(obj)
             for fragment in obj.fragments:
                 self.visit(fragment)
         finally:
-            self._counts = parent_counts
+            self._aliases = parent_aliases
 
     def visit_fragment(self, obj: Fragment) -> None:
         # Fragment fields merge into the parent selection set, so count them
@@ -60,8 +60,11 @@ class _QueryAliasesValidator(QueryValidator):
     def _count_alias(self, field: FieldOrLink) -> None:
         if field.alias is None:
             return
-        self._counts[field.name] += 1
-        if self._counts[field.name] > self.max_aliases:
+        # Fields sharing the same alias merge into a single field, so count
+        # distinct aliases rather than occurrences.
+        aliases = self._aliases[field.name]
+        aliases.add(field.alias)
+        if len(aliases) > self.max_aliases:
             raise _AliasLimitExceeded(
                 f"Field '{field.name}' is aliased more than "
                 f"{self.max_aliases} times"

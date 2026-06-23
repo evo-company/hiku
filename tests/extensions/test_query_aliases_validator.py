@@ -187,6 +187,32 @@ def test_aliases_within_limit_with_fragments(sync_graph):
     assert result.data == {"user": {"a": "1", "b": "1"}}
 
 
+def test_same_alias_across_fragments_counted_once(sync_graph):
+    schema = Schema(
+        SyncExecutor(), sync_graph,
+        extensions=[
+            QueryAliasesValidator(max_aliases=1),
+        ],
+    )
+
+    query = """
+    query {
+        user {
+            a: id
+            ... on User {
+                a: id
+            }
+        }
+    }
+    """
+
+    # The duplicated 'a' alias merges into a single field, so only one distinct
+    # alias to 'id' exists and the limit is not exceeded.
+    result = schema.execute_sync(query)
+    assert result.errors is None
+    assert result.data == {"user": {"a": "1"}}
+
+
 def test_aliases_counted_per_selection_set_within_limit(sync_graph):
     schema = Schema(
         SyncExecutor(), sync_graph,
