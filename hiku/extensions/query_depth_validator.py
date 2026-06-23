@@ -4,7 +4,7 @@ from hiku.context import ExecutionContext
 from hiku.extensions.base_extension import Extension
 from hiku.extensions.base_validator import QueryValidator
 from hiku.graph import Graph
-from hiku.query import Field, Link, Node
+from hiku.query import Field, Fragment, Link, Node
 
 
 def is_introspection_key(key: str) -> bool:
@@ -49,7 +49,17 @@ class _QueryDepthValidator(QueryValidator):
         self._current_depth += 1
         self._final_depth = max(self._final_depth, self._current_depth)
         super().visit_node(obj)
+        for fragment in obj.fragments:
+            self.visit(fragment)
         self._current_depth -= 1
+
+    def visit_fragment(self, obj: Fragment) -> None:
+        # Fragments do not add to a depth
+        node = obj.node
+        for item in node.fields:
+            self.visit(item)
+        for fragment in node.fragments:
+            self.visit(fragment)
 
 
 class QueryDepthValidator(Extension):
