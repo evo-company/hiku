@@ -27,6 +27,7 @@ fi
 echo "Releasing ${VERSION}"
 
 git add pyproject.toml
+git add uv.lock
 git commit -m "release ${version}"
 git tag -a v${VERSION} -m "${MESSAGE}"
 git push origin master --tags
