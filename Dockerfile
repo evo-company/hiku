@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y libpq-dev gcc && \
   pip install --upgrade pip==${PIP_VERSION} && pip install uv==${UV_VERSION}
 
 COPY pyproject.toml .
+COPY uv.lock .
 
 RUN uv export --format requirements.txt --no-dev --no-emit-project --output-file requirements-base.txt && \
   uv pip install --system -r requirements-base.txt --no-deps --no-cache-dir --index-strategy unsafe-best-match
