@@ -4,13 +4,27 @@ Changes in 0.8
 0.8.0rcXX
 ~~~~~~~~~
 
-0.8.0rc25
+0.8.0rc27
+~~~~~~~~~
+
+- Fix ``QueryDepthValidator`` and ``QueryAliasesValidator`` to traverse
+  fragments. Fields nested inside inline or spread fragments are now counted,
+  so depth/alias limits can no longer be bypassed by hiding nesting behind a
+  fragment.
+- Fix ``QueryAliasesValidator`` to count only aliases to the same field.
+
+0.8.0rc26
 ~~~~~~~~~
 
 - Add ``QueryAliasesValidator`` extension to limit the number of aliases in a
   query. If the count of aliases exceeds ``max_aliases`` the request is
   rejected with a validation error. Each client app should configure its own
   limit via extensions.
+
+0.8.0rc25
+~~~~~~~~~
+
+- Fix fragment on a ``Query`` not being processed
 
 0.8.0rc24
 ~~~~~~~~~

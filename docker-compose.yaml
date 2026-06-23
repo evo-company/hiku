@@ -13,6 +13,7 @@ services:
       - ./scripts:/work/scripts
       - ./.flake8:/work/.flake8
       - ./pyproject.toml:/work/pyproject.toml
+      - ./uv.lock:/work/uv.lock
       - ./tox.ini:/work/tox.ini
       - ./.tox:/work/.tox
       - ./.local:/work/.local

@@ -124,11 +124,13 @@ which says that query depth is too big.
 QueryAliasesValidator
 ~~~~~~~~~~~~~~~~~~~~~
 
-``QueryAliasesValidator`` limits the number of aliases used in a query. Repeating
-a field under many aliases is a common way to amplify the cost of a single
-request, so each client app should configure its own ``max_aliases`` limit. If
-the count of aliases is greater than ``max_aliases``, it returns an error and the
-request is rejected.
+``QueryAliasesValidator`` limits how many times the same field may be aliased
+within a single selection set. Requesting the same field under many aliases is a
+common way to amplify the cost of a single request, so each client app should
+configure its own ``max_aliases`` limit. If any field is aliased more than
+``max_aliases`` times within a selection set, it returns an error and the request
+is rejected. Fields spread in via fragments count towards the selection set they
+merge into.
 
 .. code-block:: python
 
