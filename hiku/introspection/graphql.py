@@ -9,6 +9,7 @@ from ..directives import (
     Deprecated,
     Directive,
     SchemaDirective,
+    SpecifiedBy,
     _IncludeDirective,
     _SkipDirective,
     get_deprecated,
@@ -80,15 +81,12 @@ _BUILTIN_DIRECTIVES: tuple[type[Directive] | type[SchemaDirective], ...] = (
     _IncludeDirective,
     Deprecated,
     Cached,
+    SpecifiedBy,
 )
 
-BUILTIN_SCALARS: tuple[SCALAR, ...] = (  # type: ignore[valid-type]
-    SCALAR("String"),
-    SCALAR("Int"),
-    SCALAR("Boolean"),
-    SCALAR("Float"),
-    SCALAR("Any"),
-    SCALAR("ID"),
+BUILTIN_SCALAR_NAMES = ("String", "Int", "Boolean", "Float", "Any", "ID")
+BUILTIN_SCALARS: tuple[SCALAR, ...] = tuple(  # type: ignore[valid-type]
+    SCALAR(name) for name in BUILTIN_SCALAR_NAMES
 )
 
 
@@ -243,6 +241,8 @@ def type_link(
         )
     elif name in schema.query_graph.scalars_map:
         return SCALAR(name)
+    elif name in BUILTIN_SCALAR_NAMES:
+        return SCALAR(name)
     else:
         return Nothing
 
@@ -349,6 +349,10 @@ def type_info(
             info = {"id": ident, "kind": "LIST"}
         elif isinstance(ident, SCALAR):
             info = {"id": ident, "name": ident.name, "kind": "SCALAR"}
+            scalar = schema.query_graph.scalars_map.get(ident.name)
+            if scalar is not None:
+                info["description"] = scalar.__description__
+                info["specifiedByURL"] = scalar.__specified_by_url__
         elif isinstance(ident, UNION):
             info = {
                 "id": ident,
@@ -747,6 +751,7 @@ GRAPH = Graph(
                 Field("kind", String, type_info),
                 Field("name", String, type_info),
                 Field("description", String, type_info),
+                Field("specifiedByURL", String, type_info),
                 # OBJECT and INTERFACE only
                 Link(
                     "fields",

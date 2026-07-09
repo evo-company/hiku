@@ -7,7 +7,9 @@ if TYPE_CHECKING:
 
 
 def scalar(
-    name: str | None = None, description: str | None = None
+    name: str | None = None,
+    description: str | None = None,
+    specified_by_url: str | None = None,
 ) -> Callable[[type["Scalar"]], type["Scalar"]]:
     """
     Use @scalar decorator to set custom name and description for
@@ -20,6 +22,7 @@ def scalar(
     def _scalar(cls: type["Scalar"]) -> type["Scalar"]:
         cls.__type_name__ = name or cls.__name__
         cls.__description__ = description
+        cls.__specified_by_url__ = specified_by_url
         return cls
 
     return _scalar
@@ -32,10 +35,15 @@ class ScalarMeta(type):
 
     __type_name__: str
     __description__: str | None
+    __specified_by_url__: str | None
 
     def __new__(cls, *args: Any, **kwargs: Any):  # type: ignore[no-untyped-def]
         instance = super().__new__(cls, *args, **kwargs)
         instance.__type_name__ = instance.__name__
+        if "__description__" not in instance.__dict__:
+            instance.__description__ = None
+        if "__specified_by_url__" not in instance.__dict__:
+            instance.__specified_by_url__ = None
         return instance
 
 

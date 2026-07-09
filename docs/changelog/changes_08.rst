@@ -4,6 +4,9 @@ Changes in 0.8
 0.8.0rcXX
 ~~~~~~~~~
 
+- Add GraphQL ``@specifiedBy`` support for custom scalars in introspection and
+  federation SDL export.
+
 0.8.0rc28
 ~~~~~~~~~
 

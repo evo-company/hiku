@@ -64,6 +64,21 @@ If builtin scalars do not cover your specific needs, you can define custom scala
         class YMDDate(Scalar):
             ...
 
+    You can also pass ``specified_by_url`` to expose a GraphQL
+    ``@specifiedBy`` URL for custom scalars in introspection and SDL:
+
+    .. code-block:: python
+
+        from hiku.scalar import Scalar, scalar
+
+        @scalar(
+            "UUID",
+            "The `UUID` scalar type represents a UUID.",
+            specified_by_url="https://tools.ietf.org/html/rfc4122",
+        )
+        class UUID(Scalar):
+            ...
+
 Now, lets look at the full example:
 
 .. code-block:: python
@@ -151,4 +166,3 @@ We will get this result:
         "id": "1",
         "dateCreated": "2023-06-15",
     }
-

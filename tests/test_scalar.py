@@ -4,7 +4,7 @@ import pytest
 
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import Field, Graph, Link, Node, Nothing, Option, Root
-from hiku.scalar import DateTime, Scalar
+from hiku.scalar import DateTime, Scalar, scalar
 from hiku.schema import Schema
 from hiku.types import Float, Integer, Optional, Sequence, TypeRef
 from hiku.utils import listify
@@ -16,6 +16,28 @@ from hiku.validate.query import validate
 def execute(graph, query):
     schema = Schema(SyncExecutor(), graph)
     return schema.execute_sync(query)
+
+
+def test_scalar_decorator_sets_metadata():
+    @scalar(
+        name="UserId",
+        description="User identifier.",
+        specified_by_url="https://example.com/user-id",
+    )
+    class CustomUserId(Scalar):
+        ...
+
+    assert CustomUserId.__type_name__ == "UserId"
+    assert CustomUserId.__description__ == "User identifier."
+    assert CustomUserId.__specified_by_url__ == "https://example.com/user-id"
+
+
+def test_undecorated_scalar_has_default_metadata():
+    class Undecorated(Scalar):
+        ...
+
+    assert Undecorated.__description__ is None
+    assert Undecorated.__specified_by_url__ is None
 
 
 class SomeType:

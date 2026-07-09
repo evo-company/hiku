@@ -63,6 +63,9 @@ def _schema(types, with_mutation=False) -> dict:
                 _directive('cached', ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'], [
                     _ival('ttl', _non_null(_INT), description=ANY)
                 ]),
+                _directive('specifiedBy', ['SCALAR'], [
+                    _ival('url', _non_null(_STR), description=ANY)
+                ]),
             ],
             'mutationType': {'name': 'Mutation'} if with_mutation else None,
             'queryType': {'name': 'Query'},

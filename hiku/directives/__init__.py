@@ -341,6 +341,19 @@ class Deprecated(SchemaDirective):
     )
 
 
+@schema_directive(
+    name="specifiedBy",
+    locations=[Location.SCALAR],
+    description=("Exposes a specification URL for a custom scalar's behavior."),
+)
+class SpecifiedBy(SchemaDirective):
+    """https://spec.graphql.org/draft/#sec--specifiedBy"""
+
+    url: str = schema_directive_field(
+        description="The custom scalar specification URL.",
+    )
+
+
 def get_deprecated(
     obj: t.Union["Field", "Link", "Option"],
 ) -> Deprecated | None:
