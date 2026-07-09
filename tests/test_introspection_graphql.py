@@ -10,7 +10,7 @@ from hiku.enum import Enum
 from hiku.directives import Deprecated, Location, SchemaDirective, schema_directive
 from hiku.executors.sync import SyncExecutor
 from hiku.graph import Graph, Input, Interface, Root, Field, Node, Link, Union, apply, Option
-from hiku.scalar import Scalar
+from hiku.scalar import Scalar, scalar
 from hiku.schema import Schema
 from hiku.types import EnumRef, InterfaceRef, String, Integer, Sequence, TypeRef, Boolean, Float, Any, UnionRef, InputRef
 from hiku.types import Optional, Record
@@ -165,6 +165,10 @@ def _schema(types, directives: list[dict] | None = None, with_mutation=False):
               _directive(
                   'cached', ['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT'], [
                       _ival('ttl', _non_null(_INT), description=ANY)
+                  ]),
+              _directive(
+                  'specifiedBy', ['SCALAR'], [
+                      _ival('url', _non_null(_STR), description=ANY)
                   ]),
             ] + (directives or []),
             'mutationType': {'name': 'Mutation'} if with_mutation else None,
@@ -612,6 +616,9 @@ def test_query_enum_as_single_type(enum_name, expected):
 
 
 def test_custom_scalar():
+    @scalar(
+        specified_by_url='https://example.com/scalars/user-id',
+    )
     class UserId(Scalar):
         @classmethod
         def parse(cls, value: str) -> int:
@@ -660,6 +667,26 @@ def test_custom_scalar():
         ], ),
         _type('UserId', 'SCALAR'),
     ]) == introspect(graph)
+
+    query = """
+    query IntrospectionQuery {
+        customScalar: __type(name: "UserId") {
+            specifiedByURL
+        }
+        builtInScalar: __type(name: "String") {
+            specifiedByURL
+        }
+    }
+    """
+
+    assert execute(query, graph) == {
+        'customScalar': {
+            'specifiedByURL': 'https://example.com/scalars/user-id',
+        },
+        'builtInScalar': {
+            'specifiedByURL': None,
+        },
+    }
 
 
 def test_custom_int_scalar():

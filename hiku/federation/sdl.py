@@ -390,9 +390,26 @@ class Exporter(GraphVisitor):
                 ):  # noqa: E501
                     continue
 
+            directives = []
+            if scalar.__specified_by_url__ is not None:
+                directives = [
+                    ast.DirectiveNode(
+                        name=_name("specifiedBy"),
+                        arguments=[
+                            ast.ArgumentNode(
+                                name=_name("url"),
+                                value=ast.StringValueNode(
+                                    value=scalar.__specified_by_url__,
+                                ),
+                            )
+                        ],
+                    )
+                ]
+
             scalars.append(
                 ast.ScalarTypeDefinitionNode(
                     name=_name(scalar.__type_name__),
+                    directives=directives,
                 )
             )
         return _BUILTIN_SCALARS + scalars

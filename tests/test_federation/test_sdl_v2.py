@@ -24,7 +24,7 @@ from hiku.types import (
     UnionRef,
     InputRef,
 )
-from hiku.scalar import Scalar
+from hiku.scalar import Scalar, scalar
 from hiku.graph import apply
 
 from hiku.federation.graph import FederatedNode, Graph
@@ -51,6 +51,7 @@ class Custom(FederationSchemaDirective):
     ...
 
 
+@scalar(specified_by_url="https://example.com/scalars/long")
 class Long(Scalar):
     @classmethod
     def parse(cls, value: Any) -> int:
@@ -198,7 +199,7 @@ expected_tmpl = """
     %s
     scalar Any
 
-    scalar Long
+    scalar Long @specifiedBy(url: "https://example.com/scalars/long")
 
     scalar _Any
 
