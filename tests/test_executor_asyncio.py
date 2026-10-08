@@ -100,3 +100,61 @@ async def test_cancellation():
     assert task.done()
     assert task.cancelled() is True
     assert result == [1, 2]
+
+
+@pytest.mark.asyncio
+async def test_failed_task_cancels_pending_tasks():
+    result = []
+
+    async def failing():
+        raise TimeoutError("connect timeout")
+
+    async def proc():
+        result.append(1)
+        try:
+            await asyncio.sleep(1)
+        finally:
+            result.append(2)
+
+    class TestWorkflow(Workflow):
+        def result(self):
+            raise AssertionError("impossible")
+
+    executor = AsyncIOExecutor()
+
+    queue = Queue(executor)
+    task_set = queue.fork(None)
+    queue.submit(task_set, proc)
+    failing_fut = queue.submit(task_set, failing)
+    queue.add_callback(failing_fut, failing_fut.result)
+
+    with pytest.raises(TimeoutError, match="connect timeout"):
+        await executor.process(queue, TestWorkflow())
+
+    assert result == [1, 2]
+    assert all(task.done() for task in queue.__futures__)
+
+
+@pytest.mark.asyncio
+async def test_failed_resolver_leaves_no_pending_tasks():
+    from hiku.graph import Field, Graph, Root
+    from hiku.schema import Schema
+    from hiku.types import String
+
+    async def failing(fields):
+        raise TimeoutError("connect timeout")
+
+    async def slow(fields):
+        await asyncio.sleep(1)
+        return ["slow"]
+
+    graph = Graph(
+        [Root([Field("failing", String, failing), Field("slow", String, slow)])]
+    )
+    schema = Schema(AsyncIOExecutor(), graph)
+
+    with pytest.raises(TimeoutError, match="connect timeout"):
+        await schema.execute("{ failing slow }")
+
+    current = asyncio.current_task()
+    assert [t for t in asyncio.all_tasks() if t is not current] == []
