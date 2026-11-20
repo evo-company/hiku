@@ -1,3 +1,4 @@
+import dataclasses
 import typing as t
 from enum import Enum as PyEnum
 
@@ -21,6 +22,7 @@ from hiku.federation.directive import (
     Key,
     Link as LinkDirective,
 )
+from hiku.introspection import types as int_types
 from hiku.introspection.graphql import _BUILTIN_DIRECTIVES
 from hiku.graph import (
     Input,
@@ -137,6 +139,18 @@ def _encode_type(
         return _non_null_type(type_)
 
     return _non_null_type(encoded)
+
+
+def _encode_introspection_type(value: t.Any) -> ast.TypeNode:
+    if isinstance(value, int_types.NON_NULL):
+        return ast.NonNullTypeNode(
+            type=_encode_introspection_type(value.of_type)
+        )
+    if isinstance(value, int_types.LIST):
+        return ast.ListTypeNode(type=_encode_introspection_type(value.of_type))
+    if isinstance(value, (int_types.SCALAR, int_types.ENUM)):
+        return ast.NamedTypeNode(name=_name(value.name))
+    raise TypeError("Unsupported type: {!r}".format(value))
 
 
 def _encode_default_value(value: t.Any) -> ast.ValueNode | None:
@@ -367,9 +381,11 @@ class Exporter(GraphVisitor):
                                 if arg.description
                                 else None
                             ),
-                            type=_encode_type(arg.type_ident),
-                            default_value=_encode_default_value(
-                                arg.default_value
+                            type=_encode_introspection_type(arg.type_ident),
+                            default_value=(
+                                None
+                                if arg.default is dataclasses.MISSING
+                                else _encode_default_value(arg.default_value)
                             ),
                         )
                         for arg in info.args
