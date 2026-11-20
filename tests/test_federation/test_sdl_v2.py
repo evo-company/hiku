@@ -248,3 +248,33 @@ def test_print_introspected_graph_sdl():
 
     sdl = print_sdl(INTROSPECTED_GRAPH)
     assert sdl.strip() == textwrap.dedent(expected).strip()
+
+
+def test_print_sdl_custom_directive_with_typed_args():
+    from hiku.directives import (
+        SchemaDirective,
+        schema_directive as plain_schema_directive,
+        schema_directive_field,
+    )
+    from hiku.graph import Graph as PlainGraph
+
+    @plain_schema_directive(
+        name='limit',
+        locations=[Location.FIELD_DEFINITION],
+    )
+    class Limit(SchemaDirective):
+        max_calls: int = schema_directive_field(name='maxCalls')
+        tags: list[str] | None = schema_directive_field(default_value=None)
+
+    graph = PlainGraph(
+        [Root([Field('a', String, field_resolver, directives=[Limit(1)])])],
+        directives=[Limit],
+    )
+
+    sdl = print_sdl(graph)
+
+    assert (
+        'directive @limit(maxCalls: Int!, tags: [String] = null) '
+        'on FIELD_DEFINITION'
+    ) in sdl
+    assert 'a: String! @limit(maxCalls: 1, tags: null)' in sdl

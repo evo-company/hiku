@@ -148,7 +148,7 @@ commands:
       export APOLLO_ELV2_LICENSE=accept
 
       echo "Running compatibility test..."
-      npx -y @apollo/federation-subgraph-compatibility docker \
+      npx -y @apollo/federation-subgraph-compatibility@2.2.2 docker \
         --compose ./examples/federation-compatibility/docker-compose.yml \
         --path /graphql \
         --schema ./examples/federation-compatibility/products.graphql \
