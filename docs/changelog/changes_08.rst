@@ -6,6 +6,10 @@ Changes in 0.8
 
 - Add GraphQL ``@specifiedBy`` support for custom scalars in introspection and
   federation SDL export.
+- Fix ``AsyncIOExecutor`` to cancel and await the remaining tasks when a
+  resolver raises. Previously only ``CancelledError`` triggered this cleanup,
+  so other errors left sibling resolver tasks running after ``execute()``
+  returned.
 
 0.8.0rc28
 ~~~~~~~~~

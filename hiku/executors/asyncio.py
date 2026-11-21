@@ -1,7 +1,6 @@
 import inspect
 from asyncio import (
     FIRST_COMPLETED,
-    CancelledError,
     Task,
     gather,
     get_running_loop,
@@ -55,8 +54,10 @@ class AsyncIOExecutor(BaseAsyncExecutor):
                 )
                 queue.progress(done)
             return workflow.result()
-        except CancelledError:
+        except BaseException:
             for task in queue.__futures__:
                 task.cancel()  # type: ignore
-            await gather(*queue.__futures__)  # type: ignore
+            await gather(
+                *queue.__futures__, return_exceptions=True  # type: ignore
+            )
             raise
